@@ -1,7 +1,7 @@
 /**
  * main.js — ⟐mniReality entry point
  */
-
+import * as THREE from 'three'
 import gsap             from 'gsap'
 import BaseScene        from './scene/BaseScene.js'
 
@@ -75,9 +75,12 @@ base.addModule(new PortfolioXD(base.context))
 
 const ui = new UI(base.context)
 ui.init()
+base.addModule(ui) 
 
 const movementPad = new MovementPad(base.context)
 movementPad.init()
+movementPad.setVisible('lh', true)    // enables WASD
+movementPad.setVisible('rh', true)    // enables Arrow keys (optional)
 base.addModule(movementPad)
 
 // ── Camera entry animation ────────────────────────────────
@@ -120,12 +123,29 @@ function dismissBoot() {
 
 // ── Keyboard shortcuts ────────────────────────────────────
 
+// Track all pressed directions — re-enable orbit only when ALL keys are up
+const _heldDirections = new Set()
+
 window.addEventListener('omni:movement', (e) => {
+  const key = `${e.detail.hand}-${e.detail.direction}`
+
   if (e.detail.active) {
+    _heldDirections.add(key)
     orbitMod.disable()
   } else {
-    // Only re-enable if no direction is still held
-    orbitMod.enable()
+    _heldDirections.delete(key)
+
+    // Only re-enable when every key is fully released
+    if (_heldDirections.size === 0) {
+      const cam = base.camera
+      const forward = new THREE.Vector3()
+      cam.getWorldDirection(forward)
+      orbitMod.controls.target.copy(
+        cam.position.clone().add(forward.multiplyScalar(4))
+      )
+      orbitMod.controls.update()
+      orbitMod.enable()
+    }
   }
 })
 
@@ -138,6 +158,62 @@ window.addEventListener('keydown', (e) => {
     window.dispatchEvent(new CustomEvent('omni:terminal-dismiss'))
   }
 })
+
+
+// ── R / F — vertical movement (Y axis) ───────────────────
+const _vertPressed = { r: false, f: false }
+const VERTICAL_SPEED = 20   // units/second — matches MOVE_SPEED in MovementPad
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyR') { _vertPressed.r = true;  orbitMod.disable() }
+  if (e.code === 'KeyF') { _vertPressed.f = true;  orbitMod.disable() }
+})
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'KeyR') _vertPressed.r = false
+  if (e.code === 'KeyF') _vertPressed.f = false
+
+  // Re-enable orbit only when R, F, AND all WASD are released
+  if (!_vertPressed.r && !_vertPressed.f && _heldDirections.size === 0) {
+    const cam = base.camera
+    const forward = new THREE.Vector3()
+    cam.getWorldDirection(forward)
+    orbitMod.controls.target.copy(
+      cam.position.clone().add(forward.multiplyScalar(4))
+    )
+    orbitMod.controls.update()
+    orbitMod.enable()
+  }
+})
+
+// Add vertical tick to the render loop via a lightweight module
+base.addModule({
+  update (delta) {
+    if (!_vertPressed.r && !_vertPressed.f) return
+    const cam = base.camera
+    const speed = VERTICAL_SPEED * delta
+    if (_vertPressed.r) cam.position.y += speed
+    if (_vertPressed.f) cam.position.y -= speed
+  },
+  destroy () {}
+})
+
+// window.addEventListener('omni:movement', (e) => {
+//   if (e.detail.active) {
+//     orbitMod.disable()
+//   } else {
+//     // Sync orbit target to current camera position + forward direction
+//     // so re-enabling doesn't snap back to the old origin
+//     const cam = base.camera
+//     const forward = new THREE.Vector3()
+//     cam.getWorldDirection(forward)
+//     orbitMod.controls.target.copy(
+//       cam.position.clone().add(forward.multiplyScalar(4))
+//     )
+//     orbitMod.controls.update()
+//     orbitMod.enable()
+//   }
+// })
 
 
 // ── Start ─────────────────────────────────────────────────
