@@ -284,7 +284,7 @@ export default class PortfolioXD {
 
   _handleNavSelect(e) {
     const { item, parent } = e.detail || {}
-    if (parent !== '⟐Portfolio' || item !== 'XD Projects') return
+    if (parent !== 'portfolio' || item !== 'XD Projects') return
 
     if (!this._spawned) {
       this._spawn()

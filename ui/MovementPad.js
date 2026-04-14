@@ -234,12 +234,11 @@ const STYLES = /* css */`
   backdrop-filter   : blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border            : 1px solid var(--pad-border);
-  // width             : 170px;
-  // height            : 170px;
-  // overflow          : hidden;
-  border-radius     : 12.5%;
+  width             : 165px;
+  height            : 165px;
+  overflow          : hidden;
+  border-radius     : 60%;
   padding           : var(--pad-inner);
-
   display           : flex;
   flex-direction    : column;
   gap               : 7px;

@@ -268,7 +268,7 @@ export default class Portfolio2D {
 
   _handleNavSelect(e) {
     const { item, parent } = e.detail || {}
-    if (parent !== '⟐Portfolio' || item !== '2D Projects') return
+    if (parent !== 'portfolio' || item !== '2D Projects') return
 
     if (!this._spawned) {
       this._spawn()

@@ -280,7 +280,7 @@ export default class Portfolio3D {
 
   _handleNavSelect(e) {
     const { item, parent } = e.detail || {}
-    if (parent !== '⟐Portfolio' || item !== '3D Projects') return
+    if (parent !== 'portfolio' || item !== '3D Projects') return
 
     if (!this._spawned) {
       this._spawn()
