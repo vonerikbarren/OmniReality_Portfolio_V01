@@ -1,66 +1,110 @@
 /**
  * main.js — ⟐mniReality entry point
- *
- * Boots the BaseScene, registers modules, and plays
- * the camera entry animation on load.
- *
- * Entry animation:
- *   Camera begins high above the Root (Y+) facing forward.
- *   It descends downward into the space over ~2.4s.
- *   No tilt — forward look is held throughout. The feeling
- *   is arrival, not falling.
- *
- * Adding a new module = one import + one addModule() call.
- * BaseScene never changes.
  */
 
-import gsap      from 'gsap'
-import BaseScene from './scene/BaseScene.js'
+import gsap             from 'gsap'
+import BaseScene        from './scene/BaseScene.js'
+
+// ── Phase 2 — Root Space ──────────────────────────────────
+import OrbitModule      from './modules/OrbitModule.js'
+import RootSpace        from './modules/RootSpace.js'
+import ParticleField    from './modules/ParticleField.js'
+import PortalSpheres    from './modules/PortalSpheres.js'
+import OmniPlatform     from './modules/OmniPlatform.js'
+import TerminalTunnel   from './modules/TerminalTunnel.js'
+
+// ── Phase 3 — UI Shell ────────────────────────────────────
+import UI               from './ui/index.js'
+
+// ── Phase 4 — Core Systems ────────────────────────────────
+import OmniNode         from './systems/OmniNode.js'
+import OmniInspector    from './systems/OmniInspector.js'
+import OmniPresenter    from './systems/OmniPresenter.js'
+import OmniPocket       from './systems/OmniPocket.js'
+import NodeManager      from './systems/NodeManager.js'
+
+// ── Phase 5 — Data Layer ──────────────────────────────────
+import NodeLoader       from './data/NodeLoader.js'
+
+// ── Phase 6 — Portfolio ───────────────────────────────────
+import Portfolio2D      from './modules/Portfolio2D.js'
+import Portfolio3D      from './modules/Portfolio3D.js'
+import PortfolioXD      from './modules/PortfolioXD.js'
+
+
+import MovementPad from './ui/MovementPad.js'
 
 // ── Boot ──────────────────────────────────────────────────
 
 const base = new BaseScene('#omni-canvas')
 
-// ── Register modules (Phase 2+) ───────────────────────────
-//
-// Example (uncomment in Phase 2):
-//   import OrbitModule   from './modules/OrbitModule.js'
-//   import RootSpace     from './modules/RootSpace.js'
-//   base.addModule(new OrbitModule(base.context))
-//   base.addModule(new RootSpace(base.context))
-//
-// Phase 1 ships without content modules — the engine alone.
+// ── Register modules ──────────────────────────────────────
+
+const orbitMod     = base.addModule(new OrbitModule(base.context))
+                     base.addModule(new RootSpace(base.context))
+                     base.addModule(new ParticleField(base.context))
+                     base.addModule(new PortalSpheres(base.context))
+                     base.addModule(new OmniPlatform(base.context))
+                     base.addModule(new TerminalTunnel(base.context))
+
+// ── Core systems ──────────────────────────────────────────
+
+const nodeManager  = new NodeManager(base.context)
+const omniNode     = new OmniNode(base.context)
+const omniInspector = new OmniInspector(base.context)
+const omniPresenter = new OmniPresenter(base.context)
+const omniPocket   = new OmniPocket(base.context)
+const nodeLoader   = new NodeLoader(base.context)
+
+nodeManager.setOrbitModule(orbitMod)
+
+base.addModule(nodeManager)
+base.addModule(omniNode)
+base.addModule(omniInspector)
+base.addModule(omniPresenter)
+base.addModule(omniPocket)
+base.addModule(nodeLoader)
+
+// ── Portfolio modules (deferred — spawn on nav-select) ────
+
+base.addModule(new Portfolio2D(base.context))
+base.addModule(new Portfolio3D(base.context))
+base.addModule(new PortfolioXD(base.context))
+
+// ── UI Shell ──────────────────────────────────────────────
+
+const ui = new UI(base.context)
+ui.init()
+
+const movementPad = new MovementPad(base.context)
+movementPad.init()
+base.addModule(movementPad)
 
 // ── Camera entry animation ────────────────────────────────
 
 const CAM_ENTRY = {
-  startY:    80,      // height above the Root to begin
-  endY:      2,       // resting eye-level height
-  startZ:    0,
-  endZ:      0,
-  duration:  2.6,     // seconds
-  ease:      'power2.inOut',
+  startY:   80,
+  endY:     2,
+  duration: 2.6,
+  ease:     'power2.inOut',
 }
 
 function playEntryAnimation() {
   const cam = base.camera
 
-  // Place camera at entry position — above, facing forward (−Z axis)
-  cam.position.set(0, CAM_ENTRY.startY, CAM_ENTRY.startZ)
-  cam.lookAt(0, CAM_ENTRY.startY, -1)   // flat forward, no tilt
+  cam.position.set(0, CAM_ENTRY.startY, 0)
+  cam.lookAt(0, CAM_ENTRY.startY, -1)
 
-  // Descend
   gsap.to(cam.position, {
     y:        CAM_ENTRY.endY,
-    z:        CAM_ENTRY.endZ,
     duration: CAM_ENTRY.duration,
     ease:     CAM_ENTRY.ease,
     onUpdate: () => {
-      // Keep camera always looking straight forward regardless of Y position
       cam.lookAt(cam.position.x, cam.position.y, cam.position.z - 1)
     },
     onComplete: () => {
       dismissBoot()
+      orbitMod.enable()
     },
   })
 }
@@ -73,6 +117,28 @@ function dismissBoot() {
   boot.classList.add('fade-out')
   boot.addEventListener('transitionend', () => boot.remove(), { once: true })
 }
+
+// ── Keyboard shortcuts ────────────────────────────────────
+
+window.addEventListener('omni:movement', (e) => {
+  if (e.detail.active) {
+    orbitMod.disable()
+  } else {
+    // Only re-enable if no direction is still held
+    orbitMod.enable()
+  }
+})
+
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === '`' || e.key === 'F1') {
+    window.dispatchEvent(new CustomEvent('omni:terminal-invoke'))
+  }
+  if (e.key === 'Escape') {
+    window.dispatchEvent(new CustomEvent('omni:terminal-dismiss'))
+  }
+})
+
 
 // ── Start ─────────────────────────────────────────────────
 
