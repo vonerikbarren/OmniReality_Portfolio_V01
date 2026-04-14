@@ -201,20 +201,41 @@ import SoundManager      from './utils/SoundManager.js'
 
   function playEntryAnimation() {
     const cam = base.camera
-    cam.position.set(0, CAM_ENTRY.startY, 0)
-    cam.lookAt(0, CAM_ENTRY.startY, -1)
 
-    gsap.to(cam.position, {
-      y:        CAM_ENTRY.endY,
-      duration: CAM_ENTRY.duration,
-      ease:     CAM_ENTRY.ease,
-      onUpdate: () => {
-        cam.lookAt(cam.position.x, cam.position.y, cam.position.z - 1)
-      },
+    cam.position.set(0, 1000, 0.001)
+    cam.lookAt(0, 0, 0)
+
+    // Dismiss boot screen immediately — reveal the scene
+    // so the user actually sees the fall happen
+    dismissBoot()
+
+    const tl = gsap.timeline({
       onComplete: () => {
-        dismissBoot()
         orbitMod.enable()
-      },
+      }
+    })
+
+    // Phase 1 — fast fall, looking down
+    tl.to(cam.position, {
+      y:        22,
+      duration: 2.6,
+      ease:     'power2.in',
+      onUpdate: () => {
+        const lookY = cam.position.y - 40
+        cam.lookAt(0, lookY, 0)
+      }
+    })
+
+    // Phase 2 — slow final approach, straighten up
+    tl.to(cam.position, {
+      y:        2,
+      duration: 2.2,
+      ease:     'power3.out',
+      onUpdate: () => {
+        const t     = 1 - (cam.position.y - 2) / 20
+        const lookY = gsap.utils.interpolate(-18, 2, t)
+        cam.lookAt(0, lookY, -1)
+      }
     })
   }
 
