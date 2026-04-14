@@ -235,10 +235,10 @@ const STYLES = /* css */`
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border            : 1px solid var(--pad-border);
   width             : 160px;
-  height            : 160px;
+  height            : 200px;
   overflow          : hidden;
   // top            : 1050px;
-  border-radius     : 12%;
+  border-radius     : 10%;
   padding           : var(--pad-inner);
   display           : flex;
   flex-direction    : column;

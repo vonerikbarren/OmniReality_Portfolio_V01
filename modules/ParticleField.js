@@ -12,6 +12,11 @@
  *   - Positions updated via update(delta) — no GSAP per-particle
  *     (too many tweens). Instead a fast JS loop each frame.
  *
+ * Rendering:
+ *   - CanvasTexture radial gradient — bright core fading to transparent edge
+ *   - AdditiveBlending — overlapping particles add brightness (shiny glow)
+ *   - alphaMap drives the soft circular falloff, eliminating square corners
+ *
  * Context: { scene, camera, renderer, sizes, ticker }
  */
 
@@ -35,9 +40,36 @@ export default class ParticleField {
     this.ctx.scene.add(this.points)
   }
 
+  // ── Orb texture ────────────────────────────────────────────────────────────
+
+  _makeOrbTexture() {
+    const SIZE   = 64
+    const canvas = document.createElement('canvas')
+    canvas.width = SIZE
+    canvas.height = SIZE
+    const ctx = canvas.getContext('2d')
+
+    // Radial gradient — bright white core fading to fully transparent edge
+    const gradient = ctx.createRadialGradient(
+      SIZE / 2, SIZE / 2, 0,       // inner circle center + radius
+      SIZE / 2, SIZE / 2, SIZE / 2 // outer circle center + radius
+    )
+    gradient.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)')  // bright core
+    gradient.addColorStop(0.20, 'rgba(255, 255, 255, 0.85)') // inner glow
+    gradient.addColorStop(0.50, 'rgba(255, 255, 255, 0.25)') // soft falloff
+    gradient.addColorStop(0.80, 'rgba(255, 255, 255, 0.05)') // near edge
+    gradient.addColorStop(1.00, 'rgba(255, 255, 255, 0.00)') // transparent edge
+
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, SIZE, SIZE)
+
+    return new THREE.CanvasTexture(canvas)
+  }
+
+  // ── Particle geometry + material ───────────────────────────────────────────
+
   _buildParticles() {
     const positions = new Float32Array(PARTICLE_COUNT * 3)
-    const opacities = new Float32Array(PARTICLE_COUNT)
 
     // Per-particle motion metadata — stored once, used every frame
     this._meta = new Float32Array(PARTICLE_COUNT * 4)
@@ -48,17 +80,13 @@ export default class ParticleField {
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const angle  = Math.random() * Math.PI * 2
-      const radius = Math.random() * INNER_RADIUS * 0.9  // keep inside inner cylinder
+      const radius = Math.random() * INNER_RADIUS * 0.9
       const y      = MIN_Y + Math.random() * (MAX_Y - MIN_Y)
       const phase  = Math.random() * Math.PI * 2
 
-      // Initial position
       positions[i * 3]     = Math.cos(angle) * radius
       positions[i * 3 + 1] = y
       positions[i * 3 + 2] = Math.sin(angle) * radius
-
-      // Opacity — vary for depth feel
-      opacities[i] = 0.3 + Math.random() * 0.7
 
       this._meta[i * 4]     = angle
       this._meta[i * 4 + 1] = radius
@@ -69,20 +97,26 @@ export default class ParticleField {
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
 
-    // Custom shader material — soft round points with glow falloff
+    // Generate the orb texture once
+    this._orbTex = this._makeOrbTexture()
+
     const mat = new THREE.PointsMaterial({
-      color:        0xffffff,
-      size:         0.10,
+      color:           0xffffff,
+      size:            0.30,           // slightly larger so orb shape reads clearly
       sizeAttenuation: true,
-      transparent:  true,
-      opacity:      0.55,
-      depthWrite:   false,      // prevents particles from occluding each other harshly
-      blending:     THREE.AdditiveBlending,  // luminous additive glow
+      transparent:     true,
+      opacity:         0.75,
+      depthWrite:      false,
+      map:             this._orbTex,   // drives color + shape
+      alphaMap:        this._orbTex,   // drives per-pixel transparency
+      blending:        THREE.AdditiveBlending,  // overlapping orbs add glow
     })
 
     this.points = new THREE.Points(geo, mat)
     this.points.name = 'root-particles'
   }
+
+  // ── Per-frame update ───────────────────────────────────────────────────────
 
   update(delta) {
     this._time += delta
@@ -97,13 +131,13 @@ export default class ParticleField {
       const phase      = this._meta[i * 4 + 3]
 
       // Slow angular drift around Y axis
-      const angle  = baseAngle + t * 0.025 + phase * 0.01
+      const angle = baseAngle + t * 0.025 + phase * 0.01
 
       // Gentle radius breathing
-      const r      = baseRadius + Math.sin(t * 0.4 + phase) * 0.4
+      const r = baseRadius + Math.sin(t * 0.4 + phase) * 0.4
 
       // Vertical oscillation — very slow, per-particle phase
-      const yOff   = Math.sin(t * 0.18 + phase) * 1.2
+      const yOff = Math.sin(t * 0.18 + phase) * 1.2
 
       positions[i * 3]     = Math.cos(angle) * r
       positions[i * 3 + 1] = baseY + yOff
@@ -113,7 +147,10 @@ export default class ParticleField {
     this.points.geometry.attributes.position.needsUpdate = true
   }
 
+  // ── Teardown ───────────────────────────────────────────────────────────────
+
   destroy() {
+    this._orbTex?.dispose()
     this.points.geometry.dispose()
     this.points.material.dispose()
     this.ctx.scene.remove(this.points)
