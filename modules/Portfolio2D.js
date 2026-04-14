@@ -299,9 +299,9 @@ export default class Portfolio2D {
     }
 
     this._buildFromData(data)
-    this.ctx.scene.add(this.group)
-    this._bindCanvasEvents()
-    this._playEntrance()
+    // this.ctx.scene.add(this.group)
+    // this._bindCanvasEvents()
+    // this._playEntrance()
   }
 
   // ── Build all geometry ────────────────────────────────────────────────────
@@ -310,29 +310,51 @@ export default class Portfolio2D {
     const cats    = data.portfolioCore.categories
     const catKeys = Object.keys(cats)
 
+    // Flatten all projects into a single build queue
+    this._buildQueue = []
+
     catKeys.forEach((catKey, catIdx) => {
       const meta     = CATEGORY_META[catKey]
       const projects = cats[catKey]
       const catAngle = (catIdx / catKeys.length) * Math.PI * 2
+      const cx       = Math.cos(catAngle) * CLUSTER_RING_R
+      const cz       = Math.sin(catAngle) * CLUSTER_RING_R
 
-      // Cluster anchor in world space
-      const cx = Math.cos(catAngle) * CLUSTER_RING_R
-      const cz = Math.sin(catAngle) * CLUSTER_RING_R
-
-      // Floating category header label (hovers above cluster)
+      // Cluster labels are cheap — build immediately
       this._buildClusterLabel(meta.label, cx, SPHERE_Y + 5.5, cz, meta.color)
 
-      // Individual project spheres in a sub-ring around the cluster center
       projects.forEach((project, pIdx) => {
         const pAngle = (pIdx / projects.length) * Math.PI * 2
-        const sx     = cx + Math.cos(pAngle) * meta.subR
-        const sy     = SPHERE_Y
-        const sz     = cz + Math.sin(pAngle) * meta.subR
-
-        const entry = this._buildSphereEntry(project, catKey, meta, sx, sy, sz)
-        this._entries.push(entry)
+        this._buildQueue.push({
+          project, catKey, meta,
+          sx: cx + Math.cos(pAngle) * meta.subR,
+          sy: SPHERE_Y,
+          sz: cz + Math.sin(pAngle) * meta.subR,
+        })
       })
     })
+
+    // Build 2 spheres per frame until queue is empty
+    this._processBuildQueue()
+  }
+
+  _processBuildQueue() {
+    if (!this._buildQueue || this._buildQueue.length === 0) {
+      this.ctx.scene.add(this.group)
+      this._bindCanvasEvents()
+      if (this._entries.length > 0) this._playEntrance()
+      return
+    }
+
+    // Pull 2 items per frame — stays well within frame budget
+    const batch = this._buildQueue.splice(0, 2)
+    batch.forEach(({ project, catKey, meta, sx, sy, sz }) => {
+      const entry = this._buildSphereEntry(project, catKey, meta, sx, sy, sz)
+      this._entries.push(entry)
+    })
+
+    // Schedule next batch on next animation frame
+    requestAnimationFrame(() => this._processBuildQueue())
   }
 
   // ── Staggered entrance animation ──────────────────────────────────────────

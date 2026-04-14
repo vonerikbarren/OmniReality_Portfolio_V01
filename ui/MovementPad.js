@@ -214,7 +214,7 @@ const STYLES = /* css */`
   --pad-btn-bg      : rgba(255, 255, 255, 0.05);
   --pad-btn-hover   : rgba(255, 255, 255, 0.13);
   --pad-btn-press   : rgba(255, 255, 255, 0.26);
-  --pad-text        : rgba(255, 255, 255, 0.80);
+  --pad-text        : rgba(255, 255, 255, 0.90);
   --pad-text-dim    : rgba(255, 255, 255, 0.30);
   --pad-accent      : rgba(255, 255, 255, 0.96);
   --pad-glow        : 0 0 10px rgba(255, 255, 255, 0.22);
@@ -234,10 +234,11 @@ const STYLES = /* css */`
   backdrop-filter   : blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border            : 1px solid var(--pad-border);
-  width             : 165px;
-  height            : 165px;
+  width             : 160px;
+  height            : 160px;
   overflow          : hidden;
-  border-radius     : 60%;
+  // top            : 1050px;
+  border-radius     : 12%;
   padding           : var(--pad-inner);
   display           : flex;
   flex-direction    : column;
@@ -284,7 +285,7 @@ const STYLES = /* css */`
   justify-content  : space-between;
   padding          : 0 2px 0 2px;
   border-bottom    : 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom   : 1px;
+  padding-bottom   : 0.25px;
 }
 
 .pad-abbr {

@@ -72,7 +72,7 @@ export default class ParticleField {
     // Custom shader material — soft round points with glow falloff
     const mat = new THREE.PointsMaterial({
       color:        0xffffff,
-      size:         0.18,
+      size:         0.10,
       sizeAttenuation: true,
       transparent:  true,
       opacity:      0.55,
