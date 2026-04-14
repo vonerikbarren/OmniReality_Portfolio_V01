@@ -218,7 +218,7 @@ import SoundManager      from './utils/SoundManager.js'
     // Phase 1 — fast fall, looking down
     tl.to(cam.position, {
       y:        22,
-      duration: 2.6,
+      duration: 4.6,
       ease:     'power2.in',
       onUpdate: () => {
         const lookY = cam.position.y - 40

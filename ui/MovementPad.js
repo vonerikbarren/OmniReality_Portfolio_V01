@@ -234,7 +234,10 @@ const STYLES = /* css */`
   backdrop-filter   : blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border            : 1px solid var(--pad-border);
-  border-radius     : 10px;
+  // width             : 170px;
+  // height            : 170px;
+  // overflow          : hidden;
+  border-radius     : 12.5%;
   padding           : var(--pad-inner);
 
   display           : flex;
@@ -250,28 +253,28 @@ const STYLES = /* css */`
   top              : ${BAR_H + HAND_WH + PAD_OFFSET}px;
   left             : 4px;
   transform-origin : top left;
-  border-top-left-radius: 2px;
+  // border-top-left-radius: 2px;
 }
 
 .omni-pad--tr {
   top              : ${BAR_H + HAND_WH + PAD_OFFSET}px;
   right            : 4px;
   transform-origin : top right;
-  border-top-right-radius: 2px;
+  // border-top-right-radius: 2px;
 }
 
 .omni-pad--bl {
   bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
   left             : 4px;
   transform-origin : bottom left;
-  border-bottom-left-radius: 2px;
+  // border-bottom-left-radius: 2px;
 }
 
 .omni-pad--br {
   bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
   right            : 4px;
   transform-origin : bottom right;
-  border-bottom-right-radius: 2px;
+  // border-bottom-right-radius: 2px;
 }
 
 /* ── Header ────────────────────────────────────────────────────────────────── */
@@ -282,7 +285,7 @@ const STYLES = /* css */`
   justify-content  : space-between;
   padding          : 0 2px 0 2px;
   border-bottom    : 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom   : 5px;
+  padding-bottom   : 1px;
 }
 
 .pad-abbr {
@@ -308,6 +311,7 @@ const STYLES = /* css */`
   display               : grid;
   grid-template-columns : repeat(3, var(--pad-cell));
   grid-template-rows    : repeat(3, var(--pad-cell));
+  padding-top: -10px;
   gap                   : var(--pad-gap);
 }
 
