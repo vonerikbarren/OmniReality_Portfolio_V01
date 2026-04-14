@@ -1,0 +1,31 @@
+{
+  "portfolioCore": {
+    "identity": {
+      "title": "XD Projects",
+      "owner": "[ OWNER NAME ]",
+      "parentNode": "⟐Portfolio",
+      "rootNode": "⟐NavMenu",
+      "primitive": "⟐undefined"
+    },
+    "navigation": {
+      "home": "[ URL ]",
+      "about": "[ URL ]",
+      "portfolio": "[ URL ]",
+      "contact": "[ URL ]"
+    },
+    "categories": {
+      "ux_design": [],
+      "ui_design": [],
+      "prototypes": [],
+      "case_studies": [],
+      "ar_vr": []
+    },
+    "profile": {
+      "message": "[ MESSAGE ]",
+      "contact": {
+        "cell": "[ CELL NUMBER ]",
+        "email": "[ EMAIL ADDRESS ]"
+      }
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "portfolioCore": {
+    "identity": {
+      "title": "My Portfolio",
+      "owner": "[ OWNER NAME ]"
+    },
+    "navigation": {
+      "home": "https://vonerikbarren.github.io/Portfolio--V3/index.html",
+      "about": "https://vonerikbarren.github.io/Portfolio--V3/blog-single.html",
+      "portfolio": "https://vonerikbarren.github.io/Portfolio--V3/portfolioCore.html",
+      "contact": "https://vonerikbarren.github.io/Portfolio--V3/contact.html"
+    },
+    "categories": {
+      "web_components": [
+        {
+          "name": "Split Landing Page",
+          "github": "https://github.com/vonerikbarren/Normal_Split_LandingPage",
+          "live": "https://vonerikbarren.github.io/Normal_Split_LandingPage/"
+        },
+        {
+          "name": "Regular Scroll",
+          "github": "https://vonerikbarren.github.io/Portfolio--V3/portfolioCore.html#",
+          "live": "https://vonerikbarren.github.io/Portfolio--V3/portfolioCore.html#"
+        },
+        {
+          "name": "Liquid Changer",
+          "github": "https://github.com/vonerikbarren/LiquidMeasurer",
+          "live": "https://vonerikbarren.github.io/LiquidMeasurer/"
+        },
+        {
+          "name": "Increment Counter",
+          "github": "https://github.com/vonerikbarren/StatisticsIncerementing",
+          "live": "https://vonerikbarren.github.io/StatisticsIncerementing/"
+        },
+        {
+          "name": "Form Input Wave",
+          "github": "https://github.com/vonerikbarren/Form_WaveAnimation",
+          "live": "https://vonerikbarren.github.io/Form_WaveAnimation/"
+        },
+        {
+          "name": "Random Decider",
+          "github": "https://github.com/vonerikbarren/RandomDecider",
+          "live": "https://vonerikbarren.github.io/RandomDecider/"
+        },
+        {
+          "name": "CardQ Collapse",
+          "github": "https://github.com/vonerikbarren/CardQ_Collapse",
+          "live": "https://vonerikbarren.github.io/CardQ_Collapse/"
+        },
+        {
+          "name": "Dad Jokes API",
+          "github": "https://github.com/vonerikbarren/BasicDadJokesApp_Fetch",
+          "live": "https://vonerikbarren.github.io/BasicDadJokesApp_Fetch/"
+        }
+      ],
+      "web_sites": [
+        {
+          "name": "La-Grande-Maison-du-Vin",
+          "github": "https://github.com/vonerikbarren/La-Grande-Maison-du-Vin",
+          "live": "https://vonerikbarren.github.io/La-Grande-Maison-du-Vin/"
+        },
+        {
+          "name": "PayPal Clone",
+          "github": "https://github.com/vonerikbarren/PayPal-Clone",
+          "live": "https://vonerikbarren.github.io/PayPal-Clone/"
+        },
+        {
+          "name": "Complex Design Architecture",
+          "github": "https://github.com/vonerikbarren/Complex-Design-Architecture",
+          "live": "https://vonerikbarren.github.io/Complex-Design-Architecture/"
+        },
+        {
+          "name": "Shop Apple E-Commerce",
+          "github": "https://github.com/vonerikbarren/Shop-Apple-E-Commerce",
+          "live": "https://vonerikbarren.github.io/Shop-Apple-E-Commerce/"
+        }
+      ],
+      "web_apps_general": [
+        {
+          "name": "Train Scheduler",
+          "github": "https://github.com/vonerikbarren/--TrainScheduler--",
+          "live": "https://vonerikbarren.github.io/--TrainScheduler--/"
+        },
+        {
+          "name": "D3 Matrix Nodes",
+          "github": "https://github.com/vonerikbarren/D3-Matrix-Nodes",
+          "live": "https://vonerikbarren.github.io/D3-Matrix-Nodes/"
+        },
+        {
+          "name": "D3 Choropleth Map",
+          "github": "https://github.com/vonerikbarren/D3-Choropleth-Map-USA",
+          "live": "https://vonerikbarren.github.io/D3-Choropleth-Map-USA/"
+        },
+        {
+          "name": "GIPHY App",
+          "github": "https://github.com/vonerikbarren/--GIF-App--",
+          "live": "https://vonerikbarren.github.io/--GIF-App--/"
+        }
+      ],
+      "web_apps_crypto": [
+        {
+          "name": "D3 Crypto Analysis A",
+          "github": "https://github.com/vonerikbarren/D3-Crypto-Analysis-A",
+          "live": "https://vonerikbarren.github.io/D3-Crypto-Analysis-A/"
+        },
+        {
+          "name": "D3 Crypto Analysis B",
+          "github": "https://github.com/vonerikbarren/D3-Crypto-Analysis-B",
+          "live": "https://vonerikbarren.github.io/D3-Crypto-Analysis-B/"
+        },
+        {
+          "name": "D3 Crypto Analysis C",
+          "github": "https://github.com/vonerikbarren/D3-Crypto-Analysis-C",
+          "live": "https://vonerikbarren.github.io/D3-Crypto-Analysis-C/"
+        },
+        {
+          "name": "D3 Crypto Analysis D",
+          "github": "https://github.com/vonerikbarren/D3-Crypto-Analysis-D",
+          "live": "https://vonerikbarren.github.io/D3-Crypto-Analysis-D/"
+        }
+      ],
+      "web_apps_large_data": [
+        {
+          "name": "D3 Sunburst",
+          "github": "https://github.com/vonerikbarren/D3-Sunburst-Plot",
+          "live": "https://vonerikbarren.github.io/D3-Sunburst-Plot/"
+        },
+        {
+          "name": "D3 Circle Packing",
+          "github": "https://github.com/vonerikbarren/D3-Circle-Packing",
+          "live": "https://vonerikbarren.github.io/D3-Circle-Packing/"
+        },
+        {
+          "name": "D3 TreeMap",
+          "github": "https://github.com/vonerikbarren/D3-Tree-Map",
+          "live": "https://vonerikbarren.github.io/D3-Tree-Map/"
+        },
+        {
+          "name": "D3 Voxlmart Dashboard",
+          "github": "https://github.com/vonerikbarren/D3-Dashboard-Voxlmart",
+          "live": "https://vonerikbarren.github.io/D3-Dashboard-Voxlmart/"
+        }
+      ]
+    },
+    "profile": {
+      "message": "Thank you for visiting my site.",
+      "contact": {
+        "cell": "[ CELL NUMBER ]",
+        "email": "[ EMAIL ADDRESS ]"
+      }
+    }
+  }
+}
