@@ -35,8 +35,8 @@ import gsap from 'gsap'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const COLLAPSED_H = 36   // px — collapsed bar height
-const EXPANDED_H  = 80   // px — expanded bar height
+const COLLAPSED_H = 48   // px — collapsed bar height (increased for touch)
+const EXPANDED_H  = 130   // px — expanded bar height
 const ANIM_DUR    = 0.32 // seconds — expand / collapse tween
 
 // ── Stylesheet (injected once) ───────────────────────────────────────────────
@@ -80,7 +80,6 @@ const STYLES = /* css */`
   pointer-events   : auto;
   user-select      : none;
 
-  /* crisp subpixel rendering */
   -webkit-font-smoothing : antialiased;
 }
 
@@ -89,7 +88,7 @@ const STYLES = /* css */`
 .ob-col {
   display         : flex;
   flex-direction  : column;
-  justify-content : center;
+  justify-content : flex-start;
   align-items     : flex-start;
   padding         : 0 12px;
   min-width       : 0;
@@ -103,90 +102,14 @@ const STYLES = /* css */`
   border-right : none;
 }
 
-/* ── Column 00 — Identity / Toggle ──────────────────────────────────────── */
+/* ── Label row — pinned to collapsed height so all headers align ─────────── */
 
-#ob-col00 {
-  width        : 52px;
-  flex-shrink  : 0;
-  align-items  : center;
-  cursor       : pointer;
-  gap          : 0;
-  padding      : 0 8px;
-}
-
-#ob-col00:hover .ob-logo {
-  text-shadow  : var(--bar-glow);
-  color        : var(--bar-accent);
-}
-
-.ob-logo {
-  font-size    : 15px;
-  color        : var(--bar-accent);
-  line-height  : 1;
-  letter-spacing: 0;
-  transition   : text-shadow 0.2s ease, color 0.2s ease;
-}
-
-.ob-toggle {
-  font-size    : 9px;
-  color        : var(--bar-text-dim);
-  margin-top   : 3px;
-  line-height  : 1;
-  transition   : color 0.2s ease;
-}
-
-#ob-col00:hover .ob-toggle {
-  color: var(--bar-text);
-}
-
-/* ── Column 01 — Profile picture ────────────────────────────────────────── */
-
-#ob-col01 {
-  width      : 42px;
-  align-items: center;
-  padding    : 0 6px;
-}
-
-.ob-avatar {
-  width         : 22px;
-  height        : 22px;
-  border-radius : 50%;
-  background    : rgba(255,255,255,0.10);
-  border        : 1px solid rgba(255,255,255,0.18);
-  overflow      : hidden;
-  display       : flex;
-  align-items   : center;
-  justify-content: center;
-  font-size     : 9px;
-  color         : var(--bar-text-dim);
-  flex-shrink   : 0;
-}
-
-.ob-avatar img {
-  width    : 100%;
-  height   : 100%;
-  object-fit: cover;
-}
-
-/* ── Typography helpers ──────────────────────────────────────────────────── */
-
-.ob-label {
-  font-size      : var(--label-size);
-  color          : var(--bar-text-muted);
-  text-transform : uppercase;
-  letter-spacing : 0.10em;
-  line-height    : 1;
-  white-space    : nowrap;
-  margin-bottom  : 1px;
-}
-
-/* Collapsed — only the label row is visible in the 36px clip */
-/* We position it so it sits centred in collapsed height */
 .ob-label-row {
   display         : flex;
   align-items     : center;
   height          : ${COLLAPSED_H}px;
   flex-shrink     : 0;
+  min-height      : ${COLLAPSED_H}px;
 }
 
 .ob-label-row .ob-label {
@@ -202,12 +125,94 @@ const STYLES = /* css */`
   padding-bottom  : 4px;
 }
 
+/* ── Column 00 — Identity / Toggle ──────────────────────────────────────── */
+
+#ob-col00 {
+  width           : 64px;
+  flex-shrink     : 0;
+  align-items     : center;
+  justify-content : center;
+  cursor          : pointer;
+  padding         : 0 10px;
+  gap             : 4px;
+  /* full collapsed height is the touch target */
+  min-height      : ${COLLAPSED_H}px;
+}
+
+#ob-col00:hover .ob-logo {
+  text-shadow  : var(--bar-glow);
+  color        : var(--bar-accent);
+}
+
+.ob-logo {
+  font-size     : 35px;
+  color         : var(--bar-accent);
+  line-height   : 1;
+  margin-top    : -100px;
+  margin-bottom : -10px;
+  letter-spacing: 0;
+  text-shadow   : 0 0 12px rgba(255,255,255,0.90), 0 0 24px rgba(255,255,255,0.45);
+  transition    : text-shadow 0.2s ease, color 0.2s ease;
+}
+
+.ob-toggle {
+  font-size    : 9px;
+  color        : var(--bar-text-dim);
+  line-height  : 1;
+  transition   : color 0.2s ease;
+}
+
+#ob-col00:hover .ob-toggle {
+  color: var(--bar-text);
+}
+
+/* ── Column 01 — Profile picture ────────────────────────────────────────── */
+
+#ob-col01 {
+  width           : 48px;
+  align-items     : center;
+  justify-content : center;
+  padding         : 0 8px;
+}
+
+.ob-avatar {
+  width         : 26px;
+  height        : 26px;
+  border-radius : 50%;
+  background    : rgba(255,255,255,0.10);
+  border        : 1px solid rgba(255,255,255,0.18);
+  overflow      : hidden;
+  display       : flex;
+  align-items   : center;
+  justify-content: center;
+  font-size     : 9px;
+  color         : var(--bar-text-dim);
+  flex-shrink   : 0;
+}
+
+.ob-avatar img {
+  width     : 100%;
+  height    : 100%;
+  object-fit: cover;
+}
+
+/* ── Typography helpers ──────────────────────────────────────────────────── */
+
+.ob-label {
+  font-size      : var(--label-size);
+  color          : var(--bar-text-muted);
+  text-transform : uppercase;
+  letter-spacing : 0.10em;
+  line-height    : 1;
+  white-space    : nowrap;
+}
+
 .ob-value {
-  font-size  : var(--value-size);
-  color      : var(--bar-text);
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow   : hidden;
+  font-size    : var(--value-size);
+  color        : var(--bar-text);
+  line-height  : 1.3;
+  white-space  : nowrap;
+  overflow     : hidden;
   text-overflow: ellipsis;
 }
 
@@ -227,8 +232,9 @@ const STYLES = /* css */`
 
 /* XYZ row — three values in one line */
 .ob-xyz {
-  display   : flex;
-  gap       : 6px;
+  display : flex;
+  flex-direction : column;
+  gap     : 6px;
 }
 
 .ob-xyz-item {
@@ -238,8 +244,8 @@ const STYLES = /* css */`
 }
 
 .ob-xyz-axis {
-  font-size  : 8px;
-  color      : var(--bar-text-muted);
+  font-size     : 8px;
+  color         : var(--bar-text-muted);
   text-transform: uppercase;
 }
 
@@ -258,25 +264,25 @@ const STYLES = /* css */`
 }
 
 .ob-kv-key {
-  font-size  : 8px;
-  color      : var(--bar-text-muted);
+  font-size     : 8px;
+  color         : var(--bar-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  flex-shrink: 0;
+  flex-shrink   : 0;
 }
 
 .ob-kv-val {
-  font-size  : 10px;
-  color      : var(--bar-text-dim);
-  font-family: var(--mono);
-  overflow   : hidden;
+  font-size    : 10px;
+  color        : var(--bar-text-dim);
+  font-family  : var(--mono);
+  overflow     : hidden;
   text-overflow: ellipsis;
   white-space  : nowrap;
-  max-width  : 90px;
+  max-width    : 90px;
 }
 
 .ob-kv-val.live {
-  color      : var(--bar-text);
+  color : var(--bar-text);
 }
 
 .ob-kv-val.undef {
@@ -302,41 +308,41 @@ const STYLES = /* css */`
 /* ── FPS badge ───────────────────────────────────────────────────────────── */
 
 .ob-fps-badge {
-  display        : flex;
-  align-items    : baseline;
-  gap            : 3px;
+  display    : flex;
+  align-items: baseline;
+  gap        : 3px;
 }
 
 .ob-fps-num {
-  font-size      : 14px;
-  font-weight    : bold;
-  color          : var(--bar-accent);
-  line-height    : 1;
-  font-family    : var(--mono);
+  font-size  : 14px;
+  font-weight: bold;
+  color      : var(--bar-accent);
+  line-height: 1;
+  font-family: var(--mono);
 }
 
 .ob-fps-unit {
-  font-size      : 8px;
-  color          : var(--bar-text-muted);
-  text-transform : uppercase;
+  font-size     : 8px;
+  color         : var(--bar-text-muted);
+  text-transform: uppercase;
 }
 
 .ob-perf-label {
-  font-size      : 9px;
-  color          : var(--bar-text-dim);
-  margin-top     : 2px;
+  font-size  : 9px;
+  color      : var(--bar-text-dim);
+  margin-top : 2px;
 }
 
-/* ── Separator accent line (left edge glow on hover group) ──────────────── */
+/* ── Separator accent line ───────────────────────────────────────────────── */
 
 .ob-col-group::before {
-  content    : '';
-  position   : absolute;
-  left       : 0;
-  top        : 20%;
-  height     : 60%;
-  width      : 1px;
-  background : rgba(255,255,255,0.15);
+  content   : '';
+  position  : absolute;
+  left      : 0;
+  top       : 20%;
+  height    : 60%;
+  width     : 1px;
+  background: rgba(255,255,255,0.15);
 }
 
 /* ── Mobile guard — hide numeric columns below 700 px ───────────────────── */
@@ -365,7 +371,7 @@ const STYLES = /* css */`
 function injectStyles () {
   if (document.getElementById('omni-globalbar-styles')) return
   const tag = document.createElement('style')
-  tag.id        = 'omni-globalbar-styles'
+  tag.id          = 'omni-globalbar-styles'
   tag.textContent = STYLES
   document.head.appendChild(tag)
 }
@@ -375,7 +381,7 @@ function injectStyles () {
 function fmt (n, decimals = 2) {
   if (n == null || isNaN(n)) return '---'
   const s = Number(n).toFixed(decimals)
-  return n >= 0 ? ' ' + s : s          // leading space keeps positive aligned
+  return n >= 0 ? ' ' + s : s
 }
 
 // ── Helper: build an XYZ triple element ─────────────────────────────────────
@@ -412,37 +418,31 @@ function kvEl (key, id, modifiers = '') {
 
 export default class GlobalBar {
 
-  /**
-   * @param {object} context  — { scene, camera, renderer, sizes, ticker, Sound }
-   *                            Sound may be undefined until SoundManager loads.
-   */
   constructor (context) {
-    this.ctx      = context
-    this._el      = null      // root DOM element
+    this.ctx       = context
+    this._el       = null
     this._expanded = false
 
-    // Live data cache — updated via setData()
     this._data = {
-      pos          : { x: 0, y: 0, z: 0 },
-      rot          : { x: 0, y: 0, z: 0 },
-      scale        : { x: 1, y: 1, z: 1 },
-      fps          : 0,
-      perf         : '—',
-      spaceName    : 'Root',
-      spaceEntryTime: null,  // Date object set when space entered
-      roots        : null,
-      parents      : null,
-      child        : null,
-      reality      : null,
-      experience   : null,
-      perspective  : null,
-      dimTime      : null,
-      dimSpace     : null,
-      dimObject    : null,
+      pos           : { x: 0, y: 0, z: 0 },
+      rot           : { x: 0, y: 0, z: 0 },
+      scale         : { x: 1, y: 1, z: 1 },
+      fps           : 0,
+      perf          : '—',
+      spaceName     : 'Root',
+      spaceEntryTime: null,
+      roots         : null,
+      parents       : null,
+      child         : null,
+      reality       : null,
+      experience    : null,
+      perspective   : null,
+      dimTime       : null,
+      dimSpace      : null,
+      dimObject     : null,
     }
 
-    // FPS sampling
-    this._fpsBuffer  = []
+    this._fpsBuffer   = []
     this._lastFpsTick = performance.now()
     this._frameCount  = 0
   }
@@ -453,16 +453,9 @@ export default class GlobalBar {
     injectStyles()
     this._buildDOM()
     this._bindEvents()
-
-    // Start elapsed clock — ticks every second
     this._clockInterval = setInterval(() => this._tickClock(), 1000)
   }
 
-  /**
-   * Called every frame by the render loop.
-   * Counts frames for FPS calculation.
-   * @param {number} delta  — seconds since last frame
-   */
   update (delta) {
     this._frameCount++
     const now = performance.now()
@@ -472,7 +465,6 @@ export default class GlobalBar {
       this._frameCount  = 0
       this._lastFpsTick = now
 
-      // Smooth over last 4 samples
       this._fpsBuffer.push(fps)
       if (this._fpsBuffer.length > 4) this._fpsBuffer.shift()
       const avg = this._fpsBuffer.reduce((a, b) => a + b, 0) / this._fpsBuffer.length
@@ -486,40 +478,17 @@ export default class GlobalBar {
 
   destroy () {
     clearInterval(this._clockInterval)
-    if (this._el && this._el.parentNode) {
-      this._el.parentNode.removeChild(this._el)
-    }
-    const style = document.getElementById('omni-globalbar-styles')
-    if (style) style.remove()
+    if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
+    document.getElementById('omni-globalbar-styles')?.remove()
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
 
-  /**
-   * Feed live scene data into the bar.
-   *
-   * @param {object} data
-   * @param {object} [data.pos]           — { x, y, z }  camera world position
-   * @param {object} [data.rot]           — { x, y, z }  camera euler angles (deg)
-   * @param {object} [data.scale]         — { x, y, z }  current node scale
-   * @param {string} [data.spaceName]     — display name of current space
-   * @param {Date}   [data.spaceEntryTime]— Date when user entered current space
-   * @param {string} [data.roots]         — roots value or null
-   * @param {string} [data.parents]       — parents value or null
-   * @param {string} [data.child]         — child value or null
-   * @param {string} [data.reality]       — reality value or null
-   * @param {string} [data.experience]    — experience value or null
-   * @param {string} [data.perspective]   — perspective value or null
-   * @param {string} [data.dimTime]       — dimensional time value or null
-   * @param {string} [data.dimSpace]      — dimensional space value or null
-   * @param {string} [data.dimObject]     — dimensional object value or null
-   */
   setData (data) {
     Object.assign(this._data, data)
     this._refreshAll()
   }
 
-  /** Programmatically expand or collapse the bar. */
   setExpanded (val) {
     if (val === this._expanded) return
     this._expanded = val
@@ -530,17 +499,13 @@ export default class GlobalBar {
 
   _buildDOM () {
     const el = document.createElement('div')
-    el.id = 'omni-global-bar'
+    el.id        = 'omni-global-bar'
     el.innerHTML = this._template()
-    this._el = el
+    this._el     = el
 
-    // Mount into #omni-ui shell
     const shell = document.getElementById('omni-ui')
-    if (shell) {
-      shell.appendChild(el)
-    } else {
-      document.body.appendChild(el)
-    }
+    if (shell) shell.appendChild(el)
+    else        document.body.appendChild(el)
   }
 
   _template () {
@@ -692,19 +657,11 @@ export default class GlobalBar {
 
     if (this._expanded) {
       this._playSound('open')
-      gsap.to(this._el, {
-        height   : EXPANDED_H,
-        duration : ANIM_DUR,
-        ease     : 'power2.out',
-      })
+      gsap.to(this._el, { height: EXPANDED_H, duration: ANIM_DUR, ease: 'power2.out' })
       if (arrow) arrow.textContent = '▴'
     } else {
       this._playSound('close')
-      gsap.to(this._el, {
-        height   : COLLAPSED_H,
-        duration : ANIM_DUR,
-        ease     : 'power2.inOut',
-      })
+      gsap.to(this._el, { height: COLLAPSED_H, duration: ANIM_DUR, ease: 'power2.inOut' })
       if (arrow) arrow.textContent = '▾'
     }
   }
@@ -712,14 +669,12 @@ export default class GlobalBar {
   // ── Clock tick (1 Hz) ────────────────────────────────────────────────────
 
   _tickClock () {
-    // Current local time
-    const now  = new Date()
-    const hh   = String(now.getHours()).padStart(2, '0')
-    const mm   = String(now.getMinutes()).padStart(2, '0')
-    const ss   = String(now.getSeconds()).padStart(2, '0')
+    const now = new Date()
+    const hh  = String(now.getHours()).padStart(2, '0')
+    const mm  = String(now.getMinutes()).padStart(2, '0')
+    const ss  = String(now.getSeconds()).padStart(2, '0')
     this._setEl('ob-current-time', `${hh}:${mm}:${ss}`)
 
-    // Time in space (counts up from entry)
     if (this._data.spaceEntryTime instanceof Date) {
       const elapsed = Math.floor((now - this._data.spaceEntryTime) / 1000)
       const eh = String(Math.floor(elapsed / 3600)).padStart(2, '0')
@@ -734,63 +689,47 @@ export default class GlobalBar {
   _refreshAll () {
     const d = this._data
 
-    // Col03 — space name
     this._setEl('ob-space-name', d.spaceName || 'Root')
 
-    // Col04 — position
     if (d.pos) {
       this._setEl('ob-pos-x', fmt(d.pos.x))
       this._setEl('ob-pos-y', fmt(d.pos.y))
       this._setEl('ob-pos-z', fmt(d.pos.z))
     }
 
-    // Col05 — rotation
     if (d.rot) {
       this._setEl('ob-rot-x', fmt(d.rot.x))
       this._setEl('ob-rot-y', fmt(d.rot.y))
       this._setEl('ob-rot-z', fmt(d.rot.z))
     }
 
-    // Col06 — scale
     if (d.scale) {
       this._setEl('ob-sca-x', fmt(d.scale.x))
       this._setEl('ob-sca-y', fmt(d.scale.y))
       this._setEl('ob-sca-z', fmt(d.scale.z))
     }
 
-    // Col08 — system details
-    this._setKV('ob-roots',   d.roots)
-    this._setKV('ob-parents', d.parents)
-    this._setKV('ob-child',   d.child)
-
-    // Col09 — dimension details
+    this._setKV('ob-roots',       d.roots)
+    this._setKV('ob-parents',     d.parents)
+    this._setKV('ob-child',       d.child)
     this._setKV('ob-reality',     d.reality)
     this._setKV('ob-experience',  d.experience)
     this._setKV('ob-perspective', d.perspective)
-
-    // Col10 — dimensional+
-    this._setKV('ob-dim-time',   d.dimTime)
-    this._setKV('ob-dim-space',  d.dimSpace)
-    this._setKV('ob-dim-object', d.dimObject)
+    this._setKV('ob-dim-time',    d.dimTime)
+    this._setKV('ob-dim-space',   d.dimSpace)
+    this._setKV('ob-dim-object',  d.dimObject)
   }
 
   _refreshFPS () {
-    const d = this._data
-    this._setEl('ob-fps',  String(d.fps))
-    this._setEl('ob-perf', d.perf)
+    this._setEl('ob-fps',  String(this._data.fps))
+    this._setEl('ob-perf', this._data.perf)
   }
 
-  /** Set inner text of an element by id (no-op if element not found) */
   _setEl (id, text) {
     const el = this._el?.querySelector(`#${id}`)
     if (el) el.textContent = text
   }
 
-  /**
-   * Update a kv-val element.
-   * Null / undefined → shows "undefined" in muted italic.
-   * String value    → shows value in normal text, removes undef class.
-   */
   _setKV (id, value) {
     const el = this._el?.querySelector(`#${id}`)
     if (!el) return
@@ -811,6 +750,6 @@ export default class GlobalBar {
     try {
       const Sound = this.ctx?.Sound
       if (Sound && typeof Sound.play === 'function') Sound.play(id)
-    } catch (_) { /* Sound not yet ready — silent fail */ }
+    } catch (_) {}
   }
 }
