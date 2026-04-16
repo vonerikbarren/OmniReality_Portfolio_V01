@@ -61,9 +61,9 @@ const STYLES = /* css */`
   --dock-bg          : rgba(10, 10, 14, 0.72);
   --dock-border      : rgba(255, 255, 255, 0.08);
   --dock-separator   : rgba(255, 255, 255, 0.06);
-  --dock-text        : rgba(255, 255, 255, 0.82);
-  --dock-text-dim    : rgba(255, 255, 255, 0.35);
-  --dock-text-muted  : rgba(255, 255, 255, 0.18);
+  --dock-text        : rgba(255, 255, 255, 0.95);
+  --dock-text-dim    : rgba(255, 255, 255, 0.70);
+  --dock-text-muted  : rgba(255, 255, 255, 0.50);
   --dock-accent      : rgba(255, 255, 255, 0.92);
   --dock-glow        : 0 0 8px rgba(255, 255, 255, 0.22);
   --dock-icon-bg     : rgba(255, 255, 255, 0.06);

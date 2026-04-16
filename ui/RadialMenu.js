@@ -112,7 +112,7 @@ const HALF        = CONTAINER / 2   // 210
 
 // Distance from viewport corner to radial centre — keeps all tools on-screen
 // for every corner. Derived: MARGIN > OUTER_R + TOOL_R = 170px.
-const MARGIN      = 182
+const MARGIN      = 150
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layout constants — keep in sync with Hand.js
@@ -435,6 +435,7 @@ const STYLES = /* css */`
   height          : ${TOOL_R * 2}px;
   background      : rgba(255, 255, 255, 0.04);
   border          : 1px solid rgba(255, 255, 255, 0.09);
+  text-shadow     : 0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
   z-index         : 2;
   gap             : 1px;
   overflow        : hidden;
@@ -473,6 +474,7 @@ const STYLES = /* css */`
 .tool-name-a {
   font-size       : 5.5px;
   color           : var(--r-text);
+  text-shadow     : 0 2px 10px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
   letter-spacing  : 0.04em;
   pointer-events  : none;
   line-height     : 1.1;
@@ -1016,7 +1018,7 @@ export default class RadialMenu {
     const w = window.innerWidth
     const h = window.innerHeight
     // Adaptive margin — scales down on narrow screens
-    const m = Math.max(120, Math.min(MARGIN, w * 0.13))
+    const m = Math.max(20, Math.min(MARGIN, w * 0.13))
 
     switch (corner) {
       case 'tl': return { x: m,     y: BAR_H + m }
@@ -1026,13 +1028,15 @@ export default class RadialMenu {
     }
   }
 
-  _positionMenu (handId) {
+ _positionMenu (handId) {
     const el = this._els[handId]
     if (!el) return
     const corner = HAND_CORNER[handId]
     const { x, y } = this._computeCenter(corner)
-    el.style.left = `${x - HALF}px`
-    el.style.top  = `${y - HALF}px`
+    const extraLift  = (corner === 'bl' || corner === 'br') ? 250 : 0
+    const extraShift = corner === 'bl' ? 200 : corner === 'br' ? -200 : 0
+    el.style.left = `${x - HALF + extraShift}px`
+    el.style.top  = `${y - HALF - extraLift}px`
   }
 
   _handleResize () {
@@ -1050,7 +1054,7 @@ export default class RadialMenu {
     // Re-position in case viewport changed
     this._positionMenu(handId)
 
-    gsap.killTweensOf(el)
+    
     el.style.pointerEvents = 'auto'
 
     const { outerCirc, innerCirc, centCirc } = this._svgRefs[handId]
@@ -1065,6 +1069,20 @@ export default class RadialMenu {
 
     const pageEls = this._pageEls[handId]
     const toolEls = this._toolEls[handId]
+
+    // Kill ALL in-flight tweens including children
+    gsap.killTweensOf(el)
+    gsap.killTweensOf(toolEls)
+    // gsap.killTweensOf(pageEls)
+
+    // gsap.set(toolEls, { clearProps: 'all' })
+    // gsap.set(pageEls, { clearProps: 'all' })
+
+    // Force reset before animating in
+    // gsap.set([...toolEls, ...pageEls], { scale: 1, opacity: 1, clearProps: 'all' })
+
+    gsap.set(el, { opacity: 0, scale: 0.70 })
+    el.style.pointerEvents = 'auto'
 
     // ── Phase 0: container fades in ────────────────────────────────────
     gsap.fromTo(el,

@@ -110,9 +110,9 @@ const STYLES = /* css */`
   --pn-border       : rgba(255, 255, 255, 0.09);
   --pn-separator    : rgba(255, 255, 255, 0.05);
   --pn-header-bg    : rgba(255, 255, 255, 0.03);
-  --pn-text         : rgba(255, 255, 255, 0.80);
-  --pn-text-dim     : rgba(255, 255, 255, 0.35);
-  --pn-text-muted   : rgba(255, 255, 255, 0.18);
+  --pn-text         : rgba(0, 0, 0, 0.90);
+  --pn-text-dim     : rgba(0, 0, 0, 0.75);
+  --pn-text-muted   : rgba(0, 0, 0, 0.50);
   --pn-accent       : rgba(255, 255, 255, 0.95);
   --pn-ctrl-hover   : rgba(255, 255, 255, 0.08);
   --pn-ctrl-active  : rgba(255, 255, 255, 0.16);

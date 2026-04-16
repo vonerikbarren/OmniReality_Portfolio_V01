@@ -132,8 +132,8 @@ const STYLES = /* css */`
   --hand-cell-bg    : rgba(255, 255, 255, 0.04);
   --hand-cell-hover : rgba(255, 255, 255, 0.10);
   --hand-cell-active: rgba(255, 255, 255, 0.18);
-  --hand-text       : rgba(255, 255, 255, 0.75);
-  --hand-text-dim   : rgba(255, 255, 255, 0.30);
+  --hand-text       : rgba(255, 255, 255, 0.95);
+  --hand-text-dim   : rgba(255, 255, 255, 0.70);
   --hand-accent     : rgba(255, 255, 255, 0.95);
   --hand-glow       : 0 0 10px rgba(255, 255, 255, 0.20);
   --hand-active-glow: 0 0 14px rgba(255, 255, 255, 0.35);

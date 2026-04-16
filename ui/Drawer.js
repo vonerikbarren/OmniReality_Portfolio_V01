@@ -95,12 +95,12 @@ const STYLES = /* css */`
 /* ── Drawer root ──────────────────────────────────────────────────────────── */
 
 .omni-drawer {
-  --dr-bg          : rgba(8, 8, 12, 0.88);
+  --dr-bg          : rgba(8, 8, 12, 0.38);
   --dr-border      : rgba(255, 255, 255, 0.08);
   --dr-separator   : rgba(255, 255, 255, 0.05);
-  --dr-text        : rgba(255, 255, 255, 0.80);
-  --dr-text-dim    : rgba(255, 255, 255, 0.35);
-  --dr-text-muted  : rgba(255, 255, 255, 0.18);
+  --dr-text        : rgba(255, 255, 255, 0.95);
+  --dr-text-dim    : rgba(255, 255, 255, 0.70);
+  --dr-text-muted  : rgba(255, 255, 255, 0.50);
   --dr-accent      : rgba(255, 255, 255, 0.95);
   --dr-hover-bg    : rgba(255, 255, 255, 0.05);
   --dr-active-bg   : rgba(255, 255, 255, 0.10);

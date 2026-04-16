@@ -38,8 +38,10 @@ import PortfolioXD       from './modules/PortfolioXD.js'
 
 // ── Sound ─────────────────────────────────────────────────
 import SoundManager      from './utils/SoundManager.js'
-import MiniMap from './ui/MiniMap.js'
-import TreeView from './ui/TreeView.js'
+import MiniMap           from './ui/MiniMap.js'
+import TreeView          from './ui/TreeView.js'
+import RadialMenu from './ui/RadialMenu.js'
+
 
 
 // ─────────────────────────────────────────────────────────
@@ -116,6 +118,10 @@ import TreeView from './ui/TreeView.js'
   const treeView = new TreeView(base.context)
   treeView.init()
   base.addModule(treeView)
+
+  const radialMenu = new RadialMenu(base.context)
+  radialMenu.init()
+  base.addModule(radialMenu)
 
   window.addEventListener('omni:movement', (e) => {
     const key = `${e.detail.hand}-${e.detail.direction}`

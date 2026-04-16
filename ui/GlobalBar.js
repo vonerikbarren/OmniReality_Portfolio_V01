@@ -48,9 +48,9 @@ const STYLES = /* css */`
 #omni-global-bar {
   --bar-bg         : rgba(10, 10, 14, 0.72);
   --bar-border     : rgba(255, 255, 255, 0.08);
-  --bar-text       : rgba(255, 255, 255, 0.82);
-  --bar-text-dim   : rgba(255, 255, 255, 0.35);
-  --bar-text-muted : rgba(255, 255, 255, 0.18);
+  --bar-text       : rgba(255, 255, 255, 0.95);
+  --bar-text-dim   : rgba(255, 255, 255, 0.70);
+  --bar-text-muted : rgba(255, 255, 255, 0.50);
   --bar-accent     : rgba(255, 255, 255, 0.92);
   --bar-glow       : 0 0 8px rgba(255, 255, 255, 0.25);
   --bar-separator  : rgba(255, 255, 255, 0.06);
