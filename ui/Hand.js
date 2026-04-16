@@ -133,7 +133,7 @@ const STYLES = /* css */`
   --hand-cell-hover : rgba(255, 255, 255, 0.10);
   --hand-cell-active: rgba(255, 255, 255, 0.18);
   --hand-text       : rgba(255, 255, 255, 0.95);
-  --hand-text-dim   : rgba(255, 255, 255, 0.70);
+  --hand-text-dim   : rgba(255, 255, 255, 0.99);
   --hand-accent     : rgba(255, 255, 255, 0.95);
   --hand-glow       : 0 0 10px rgba(255, 255, 255, 0.20);
   --hand-active-glow: 0 0 14px rgba(255, 255, 255, 0.35);
@@ -364,6 +364,9 @@ const STYLES = /* css */`
   white-space      : nowrap;
   pointer-events   : none;
   text-transform   : uppercase;
+  text-shadow      : 0 0 8px rgba(0, 0, 0, 0.90),
+                     0 1px 3px rgba(0, 0, 0, 0.80),
+                     0 0 16px rgba(0, 0, 0, 0.60);
 }
 
 /* TL badge: below the matrix, left-aligned */
