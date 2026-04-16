@@ -187,10 +187,12 @@ const STYLES = /* css */`
   --mono       : 'Courier New', Courier, monospace;
 
   position     : fixed;
-  bottom       : ${DOCK_H + GAP}px;
-  left         : 50%;
+  // bottom       : ${DOCK_H + GAP + 500}px;
+  top          : 25%;
+  left         : 90%;
   transform    : translateX(-50%);
-  width        : ${MAP_W}px;
+  width        : ${MAP_W} + 50px;
+  height       : ${MAP_W} + 50px;
   z-index      : 42;
   pointer-events : auto;
   user-select  : none;
@@ -199,8 +201,10 @@ const STYLES = /* css */`
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   border       : 1px solid var(--mm-border);
-  border-radius: 8px;
+  border-radius: 10%;
   overflow     : hidden;
+  opacity:     : 90%;
+  --pad-bg: rgba(8, 8, 12, 0.80);
 
   -webkit-font-smoothing: antialiased;
 }

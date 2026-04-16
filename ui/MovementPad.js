@@ -81,7 +81,7 @@ const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 
 const STYLES = `
 .omni-pad {
-  --pad-bg          : rgba(8, 8, 12, 0.80);
+  --pad-bg          : rgba(8, 8, 12, 0.50);
   --pad-border      : rgba(255, 255, 255, 0.08);
   --pad-btn-bg      : rgba(255, 255, 255, 0.05);
   --pad-btn-hover   : rgba(255, 255, 255, 0.13);
@@ -106,11 +106,11 @@ const STYLES = `
   backdrop-filter   : blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   border            : 1px solid var(--pad-border);
-  border-radius     : 50%;
+  border-radius     : 50.0%;
   padding           : var(--pad-inner);
-  padding-bottom    : 60px;
-  width             : 185px;
-  height            : 185px;
+  padding-bottom    : 90px;
+  width             : 205px;
+  height            : 205px;
   overflow          : hidden;
 
   display           : flex;
@@ -179,6 +179,8 @@ const STYLES = `
   grid-template-rows    : repeat(3, var(--pad-cell));
   gap                   : var(--pad-gap);
   padding-top           : 12px;
+  padding-left          : 20px;
+  
 }
 
 .pad-slot-empty {}

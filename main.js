@@ -38,6 +38,8 @@ import PortfolioXD       from './modules/PortfolioXD.js'
 
 // ── Sound ─────────────────────────────────────────────────
 import SoundManager      from './utils/SoundManager.js'
+import MiniMap from './ui/MiniMap.js'
+
 
 // ─────────────────────────────────────────────────────────
 // Everything runs inside an async IIFE so we can await Sound.load()
@@ -104,6 +106,11 @@ import SoundManager      from './utils/SoundManager.js'
     )
     orbitMod.controls.update()
   }
+
+  // after ui.init() inside the async IIFE
+  const miniMap = new MiniMap(base.context)
+  miniMap.init()
+  base.addModule(miniMap)
 
   window.addEventListener('omni:movement', (e) => {
     const key = `${e.detail.hand}-${e.detail.direction}`
