@@ -180,7 +180,7 @@ const STYLES = /* css */`
 /* ── Map container ─────────────────────────────────────────────────────────── */
 
 .omni-minimap {
-  --mm-bg      : rgba(6, 6, 10, 0.75);
+  --mm-bg      : rgba(6, 6, 10, 0.20);
   --mm-border  : rgba(255, 255, 255, 0.09);
   --mm-text    : rgba(255, 255, 255, 0.32);
   --mm-accent  : rgba(255, 255, 255, 0.88);
@@ -191,8 +191,8 @@ const STYLES = /* css */`
   top          : 25%;
   left         : 90%;
   transform    : translateX(-50%);
-  width        : ${MAP_W} + 50px;
-  height       : ${MAP_W} + 50px;
+  width        : ${MAP_W + 50} px;
+  height       : ${MAP_W} px;
   z-index      : 42;
   pointer-events : auto;
   user-select  : none;
@@ -201,10 +201,10 @@ const STYLES = /* css */`
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   border       : 1px solid var(--mm-border);
-  border-radius: 10%;
+  border-radius: 50%;
   overflow     : hidden;
   opacity:     : 90%;
-  --pad-bg: rgba(8, 8, 12, 0.80);
+  
 
   -webkit-font-smoothing: antialiased;
 }
@@ -243,7 +243,7 @@ const STYLES = /* css */`
   text-overflow: ellipsis;
   white-space  : nowrap;
   pointer-events: none;
-  padding      : 0 4px;
+  padding      : 0 4px 4px 4px;
 }
 
 /* Toggle button — top-right of header */
@@ -276,8 +276,8 @@ const STYLES = /* css */`
 
 .mm-canvas {
   display      : block;
-  width        : ${MAP_W}px;
-  height       : ${MAP_H}px;
+  width        : ${MAP_W + 500}px;
+  height       : ${MAP_H + 500}px;
   /* DPR scaling is applied in JS */
 }
 

@@ -86,8 +86,8 @@ const STYLES = `
   --pad-btn-bg      : rgba(255, 255, 255, 0.05);
   --pad-btn-hover   : rgba(255, 255, 255, 0.13);
   --pad-btn-press   : rgba(255, 255, 255, 0.26);
-  --pad-text        : rgba(255, 255, 255, 0.80);
-  --pad-text-dim    : rgba(255, 255, 255, 0.30);
+  --pad-text        : rgba(255, 255, 255, 0.90);
+  --pad-text-dim    : rgba(255, 255, 255, 0.70);
   --pad-accent      : rgba(255, 255, 255, 0.96);
   --pad-glow        : 0 0 10px rgba(255, 255, 255, 0.22);
   --pad-glow-press  : 0 0 14px rgba(255, 255, 255, 0.40);
