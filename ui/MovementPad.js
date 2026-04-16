@@ -81,65 +81,262 @@ const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 
 const STYLES = `
 .omni-pad {
-  --pad-bg: rgba(8,8,12,0.80);
-  --pad-border: rgba(255,255,255,0.08);
-  --pad-btn-bg: rgba(255,255,255,0.05);
-  --pad-btn-hover: rgba(255,255,255,0.13);
-  --pad-btn-press: rgba(255,255,255,0.26);
-  --pad-text: rgba(255,255,255,0.80);
-  --pad-text-dim: rgba(255,255,255,0.30);
-  --pad-accent: rgba(255,255,255,0.96);
-  --pad-glow: 0 0 10px rgba(255,255,255,0.22);
-  --pad-glow-press: 0 0 14px rgba(255,255,255,0.40);
-  --mono: 'Courier New', Courier, monospace;
-  --pad-cell: ${PAD_CELL}px;
-  --pad-gap: ${PAD_GAP}px;
-  --pad-inner: ${PAD_INNER}px;
-  position: fixed;
-  z-index: 41;
-  pointer-events: none;
-  opacity: 0;
-  user-select: none;
-  background: var(--pad-bg);
-  backdrop-filter: blur(18px) saturate(1.5);
+  --pad-bg          : rgba(8, 8, 12, 0.80);
+  --pad-border      : rgba(255, 255, 255, 0.08);
+  --pad-btn-bg      : rgba(255, 255, 255, 0.05);
+  --pad-btn-hover   : rgba(255, 255, 255, 0.13);
+  --pad-btn-press   : rgba(255, 255, 255, 0.26);
+  --pad-text        : rgba(255, 255, 255, 0.80);
+  --pad-text-dim    : rgba(255, 255, 255, 0.30);
+  --pad-accent      : rgba(255, 255, 255, 0.96);
+  --pad-glow        : 0 0 10px rgba(255, 255, 255, 0.22);
+  --pad-glow-press  : 0 0 14px rgba(255, 255, 255, 0.40);
+  --mono            : 'Courier New', Courier, monospace;
+  --pad-cell        : ${PAD_CELL}px;
+  --pad-gap         : ${PAD_GAP}px;
+  --pad-inner       : ${PAD_INNER}px;
+
+  position          : fixed;
+  z-index           : 41;
+  pointer-events    : none;
+  opacity           : 0;
+  user-select       : none;
+
+  background        : var(--pad-bg);
+  backdrop-filter   : blur(18px) saturate(1.5);
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
-  border: 1px solid var(--pad-border);
-  border-radius: 12.5%;
-  padding: var(--pad-inner);
-  width: 180px;
-  height: 180px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  border            : 1px solid var(--pad-border);
+  border-radius     : 50%;
+  padding           : var(--pad-inner);
+  padding-bottom    : 60px;
+  width             : 185px;
+  height            : 185px;
+  overflow          : hidden;
+
+  display           : flex;
+  flex-direction    : column;
+  gap               : 7px;
+
   -webkit-font-smoothing: antialiased;
 }
-.omni-pad--tl { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: top left; }
-.omni-pad--tr { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: top right; }
-.omni-pad--bl { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: bottom left; }
-.omni-pad--br { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: bottom right; }
-.pad-header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
-.pad-abbr { font-family: var(--mono); font-size: 8.5px; color: var(--pad-text-dim); letter-spacing: 0.14em; text-transform: uppercase; }
-.pad-mode-label { font-family: var(--mono); font-size: 8px; color: var(--pad-accent); letter-spacing: 0.12em; text-transform: uppercase; text-shadow: var(--pad-glow); }
-.pad-cross { display: grid; grid-template-columns: repeat(3, var(--pad-cell)); grid-template-rows: repeat(3, var(--pad-cell)); gap: var(--pad-gap); padding-top: 12px; }
+
+/* ── Corner anchoring ──────────────────────────────────────────────────────── */
+
+.omni-pad--tl {
+  top              : ${BAR_H + HAND_WH + PAD_OFFSET}px;
+  left             : 4px;
+  transform-origin : top left;
+}
+.omni-pad--tr {
+  top              : ${BAR_H + HAND_WH + PAD_OFFSET}px;
+  right            : 4px;
+  transform-origin : top right;
+}
+.omni-pad--bl {
+  bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
+  left             : 4px;
+  transform-origin : bottom left;
+}
+.omni-pad--br {
+  bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
+  right            : 4px;
+  transform-origin : bottom right;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.pad-header {
+  display          : flex;
+  align-items      : center;
+  justify-content  : space-between;
+  padding          : 0 2px;
+  padding-bottom   : 1px;
+  border-bottom    : 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pad-abbr {
+  font-family      : var(--mono);
+  font-size        : 8.5px;
+  color            : var(--pad-text-dim);
+  letter-spacing   : 0.14em;
+  text-transform   : uppercase;
+}
+
+.pad-mode-label {
+  font-family      : var(--mono);
+  font-size        : 8px;
+  color            : var(--pad-accent);
+  letter-spacing   : 0.12em;
+  text-transform   : uppercase;
+  text-shadow      : var(--pad-glow);
+}
+
+/* ── Directional cross grid ────────────────────────────────────────────────── */
+
+.pad-cross {
+  display               : grid;
+  grid-template-columns : repeat(3, var(--pad-cell));
+  grid-template-rows    : repeat(3, var(--pad-cell));
+  gap                   : var(--pad-gap);
+  padding-top           : 12px;
+}
+
 .pad-slot-empty {}
-.pad-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: var(--pad-cell); height: var(--pad-cell); background: var(--pad-btn-bg); border: 1px solid rgba(255,255,255,0.07); border-radius: 7px; cursor: pointer; color: var(--pad-text); font-family: var(--mono); outline: none; transition: background 0.10s ease, border-color 0.10s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.pad-btn:hover { background: var(--pad-btn-hover); border-color: rgba(255,255,255,0.16); }
-.pad-btn:hover .pad-glyph { color: var(--pad-accent); text-shadow: var(--pad-glow); }
-.pad-btn.is-pressed { background: var(--pad-btn-press); border-color: rgba(255,255,255,0.32); }
-.pad-btn.is-pressed .pad-glyph { color: var(--pad-accent); text-shadow: var(--pad-glow-press); }
-.pad-btn.is-pressed .pad-dir-label { color: rgba(255,255,255,0.60); }
-.pad-btn--tbd, .pad-btn--inactive { opacity: 0.22; cursor: default; pointer-events: none; }
-.pad-glyph { font-size: 14px; line-height: 1; pointer-events: none; color: var(--pad-text); transition: color 0.10s ease, text-shadow 0.10s ease; }
-.pad-dir-label { font-size: 6px; color: var(--pad-text-dim); text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; pointer-events: none; white-space: nowrap; transition: color 0.10s ease; }
-.pad-center { display: flex; align-items: center; justify-content: center; width: var(--pad-cell); height: var(--pad-cell); border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); }
-.pad-center-label { font-family: var(--mono); font-size: 7.5px; color: var(--pad-text-dim); letter-spacing: 0.10em; }
-.omni-pad--tbd .pad-cross { opacity: 0.38; pointer-events: none; }
-.pad-keys { display: flex; align-items: center; justify-content: center; gap: 3px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 5px; }
-.pad-keys-label { font-family: var(--mono); font-size: 6px; color: var(--pad-text-dim); letter-spacing: 0.08em; margin-right: 2px; }
-.pad-key { display: inline-flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 7px; min-width: 16px; height: 14px; padding: 0 4px; color: var(--pad-text-dim); letter-spacing: 0.04em; border: 1px solid rgba(255,255,255,0.10); border-radius: 3px; line-height: 1; transition: color 0.10s, border-color 0.10s, background 0.10s; }
-.pad-key.is-active { color: var(--pad-accent); border-color: rgba(255,255,255,0.32); background: rgba(255,255,255,0.08); }
-@media (max-width: 460px) { .omni-pad { --pad-cell: 40px; --pad-gap: 3px; --pad-inner: 8px; width: 148px; height: 148px; } }
+
+/* ── Directional buttons ───────────────────────────────────────────────────── */
+
+.pad-btn {
+  display          : flex;
+  flex-direction   : column;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 3px;
+  width            : var(--pad-cell);
+  height           : var(--pad-cell);
+  background       : var(--pad-btn-bg);
+  border           : 1px solid rgba(255, 255, 255, 0.07);
+  border-radius    : 7px;
+  cursor           : pointer;
+  color            : var(--pad-text);
+  font-family      : var(--mono);
+  outline          : none;
+  transition       : background 0.10s ease, border-color 0.10s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action     : manipulation;
+}
+
+.pad-btn:hover {
+  background       : var(--pad-btn-hover);
+  border-color     : rgba(255, 255, 255, 0.16);
+}
+
+.pad-btn:hover .pad-glyph {
+  color            : var(--pad-accent);
+  text-shadow      : var(--pad-glow);
+}
+
+.pad-btn.is-pressed {
+  background       : var(--pad-btn-press);
+  border-color     : rgba(255, 255, 255, 0.32);
+}
+
+.pad-btn.is-pressed .pad-glyph {
+  color            : var(--pad-accent);
+  text-shadow      : var(--pad-glow-press);
+}
+
+.pad-btn.is-pressed .pad-dir-label {
+  color            : rgba(255, 255, 255, 0.60);
+}
+
+.pad-btn--tbd,
+.pad-btn--inactive {
+  opacity          : 0.22;
+  cursor           : default;
+  pointer-events   : none;
+}
+
+/* ── Glyph + direction label ───────────────────────────────────────────────── */
+
+.pad-glyph {
+  font-size        : 14px;
+  line-height      : 1;
+  pointer-events   : none;
+  color            : var(--pad-text);
+  transition       : color 0.10s ease, text-shadow 0.10s ease;
+}
+
+.pad-dir-label {
+  font-size        : 6px;
+  color            : var(--pad-text-dim);
+  text-transform   : uppercase;
+  letter-spacing   : 0.05em;
+  line-height      : 1;
+  pointer-events   : none;
+  white-space      : nowrap;
+  transition       : color 0.10s ease;
+}
+
+/* ── Center cell ───────────────────────────────────────────────────────────── */
+
+.pad-center {
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  width            : var(--pad-cell);
+  height           : var(--pad-cell);
+  border-radius    : 50%;
+  background       : rgba(255, 255, 255, 0.03);
+  border           : 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pad-center-label {
+  font-family      : var(--mono);
+  font-size        : 7.5px;
+  color            : var(--pad-text-dim);
+  letter-spacing   : 0.10em;
+}
+
+/* ── TBD pad overlay ───────────────────────────────────────────────────────── */
+
+.omni-pad--tbd .pad-cross {
+  opacity          : 0.38;
+  pointer-events   : none;
+}
+
+/* ── Keyboard hint strip ───────────────────────────────────────────────────── */
+
+.pad-keys {
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 3px;
+  border-top       : 1px solid rgba(255, 255, 255, 0.05);
+  padding-top      : 5px;
+}
+
+.pad-keys-label {
+  font-family      : var(--mono);
+  font-size        : 6px;
+  color            : var(--pad-text-dim);
+  letter-spacing   : 0.08em;
+  margin-right     : 2px;
+}
+
+.pad-key {
+  display          : inline-flex;
+  align-items      : center;
+  justify-content  : center;
+  font-family      : var(--mono);
+  font-size        : 7px;
+  min-width        : 16px;
+  height           : 14px;
+  padding          : 0 4px;
+  color            : var(--pad-text-dim);
+  letter-spacing   : 0.04em;
+  border           : 1px solid rgba(255, 255, 255, 0.10);
+  border-radius    : 3px;
+  line-height      : 1;
+  transition       : color 0.10s, border-color 0.10s, background 0.10s;
+}
+
+.pad-key.is-active {
+  color            : var(--pad-accent);
+  border-color     : rgba(255, 255, 255, 0.32);
+  background       : rgba(255, 255, 255, 0.08);
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 460px) {
+  .omni-pad {
+    --pad-cell     : 40px;
+    --pad-gap      : 3px;
+    --pad-inner    : 8px;
+    width          : 148px;
+    height         : 148px;
+  }
+}
 `
 
 function injectStyles () {
