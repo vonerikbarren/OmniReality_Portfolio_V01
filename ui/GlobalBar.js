@@ -148,7 +148,7 @@ const STYLES = /* css */`
   font-size     : 35px;
   color         : var(--bar-accent);
   line-height   : 1;
-  margin-top    : -100px;
+  margin-top    : -80px;
   margin-bottom : -10px;
   letter-spacing: 0;
   text-shadow   : 0 0 12px rgba(255,255,255,0.90), 0 0 24px rgba(255,255,255,0.45);
