@@ -117,7 +117,7 @@ const SYMBOLS = {
 // Positioning constants — should match GlobalBar and Dock heights
 const BAR_H  = 48   // px — GlobalBar collapsed height (Hand top offset)
 const DOCK_H = 52   // px — Dock height (Hand bottom offset)
-const CELL   = 44   // px — each button cell size (generous touch target)
+const CELL   = 50   // px — each button cell size (generous touch target)
 const GAP    = 2    // px — gap between cells
 
 // ── Stylesheet ────────────────────────────────────────────────────────────────
