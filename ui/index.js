@@ -71,6 +71,12 @@
  *   omni:radial-*    → logged; Phase 3b wires RadialMenu
  *   omni:pad-toggle  → logged; Phase 3b wires MovementPad
  *   omni:pads-global → logged; Phase 3b wires MovementPad
+ * 
+ * 
+ * 
+ * ----------------------------------------
+ * My Personal Note Section
+ * ----------------------------------------
  */
 
 import GlobalBar                from './GlobalBar.js'
