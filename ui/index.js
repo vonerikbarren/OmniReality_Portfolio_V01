@@ -77,6 +77,9 @@
  * ----------------------------------------
  * My Personal Note Section
  * ----------------------------------------
+ * 
+ * PrimaryGoal: Complete by middle of June. 
+ * 
  */
 
 import GlobalBar                from './GlobalBar.js'
