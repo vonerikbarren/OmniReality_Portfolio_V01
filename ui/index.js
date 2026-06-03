@@ -80,6 +80,7 @@
  * 
  * PrimaryGoal: Complete by middle of June. 
  * SecondaryGoal: Develop ExpressionSystem() ASAP
+ * TereceryGoal: Develop the OmniAlphabet ASAP.
  * 
  */
 
