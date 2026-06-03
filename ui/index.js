@@ -79,6 +79,7 @@
  * ----------------------------------------
  * 
  * PrimaryGoal: Complete by middle of June. 
+ * SecondaryGoal: Develop ExpressionSystem() ASAP
  * 
  */
 
