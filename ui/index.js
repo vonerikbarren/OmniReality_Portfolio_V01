@@ -82,6 +82,7 @@
  * SecondaryGoal: Develop ExpressionSystem() ASAP
  * TereceryGoal: Develop the OmniAlphabet ASAP.
  * FourthGoal: Get back in the mist of building and testing.
+ * FifthGoal: Bringing things back to logic.
  * 
  */
 
