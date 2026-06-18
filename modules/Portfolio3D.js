@@ -6,6 +6,9 @@
  * five 3D-discipline categories. Categories are arranged in an outer ring
  * (CLUSTER_RING_R = 65) beyond Portfolio2D's inner ring (R = 42), so both
  * can coexist in the scene simultaneously without spatial overlap.
+ * 
+ * 
+ * * Study Module Notes Interface ( SMNIs )
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Differences from Portfolio2D
