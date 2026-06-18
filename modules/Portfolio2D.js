@@ -14,6 +14,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Triggered by
  * ─────────────────────────────────────────────────────────────────────────────
+ * 
+ * Study Module Notes Interface ( SMNIs )
  *
  *   omni:nav-select { item: '2D Projects', parent: '⟐Portfolio' }
  *   Calling the same event a second time toggles group visibility.
