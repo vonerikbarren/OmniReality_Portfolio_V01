@@ -9,6 +9,7 @@
  * 
  * 
  * * Study Module Notes Interface ( SMNIs )
+ * * Study Topics: Currently Undefined.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Differences from Portfolio2D
