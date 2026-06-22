@@ -10,6 +10,7 @@
  * 
  * * Study Module Notes Interface ( SMNIs )
  * * Study Topics: Currently Undefined.
+ * * Building Aspects for building. ( Doing )
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Differences from Portfolio2D
