@@ -842,7 +842,7 @@ function glitch (el) {
 // OmniNode class
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Exported for reuse — e.g. ui/ObjectPanel.js's ParticleShape/MeshType pickers
+// Exported for reuse — e.g. ui/OmniDraw.js's ParticleShape/MeshType pickers
 // need the same canonical geometry list rather than a duplicated one, and
 // generateId keeps any externally-requested node using the same id scheme.
 export { GEOMETRY_DEFS, GEO_LABELS, generateId }
@@ -921,7 +921,17 @@ export default class OmniNode {
    * Called every frame by the BaseScene render loop.
    * Drives hover highlight detection.
    */
-  update (_delta) {
+  update (delta) {
+    // Auto-rotation applies regardless of whether ⟐N's own panel is
+    // open — it's a property of the object, not of the editor UI.
+    for (const entry of this._nodes.values()) {
+      if (!entry.data.autoRotation) continue
+      const mesh = entry.mesh
+      if (entry.data.autoRotationAxisX) mesh.rotation.x += entry.data.autoRotationSpeedX * delta
+      if (entry.data.autoRotationAxisY) mesh.rotation.y += entry.data.autoRotationSpeedY * delta
+      if (entry.data.autoRotationAxisZ) mesh.rotation.z += entry.data.autoRotationSpeedZ * delta
+    }
+
     if (!this._isOpen) return
     if (this._mode === 'place') return   // hover skipped in place mode
     this._detectHover()
@@ -1448,6 +1458,8 @@ export default class OmniNode {
     const mesh   = this._buildMesh(data.geometry, color)
 
     mesh.position.set(...data.position)
+    if (data.rotation) mesh.rotation.set(...data.rotation)
+    if (data.scale) mesh.scale.set(...data.scale)
     mesh.userData.nodeId = data.id
 
     this.ctx.scene.add(mesh)
@@ -2058,7 +2070,7 @@ export default class OmniNode {
       this._updateNodeList()
     }
 
-    // External creation request — lets other modules (e.g. ui/ObjectPanel's
+    // External creation request — lets other modules (e.g. ui/OmniDraw's
     // "Export to Scene" button) spawn a real, registered node without ever
     // needing a direct reference to this OmniNode instance.
     this._onCreateRequest = (e) => {
@@ -2070,8 +2082,17 @@ export default class OmniNode {
         primitive : d.primitive ?? 'objective',
         color     : d.color ?? '#ffffff',
         position  : d.position ?? [0, 1, 0],
+        rotation  : d.rotation ?? [0, 0, 0],
+        scale     : d.scale ?? [1, 1, 1],
         parentId  : d.parentId ?? this._selected ?? null,
         createdAt : new Date().toISOString(),
+        autoRotation      : d.autoRotation ?? false,
+        autoRotationAxisX : d.autoRotationAxisX ?? false,
+        autoRotationAxisY : d.autoRotationAxisY ?? false,
+        autoRotationAxisZ : d.autoRotationAxisZ ?? false,
+        autoRotationSpeedX: d.autoRotationSpeedX ?? 1,
+        autoRotationSpeedY: d.autoRotationSpeedY ?? 1,
+        autoRotationSpeedZ: d.autoRotationSpeedZ ?? 1,
       })
     }
 

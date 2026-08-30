@@ -4,7 +4,7 @@
  * Not a module in the BaseScene sense (no init/update/destroy, nothing
  * registered with addModule) — just a small set of functions any panel
  * calls into to get consistent behavior without duplicating it per
- * panel. Currently used by ui/ObjectPanel.js and systems/OmniInspector.js.
+ * panel. Currently used by ui/OmniDraw.js and systems/OmniInspector.js.
  *
  * Provides:
  *   register(id, el)      — bring-to-front on click, enforces a 10-window
@@ -146,4 +146,38 @@ export function wireSaveButton (btn, panelId, onSave) {
 
 export function getLastSaved (panelId) {
   try { return localStorage.getItem(STORE_PREFIX + panelId) } catch (_) { return null }
+}
+
+// ── Panel opacity — shared "UI Settings" control from the Admin Panel ──────
+// Panels already animate their own `opacity` via GSAP for open/close, so
+// applying this as a plain CSS rule would conflict (inline styles set by
+// GSAP always win over a CSS class). Instead, panels read this value and
+// use it as their own open-animation TARGET instead of a hardcoded 1 —
+// see getPanelOpacity() usage in ui/OmniDraw.js, systems/OmniInspector.js,
+// and ui/AdminPanel.js's own open().
+
+const DEFAULT_PANEL_OPACITY = 0.92
+
+export function getPanelOpacity () {
+  try {
+    const raw = localStorage.getItem('omni:admin:settings')
+    const v = raw ? JSON.parse(raw)?.uiSettings?.panelOpacity : undefined
+    return v ?? DEFAULT_PANEL_OPACITY
+  } catch (_) {
+    return DEFAULT_PANEL_OPACITY
+  }
+}
+
+/**
+ * Wires a panel to live-update its opacity if Admin's Panel Opacity
+ * setting changes while it's currently open (rather than only applying
+ * on the next open). `isOpenFn` lets the caller report its own open
+ * state without this module needing to know each panel's internals.
+ */
+export function watchPanelOpacity (el, isOpenFn) {
+  window.addEventListener('omni:admin-settings-saved', (e) => {
+    const v = e.detail?.uiSettings?.panelOpacity
+    if (v === undefined || !isOpenFn()) return
+    gsap.to(el, { opacity: v, duration: 0.25 })
+  })
 }

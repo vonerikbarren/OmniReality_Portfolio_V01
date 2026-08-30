@@ -1,11 +1,10 @@
 /**
- * ui/ObjectPanel.js — ⟐mniReality Object Panel
+ * ui/OmniDraw.js — ⟐mniReality OmniDraw (formerly the Object Panel)
  *
  * The authoring panel for "container" objects — the base form every
  * reality starts as (default: cube). Opens from the top-left ⟐mniHand
- * drawer ('⟐mniMenu' → '⟐Objects'), which is the natural owner: that
- * hand's role is already "App Launcher" and it already owns this exact
- * drawer entry.
+ * drawer ('⟐mniMenu' → '⟐OmniDraw™' — a top-level trademark item, not
+ * nested under a parent).
  *
  * Draggable, glass-themed to match ui/Panel.js. Contains a small LIVE
  * Three.js preview (its own tiny renderer/scene, not the main scene) so
@@ -36,8 +35,8 @@
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Events consumed (window):
- *   omni:nav-select     { item: '⟐Objects' }   — opens the panel
- *   omni:panel-restore  { id: 'objectpanel' }   — reopen from orb icon
+ *   omni:nav-select     { item: '⟐OmniDraw' }   — opens the panel
+ *   omni:panel-restore  { id: 'omnidraw' }   — reopen from orb icon
  *
  * Events dispatched (window):
  *   omni:panel-minimized  { id, label, iconLabel, fromRect, variant: 'orb' }
@@ -85,9 +84,9 @@ const SCHEMA = [
   { group: 'Cycles / Orbits', key: 'numInternalCycles', label: 'ID_NumOfInternalCycles', type: 'number', default: 0, min: 0, step: 1 },
   { group: 'Cycles / Orbits', key: 'cycleOrbitSize', label: 'ID_CycleOrbitSize', type: 'vec', default: [0.45, 0.18, 10, 28], sublabels: ['radius', 'tube', 'radialSeg', 'tubularSeg'] },
   { group: 'Cycles / Orbits', key: 'externalCycleRotation', label: 'externalCycleRotation', type: 'bool', default: false },
-  { group: 'Cycles / Orbits', key: 'externalCycleRotationSpeed', label: 'externalCycleRotationSpeed', type: 'number', default: 1, min: 0, step: 0.1 },
+  { group: 'Cycles / Orbits', key: 'externalCycleRotationSpeed', label: 'externalCycleRotationSpeed', type: 'number', default: 1, min: -5, step: 0.1 },
   { group: 'Cycles / Orbits', key: 'internalCycleRotation', label: 'internalCycleRotation', type: 'bool', default: false },
-  { group: 'Cycles / Orbits', key: 'internalCycleRotationSpeed', label: 'internalCycleRotationSpeed', type: 'number', default: 1, min: 0, step: 0.1 },
+  { group: 'Cycles / Orbits', key: 'internalCycleRotationSpeed', label: 'internalCycleRotationSpeed', type: 'number', default: 1, min: -5, step: 0.1 },
 
   { group: 'Particles', key: 'particles', label: 'ID_Particles', type: 'bool', default: false },
   { group: 'Particles', key: 'particleWind', label: 'ID_ParticleWind', type: 'bool', default: false },
@@ -116,10 +115,13 @@ const SCHEMA = [
   { group: 'Automation', key: 'autoAxisX', label: 'automatic x axis', type: 'bool', default: false },
   { group: 'Automation', key: 'autoAxisY', label: 'automatic y axis', type: 'bool', default: false },
   { group: 'Automation', key: 'autoAxisZ', label: 'automatic z axis', type: 'bool', default: false },
-  { group: 'Automation', key: 'autoRotation', label: 'automatic rotation', type: 'bool', default: false },
-  { group: 'Automation', key: 'autoRotationAxisX', label: 'rotationAxis.x', type: 'bool', default: false },
-  { group: 'Automation', key: 'autoRotationAxisY', label: 'rotationAxis.y', type: 'bool', default: true },
-  { group: 'Automation', key: 'autoRotationAxisZ', label: 'rotationAxis.z', type: 'bool', default: false },
+  { group: 'Automation', key: 'autoRotation', label: 'automatic rotation', type: 'bool', default: false, live: true },
+  { group: 'Automation', key: 'autoRotationAxisX', label: 'Vertical rotation (rx)', type: 'bool', default: false, live: true },
+  { group: 'Automation', key: 'autoRotationSpeedX', label: 'Vertical rotation speed', type: 'range', default: 1, min: -5, max: 5, step: 0.1, live: true },
+  { group: 'Automation', key: 'autoRotationAxisY', label: 'Horizontal rotation (ry)', type: 'bool', default: true, live: true },
+  { group: 'Automation', key: 'autoRotationSpeedY', label: 'Horizontal rotation speed', type: 'range', default: 1, min: -5, max: 5, step: 0.1, live: true },
+  { group: 'Automation', key: 'autoRotationAxisZ', label: 'Depth rotation (rz)', type: 'bool', default: false, live: true },
+  { group: 'Automation', key: 'autoRotationSpeedZ', label: 'Depth rotation speed', type: 'range', default: 1, min: -5, max: 5, step: 0.1, live: true },
   { group: 'Automation', key: 'autoRotationToObject', label: 'rotationToObject (id list)', type: 'text', default: '', placeholder: 'node ids, comma separated' },
   { group: 'Automation', key: 'autoRotationToOriginCoordinates', label: 'rotationToOriginCoordinates', type: 'bool', default: false },
 ]
@@ -128,17 +130,17 @@ const SCHEMA = [
 
 const STYLES = /* css */`
 
-.omni-object-panel {
-  --op-bg          : var(--omni-theme-bg, rgba(8, 8, 12, 0.92));
-  --op-border      : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
-  --op-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
-  --op-text        : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
-  --op-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.68));
-  --op-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.45));
-  --op-accent      : var(--omni-theme-accent, #7fd8ff);
-  --op-line        : var(--omni-theme-text, rgba(255, 255, 255, 0.45));
-  --op-input-bg    : var(--omni-theme-input-bg, rgba(255, 255, 255, 0.05));
-  --op-input-border: var(--omni-theme-input-border, var(--op-border));
+.omni-draw {
+  --od-bg          : var(--omni-theme-bg, rgba(8, 8, 12, 0.92));
+  --od-border      : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
+  --od-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
+  --od-text        : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
+  --od-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.68));
+  --od-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.45));
+  --od-accent      : var(--omni-theme-accent, #7fd8ff);
+  --od-line        : var(--omni-theme-text, rgba(255, 255, 255, 0.45));
+  --od-input-bg    : var(--omni-theme-input-bg, rgba(255, 255, 255, 0.05));
+  --od-input-border: var(--omni-theme-input-border, var(--od-border));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -154,15 +156,15 @@ const STYLES = /* css */`
   display          : flex;
   flex-direction   : column;
 
-  background       : var(--op-bg);
-  backdrop-filter  : blur(22px) saturate(1.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
-  border           : 1px solid var(--op-border);
+  background       : var(--od-bg);
+  backdrod-filter  : blur(22px) saturate(1.5);
+  -webkit-backdrod-filter: blur(22px) saturate(1.5);
+  border           : 1px solid var(--od-border);
   border-radius    : 14px;
   box-shadow       : 0 0 24px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.55);
 
   font-family      : var(--mono);
-  color            : var(--op-text);
+  color            : var(--od-text);
   z-index          : 60;
   overflow         : hidden;
   pointer-events   : auto;
@@ -171,55 +173,55 @@ const STYLES = /* css */`
   transform        : scale(0.92);
 }
 
-.op-header {
+.od-header {
   position         : relative;
   height           : 42px;
   flex-shrink      : 0;
   display          : flex;
   align-items      : center;
   justify-content  : center;
-  background       : var(--op-header-bg);
-  border-bottom    : 1px solid var(--op-border);
+  background       : var(--od-header-bg);
+  border-bottom    : 1px solid var(--od-border);
   cursor           : grab;
   user-select      : none;
   overflow         : hidden;
 }
 
-.op-header.is-dragging { cursor: grabbing; }
+.od-header.is-dragging { cursor: grabbing; }
 
-.op-header .panel-glitch-line {
+.od-header .panel-glitch-line {
   position         : absolute;
   left             : 0;
   top              : 0;
   width            : 18%;
   height           : 2px;
-  background       : var(--op-line);
+  background       : var(--od-line);
   opacity          : 0;
   pointer-events   : none;
 }
 
-.op-title {
+.od-title {
   position         : absolute;
   left             : 14px;
   font-size        : 12px;
   letter-spacing   : 0.06em;
-  color            : var(--op-text-dim);
+  color            : var(--od-text-dim);
   pointer-events   : none;
 }
 
-.op-controls {
+.od-controls {
   display          : flex;
   align-items      : center;
   gap              : 8px;
 }
 
-.op-ctrl {
+.od-ctrl {
   width            : 24px;
   height           : 24px;
   border-radius    : 6px;
-  border           : 1px solid var(--op-border);
+  border           : 1px solid var(--od-border);
   background       : rgba(255,255,255,0.04);
-  color            : var(--op-text-dim);
+  color            : var(--od-text-dim);
   font-size        : 11px;
   display          : flex;
   align-items      : center;
@@ -228,31 +230,31 @@ const STYLES = /* css */`
   transition       : background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
-.op-ctrl:hover {
+.od-ctrl:hover {
   background       : rgba(255,255,255,0.10);
   border-color     : rgba(255,255,255,0.24);
-  color            : var(--op-text);
+  color            : var(--od-text);
 }
 
-.op-ctrl--minimize { order: -1; } /* center/first button, per spec */
-.op-ctrl--close     { }
+.od-ctrl--minimize { order: -1; } /* center/first button, per spec */
+.od-ctrl--close     { }
 
-.op-ctrl--save {
+.od-ctrl--save {
   color         : rgba(140, 255, 180, 0.85);
   border-color  : rgba(140, 255, 180, 0.22);
 }
-.op-ctrl--save:hover {
+.od-ctrl--save:hover {
   background    : rgba(140, 255, 180, 0.14);
   border-color  : rgba(140, 255, 180, 0.35);
 }
-.op-ctrl--save.is-saved {
+.od-ctrl--save.is-saved {
   background    : rgba(140, 255, 180, 0.22);
   border-color  : rgba(140, 255, 180, 0.5);
 }
 
 /* ── Resize handle — bottom-right corner (panel is left-anchored) ─────────── */
 
-.op-resize-handle {
+.od-resize-handle {
   position          : absolute;
   right             : 0;
   bottom            : 0;
@@ -261,7 +263,7 @@ const STYLES = /* css */`
   cursor            : nwse-resize;
   z-index           : 2;
 }
-.op-resize-handle::before {
+.od-resize-handle::before {
   content           : '';
   position          : absolute;
   right             : 3px;
@@ -273,57 +275,57 @@ const STYLES = /* css */`
   border-radius     : 0 0 2px 0;
   transition        : border-color 0.12s ease;
 }
-.op-resize-handle:hover::before { border-color: rgba(255, 255, 255, 0.6); }
+.od-resize-handle:hover::before { border-color: rgba(255, 255, 255, 0.6); }
 
 /* ── Mode tabs ────────────────────────────────────────────────────────────── */
 
-.op-modes {
+.od-modes {
   display          : flex;
   flex-shrink      : 0;
-  border-bottom    : 1px solid var(--op-border);
+  border-bottom    : 1px solid var(--od-border);
 }
 
-.op-mode {
+.od-mode {
   flex             : 1;
   padding          : 8px 0;
   text-align       : center;
   font-size        : 10px;
   letter-spacing   : 0.08em;
   text-transform   : uppercase;
-  color            : var(--op-text-muted);
+  color            : var(--od-text-muted);
   cursor           : pointer;
   border-bottom    : 2px solid transparent;
   transition       : color 0.12s ease, border-color 0.12s ease;
 }
 
-.op-mode:hover  { color: var(--op-text-dim); }
-.op-mode.is-active { color: var(--op-accent); border-bottom-color: var(--op-accent); }
+.od-mode:hover  { color: var(--od-text-dim); }
+.od-mode.is-active { color: var(--od-accent); border-bottom-color: var(--od-accent); }
 
 /* ── Preview ──────────────────────────────────────────────────────────────── */
 
-.op-preview-wrap {
+.od-preview-wrap {
   flex-shrink      : 0;
   display          : flex;
   flex-direction   : column;
   align-items      : center;
   gap              : 8px;
   padding          : 14px 0 10px;
-  border-bottom    : 1px solid var(--op-border);
+  border-bottom    : 1px solid var(--od-border);
 }
 
-.op-preview-canvas {
+.od-preview-canvas {
   width            : ${PREVIEW_SZ}px;
   height           : ${PREVIEW_SZ}px;
   border-radius    : 10px;
-  border           : 1px solid var(--op-border);
+  border           : 1px solid var(--od-border);
   background       : rgba(255,255,255,0.02);
 }
 
-.op-expand-btn {
+.od-expand-btn {
   font-family      : var(--mono);
   font-size        : 10px;
   letter-spacing   : 0.06em;
-  color            : var(--op-accent);
+  color            : var(--od-accent);
   background       : rgba(127, 216, 255, 0.08);
   border           : 1px solid rgba(127, 216, 255, 0.35);
   border-radius    : 6px;
@@ -332,38 +334,38 @@ const STYLES = /* css */`
   transition       : background 0.12s ease;
 }
 
-.op-expand-btn:hover { background: rgba(127, 216, 255, 0.16); }
+.od-expand-btn:hover { background: rgba(127, 216, 255, 0.16); }
 
-.op-export-btn {
+.od-export-btn {
   color            : #7fffb0;
   background       : rgba(127, 255, 176, 0.08);
   border-color     : rgba(127, 255, 176, 0.35);
 }
 
-.op-export-btn:hover { background: rgba(127, 255, 176, 0.16); }
+.od-export-btn:hover { background: rgba(127, 255, 176, 0.16); }
 
 /* ── Body / property list ─────────────────────────────────────────────────── */
 
-.op-body {
+.od-body {
   flex             : 1;
   overflow-y       : auto;
   padding          : 6px 14px 14px;
 }
 
-.op-body::-webkit-scrollbar { width: 6px; }
-.op-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+.od-body::-webkit-scrollbar { width: 6px; }
+.od-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 
-.op-group-title {
+.od-group-title {
   font-size        : 10px;
   letter-spacing   : 0.10em;
   text-transform   : uppercase;
-  color            : var(--op-text-muted);
+  color            : var(--od-text-muted);
   margin           : 14px 0 6px;
 }
 
-.op-group-block:first-child .op-group-title { margin-top: 4px; }
+.od-group-block:first-child .od-group-title { margin-top: 4px; }
 
-.op-row {
+.od-row {
   display          : flex;
   align-items      : center;
   justify-content  : space-between;
@@ -372,28 +374,28 @@ const STYLES = /* css */`
   border-bottom    : 1px solid rgba(255,255,255,0.04);
 }
 
-.op-row-label {
+.od-row-label {
   font-size        : 10.5px;
-  color            : var(--op-text-dim);
+  color            : var(--od-text-dim);
   white-space      : nowrap;
   overflow         : hidden;
   text-overflow    : ellipsis;
 }
 
-.op-row-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.od-row-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
-.op-toggle {
+.od-toggle {
   width            : 30px;
   height           : 16px;
   border-radius    : 8px;
   background       : rgba(255,255,255,0.10);
-  border           : 1px solid var(--op-border);
+  border           : 1px solid var(--od-border);
   cursor           : pointer;
   position         : relative;
   transition       : background 0.15s ease;
 }
 
-.op-toggle::after {
+.od-toggle::after {
   content          : '';
   position         : absolute;
   top              : 1px;
@@ -401,63 +403,63 @@ const STYLES = /* css */`
   width            : 12px;
   height           : 12px;
   border-radius    : 50%;
-  background       : var(--op-text-dim);
+  background       : var(--od-text-dim);
   transition       : transform 0.15s ease, background 0.15s ease;
 }
 
-.op-toggle.is-on { background: rgba(127, 216, 255, 0.35); border-color: rgba(127, 216, 255, 0.5); }
-.op-toggle.is-on::after { transform: translateX(14px); background: var(--op-accent); }
+.od-toggle.is-on { background: rgba(127, 216, 255, 0.35); border-color: rgba(127, 216, 255, 0.5); }
+.od-toggle.is-on::after { transform: translateX(14px); background: var(--od-accent); }
 
-.op-num {
+.od-num {
   width            : 56px;
-  background       : var(--op-input-bg);
-  border           : 1px solid var(--op-input-border);
+  background       : var(--od-input-bg);
+  border           : 1px solid var(--od-input-border);
   border-radius    : 4px;
-  color            : var(--op-text);
+  color            : var(--od-text);
   font-family      : var(--mono);
   font-size        : 10.5px;
   padding          : 3px 5px;
   text-align       : right;
 }
 
-.op-text {
+.od-text {
   width            : 140px;
-  background       : var(--op-input-bg);
-  border           : 1px solid var(--op-input-border);
+  background       : var(--od-input-bg);
+  border           : 1px solid var(--od-input-border);
   border-radius    : 4px;
-  color            : var(--op-text);
+  color            : var(--od-text);
   font-family      : var(--mono);
   font-size        : 10.5px;
   padding          : 3px 6px;
 }
 
-.op-select {
-  background       : var(--op-input-bg);
-  border           : 1px solid var(--op-input-border);
+.od-select {
+  background       : var(--od-input-bg);
+  border           : 1px solid var(--od-input-border);
   border-radius    : 4px;
-  color            : var(--op-text);
+  color            : var(--od-text);
   font-family      : var(--mono);
   font-size        : 10px;
   padding          : 3px 4px;
   max-width        : 150px;
 }
 
-.op-range {
+.od-range {
   width            : 90px;
-  accent-color     : var(--op-accent);
+  accent-color     : var(--od-accent);
 }
 
-.op-range-val {
+.od-range-val {
   width            : 40px;
   font-size        : 10px;
-  color            : var(--op-text-muted);
+  color            : var(--od-text-muted);
   text-align       : right;
 }
 
-.op-vec { display: flex; gap: 4px; }
-.op-vec .op-num { width: 40px; }
+.od-vec { display: flex; gap: 4px; }
+.od-vec .od-num { width: 40px; }
 
-.op-schema-tag {
+.od-schema-tag {
   font-size        : 8px;
   color            : rgba(255,255,255,0.28);
   letter-spacing   : 0.05em;
@@ -466,14 +468,14 @@ const STYLES = /* css */`
 
 /* ── Enter mode stub ──────────────────────────────────────────────────────── */
 
-.op-stub {
+.od-stub {
   flex             : 1;
   display          : flex;
   align-items      : center;
   justify-content  : center;
   flex-direction   : column;
   gap              : 6px;
-  color            : var(--op-text-muted);
+  color            : var(--od-text-muted);
   font-size        : 11px;
   text-align       : center;
   padding          : 30px;
@@ -482,16 +484,16 @@ const STYLES = /* css */`
 `
 
 function injectStyles () {
-  if (document.getElementById('omni-object-panel-styles')) return
+  if (document.getElementById('omni-draw-styles')) return
   const tag = document.createElement('style')
-  tag.id          = 'omni-object-panel-styles'
+  tag.id          = 'omni-draw-styles'
   tag.textContent = STYLES
   document.head.appendChild(tag)
 }
 
-// ── ObjectPanel class ───────────────────────────────────────────────────────
+// ── OmniDraw class ───────────────────────────────────────────────────────
 
-export default class ObjectPanel {
+export default class OmniDraw {
   constructor (context) {
     this.ctx = context
 
@@ -547,8 +549,8 @@ export default class ObjectPanel {
     }
 
     if (!this._el) return
-    this._el.querySelectorAll('.op-row').forEach(row => {
-      const label = row.querySelector('.op-row-label')?.textContent
+    this._el.querySelectorAll('.od-row').forEach(row => {
+      const label = row.querySelector('.od-row-label')?.textContent
       if (label === undefined || !(label in fields)) return
       const range = row.querySelector('input[type="range"]')
       if (range && fields[label] !== undefined) range.step = fields[label]
@@ -557,9 +559,21 @@ export default class ObjectPanel {
 
   update (delta) {
     if (!this._preview) return
-    // Gentle idle spin so the preview reads as "live" even with no drag —
-    // cheap: one small mesh, one small canvas, only while panel is open.
-    this._preview.mesh.rotation.y += delta * 0.4
+    const mesh = this._preview.mesh
+
+    if (this._data.autoRotation) {
+      // Reflects the actual configured speeds — what you see here is
+      // exactly what an exported object will do.
+      if (this._data.autoRotationAxisX) mesh.rotation.x += this._data.autoRotationSpeedX * delta
+      if (this._data.autoRotationAxisY) mesh.rotation.y += this._data.autoRotationSpeedY * delta
+      if (this._data.autoRotationAxisZ) mesh.rotation.z += this._data.autoRotationSpeedZ * delta
+    } else {
+      // Gentle idle spin so the preview reads as "live" even with no
+      // drag, when automatic rotation isn't configured — cheap: one
+      // small mesh, one small canvas, only while panel is open.
+      mesh.rotation.y += delta * 0.4
+    }
+
     this._preview.renderer.render(this._preview.scene, this._preview.camera)
   }
 
@@ -571,18 +585,18 @@ export default class ObjectPanel {
     window.removeEventListener('omni:admin-settings-saved', this._onAdminSaved)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
-    WindowManager.unregister('objectpanel')
+    WindowManager.unregister('omnidraw')
   }
 
   // ── Events ───────────────────────────────────────────────────────────────
 
   _bindEvents () {
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐Objects') return
+      if (e.detail?.item !== '⟐OmniDraw') return
       this.open()
     }
     this._onRestore = (e) => {
-      if (e.detail?.id !== 'objectpanel') return
+      if (e.detail?.id !== 'omnidraw') return
       this.open()
     }
     window.addEventListener('omni:nav-select',   this._onNavSelect)
@@ -599,8 +613,8 @@ export default class ObjectPanel {
     shell.appendChild(this._el)
 
     this._el.style.visibility = 'visible'
-    gsap.to(this._el, { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
-    flashHeaderLine(this._el.querySelector('.op-header'), 'rgba(255,255,255,0.9)')
+    gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
+    flashHeaderLine(this._el.querySelector('.od-header'), 'rgba(255,255,255,0.9)')
     this._isOpen = true
   }
 
@@ -625,8 +639,8 @@ export default class ObjectPanel {
 
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
-        id       : 'objectpanel',
-        label    : '⟐Object Panel',
+        id       : 'omnidraw',
+        label    : '⟐OmniDraw',
         iconLabel: '⟐O',
         fromRect : { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
         variant  : 'orb',
@@ -638,54 +652,55 @@ export default class ObjectPanel {
 
   _buildDOM () {
     const el = document.createElement('div')
-    el.className = 'omni-object-panel'
+    el.className = 'omni-draw'
     el.innerHTML = /* html */`
-      <div class="op-header">
+      <div class="od-header">
         <span class="panel-glitch-line" aria-hidden="true"></span>
-        <span class="op-title">⟐Object — Container</span>
-        <div class="op-controls">
-          <button class="op-ctrl op-ctrl--minimize" data-action="minimize" title="Minimize" aria-label="Minimize">–</button>
-          <button class="op-ctrl op-ctrl--save" data-action="save" title="Save to local storage" aria-label="Save">💾</button>
-          <button class="op-ctrl op-ctrl--maximize" data-action="maximize" title="Maximize" aria-label="Maximize"></button>
-          <button class="op-ctrl op-ctrl--close" data-action="close" title="Close" aria-label="Close">×</button>
+        <span class="od-title">⟐OmniDraw</span>
+        <div class="od-controls">
+          <button class="od-ctrl od-ctrl--minimize" data-action="minimize" title="Minimize" aria-label="Minimize">–</button>
+          <button class="od-ctrl od-ctrl--save" data-action="save" title="Save to local storage" aria-label="Save">💾</button>
+          <button class="od-ctrl od-ctrl--maximize" data-action="maximize" title="Maximize" aria-label="Maximize"></button>
+          <button class="od-ctrl od-ctrl--close" data-action="close" title="Close" aria-label="Close">×</button>
         </div>
       </div>
 
-      <div class="op-modes">
-        <div class="op-mode is-active" data-mode="edit">Edit</div>
-        <div class="op-mode" data-mode="drag">Drag</div>
-        <div class="op-mode" data-mode="enter">Enter</div>
+      <div class="od-modes">
+        <div class="od-mode is-active" data-mode="edit">Edit</div>
+        <div class="od-mode" data-mode="drag">Drag</div>
+        <div class="od-mode" data-mode="enter">Enter</div>
       </div>
 
-      <div class="op-preview-wrap">
-        <canvas class="op-preview-canvas" width="${PREVIEW_SZ}" height="${PREVIEW_SZ}"></canvas>
-        <button class="op-expand-btn" data-action="expand">⟐ Domain Expansion (→ Sphere)</button>
-        <button class="op-expand-btn op-export-btn" data-action="export">⟐ Export to Scene</button>
+      <div class="od-preview-wrap">
+        <canvas class="od-preview-canvas" width="${PREVIEW_SZ}" height="${PREVIEW_SZ}"></canvas>
+        <button class="od-expand-btn" data-action="expand">⟐ Domain Expansion (→ Sphere)</button>
+        <button class="od-expand-btn od-export-btn" data-action="export">⟐ Export to Scene</button>
       </div>
 
-      <div class="op-body"></div>
-      <div class="op-stub" style="display:none">
+      <div class="od-body"></div>
+      <div class="od-stub" style="display:none">
         <span>⟐ Enter-space mode</span>
         <span>Not wired yet — will let you navigate into this container as its own space.</span>
       </div>
 
-      <div class="op-resize-handle" aria-hidden="true"></div>
+      <div class="od-resize-handle" aria-hidden="true"></div>
     `
 
-    this._renderRows(el.querySelector('.op-body'))
+    this._renderRows(el.querySelector('.od-body'))
     this._bindHeader(el)
     this._bindControls(el)
     this._bindModes(el)
     this._bindResize(el)
     this._loadPersisted()
 
-    el.dataset.winId = 'objectpanel'
-    WindowManager.register('objectpanel', el)
-    WindowManager.makeMaximizable(el, el.querySelector('.op-ctrl--maximize'), {
+    el.dataset.winId = 'omnidraw'
+    WindowManager.register('omnidraw', el)
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
+    WindowManager.makeMaximizable(el, el.querySelector('.od-ctrl--maximize'), {
       onMaximize: () => this._toGridDashboard(),
       onRestore : () => this._fromGridDashboard(),
     })
-    WindowManager.wireSaveButton(el.querySelector('.op-ctrl--save'), 'objectpanel', () => this._persist())
+    WindowManager.wireSaveButton(el.querySelector('.od-ctrl--save'), 'omnidraw', () => this._persist())
 
     return el
   }
@@ -697,10 +712,10 @@ export default class ObjectPanel {
       if (field.group !== currentGroup) {
         currentGroup = field.group
         groupEl = document.createElement('div')
-        groupEl.className = 'op-group-block'
+        groupEl.className = 'od-group-block'
         groupEl.dataset.group = currentGroup
         const h = document.createElement('div')
-        h.className = 'op-group-title'
+        h.className = 'od-group-title'
         h.textContent = currentGroup
         groupEl.appendChild(h)
         body.appendChild(groupEl)
@@ -711,20 +726,20 @@ export default class ObjectPanel {
 
   _buildRow (field) {
     const row = document.createElement('div')
-    row.className = 'op-row'
+    row.className = 'od-row'
 
     const label = document.createElement('span')
-    label.className = 'op-row-label'
+    label.className = 'od-row-label'
     label.textContent = field.label
     if (!field.live) {
       const tag = document.createElement('span')
-      tag.className = 'op-schema-tag'
+      tag.className = 'od-schema-tag'
       tag.textContent = '(schema)'
       label.appendChild(tag)
     }
 
     const control = document.createElement('div')
-    control.className = 'op-row-control'
+    control.className = 'od-row-control'
 
     switch (field.type) {
       case 'bool':    control.appendChild(this._buildToggle(field));  break
@@ -743,7 +758,7 @@ export default class ObjectPanel {
 
   _buildToggle (field) {
     const btn = document.createElement('button')
-    btn.className = 'op-toggle' + (this._data[field.key] ? ' is-on' : '')
+    btn.className = 'od-toggle' + (this._data[field.key] ? ' is-on' : '')
     btn.setAttribute('role', 'switch')
     btn.setAttribute('aria-checked', String(!!this._data[field.key]))
     btn.addEventListener('click', () => {
@@ -758,7 +773,7 @@ export default class ObjectPanel {
   _buildNumber (field) {
     const input = document.createElement('input')
     input.type  = 'number'
-    input.className = 'op-num'
+    input.className = 'od-num'
     input.value = this._data[field.key]
     if (field.min !== undefined) input.min = field.min
     if (field.step !== undefined) input.step = field.step
@@ -777,14 +792,14 @@ export default class ObjectPanel {
 
     const input = document.createElement('input')
     input.type  = 'range'
-    input.className = 'op-range'
+    input.className = 'od-range'
     input.min   = field.min
     input.max   = field.max
     input.step  = field.step
     input.value = this._data[field.key]
 
     const val = document.createElement('span')
-    val.className = 'op-range-val'
+    val.className = 'od-range-val'
     val.textContent = Number(this._data[field.key]).toFixed(field.step < 1 ? 2 : 0)
 
     input.addEventListener('input', () => {
@@ -800,7 +815,7 @@ export default class ObjectPanel {
 
   _buildSelect (field) {
     const select = document.createElement('select')
-    select.className = 'op-select'
+    select.className = 'od-select'
     for (const opt of field.options) {
       const o = document.createElement('option')
       o.value = opt
@@ -818,7 +833,7 @@ export default class ObjectPanel {
   _buildText (field) {
     const input = document.createElement('input')
     input.type  = 'text'
-    input.className = 'op-text'
+    input.className = 'od-text'
     input.value = this._data[field.key]
     input.readOnly = !!field.readonly
     if (field.placeholder) input.placeholder = field.placeholder
@@ -831,11 +846,11 @@ export default class ObjectPanel {
 
   _buildVec (field) {
     const wrap = document.createElement('div')
-    wrap.className = 'op-vec'
+    wrap.className = 'od-vec'
     field.default.forEach((v, i) => {
       const input = document.createElement('input')
       input.type  = 'number'
-      input.className = 'op-num'
+      input.className = 'od-num'
       input.step  = 0.01
       input.title = field.sublabels?.[i] ?? `${field.key}[${i}]`
       input.value = this._data[field.key][i]
@@ -888,7 +903,7 @@ export default class ObjectPanel {
         break
       case 'draggable':
         // Applies to the PANEL itself, not the preview mesh.
-        this._el.querySelector('.op-header').style.cursor =
+        this._el.querySelector('.od-header').style.cursor =
           this._data.draggable ? 'grab' : 'default'
         break
     }
@@ -898,9 +913,9 @@ export default class ObjectPanel {
    *  (used for the video/image mutual-exclusivity rule). */
   _syncTogglesFromData () {
     if (!this._el) return
-    this._el.querySelectorAll('.op-row').forEach(row => {
-      const label = row.querySelector('.op-row-label')?.textContent ?? ''
-      const toggle = row.querySelector('.op-toggle')
+    this._el.querySelectorAll('.od-row').forEach(row => {
+      const label = row.querySelector('.od-row-label')?.textContent ?? ''
+      const toggle = row.querySelector('.od-toggle')
       if (!toggle) return
       if (label.startsWith('Video Mesh')) {
         toggle.classList.toggle('is-on', this._data.videoMeshEnabled)
@@ -937,7 +952,7 @@ export default class ObjectPanel {
   // ── Header drag / controls / mode tabs ──────────────────────────────────
 
   _bindHeader (el) {
-    const header = el.querySelector('.op-header')
+    const header = el.querySelector('.od-header')
 
     const onDown = (e) => {
       if (!this._data.draggable) return
@@ -971,7 +986,7 @@ export default class ObjectPanel {
   /** Bottom-right resize handle — panel is left-anchored, so dragging
    *  right/down both simply grow it. Clamped by the CSS min/max bounds. */
   _bindResize (el) {
-    const handle = el.querySelector('.op-resize-handle')
+    const handle = el.querySelector('.od-resize-handle')
     if (!handle) return
 
     const resize = { active: false, startX: 0, startY: 0, startW: 0, startH: 0 }
@@ -1016,10 +1031,10 @@ export default class ObjectPanel {
 
   _toGridDashboard () {
     if (this._gridEl) return
-    const body = this._el.querySelector('.op-body')
+    const body = this._el.querySelector('.od-body')
     if (!body) return
 
-    const widgets = [...body.querySelectorAll('.op-group-block')].map(block => ({
+    const widgets = [...body.querySelectorAll('.od-group-block')].map(block => ({
       id: block.dataset.group,
       title: block.dataset.group,
       el: block,
@@ -1028,7 +1043,7 @@ export default class ObjectPanel {
 
     this._gridWidgets = widgets
     body.style.display = 'none'
-    this._gridEl = GridWidgets.mountGrid(body.parentElement, widgets, 'objectpanel')
+    this._gridEl = GridWidgets.mountGrid(body.parentElement, widgets, 'omnidraw')
   }
 
   _fromGridDashboard () {
@@ -1036,7 +1051,7 @@ export default class ObjectPanel {
     GridWidgets.unmountGrid(this._gridEl, this._gridWidgets ?? [])
     this._gridEl = null
     this._gridWidgets = null
-    const body = this._el.querySelector('.op-body')
+    const body = this._el.querySelector('.od-body')
     if (body) body.style.display = ''
   }
 
@@ -1045,18 +1060,18 @@ export default class ObjectPanel {
    *  left off. Called by the header Save button via WindowManager. */
   _persist () {
     try {
-      localStorage.setItem('omni:objectpanel:data', JSON.stringify({
+      localStorage.setItem('omni:omnidraw:data', JSON.stringify({
         data: this._data,
         geoType: this._preview?.geoType ?? 'BoxGeometry',
       }))
     } catch (err) {
-      console.warn('⟐ObjectPanel — localStorage save failed:', err)
+      console.warn('⟐OmniDraw — localStorage save failed:', err)
     }
   }
 
   _loadPersisted () {
     try {
-      const raw = localStorage.getItem('omni:objectpanel:data')
+      const raw = localStorage.getItem('omni:omnidraw:data')
       if (!raw) return
       const { data, geoType } = JSON.parse(raw)
       if (data) Object.assign(this._data, data)
@@ -1064,7 +1079,7 @@ export default class ObjectPanel {
       // — stash it, _setupPreview() applies it once the mesh exists.
       if (geoType) this._pendingGeoType = geoType
     } catch (err) {
-      console.warn('⟐ObjectPanel — localStorage load failed:', err)
+      console.warn('⟐OmniDraw — localStorage load failed:', err)
     }
   }
 
@@ -1076,9 +1091,9 @@ export default class ObjectPanel {
   }
 
   _bindModes (el) {
-    const tabs = el.querySelectorAll('.op-mode')
-    const body = el.querySelector('.op-body')
-    const stub = el.querySelector('.op-stub')
+    const tabs = el.querySelectorAll('.od-mode')
+    const body = el.querySelector('.od-body')
+    const stub = el.querySelector('.od-stub')
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
@@ -1088,7 +1103,7 @@ export default class ObjectPanel {
           // "draggableMode is easy" — it's just the existing bool, flipped on.
           this._data.draggable = true
           this._syncDraggableToggleVisual()
-          this._el.querySelector('.op-header').style.cursor = 'grab'
+          this._el.querySelector('.od-header').style.cursor = 'grab'
           return   // stay on whichever tab was already active
         }
 
@@ -1106,9 +1121,9 @@ export default class ObjectPanel {
 
   _syncDraggableToggleVisual () {
     if (!this._el) return
-    this._el.querySelectorAll('.op-row').forEach(row => {
-      if (row.querySelector('.op-row-label')?.textContent === 'Draggable') {
-        row.querySelector('.op-toggle')?.classList.add('is-on')
+    this._el.querySelectorAll('.od-row').forEach(row => {
+      if (row.querySelector('.od-row-label')?.textContent === 'Draggable') {
+        row.querySelector('.od-toggle')?.classList.add('is-on')
       }
     })
   }
@@ -1121,7 +1136,7 @@ export default class ObjectPanel {
    * not just a bare mesh floating in the scene).
    *
    * Dispatches omni:node-create-request rather than reaching into OmniNode
-   * directly — ObjectPanel has no reference to it (only the shared
+   * directly — OmniDraw has no reference to it (only the shared
    * scene/camera/renderer context), and this keeps the same decoupled
    * event-bus pattern the rest of the project uses.
    */
@@ -1153,11 +1168,20 @@ export default class ObjectPanel {
         primitive: 'objective',
         color    : '#' + (mesh.material.color?.getHexString?.() ?? 'ffffff'),
         position,
+        rotation : [this._data.rx, this._data.ry, this._data.rz],
+        scale    : [this._data.sx, this._data.sy, this._data.sz],
         parentId : null,
+        autoRotation      : this._data.autoRotation,
+        autoRotationAxisX : this._data.autoRotationAxisX,
+        autoRotationAxisY : this._data.autoRotationAxisY,
+        autoRotationAxisZ : this._data.autoRotationAxisZ,
+        autoRotationSpeedX: this._data.autoRotationSpeedX,
+        autoRotationSpeedY: this._data.autoRotationSpeedY,
+        autoRotationSpeedZ: this._data.autoRotationSpeedZ,
       }
     }))
 
-    const btn = this._el.querySelector('.op-export-btn')
+    const btn = this._el.querySelector('.od-export-btn')
     if (btn) {
       const original = btn.textContent
       btn.textContent = '⟐ Exported ✓'
@@ -1169,7 +1193,7 @@ export default class ObjectPanel {
   // ── Embedded live preview (own tiny renderer, separate from ctx.scene) ──
 
   _setupPreview () {
-    const canvas = this._el.querySelector('.op-preview-canvas')
+    const canvas = this._el.querySelector('.od-preview-canvas')
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setSize(PREVIEW_SZ, PREVIEW_SZ, false)

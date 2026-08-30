@@ -49,8 +49,10 @@ import SoundManager      from './utils/SoundManager.js'
 import MiniMap           from './ui/MiniMap.js'
 import TreeView          from './ui/TreeView.js'
 import RadialMenu from './ui/RadialMenu.js'
-import ObjectPanel       from './ui/ObjectPanel.js'
+import OmniDraw          from './ui/OmniDraw.js'
 import AdminPanel        from './ui/AdminPanel.js'
+import OmniExpression    from './ui/OmniExpression.js'
+import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
 
@@ -138,11 +140,17 @@ import * as ThemeManager from './ui/ThemeManager.js'
   radialMenu.init()
   base.addModule(radialMenu)
 
-  const objectPanel = new ObjectPanel(base.context)
-  base.addModule(objectPanel)
+  const omniDraw = new OmniDraw(base.context)
+  base.addModule(omniDraw)
 
   const adminPanel = new AdminPanel(base.context)
   base.addModule(adminPanel)
+
+  const omniExpression = new OmniExpression(base.context)
+  base.addModule(omniExpression)
+
+  const omniStartHUD = new OmniStartHUD(base.context)
+  base.addModule(omniStartHUD)
 
   ThemeManager.initTheme()
 
@@ -256,6 +264,77 @@ import * as ThemeManager from './ui/ThemeManager.js'
     )
     if (isTyping) return
     returnToLanding()
+  })
+
+  // ── 'o' / 'O' — User Space sphere quick toggles ───────────
+  //   o  → toggle visibility
+  //   O  → toggle spin
+  window.addEventListener('keydown', (e) => {
+    if ((e.key !== 'o' && e.key !== 'O') || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+
+    if (e.key === 'o') {
+      window.dispatchEvent(new CustomEvent('omni:userspace-toggle-visible'))
+    } else {
+      window.dispatchEvent(new CustomEvent('omni:userspace-toggle-spin'))
+    }
+  })
+
+  // ── '0' / '9' — toggle the domain grid sphere's visibility ─
+  window.addEventListener('keydown', (e) => {
+    if ((e.key !== '0' && e.key !== '9') || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    window.dispatchEvent(new CustomEvent('omni:domaingrid-toggle-visible'))
+  })
+
+  // ── '(' / ')' — wallpaper sphere spin direction ───────────
+  //   (  → counter-clockwise
+  //   )  → clockwise
+  window.addEventListener('keydown', (e) => {
+    if ((e.key !== '(' && e.key !== ')') || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    window.dispatchEvent(new CustomEvent('omni:wallpaper-spin-direction', {
+      detail: { direction: e.key === '(' ? -1 : 1 }
+    }))
+  })
+
+  // ── 'Enter' — toggle OmniStartHUD ─────────────────────────
+  // Several existing elements (drawer items, radial slots, panel icons)
+  // already handle Enter themselves when focused, to activate via
+  // keyboard — this must not also fire OCUI in those cases. tabIndex >= 0
+  // catches any keyboard-focusable custom element broadly, not just the
+  // standard form controls.
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.repeat) return
+    const active = document.activeElement
+    const isInteractive = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable ||
+      active.tagName === 'BUTTON' ||
+      active.getAttribute?.('role') === 'button' ||
+      (typeof active.tabIndex === 'number' && active.tabIndex >= 0 && active !== document.body)
+    )
+    if (isInteractive) return
+    window.dispatchEvent(new CustomEvent('omni:osh-toggle'))
   })
 
   // ── Key commands — hand menus ─────────────────────────────

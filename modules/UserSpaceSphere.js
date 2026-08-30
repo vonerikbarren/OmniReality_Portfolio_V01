@@ -29,7 +29,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *   LIVE        — color, radius multiplier, spin on/off, 50% default opacity
  *   SCHEMA-ONLY — textureUrl (stored, not yet texture-mapped — same
- *                 deferred pipeline as WallpaperSphere/ObjectPanel media)
+ *                 deferred pipeline as WallpaperSphere/OmniDraw media)
  *
  * Follows the standard module contract (constructor / init / update / destroy).
  */
@@ -37,8 +37,8 @@
 import * as THREE from 'three'
 
 const VIEW_DISTANCE   = 4       // matches NodeManager's own orbit-target offset
-const DEFAULT_COLOR   = '#7fd8ff'
-const DEFAULT_OPACITY = 0.5
+const DEFAULT_COLOR   = '#ffffff'   // bright white, per request (was teal)
+const DEFAULT_OPACITY = 0.65        // brighter than before
 const SPIN_SPEED      = 0.15    // rad/sec
 
 function readAdminSettings () {
@@ -58,6 +58,7 @@ export default class UserSpaceSphere {
     this._textureUrl = ''
     this._onAdminSaved = null
     this._onStopSpin = null
+    this._onToggleVisible = null
   }
 
   init () {
@@ -79,6 +80,7 @@ export default class UserSpaceSphere {
     })
     this._sphere = new THREE.Mesh(geo, mat)
     this._sphere.position.copy(this.ctx.camera.position)
+    this._sphere.visible = saved?.visible ?? false   // off by default, per request
     this.ctx.scene.add(this._sphere)
 
     this._onAdminSaved = (e) => {
@@ -87,6 +89,7 @@ export default class UserSpaceSphere {
       if (u.color !== undefined) this._sphere.material.color.set(u.color)
       if (u.spinning !== undefined) this._spinning = u.spinning
       if (u.textureUrl !== undefined) this._textureUrl = u.textureUrl
+      if (u.visible !== undefined) this._sphere.visible = u.visible
       if (u.sizeMultiplier !== undefined && u.sizeMultiplier !== this._sizeMultiplier) {
         this._sizeMultiplier = u.sizeMultiplier
         this._sphere.geometry.dispose()
@@ -101,6 +104,12 @@ export default class UserSpaceSphere {
       this._spinning = e.detail?.spinning ?? !this._spinning
     }
     window.addEventListener('omni:userspace-toggle-spin', this._onStopSpin)
+
+    // Quick visibility toggle — 'o' key (see main.js)
+    this._onToggleVisible = (e) => {
+      this._sphere.visible = e.detail?.visible ?? !this._sphere.visible
+    }
+    window.addEventListener('omni:userspace-toggle-visible', this._onToggleVisible)
   }
 
   update (delta) {
@@ -114,6 +123,7 @@ export default class UserSpaceSphere {
   destroy () {
     window.removeEventListener('omni:admin-settings-saved', this._onAdminSaved)
     window.removeEventListener('omni:userspace-toggle-spin', this._onStopSpin)
+    window.removeEventListener('omni:userspace-toggle-visible', this._onToggleVisible)
     if (!this._sphere) return
     this.ctx.scene.remove(this._sphere)
     this._sphere.geometry.dispose()

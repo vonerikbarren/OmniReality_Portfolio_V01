@@ -55,16 +55,28 @@ const CLOSE_D = 0.26  // s  — close tween duration
 // ── Nav content ───────────────────────────────────────────────────────────────
 
 const LEFT_ITEMS = [
-  { label: '⟐OmniExp'        },
-  { label: '⟐Admin'          },
-  { label: '⟐Experiences'    },
-  { label: '⟐Realities'      },
-  { label: '⟐Governance'     },
-  { label: '⟐Systems'        },
-  { label: '⟐Intelligence'   },
-  { label: '⟐Infrastructure' },
-  { label: '⟐Experience'     },
-  { label: '⟐Objects'        },
+  { label: '⟐OMNIDYNAMICS', bright: true },
+  { divider: true },
+  { divider: true },
+  { label: '⟐OmniEXP'         },
+  { label: '⟐OmniPlayer'      },
+  { label: '⟐OmniRealities'   },
+  { label: '⟐OmniChronos'     },
+  { label: '⟐OmniVision'      },
+  { label: '⟐OmniSense'       },
+  { label: '⟐OmniExpression'  },
+  { label: '⟐OmniDraw'        },
+  { divider: true },
+  { divider: true },
+  { label: '⟐Admin',          children: ['⟐mniAdminSettings'] },
+  { label: '⟐Experiences'     },
+  { label: '⟐Realities'       },
+  { label: '⟐Times'           },
+  { label: '⟐Spaces'          },
+  { label: '⟐Governance'      },
+  { label: '⟐Intelligence'    },
+  { label: '⟐Infrastructure'  },
+  { label: '⟐Objects'         },
 ]
 
 const RIGHT_ITEMS = [
@@ -210,6 +222,13 @@ const STYLES = /* css */`
 
 /* ── Nav item — top-level row ─────────────────────────────────────────────── */
 
+.drawer-divider {
+  height           : 1px;
+  margin           : 10px 18px;
+  background       : rgba(255, 255, 255, 0.85);
+  flex-shrink      : 0;
+}
+
 .drawer-item {
   display          : flex;
   flex-direction   : column;
@@ -256,6 +275,18 @@ const STYLES = /* css */`
   overflow         : hidden;
   text-overflow    : ellipsis;
   white-space      : nowrap;
+}
+
+.drawer-tm {
+  font-size        : 0.6em;
+  opacity          : 0.6;
+  margin-left      : 1px;
+}
+
+.drawer-item-label.is-bright {
+  color            : #ffffff;
+  font-weight      : bold;
+  text-shadow      : 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
 .drawer-item-row:hover .drawer-item-label {
@@ -527,8 +558,20 @@ export default class Drawer {
     mount.appendChild(el)
   }
 
+  /**
+   * Display-only trademark suffix for Omni products — "Products that
+   * start with Omni get a trademark after the name." Only affects the
+   * rendered <span> text; data-label (used for slugs/dispatch) always
+   * stays the raw, unmodified string so click handling is untouched.
+   */
+  _withTM (text) {
+    return /^⟐(OMNI|Omni)/.test(text) ? `${text}<sup class="drawer-tm">™</sup>` : text
+  }
+
   _buildNavHTML (items) {
-    return items.map((item, i) => {
+    return items.map((item) => {
+      if (item.divider) return /* html */`<div class="drawer-divider" aria-hidden="true"></div>`
+
       const hasChildren = item.children?.length > 0
       const slug        = this._slug(item.label)
 
@@ -540,7 +583,7 @@ export default class Drawer {
                data-label="${child}"
                role="menuitem"
                tabindex="-1">
-            <span class="drawer-child-label">${child}</span>
+            <span class="drawer-child-label">${this._withTM(child)}</span>
           </div>
         `).join('')
 
@@ -554,14 +597,13 @@ export default class Drawer {
                  tabindex="0"
                  aria-expanded="false"
                  aria-haspopup="true">
-              <span class="drawer-item-label">${item.label}</span>
+              <span class="drawer-item-label">${this._withTM(item.label)}</span>
               <span class="drawer-item-arrow">▸</span>
             </div>
             <div class="drawer-children" id="drawer-children-${slug}" aria-hidden="true">
               ${childrenHTML}
             </div>
           </div>
-          ${i < items.length - 1 ? '' : ''}
         `
       }
 
@@ -572,7 +614,7 @@ export default class Drawer {
                data-label="${item.label}"
                role="menuitem"
                tabindex="0">
-            <span class="drawer-item-label">${item.label}</span>
+            <span class="drawer-item-label ${item.bright ? 'is-bright' : ''}">${this._withTM(item.label)}</span>
           </div>
         </div>
       `

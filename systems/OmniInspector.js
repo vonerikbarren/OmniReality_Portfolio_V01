@@ -374,6 +374,43 @@ const STYLES = /* css */`
   padding-bottom    : 6px;
 }
 
+/* ── Genealogy tree explorer ──────────────────────────────────────────────── */
+
+.oi-geneo-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 12px 0 4px;
+}
+
+.oi-geneo-root { max-height: 220px; overflow-y: auto; }
+
+.oi-geneo-node { margin-left: 4px; }
+.oi-geneo-node .oi-geneo-node { margin-left: 14px; border-left: 1px solid rgba(255,255,255,0.08); padding-left: 6px; }
+
+.oi-geneo-row {
+  display           : flex;
+  align-items       : center;
+  gap               : 6px;
+  padding           : 4px 6px;
+  border-radius     : 4px;
+  font-size         : 10px;
+  color             : var(--oi-text-dim);
+}
+.oi-geneo-row:hover { background: rgba(255,255,255,0.05); }
+.oi-geneo-row.is-current { color: var(--oi-accent); font-weight: bold; }
+
+.oi-geneo-arrow { width: 10px; flex-shrink: 0; color: var(--oi-text-muted); font-size: 8px; }
+.oi-geneo-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oi-geneo-count {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  background        : rgba(255,255,255,0.08);
+  border-radius     : 8px;
+  padding           : 1px 6px;
+}
+
 /* ── Domain section ────────────────────────────────────────────────────────── */
 
 .oi-domain-status {
@@ -464,6 +501,26 @@ const STYLES = /* css */`
   color             : rgba(160, 255, 195, 0.95);
 }
 .oi-create-btn--export:hover { background: rgba(140, 255, 180, 0.18); }
+
+.oi-create-transform-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 12px 0 4px;
+}
+
+.oi-create-range {
+  flex              : 1;
+  accent-color      : var(--oi-accent);
+}
+
+.oi-create-range-val {
+  width             : 42px;
+  font-size         : 9.5px;
+  color             : var(--oi-text-dim);
+  text-align        : right;
+}
 
 .oi-controls {
   display           : flex;
@@ -734,6 +791,24 @@ const STYLES = /* css */`
   line-height       : 1.5;
 }
 .oi-textarea:focus { border-color: var(--oi-focus-border); }
+
+.oi-data-field {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 4px;
+  margin-bottom     : 4px;
+}
+.oi-data-field .oi-textarea { min-height: 64px; width: 100%; }
+.oi-textarea--mono {
+  background        : rgba(0,0,0,0.25);
+  color             : rgba(150, 255, 190, 0.9);
+}
+.oi-data-note {
+  font-size         : 9px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding-top       : 2px;
+}
 
 /* ── Copy button ──────────────────────────────────────────────────────────── */
 
@@ -1294,7 +1369,9 @@ export default class OmniInspector {
     this._allNodes = []   // cached from omni:nodes-updated — feeds the parent picker
     this._currentSpaceId = null   // cached from omni:space-entered/exited
     this._createPreview = null   // the Create section's own tiny renderer/scene/mesh
+    this._createTransform = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1 }
     this._inspectPreview = null   // spinning preview of the ACTUAL loaded node
+    this._infoPlane = null   // floating plane showing External Display/Code
 
     // ── Loaded node ────────────────────────────────────────────────────
     this._currentId   = null   // node ID currently loaded
@@ -1315,6 +1392,7 @@ export default class OmniInspector {
       appearance : true,
       media      : false,
       domain     : false,
+      data       : false,
       create     : false,
     }
 
@@ -1340,18 +1418,28 @@ export default class OmniInspector {
 
   update (delta) {
     if (this._createPreview) {
-      this._createPreview.mesh.rotation.y += delta * 0.4
+      // No idle auto-spin here — this preview now has explicit rx/ry/rz
+      // sliders tied to the node being created; an uncontrollable spin
+      // would fight with them and make "ry = 0" meaningless.
       this._createPreview.renderer.render(this._createPreview.scene, this._createPreview.camera)
     }
     if (this._inspectPreview) {
       this._inspectPreview.mesh.rotation.y += delta * 0.4
       this._inspectPreview.renderer.render(this._inspectPreview.scene, this._inspectPreview.camera)
     }
+    if (this._infoPlane && this._currentMesh) {
+      // Follows the node in case it moves/rotates, and always faces the
+      // camera (billboard) so the text stays readable.
+      const worldPos = this._currentMesh.getWorldPosition(new THREE.Vector3())
+      this._infoPlane.mesh.position.copy(worldPos).add(this._infoPlane.offset)
+      this._infoPlane.mesh.lookAt(this.ctx.camera.position)
+    }
   }
 
   destroy () {
     this._teardownCreatePreview()
     this._teardownInspectPreview()
+    this._hideInfoPlane()
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
@@ -1370,10 +1458,12 @@ export default class OmniInspector {
     if (this._isOpen) return
     this._isOpen = true
     this._el.style.visibility = 'visible'
+    const targetOpacity = WindowManager.getPanelOpacity()
     gsap.fromTo(this._el,
-      { x: '100%', opacity: 1 },
+      { x: '100%', opacity: targetOpacity },
       {
         x        : '0%',
+        opacity  : targetOpacity,
         duration : SLIDE_DUR,
         ease     : 'power3.out',
         onComplete: () => glitch(this._el)
@@ -1416,7 +1506,7 @@ export default class OmniInspector {
     this._currentData = data
 
     // Load extended inspector data from localStorage
-    this._ext = this._loadExt(data.id) ?? this._defaultExt(data)
+    this._ext = { ...this._defaultExt(data), ...(this._loadExt(data.id) ?? {}) }
 
     // Sync color state from node data
     const meshColor = mesh?.material?.color
@@ -1443,6 +1533,9 @@ export default class OmniInspector {
     this._renderLoaded()
     this._updateFooter()
 
+    if (this._ext.showOnPlane) this._showInfoPlane(data, this._ext)
+    else this._hideInfoPlane()
+
     if (!this._isOpen) this.open()
   }
 
@@ -1454,6 +1547,7 @@ export default class OmniInspector {
     this._ext         = null
     this._teardownCreatePreview()
     this._teardownInspectPreview()
+    this._hideInfoPlane()
     this._el?.querySelector('#oi-inspect-preview-wrap')?.classList.remove('is-visible')
     this._showEmpty()
     this._updateFooter()
@@ -1533,6 +1627,7 @@ export default class OmniInspector {
 
     el.dataset.winId = 'omniinspector'
     WindowManager.register('omniinspector', el)
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
     WindowManager.makeMaximizable(el, el.querySelector('.oi-ctrl--maximize'), {
       onMaximize: () => { this._isMaximized = true; this._toGridDashboard() },
       onRestore : () => { this._isMaximized = false; this._fromGridDashboard() },
@@ -1541,7 +1636,7 @@ export default class OmniInspector {
   }
 
   /**
-   * Header drag — same left/top approach as ui/ObjectPanel.js. This is a
+   * Header drag — same left/top approach as ui/OmniDraw.js. This is a
    * separate CSS property from the open/close slide (which animates
    * `transform: translateX` via GSAP's `x`), so the two compose safely:
    * dragging only ever happens while the panel is open (x: '0%'), and the
@@ -1751,13 +1846,14 @@ export default class OmniInspector {
     this._el.querySelector('#oi-inspect-preview-wrap')?.classList.add('is-visible')
     this._updateInspectPreview(data, ext)
 
-    // Build four accordion sections
+    // Build accordion sections
     body.innerHTML = /* html */`
       ${this._sectionHTML('identity',   '▶ Identity',   this._identityHTML(data, ext))}
       ${this._sectionHTML('hierarchy',  '▶ Hierarchy',  this._hierarchyHTML(data))}
       ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
+      ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
       ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
     `
 
@@ -1786,6 +1882,7 @@ export default class OmniInspector {
     this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
     this._wireMedia(body, ext)
+    this._wireData(body, data, ext)
     this._wireCreateSection(body)
 
     if (this._isMaximized) this._toGridDashboard()
@@ -1939,6 +2036,9 @@ export default class OmniInspector {
         </div>
         <div class="oi-parent-picker-list" id="oi-parent-picker-list"></div>
       </div>
+
+      <div class="oi-geneo-title">Genealogy — click to expand</div>
+      <div class="oi-geneo-root" id="oi-geneo-root"></div>
     `
   }
 
@@ -2074,13 +2174,78 @@ export default class OmniInspector {
   // ── MEDIA section HTML ────────────────────────────────────────────────────
 
   // ── CREATE section HTML — mini live preview, create while inspecting ────
-  // Mirrors ui/ObjectPanel.js's preview+export, embedded here so you don't
+  // Mirrors ui/OmniDraw.js's preview+export, embedded here so you don't
   // have to leave the Inspector to make a new object while looking at
   // another one. Uses the exact same omni:node-create-request event, so
   // it automatically respects space-scoping (OmniNode parents into
-  // whatever space is currently entered, same as ObjectPanel's button).
+  // whatever space is currently entered, same as OmniDraw's button).
+
+  // ── DATA section HTML — Internal/External Display/Code + plane toggle ───
+  // "Internal" = shown here, in the flat panel. "External" = shown
+  // spatially, on the floating plane mesh (toggle below) — the plane
+  // renders whatever's currently in External Display + External Code.
+
+  _dataHTML (ext) {
+    const ta = (label, key, value, mono = false) => /* html */`
+      <div class="oi-data-field">
+        <span class="oi-label" style="width:auto">${label}</span>
+        <textarea class="oi-textarea ${mono ? 'oi-textarea--mono' : ''}" data-data-key="${key}"
+                  placeholder="${label}…">${value ?? ''}</textarea>
+      </div>
+    `
+    return /* html */`
+      ${ta('Internal Display', 'internalDisplay', ext.internalDisplay)}
+      ${ta('Internal Code', 'internalCode', ext.internalCode, true)}
+      ${ta('External Display', 'externalDisplay', ext.externalDisplay)}
+      ${ta('External Code', 'externalCode', ext.externalCode, true)}
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Show External on plane</span>
+        <button class="oi-toggle ${ext.showOnPlane ? 'is-on' : ''}" id="oi-show-on-plane" role="switch" aria-checked="${ext.showOnPlane}"></button>
+      </div>
+      <div class="oi-data-note">
+        External fields render onto a floating plane next to the object
+        in the 3D world while this is on.
+      </div>
+    `
+  }
+
+  _wireData (body, data, ext) {
+    body.querySelectorAll('[data-data-key]').forEach(textarea => {
+      let timer = null
+      textarea.addEventListener('input', () => {
+        ext[textarea.dataset.dataKey] = textarea.value
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+          this._saveExt()
+          if (ext.showOnPlane && (textarea.dataset.dataKey === 'externalDisplay' || textarea.dataset.dataKey === 'externalCode')) {
+            this._updateInfoPlaneTexture()
+          }
+        }, 300)
+      })
+    })
+
+    const planeToggle = body.querySelector('#oi-show-on-plane')
+    planeToggle?.addEventListener('click', () => {
+      const next = !planeToggle.classList.contains('is-on')
+      planeToggle.classList.toggle('is-on', next)
+      planeToggle.setAttribute('aria-checked', String(next))
+      ext.showOnPlane = next
+      this._saveExt()
+      if (next) this._showInfoPlane(data, ext)
+      else this._hideInfoPlane()
+    })
+  }
 
   _createSectionHTML () {
+    const t = this._createTransform
+    const row = (label, key, val, min, max, step) => /* html */`
+      <div class="oi-row">
+        <span class="oi-row-label" style="width:26px">${label}</span>
+        <input type="range" class="oi-create-range" data-transform-key="${key}"
+               min="${min}" max="${max}" step="${step}" value="${val}">
+        <span class="oi-create-range-val" data-transform-val-for="${key}">${Number(val).toFixed(step < 1 ? 2 : 0)}</span>
+      </div>
+    `
     return /* html */`
       <div class="oi-create-preview-wrap">
         <canvas class="oi-create-canvas" id="oi-create-canvas" width="120" height="120"></canvas>
@@ -2093,6 +2258,19 @@ export default class OmniInspector {
           <span class="oi-label" style="width:auto">Mark + enter as new space on export</span>
         </div>
       </div>
+
+      <div class="oi-create-transform-title">
+        Transform — tied to this node, applied on Export
+      </div>
+      ${row('px', 'px', t.px, -100, 100, 1)}
+      ${row('py', 'py', t.py, -100, 100, 1)}
+      ${row('pz', 'pz', t.pz, -100, 100, 1)}
+      ${row('rx', 'rx', t.rx, -3.14, 3.14, 0.01)}
+      ${row('ry', 'ry', t.ry, -3.14, 3.14, 0.01)}
+      ${row('rz', 'rz', t.rz, -3.14, 3.14, 0.01)}
+      ${row('sx', 'sx', t.sx, -10, 10, 0.1)}
+      ${row('sy', 'sy', t.sy, -10, 10, 0.1)}
+      ${row('sz', 'sz', t.sz, -10, 10, 0.1)}
     `
   }
 
@@ -2220,6 +2398,89 @@ export default class OmniInspector {
     })
 
     close?.addEventListener('click', () => { picker.style.display = 'none' })
+
+    const geneoRoot = body.querySelector('#oi-geneo-root')
+    if (geneoRoot) {
+      geneoRoot.innerHTML = ''
+      const rootId   = data.rootId ?? data.id
+      const rootNode = (this._allNodes ?? []).find(n => n.id === rootId) ?? data
+      const expandPath = this._ancestorPathIds(data.id)
+      geneoRoot.appendChild(this._buildGeneoNode(rootNode, { expandPath, currentId: data.id }))
+      geneoRoot.querySelector('.oi-geneo-row.is-current')?.scrollIntoView({ block: 'center' })
+    }
+  }
+
+  /** Every id from the given node up to its root, inclusive — used to
+   *  auto-expand the tree down to whichever node is currently loaded,
+   *  so ancestors are visible without needing to click through them. */
+  _ancestorPathIds (id) {
+    const path = new Set([id])
+    let current = (this._allNodes ?? []).find(n => n.id === id)
+    let guard = 0
+    while (current?.parentId && guard++ < 500) {
+      if (path.has(current.parentId)) break   // cycle guard
+      path.add(current.parentId)
+      current = (this._allNodes ?? []).find(n => n.id === current.parentId)
+    }
+    return path
+  }
+
+  /**
+   * One row of the genealogy tree explorer — auto-generated from real
+   * hierarchy data (this._allNodes, kept in sync via omni:nodes-updated),
+   * NOT the freeform Data fields. Rendered from the absolute root down,
+   * with the ancestor path to the currently loaded node auto-expanded
+   * (so you see the full lineage immediately) while every other branch
+   * stays collapsed until clicked. Clicking a row with children expands/
+   * collapses it in place; it never re-selects a different node in the
+   * Inspector — "the reality becomes discoverable" by drilling down
+   * through the same view, not by navigating away from it.
+   */
+  _buildGeneoNode (node, { expandPath = new Set(), currentId = null } = {}) {
+    const children = (this._allNodes ?? []).filter(n => n.parentId === node.id)
+    const wrap = document.createElement('div')
+    wrap.className = 'oi-geneo-node'
+
+    const isCurrent = node.id === currentId
+    const row = document.createElement('div')
+    row.className = 'oi-geneo-row' + (isCurrent ? ' is-current' : '')
+    row.innerHTML = /* html */`
+      <span class="oi-geneo-arrow">${children.length ? '▶' : '·'}</span>
+      <span class="oi-geneo-label">${node.label || node.id}</span>
+      ${children.length ? `<span class="oi-geneo-count">${children.length}</span>` : ''}
+    `
+    wrap.appendChild(row)
+
+    const childContainer = document.createElement('div')
+    childContainer.className = 'oi-geneo-children'
+    wrap.appendChild(childContainer)
+
+    let built = false
+    const buildChildren = () => {
+      children.forEach(c => childContainer.appendChild(this._buildGeneoNode(c, { expandPath, currentId })))
+      built = true
+    }
+
+    const autoExpand = expandPath.has(node.id) && children.length > 0
+    if (autoExpand) {
+      buildChildren()
+      childContainer.style.display = 'block'
+    } else {
+      childContainer.style.display = 'none'
+    }
+
+    if (children.length) {
+      row.style.cursor = 'pointer'
+      if (autoExpand) row.querySelector('.oi-geneo-arrow').textContent = '▼'
+      row.addEventListener('click', () => {
+        const isOpen = childContainer.style.display !== 'none'
+        if (!built) buildChildren()
+        childContainer.style.display = isOpen ? 'none' : 'block'
+        row.querySelector('.oi-geneo-arrow').textContent = isOpen ? '▶' : '▼'
+      })
+    }
+
+    return wrap
   }
 
   /**
@@ -2592,6 +2853,7 @@ export default class OmniInspector {
     scene.add(mesh)
 
     this._createPreview = { renderer, scene, camera, mesh, geoType: 'BoxGeometry' }
+    this._applyCreateTransform()
 
     body.querySelector('#oi-create-morph')?.addEventListener('click', () => this._createMorph())
     body.querySelector('#oi-create-export')?.addEventListener('click', (e) => this._createExport(e.currentTarget))
@@ -2602,6 +2864,28 @@ export default class OmniInspector {
       spaceToggle.classList.toggle('is-on', next)
       spaceToggle.setAttribute('aria-checked', String(next))
     })
+
+    body.querySelectorAll('[data-transform-key]').forEach(input => {
+      input.addEventListener('input', () => {
+        const key = input.dataset.transformKey
+        this._createTransform[key] = Number(input.value)
+        const valEl = body.querySelector(`[data-transform-val-for="${key}"]`)
+        if (valEl) valEl.textContent = Number(input.value).toFixed(Number(input.step) < 1 ? 2 : 0)
+        this._applyCreateTransform()
+      })
+    })
+  }
+
+  /** Pushes _createTransform onto the live preview mesh — px/py/pz are
+   *  scaled down (matching ui/OmniDraw.js's convention) since the
+   *  preview's tiny scene uses much smaller units than the main world. */
+  _applyCreateTransform () {
+    const mesh = this._createPreview?.mesh
+    if (!mesh) return
+    const t = this._createTransform
+    mesh.position.set(t.px / 20, t.py / 20, t.pz / 20)
+    mesh.rotation.set(t.rx, t.ry, t.rz)
+    mesh.scale.set(t.sx, t.sy, t.sz)
   }
 
   _teardownCreatePreview () {
@@ -2613,7 +2897,7 @@ export default class OmniInspector {
   }
 
   // ── Inspect preview — spinning view of the ACTUAL loaded node ───────────
-  // Same visual language as the Create section (and ui/ObjectPanel's own
+  // Same visual language as the Create section (and ui/OmniDraw's own
   // preview), but reflects the real selected node's geometry/color/
   // wireframe rather than a blank new object. One renderer is created
   // lazily and reused across node switches — just its mesh's geometry/
@@ -2675,7 +2959,105 @@ export default class OmniInspector {
     this._inspectPreview = null
   }
 
-  /** Same squash-swap-restore approximation as ObjectPanel's Domain
+  // ── Info plane — floating plane showing External Display/Code ──────────
+  // One plane, positioned just beside the selected node, billboarded to
+  // face the camera every frame (see update()). Content is drawn onto a
+  // plain 2D canvas and uploaded as a CanvasTexture — cheap, and easy to
+  // redraw on every edit without touching Three.js geometry at all.
+
+  _showInfoPlane (data, ext) {
+    if (!this._currentMesh) return
+
+    if (!this._infoPlane) {
+      const canvas = document.createElement('canvas')
+      canvas.width = 512
+      canvas.height = 512
+      const texture = new THREE.CanvasTexture(canvas)
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture, transparent: true, side: THREE.DoubleSide, depthTest: false,
+      })
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), mat)
+      mesh.renderOrder = 999   // always draw on top, like a HUD label
+      this.ctx.scene.add(mesh)
+
+      // Offset to the side of the node in world space, roughly matching
+      // its own scale so it doesn't overlap a large object.
+      const scale = this._currentMesh.scale
+      const offset = new THREE.Vector3(2 + Math.max(scale.x, scale.y, scale.z), 0, 0)
+
+      this._infoPlane = { mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset }
+    }
+
+    this._updateInfoPlaneTexture()
+  }
+
+  _hideInfoPlane () {
+    if (!this._infoPlane) return
+    this.ctx.scene.remove(this._infoPlane.mesh)
+    this._infoPlane.mesh.geometry.dispose()
+    this._infoPlane.mesh.material.dispose()
+    this._infoPlane.texture.dispose()
+    this._infoPlane = null
+  }
+
+  _updateInfoPlaneTexture () {
+    if (!this._infoPlane) return
+    const { ctx2d: c, canvas } = this._infoPlane
+    const ext = this._ext ?? {}
+
+    c.clearRect(0, 0, canvas.width, canvas.height)
+    c.fillStyle = 'rgba(8, 8, 14, 0.88)'
+    c.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+    c.lineWidth = 3
+    c.fillRect(0, 0, canvas.width, canvas.height)
+    c.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
+
+    const wrapText = (text, x, y, maxWidth, lineHeight, maxLines) => {
+      const words = (text ?? '').split(/\s+/)
+      let line = ''
+      let lines = 0
+      for (const word of words) {
+        const test = line ? line + ' ' + word : word
+        if (c.measureText(test).width > maxWidth && line) {
+          c.fillText(line, x, y)
+          line = word
+          y += lineHeight
+          lines++
+          if (lines >= maxLines) { c.fillText(line + ' …', x, y); return y }
+        } else {
+          line = test
+        }
+      }
+      if (line) c.fillText(line, x, y)
+      return y
+    }
+
+    // "DISPLAY" section
+    c.fillStyle = 'rgba(150, 220, 255, 0.9)'
+    c.font = 'bold 20px "Courier New", monospace'
+    c.fillText('DISPLAY', 24, 40)
+    c.fillStyle = 'rgba(255, 255, 255, 0.92)'
+    c.font = '16px "Courier New", monospace'
+    let y = wrapText(ext.externalDisplay || '(empty)', 24, 72, canvas.width - 48, 22, 8)
+
+    // Divider
+    y += 24
+    c.strokeStyle = 'rgba(255,255,255,0.15)'
+    c.beginPath(); c.moveTo(24, y); c.lineTo(canvas.width - 24, y); c.stroke()
+
+    // "CODE" section
+    y += 32
+    c.fillStyle = 'rgba(150, 255, 190, 0.9)'
+    c.font = 'bold 20px "Courier New", monospace'
+    c.fillText('CODE', 24, y)
+    c.fillStyle = 'rgba(150, 255, 190, 0.85)'
+    c.font = '14px "Courier New", monospace'
+    wrapText(ext.externalCode || '(empty)', 24, y + 30, canvas.width - 48, 19, 10)
+
+    this._infoPlane.texture.needsUpdate = true
+  }
+
+  /** Same squash-swap-restore approximation as OmniDraw's Domain
    *  Expansion — see that file's comment for why it's not true
    *  vertex-interpolated morphing. */
   _createMorph () {
@@ -2697,7 +3079,7 @@ export default class OmniInspector {
   }
 
   /**
-   * Export to Scene — identical event contract to ObjectPanel's button
+   * Export to Scene — identical event contract to OmniDraw's button
    * (omni:node-create-request), so it automatically respects whatever
    * space is currently entered (OmniNode handles the parenting) without
    * this code needing to know anything about spaces itself. If "mark +
@@ -2707,6 +3089,7 @@ export default class OmniInspector {
   _createExport (btn) {
     if (!this._createPreview) return
     const mesh = this._createPreview.mesh
+    const t    = this._createTransform
     const cam  = this.ctx.camera
     const dir  = new THREE.Vector3()
     cam.getWorldDirection(dir)
@@ -2722,7 +3105,13 @@ export default class OmniInspector {
         geometry : this._createPreview.geoType,
         primitive: 'objective',
         color    : '#' + (mesh.material.color?.getHexString?.() ?? 'ffffff'),
-        position : [cam.position.x + dir.x, Math.max(0.5, cam.position.y + dir.y), cam.position.z + dir.z],
+        position : [
+          cam.position.x + dir.x + t.px / 20,
+          Math.max(0.5, cam.position.y + dir.y + t.py / 20),
+          cam.position.z + dir.z + t.pz / 20,
+        ],
+        rotation : [t.rx, t.ry, t.rz],
+        scale    : [t.sx, t.sy, t.sz],
         parentId : null,
       }
     }))
@@ -2970,6 +3359,11 @@ export default class OmniInspector {
       images    : [],
       sound     : [],
       media     : [],
+      internalDisplay : '',
+      internalCode    : '',
+      externalDisplay : '',
+      externalCode    : '',
+      showOnPlane     : false,
     }
   }
 

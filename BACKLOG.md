@@ -65,22 +65,20 @@ needed before they do anything visible:
   pair). Fine for now, worth upgrading if more shapes get added to the
   morph set later.
 
-## Texture/media pipeline — needed in four places now
+## Texture/media pipeline — three places still deferred
 
-Four different fields across the project store an image/video URL but
-don't yet render it, all deliberately deferred for the same reason: a
-real texture-loading pipeline (`THREE.TextureLoader` / `VideoTexture`,
-CORS handling, disposal) is real, shared infrastructure that should be
-built once and reused, not solved differently four times:
+`WallpaperSphere`'s image support is now real (`THREE.TextureLoader`,
+defaults to `assets/images/wallpaper-default.jpg`, overridable via
+Admin's file-browse upload). The other three are still deferred, for
+the same reason as before — real shared infrastructure, not four
+one-off implementations:
 
 - `ObjectPanel`'s Media section (video/image mesh toggles + URL)
 - `OmniInspector`'s Domain section (Space Img field)
-- `WallpaperSphere`'s Admin-configured image/video URL
+- `WallpaperSphere`'s **video** upload specifically (image works; video
+  playback as a texture is a separate, bigger piece — `THREE.VideoTexture`
+  needs an actual `<video>` element driving it, not just a loaded file)
 - `UserSpaceSphere`'s Admin-configured texture URL
-
-When this gets built, it should probably be one small shared module
-(e.g. `ui/TextureLoader.js`) all four call into, rather than four
-separate implementations.
 
 ## Event-test indicators — replace when real features land
 

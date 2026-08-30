@@ -1,9 +1,9 @@
 /**
  * ui/AdminPanel.js — ⟐mniReality Admin Panel
  *
- * Opens from the top-left drawer (⟐mniMenu → ⟐Admin). Draggable,
+ * Opens from the top-left drawer (⟐mniMenu → ⟐Admin → ⟐mniAdminSettings). Draggable,
  * resizable, minimizable, maximizable into the grid dashboard — same
- * window chrome as ui/ObjectPanel.js and systems/OmniInspector.js, via
+ * window chrome as ui/OmniDraw.js and systems/OmniInspector.js, via
  * the shared ui/WindowManager.js / ui/GridWidgets.js.
  *
  * ─────────────────────────────────────────────────────────────────────────────
@@ -47,9 +47,18 @@ const STORE_KEY = 'omni:admin:settings'
 const DEFAULTS = {
   steps: { px: 1, py: 1, pz: 1 },
   theme: 'dark',
-  wallpaper: { color: '#445566', alpha: 0.4, imgUrl: '', videoUrl: '' },
+  wallpaper: {
+    color: '#445566', alpha: 0.4,
+    imgUrl: './assets/images/wallpaper-default.jpg',   // must match modules/WallpaperSphere.js's DEFAULT_IMG_URL
+    videoUrl: '',
+    rotationSpeed: 0.05, autoSpinX: false, autoSpinY: true, autoSpinZ: true,
+  },
   domainGridColor: '#888888',
-  userSpace: { color: '#7fd8ff', sizeMultiplier: 1, spinning: true, textureUrl: '' },
+  domainGridOpacity: 0.35,
+  domainGridWireframe: true,
+  domainGridVisible: false,
+  userSpace: { color: '#ffffff', sizeMultiplier: 1, spinning: true, visible: false, textureUrl: '' },
+  uiSettings: { panelOpacity: 0.92 },
 }
 
 function loadSettings () {
@@ -62,7 +71,11 @@ function loadSettings () {
       theme: parsed.theme ?? DEFAULTS.theme,
       wallpaper: { ...DEFAULTS.wallpaper, ...parsed.wallpaper },
       domainGridColor: parsed.domainGridColor ?? DEFAULTS.domainGridColor,
+      domainGridOpacity: parsed.domainGridOpacity ?? DEFAULTS.domainGridOpacity,
+      domainGridWireframe: parsed.domainGridWireframe ?? DEFAULTS.domainGridWireframe,
+      domainGridVisible: parsed.domainGridVisible ?? DEFAULTS.domainGridVisible,
       userSpace: { ...DEFAULTS.userSpace, ...parsed.userSpace },
+      uiSettings: { ...DEFAULTS.uiSettings, ...parsed.uiSettings },
     }
   } catch (_) {
     return structuredClone(DEFAULTS)
@@ -257,6 +270,40 @@ const STYLES = /* css */`
   padding          : 3px 4px;
 }
 
+.ap-file-row { flex-direction: column; align-items: stretch; gap: 4px; }
+.ap-file-controls { display: flex; align-items: center; gap: 8px; }
+.ap-file-btn {
+  font-family      : var(--mono);
+  font-size        : 9.5px;
+  letter-spacing   : 0.04em;
+  color            : var(--ap-accent);
+  background       : rgba(255, 178, 127, 0.08);
+  border           : 1px solid rgba(255, 178, 127, 0.3);
+  border-radius    : 5px;
+  padding          : 5px 10px;
+  cursor           : pointer;
+  transition       : background 0.12s ease;
+  flex-shrink      : 0;
+}
+.ap-file-btn:hover { background: rgba(255, 178, 127, 0.16); }
+.ap-file-name {
+  font-size        : 9px;
+  color            : var(--ap-text-muted);
+  overflow         : hidden;
+  text-overflow    : ellipsis;
+  white-space      : nowrap;
+  flex             : 1;
+}
+.ap-file-clear {
+  background       : none;
+  border           : none;
+  color            : var(--ap-text-muted);
+  cursor           : pointer;
+  font-size        : 11px;
+  flex-shrink      : 0;
+}
+.ap-file-clear:hover { color: var(--ap-text); }
+
 /* ── Resize handle — bottom-right (left-anchored panel) ───────────────────── */
 .ap-resize-handle {
   position         : absolute; right: 0; bottom: 0;
@@ -302,7 +349,7 @@ export default class AdminPanel {
   init () {
     injectStyles()
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐Admin') return
+      if (e.detail?.item !== '⟐mniAdminSettings') return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
@@ -322,7 +369,7 @@ export default class AdminPanel {
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
     this._el.style.visibility = 'visible'
-    gsap.to(this._el, { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
+    gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
   }
 
@@ -380,6 +427,7 @@ export default class AdminPanel {
 
     el.dataset.winId = 'adminpanel'
     WindowManager.register('adminpanel', el)
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
     WindowManager.makeMaximizable(el, el.querySelector('.ap-ctrl--maximize'), {
       onMaximize: () => this._toGridDashboard(),
       onRestore : () => this._fromGridDashboard(),
@@ -398,10 +446,11 @@ export default class AdminPanel {
         ${rowsHtml}
       </div>
     `
-    const numRow = (label, key, value, step = 1) => /* html */`
+    const numRow = (label, key, value, step = 1, min, max) => /* html */`
       <div class="ap-row">
         <span class="ap-row-label">${label}</span>
-        <input class="ap-num" type="number" step="${step}" value="${value}" data-key="${key}">
+        <input class="ap-num" type="number" step="${step}" value="${value}" data-key="${key}"
+               ${min !== undefined ? `min="${min}"` : ''} ${max !== undefined ? `max="${max}"` : ''}>
       </div>
     `
     const colorRow = (label, key, value) => /* html */`
@@ -416,6 +465,25 @@ export default class AdminPanel {
         <input class="ap-text" type="text" value="${value}" placeholder="${placeholder}" data-key="${key}">
       </div>
     `
+    const fileRow = (label, key, currentValue, accept) => {
+      const hasValue = !!currentValue
+      const nameLabel = hasValue
+        ? (currentValue.startsWith('data:') ? 'Uploaded file' : currentValue.split('/').pop())
+        : 'No file selected'
+      return /* html */`
+        <div class="ap-row ap-file-row">
+          <span class="ap-row-label">${label}</span>
+          <div class="ap-file-controls">
+            <label class="ap-file-btn">
+              Browse…
+              <input type="file" accept="${accept}" data-file-key="${key}" style="display:none">
+            </label>
+            <span class="ap-file-name" data-file-name-for="${key}">${nameLabel}</span>
+            <button class="ap-file-clear" data-file-clear="${key}" title="Clear" style="display:${hasValue ? '' : 'none'}">×</button>
+          </div>
+        </div>
+      `
+    }
     const toggleRow = (label, key, value) => /* html */`
       <div class="ap-row">
         <span class="ap-row-label">${label}</span>
@@ -425,9 +493,9 @@ export default class AdminPanel {
 
     body.innerHTML =
       group('Navigation Steps', 'steps',
-        numRow('px step', 'steps.px', s.steps.px, 0.1) +
-        numRow('py step', 'steps.py', s.steps.py, 0.1) +
-        numRow('pz step', 'steps.pz', s.steps.pz, 0.1)
+        numRow('px step', 'steps.px', s.steps.px, 0.01) +
+        numRow('py step', 'steps.py', s.steps.py, 0.01) +
+        numRow('pz step', 'steps.pz', s.steps.pz, 0.01)
       ) +
       group('Theme', 'theme',
         `<div class="ap-row"><span class="ap-row-label">Panel theme</span><select class="ap-select" id="ap-theme-select" data-key="theme"></select></div>`
@@ -435,17 +503,28 @@ export default class AdminPanel {
       group('Space Wallpaper', 'wallpaper',
         colorRow('Color', 'wallpaper.color', s.wallpaper.color) +
         numRow('Alpha (0–1)', 'wallpaper.alpha', s.wallpaper.alpha, 0.05) +
-        textRow('Image URL', 'wallpaper.imgUrl', s.wallpaper.imgUrl, 'https://…') +
-        textRow('Video URL', 'wallpaper.videoUrl', s.wallpaper.videoUrl, 'https://…')
+        fileRow('Image', 'wallpaper.imgUrl', s.wallpaper.imgUrl, 'image/*') +
+        fileRow('Video', 'wallpaper.videoUrl', s.wallpaper.videoUrl, 'video/*') +
+        numRow('Rotation speed', 'wallpaper.rotationSpeed', s.wallpaper.rotationSpeed, 0.05, -2, 2) +
+        toggleRow('x-autoSpin', 'wallpaper.autoSpinX', s.wallpaper.autoSpinX) +
+        toggleRow('y-autoSpin', 'wallpaper.autoSpinY', s.wallpaper.autoSpinY) +
+        toggleRow('z-autoSpin', 'wallpaper.autoSpinZ', s.wallpaper.autoSpinZ)
       ) +
-      group('Domain Grid Color', 'domain',
-        colorRow('Grid color', 'domainGridColor', s.domainGridColor)
+      group('Domain Grid', 'domain',
+        colorRow('Grid color', 'domainGridColor', s.domainGridColor) +
+        numRow('Opacity (0–1)', 'domainGridOpacity', s.domainGridOpacity, 0.05) +
+        toggleRow('Wireframe', 'domainGridWireframe', s.domainGridWireframe) +
+        toggleRow('Visible', 'domainGridVisible', s.domainGridVisible)
       ) +
       group('User Space', 'userspace',
         colorRow('Color', 'userSpace.color', s.userSpace.color) +
         numRow('Size multiplier', 'userSpace.sizeMultiplier', s.userSpace.sizeMultiplier, 0.1) +
+        toggleRow('Visible', 'userSpace.visible', s.userSpace.visible) +
         toggleRow('Spinning', 'userSpace.spinning', s.userSpace.spinning) +
-        textRow('Texture URL', 'userSpace.textureUrl', s.userSpace.textureUrl, '(default: wireframe)')
+        fileRow('Texture (default: wireframe)', 'userSpace.textureUrl', s.userSpace.textureUrl, 'image/*')
+      ) +
+      group('UI Settings', 'uisettings',
+        numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02)
       )
 
     this._populateThemeSelect(body)
@@ -467,7 +546,11 @@ export default class AdminPanel {
   _bindFields (body) {
     body.querySelectorAll('.ap-num, .ap-text').forEach(input => {
       input.addEventListener('input', () => {
-        const value = input.type === 'number' ? Number(input.value) : input.value
+        let value = input.type === 'number' ? Number(input.value) : input.value
+        if (input.type === 'number') {
+          if (input.min !== '' && value < Number(input.min)) value = Number(input.min)
+          if (input.max !== '' && value > Number(input.max)) value = Number(input.max)
+        }
         this._setStaged(input.dataset.key, value)
       })
     })
@@ -482,6 +565,43 @@ export default class AdminPanel {
         this._setStaged(btn.dataset.key, next)
       })
     })
+
+    // File browse — reads the selected file as a data URL and stages it.
+    // Held entirely in localStorage on Save (no server, no external
+    // storage) — large files can hit the browser's localStorage quota,
+    // so _save() surfaces that clearly if it happens rather than failing
+    // silently.
+    body.querySelectorAll('[data-file-key]').forEach(input => {
+      input.addEventListener('change', () => {
+        const file = input.files?.[0]
+        if (!file) return
+        const key = input.dataset.fileKey
+        const reader = new FileReader()
+        reader.onload = () => {
+          this._setStaged(key, reader.result)
+          const row = input.closest('.ap-file-row')
+          const nameEl  = row?.querySelector(`[data-file-name-for="${key}"]`)
+          const clearEl = row?.querySelector(`[data-file-clear="${key}"]`)
+          if (nameEl) nameEl.textContent = file.name
+          if (clearEl) clearEl.style.display = ''
+        }
+        reader.onerror = () => console.warn('⟐Admin — failed to read file:', file.name)
+        reader.readAsDataURL(file)
+      })
+    })
+
+    body.querySelectorAll('[data-file-clear]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.fileClear
+        this._setStaged(key, '')
+        const row = btn.closest('.ap-file-row')
+        const nameEl = row?.querySelector(`[data-file-name-for="${key}"]`)
+        if (nameEl) nameEl.textContent = 'No file selected'
+        btn.style.display = 'none'
+        const fileInput = row?.querySelector(`[data-file-key="${key}"]`)
+        if (fileInput) fileInput.value = ''
+      })
+    })
   }
 
   /** Sets a (possibly dotted-path) key on the staged object and shows
@@ -491,7 +611,11 @@ export default class AdminPanel {
     let obj = this._staged
     while (parts.length > 1) obj = obj[parts.shift()]
     obj[parts[0]] = value
-    this._el?.querySelector('#ap-unsaved-banner')?.classList.add('is-visible')
+    const banner = this._el?.querySelector('#ap-unsaved-banner')
+    if (banner) {
+      banner.textContent = '⚠ Unsaved changes — click 💾 to apply'
+      banner.classList.add('is-visible')
+    }
   }
 
   /** Save button — this is the ONLY place staged changes actually take
@@ -499,13 +623,25 @@ export default class AdminPanel {
    *  module, and the theme applied. */
   async _save () {
     this._saved = structuredClone(this._staged)
+    const banner = this._el?.querySelector('#ap-unsaved-banner')
 
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(this._saved)) } catch (_) {}
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(this._saved))
+      banner?.classList.remove('is-visible')
+    } catch (err) {
+      // Realistic now that uploaded images/video are embedded as data
+      // URLs — localStorage typically caps around 5-10MB total.
+      console.warn('⟐Admin — localStorage save failed (likely quota exceeded from an uploaded file):', err)
+      if (banner) {
+        banner.textContent = '⚠ Save failed — uploaded file may be too large for local storage'
+        banner.classList.add('is-visible')
+      }
+      // Settings still apply live below even if persistence failed —
+      // just won't survive a reload.
+    }
 
     window.dispatchEvent(new CustomEvent('omni:admin-settings-saved', { detail: this._saved }))
     await ThemeManager.setTheme(this._saved.theme)
-
-    this._el?.querySelector('#ap-unsaved-banner')?.classList.remove('is-visible')
   }
 
   // ── Header drag ──────────────────────────────────────────────────────────
