@@ -87,7 +87,7 @@ export default class BaseScene {
 
   _initScene() {
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x000000)
+    this.scene.background = new THREE.Color(0xffffff)
 
     // Camera added to scene after both are created
     this.scene.add(this.camera)

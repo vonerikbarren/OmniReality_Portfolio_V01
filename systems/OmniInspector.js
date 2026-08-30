@@ -104,6 +104,9 @@
 
 import * as THREE from 'three'
 import gsap       from 'gsap'
+import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
+import * as WindowManager from '../ui/WindowManager.js'
+import * as GridWidgets   from '../ui/GridWidgets.js'
 
 // ── Layout constants (must match OmniNode.js and GlobalBar.js) ────────────────
 
@@ -184,19 +187,19 @@ const STYLES = /* css */`
 /* ── Inspector panel root ─────────────────────────────────────────────────── */
 
 .oi-panel {
-  --oi-bg           : rgba(6, 6, 10, 0.93);
-  --oi-border       : rgba(255, 255, 255, 0.09);
-  --oi-sep          : rgba(255, 255, 255, 0.05);
-  --oi-header-bg    : rgba(255, 255, 255, 0.03);
-  --oi-text         : rgba(255, 255, 255, 0.82);
-  --oi-text-dim     : rgba(255, 255, 255, 0.38);
-  --oi-text-muted   : rgba(255, 255, 255, 0.18);
-  --oi-accent       : rgba(255, 255, 255, 0.96);
+  --oi-bg           : var(--omni-theme-bg, rgba(6, 6, 10, 0.93));
+  --oi-border       : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
+  --oi-sep          : var(--omni-theme-border, rgba(255, 255, 255, 0.05));
+  --oi-header-bg    : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
+  --oi-text         : var(--omni-theme-text, rgba(255, 255, 255, 0.97));
+  --oi-text-dim     : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.74));
+  --oi-text-muted   : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.50));
+  --oi-accent       : var(--omni-theme-accent, rgba(255, 255, 255, 0.96));
   --oi-ctrl-hover   : rgba(255, 255, 255, 0.08);
   --oi-ctrl-active  : rgba(255, 255, 255, 0.16);
-  --oi-input-bg     : rgba(255, 255, 255, 0.04);
-  --oi-input-border : rgba(255, 255, 255, 0.10);
-  --oi-focus-border : rgba(255, 255, 255, 0.30);
+  --oi-input-bg     : var(--omni-theme-input-bg, rgba(255, 255, 255, 0.11));
+  --oi-input-border : var(--omni-theme-input-border, rgba(255, 255, 255, 0.20));
+  --oi-focus-border : var(--omni-theme-accent, rgba(255, 255, 255, 0.45));
   --oi-r-color      : rgba(255, 100, 100, 0.85);
   --oi-g-color      : rgba(100, 220, 130, 0.85);
   --oi-b-color      : rgba(100, 150, 255, 0.85);
@@ -207,8 +210,11 @@ const STYLES = /* css */`
   top               : ${BAR_H}px;
   right             : 0;
   width             : ${PANEL_W}px;
+  min-width         : 260px;
+  max-width         : 640px;
   height            : calc(100vh - ${BAR_H}px - ${DOCK_H}px);
-  max-height        : 560px;
+  min-height        : 240px;
+  max-height        : 90vh;
 
   display           : flex;
   flex-direction    : column;
@@ -222,7 +228,7 @@ const STYLES = /* css */`
 
   font-family       : var(--mono);
   color             : var(--oi-text);
-  font-size         : 10px;
+  font-size         : 11px;
   z-index           : 46;
   pointer-events    : auto;
   user-select       : none;
@@ -243,7 +249,221 @@ const STYLES = /* css */`
   background        : var(--oi-header-bg);
   border-bottom     : 1px solid var(--oi-sep);
   gap               : 8px;
+  cursor            : grab;
+  user-select       : none;
 }
+
+.oi-header.is-dragging { cursor: grabbing; }
+
+/* ── Resize handle — bottom-left corner (panel is right-anchored) ─────────── */
+
+.oi-resize-handle {
+  position          : absolute;
+  left              : 0;
+  bottom            : 0;
+  width             : 16px;
+  height            : 16px;
+  cursor            : nesw-resize;
+  z-index           : 2;
+}
+
+.oi-resize-handle::before {
+  content           : '';
+  position          : absolute;
+  left              : 3px;
+  bottom            : 3px;
+  width             : 8px;
+  height            : 8px;
+  border-left       : 2px solid rgba(255, 255, 255, 0.25);
+  border-bottom     : 2px solid rgba(255, 255, 255, 0.25);
+  border-radius     : 0 0 0 2px;
+  transition        : border-color 0.12s ease;
+}
+
+.oi-resize-handle:hover::before {
+  border-color      : rgba(255, 255, 255, 0.6);
+}
+
+/* ── Parent picker ─────────────────────────────────────────────────────────── */
+
+.oi-parent-picker-btn {
+  text-align        : left;
+  cursor            : pointer;
+  transition        : border-color 0.12s ease, background 0.12s ease;
+}
+.oi-parent-picker-btn:hover {
+  border-color      : var(--oi-focus-border);
+  background        : rgba(255, 255, 255, 0.15);
+}
+
+.oi-parent-picker {
+  position          : absolute;
+  left              : 14px;
+  right             : 14px;
+  top               : 40px;
+  max-height        : 220px;
+  background        : rgba(10, 10, 14, 0.98);
+  border            : 1px solid rgba(255, 255, 255, 0.18);
+  border-radius     : 8px;
+  box-shadow        : 0 12px 32px rgba(0,0,0,0.6);
+  z-index           : 5;
+  display           : flex;
+  flex-direction    : column;
+  overflow          : hidden;
+}
+
+.oi-parent-picker-header {
+  display           : flex;
+  align-items       : center;
+  justify-content   : space-between;
+  padding           : 8px 10px;
+  font-size         : 10px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-dim);
+  border-bottom     : 1px solid var(--oi-sep);
+  flex-shrink       : 0;
+}
+
+.oi-parent-picker-close {
+  background        : none;
+  border            : none;
+  color             : var(--oi-text-dim);
+  cursor            : pointer;
+  font-size         : 11px;
+}
+.oi-parent-picker-close:hover { color: var(--oi-text); }
+
+.oi-parent-picker-list {
+  overflow-y        : auto;
+  padding           : 4px;
+}
+
+.oi-parent-picker-item {
+  display           : flex;
+  align-items       : center;
+  justify-content   : space-between;
+  padding           : 7px 9px;
+  border-radius     : 5px;
+  font-size         : 10.5px;
+  color             : var(--oi-text);
+  cursor            : pointer;
+}
+.oi-parent-picker-item:hover { background: rgba(255,255,255,0.08); }
+.oi-parent-picker-item.is-disabled {
+  color             : var(--oi-text-muted);
+  cursor            : not-allowed;
+}
+.oi-parent-picker-item.is-disabled:hover { background: none; }
+
+.oi-parent-picker-item-geo {
+  font-size         : 9px;
+  color             : var(--oi-text-muted);
+}
+
+.oi-parent-picker-empty {
+  padding           : 14px;
+  text-align        : center;
+  color             : var(--oi-text-muted);
+  font-size         : 10px;
+}
+
+.oi-parent-picker-none {
+  border-bottom     : 1px solid var(--oi-sep);
+  margin-bottom     : 4px;
+  padding-bottom    : 6px;
+}
+
+/* ── Domain section ────────────────────────────────────────────────────────── */
+
+.oi-domain-status {
+  font-size         : 9.5px;
+  color             : var(--oi-text-muted);
+  padding           : 6px 8px;
+  border             : 1px solid var(--oi-sep);
+  border-radius     : 5px;
+  background        : rgba(255,255,255,0.02);
+}
+.oi-domain-status.is-current {
+  color             : rgba(190, 160, 255, 0.95);
+  border-color      : rgba(190, 160, 255, 0.3);
+  background        : rgba(190, 160, 255, 0.08);
+}
+
+.oi-domain-btn {
+  flex              : 1;
+  height            : 28px;
+  border-radius     : 5px;
+  border            : 1px solid rgba(190, 160, 255, 0.28);
+  background        : rgba(190, 160, 255, 0.08);
+  color             : rgba(210, 185, 255, 0.95);
+  font-family       : var(--mono);
+  font-size         : 9.5px;
+  cursor            : pointer;
+  transition        : background 0.12s ease;
+}
+.oi-domain-btn:hover:not(:disabled) { background: rgba(190, 160, 255, 0.18); }
+.oi-domain-btn:disabled {
+  opacity           : 0.3;
+  cursor            : not-allowed;
+}
+.oi-domain-btn--exit {
+  border-color      : rgba(255, 150, 150, 0.28);
+  background        : rgba(255, 150, 150, 0.08);
+  color             : rgba(255, 180, 180, 0.95);
+}
+.oi-domain-btn--exit:hover:not(:disabled) { background: rgba(255, 150, 150, 0.18); }
+
+.oi-domain-note {
+  font-size         : 9px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding-top       : 2px;
+}
+
+/* ── Create section ───────────────────────────────────────────────────────── */
+
+.oi-create-preview-wrap {
+  display           : flex;
+  flex-direction    : column;
+  align-items       : center;
+  gap               : 8px;
+}
+
+.oi-create-canvas {
+  width             : 120px;
+  height            : 120px;
+  border-radius     : 8px;
+  border            : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.02);
+}
+
+.oi-create-btns {
+  display           : flex;
+  gap               : 6px;
+  width             : 100%;
+}
+
+.oi-create-btn {
+  flex              : 1;
+  height            : 26px;
+  border-radius     : 5px;
+  border            : 1px solid rgba(127, 216, 255, 0.28);
+  background        : rgba(127, 216, 255, 0.08);
+  color             : rgba(150, 220, 255, 0.95);
+  font-family       : var(--mono);
+  font-size         : 9px;
+  cursor            : pointer;
+  transition        : background 0.12s ease;
+}
+.oi-create-btn:hover { background: rgba(127, 216, 255, 0.18); }
+
+.oi-create-btn--export {
+  border-color      : rgba(140, 255, 180, 0.28);
+  background        : rgba(140, 255, 180, 0.08);
+  color             : rgba(160, 255, 195, 0.95);
+}
+.oi-create-btn--export:hover { background: rgba(140, 255, 180, 0.18); }
 
 .oi-controls {
   display           : flex;
@@ -273,6 +493,34 @@ const STYLES = /* css */`
   background    : rgba(255, 80, 80, 0.14);
   border-color  : rgba(255, 80, 80, 0.28);
   color         : rgba(255, 150, 150, 0.90);
+}
+
+.oi-ctrl--save {
+  color         : rgba(140, 255, 180, 0.85);
+  border-color  : rgba(140, 255, 180, 0.22);
+}
+.oi-ctrl--save:hover {
+  background    : rgba(140, 255, 180, 0.14);
+  border-color  : rgba(140, 255, 180, 0.35);
+  color         : rgba(180, 255, 205, 1);
+}
+.oi-ctrl--save.is-saved {
+  background    : rgba(140, 255, 180, 0.22);
+  border-color  : rgba(140, 255, 180, 0.5);
+}
+
+.oi-ctrl--genealogy {
+  color         : rgba(190, 160, 255, 0.85);
+  border-color  : rgba(190, 160, 255, 0.22);
+}
+.oi-ctrl--genealogy:hover {
+  background    : rgba(190, 160, 255, 0.14);
+  border-color  : rgba(190, 160, 255, 0.35);
+  color         : rgba(210, 185, 255, 1);
+}
+.oi-ctrl--genealogy.is-active {
+  background    : rgba(190, 160, 255, 0.22);
+  border-color  : rgba(190, 160, 255, 0.5);
 }
 
 .oi-title {
@@ -319,6 +567,25 @@ const STYLES = /* css */`
   font-size         : 8px;
   color             : var(--oi-text-muted);
   flex-shrink       : 0;
+}
+
+.oi-inspect-preview-wrap {
+  flex-shrink       : 0;
+  display           : none;
+  align-items       : center;
+  justify-content   : center;
+  padding           : 10px 0;
+  border-bottom     : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.015);
+}
+.oi-inspect-preview-wrap.is-visible { display: flex; }
+
+.oi-inspect-canvas {
+  width             : 90px;
+  height            : 90px;
+  border-radius     : 8px;
+  border            : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.02);
 }
 
 /* ── Scrollable content body ──────────────────────────────────────────────── */
@@ -402,6 +669,7 @@ const STYLES = /* css */`
 }
 
 .oi-section-inner {
+  position          : relative;
   padding           : 10px 12px 14px;
   display           : flex;
   flex-direction    : column;
@@ -417,8 +685,8 @@ const STYLES = /* css */`
 }
 
 .oi-label {
-  font-size         : 8px;
-  color             : var(--oi-text-muted);
+  font-size         : 10px;
+  color             : var(--oi-text-dim);
   text-transform    : uppercase;
   letter-spacing    : 0.12em;
   flex-shrink       : 0;
@@ -440,7 +708,7 @@ const STYLES = /* css */`
   border            : 1px solid var(--oi-input-border);
   border-radius     : 4px;
   font-family       : var(--mono);
-  font-size         : 9px;
+  font-size         : 10.5px;
   color             : var(--oi-text);
   outline           : none;
   transition        : border-color 0.12s;
@@ -1019,6 +1287,14 @@ export default class OmniInspector {
     // ── Panel state ────────────────────────────────────────────────────
     this._el     = null
     this._isOpen = false
+    this._isMaximized = false
+    this._gridEl = null
+    this._gridWidgets = null
+    this._drag   = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
+    this._allNodes = []   // cached from omni:nodes-updated — feeds the parent picker
+    this._currentSpaceId = null   // cached from omni:space-entered/exited
+    this._createPreview = null   // the Create section's own tiny renderer/scene/mesh
+    this._inspectPreview = null   // spinning preview of the ACTUAL loaded node
 
     // ── Loaded node ────────────────────────────────────────────────────
     this._currentId   = null   // node ID currently loaded
@@ -1038,6 +1314,8 @@ export default class OmniInspector {
       hierarchy  : false,
       appearance : true,
       media      : false,
+      domain     : false,
+      create     : false,
     }
 
     // ── Bound event handlers for cleanup ────────────────────────────────
@@ -1046,6 +1324,9 @@ export default class OmniInspector {
     this._onDeselect  = null
     this._onCreated   = null
     this._onDeleted   = null
+    this._onNodesUpdated = null
+    this._onSpaceEntered = null
+    this._onSpaceExited  = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -1057,15 +1338,30 @@ export default class OmniInspector {
     this._showEmpty()
   }
 
-  update (_delta) {}   // inspector is event-driven
+  update (delta) {
+    if (this._createPreview) {
+      this._createPreview.mesh.rotation.y += delta * 0.4
+      this._createPreview.renderer.render(this._createPreview.scene, this._createPreview.camera)
+    }
+    if (this._inspectPreview) {
+      this._inspectPreview.mesh.rotation.y += delta * 0.4
+      this._inspectPreview.renderer.render(this._inspectPreview.scene, this._inspectPreview.camera)
+    }
+  }
 
   destroy () {
+    this._teardownCreatePreview()
+    this._teardownInspectPreview()
     this._el?.parentNode?.removeChild(this._el)
+    WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
+    window.removeEventListener('omni:nodes-updated', this._onNodesUpdated)
+    window.removeEventListener('omni:space-entered', this._onSpaceEntered)
+    window.removeEventListener('omni:space-exited', this._onSpaceExited)
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -1156,6 +1452,9 @@ export default class OmniInspector {
     this._currentMesh = null
     this._currentData = null
     this._ext         = null
+    this._teardownCreatePreview()
+    this._teardownInspectPreview()
+    this._el?.querySelector('#oi-inspect-preview-wrap')?.classList.remove('is-visible')
     this._showEmpty()
     this._updateFooter()
   }
@@ -1176,6 +1475,9 @@ export default class OmniInspector {
           <button class="oi-ctrl oi-ctrl--close"    data-action="close"    title="✕ Close"         >✕</button>
           <button class="oi-ctrl oi-ctrl--minimize" data-action="minimize" title="_ Minimize"      >_</button>
           <button class="oi-ctrl oi-ctrl--attach"   data-action="attach"   title="⟐ Pocket attach" >⟐</button>
+          <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">💾</button>
+          <button class="oi-ctrl oi-ctrl--genealogy" data-action="genealogy" title="Select whole genealogy tree">Ξ</button>
+          <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
         </div>
         <span class="oi-title">OmniInspector ⟐i</span>
       </div>
@@ -1185,6 +1487,13 @@ export default class OmniInspector {
         <span class="oi-badge-dot" id="oi-badge-dot"></span>
         <span class="oi-badge-label" id="oi-badge-label">—</span>
         <span class="oi-badge-geo"  id="oi-badge-geo">—</span>
+      </div>
+
+      <!-- Live spinning preview of the actual object being inspected —
+           same visual language as ⟐Objects' preview, but reflecting the
+           real selected node's geometry/color, not a blank new object. -->
+      <div class="oi-inspect-preview-wrap" id="oi-inspect-preview-wrap">
+        <canvas class="oi-inspect-canvas" id="oi-inspect-canvas" width="90" height="90"></canvas>
       </div>
 
       <!-- Scrollable content -->
@@ -1197,6 +1506,8 @@ export default class OmniInspector {
         <span class="oi-footer-id"    id="oi-footer-id">—</span>
         <span class="oi-footer-badge" id="oi-footer-badge">⟐i</span>
       </div>
+
+      <div class="oi-resize-handle" aria-hidden="true"></div>
     `
 
     gsap.set(el, { x: '100%' })
@@ -1211,16 +1522,192 @@ export default class OmniInspector {
       if (!btn) return
       this._playSound('click')
       switch (btn.dataset.action) {
-        case 'close':    this.close();     break
-        case 'minimize': this._minimize(); break
-        case 'attach':   this._attach();   break
+        case 'close':      this.close();     break
+        case 'minimize':   this._minimize(); break
+        case 'attach':     this._attach();   break
+        case 'genealogy':  this._selectGenealogy(btn); break
       }
     })
+
+    this._bindDrag(el)
+
+    el.dataset.winId = 'omniinspector'
+    WindowManager.register('omniinspector', el)
+    WindowManager.makeMaximizable(el, el.querySelector('.oi-ctrl--maximize'), {
+      onMaximize: () => { this._isMaximized = true; this._toGridDashboard() },
+      onRestore : () => { this._isMaximized = false; this._fromGridDashboard() },
+    })
+    WindowManager.wireSaveButton(el.querySelector('.oi-ctrl--save'), 'omniinspector', () => this._explicitSave())
+  }
+
+  /**
+   * Header drag — same left/top approach as ui/ObjectPanel.js. This is a
+   * separate CSS property from the open/close slide (which animates
+   * `transform: translateX` via GSAP's `x`), so the two compose safely:
+   * dragging only ever happens while the panel is open (x: '0%'), and the
+   * slide animation always resolves back to x:'0%'/'100%' without leaving
+   * a lingering transform offset for drag to fight with.
+   */
+  _bindDrag (el) {
+    const header = el.querySelector('.oi-header')
+
+    const onDown = (e) => {
+      if (e.target.closest('.oi-ctrl')) return   // don't drag when clicking a button
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const rect = el.getBoundingClientRect()
+      this._drag = { active: true, startX: cx, startY: cy, originX: rect.left, originY: rect.top }
+      header.classList.add('is-dragging')
+    }
+    const onMove = (e) => {
+      if (!this._drag.active) return
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const dx = cx - this._drag.startX
+      const dy = cy - this._drag.startY
+      // Switch from the default right-anchored position to left/top once
+      // dragging starts — inline left/width takes precedence over the
+      // stylesheet's `right: 0` per the CSS spec's over-constrained rule.
+      gsap.set(el, { left: this._drag.originX + dx, top: this._drag.originY + dy, right: 'auto' })
+    }
+    const onUp = () => {
+      this._drag.active = false
+      header.classList.remove('is-dragging')
+    }
+
+    header.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    header.addEventListener('touchstart', onDown, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onUp)
+
+    this._bindResize(el)
+  }
+
+  /**
+   * Resize via the bottom-left corner handle. Dragging left grows width
+   * (panel is right-anchored, so width grows toward the left); dragging
+   * down grows height. Clamped to the min/max bounds set in .oi-panel's
+   * CSS (min-width/max-width/min-height/max-height) so it can't be
+   * resized into something unusably small or off-screen.
+   */
+  _bindResize (el) {
+    const handle = el.querySelector('.oi-resize-handle')
+    if (!handle) return
+
+    const resize = { active: false, startX: 0, startY: 0, startW: 0, startH: 0 }
+
+    const onDown = (e) => {
+      e.stopPropagation()   // don't also trigger header drag
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const rect = el.getBoundingClientRect()
+      resize.active = true
+      resize.startX = cx
+      resize.startY = cy
+      resize.startW = rect.width
+      resize.startH = rect.height
+    }
+    const onMove = (e) => {
+      if (!resize.active) return
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const newW = resize.startW - (cx - resize.startX)   // dragging left grows it
+      const newH = resize.startH + (cy - resize.startY)   // dragging down grows it
+      gsap.set(el, { width: newW, height: newH })
+    }
+    const onUp = () => { resize.active = false }
+
+    handle.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    handle.addEventListener('touchstart', onDown, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onUp)
+  }
+
+  // ── Maximize → grid dashboard ────────────────────────────────────────────
+  // Each accordion section's content becomes a draggable, reorderable
+  // card (see ui/GridWidgets.js). The section elements themselves are
+  // MOVED into the grid, not cloned, so everything already wired inside
+  // them (inputs, the parent picker, the create-preview canvas, etc.)
+  // keeps working untouched. Restoring puts them back exactly where
+  // they came from.
+
+  _toGridDashboard () {
+    if (this._gridEl) return
+    const body = this._el.querySelector('#oi-body')
+    if (!body) return
+
+    const labels = {
+      identity: 'Identity', hierarchy: 'Hierarchy', domain: 'Domain',
+      appearance: 'Appearance', media: 'Media', create: 'Create New',
+    }
+
+    const widgets = []
+    body.querySelectorAll('.oi-section').forEach(section => {
+      const toggleBtn = section.querySelector('.oi-section-toggle')
+      const id    = toggleBtn?.dataset.section
+      const inner = section.querySelector('.oi-section-inner')
+      if (!id || !inner) return
+      widgets.push({ id, title: labels[id] ?? id, el: inner })
+    })
+    if (widgets.length === 0) return
+
+    this._gridWidgets = widgets
+    body.style.display = 'none'
+    this._gridEl = GridWidgets.mountGrid(body.parentElement, widgets, 'omniinspector')
+  }
+
+  _fromGridDashboard () {
+    if (!this._gridEl) return
+    GridWidgets.unmountGrid(this._gridEl, this._gridWidgets ?? [])
+    this._gridEl = null
+    this._gridWidgets = null
+    const body = this._el.querySelector('#oi-body')
+    if (body) body.style.display = ''
+  }
+
+  /**
+   * Explicit Save button. Every field already autosaves to localStorage
+   * on change (OmniNode._save() per node-level edit, _saveExt() per
+   * Inspector-only field) — this exists for a visible, deliberate "yes,
+   * it's saved" confirmation rather than trusting a silent background
+   * write. Also broadcasts omni:force-save so OmniNode flushes its
+   * current in-memory state unconditionally, covering anything that
+   * hasn't triggered its own save yet. Button flash + last-saved
+   * timestamp are handled generically by WindowManager.wireSaveButton.
+   */
+  _explicitSave () {
+    this._saveExt()
+    window.dispatchEvent(new CustomEvent('omni:force-save'))
+  }
+
+  /**
+   * Ξ button — selects (visually pulses) the entire genealogy tree the
+   * currently loaded node belongs to: its root, and every descendant of
+   * that root. The actual pulse logic lives in OmniNode (it owns the
+   * meshes/edges); this just requests it and gives a brief active-state
+   * flash on the button itself as confirmation the click landed.
+   */
+  _selectGenealogy (btn) {
+    if (!this._currentId) return
+    window.dispatchEvent(new CustomEvent('omni:genealogy-select-request', {
+      detail: { id: this._currentId }
+    }))
+    this._playSound('click')
+
+    if (!btn) return
+    btn.classList.add('is-active')
+    setTimeout(() => btn.classList.remove('is-active'), 900)
   }
 
   // ── Empty state ───────────────────────────────────────────────────────────
 
   _showEmpty () {
+    if (this._gridEl) this._fromGridDashboard()
+
     const body  = this._el.querySelector('#oi-body')
     const badge = this._el.querySelector('#oi-node-badge')
     badge?.classList.remove('is-visible')
@@ -1237,6 +1724,15 @@ export default class OmniInspector {
   // ── Loaded state — render all four sections ───────────────────────────────
 
   _renderLoaded () {
+    // If the dashboard grid is currently active, the section elements
+    // have been MOVED out of #oi-body into grid cards — rebuilding
+    // #oi-body's innerHTML right now would happen in a disconnected,
+    // hidden element while the visible grid keeps showing the previous
+    // node's stale content. Restore to the plain accordion first, rebuild,
+    // then re-grid the fresh sections at the end of this method.
+    const wasGridded = !!this._gridEl
+    if (wasGridded) this._fromGridDashboard()
+
     const body  = this._el.querySelector('#oi-body')
     const badge = this._el.querySelector('#oi-node-badge')
     const data  = this._currentData
@@ -1252,12 +1748,17 @@ export default class OmniInspector {
       badge.querySelector('#oi-badge-geo').textContent        = (data.geometry ?? '').replace('Geometry', '')
     }
 
+    this._el.querySelector('#oi-inspect-preview-wrap')?.classList.add('is-visible')
+    this._updateInspectPreview(data, ext)
+
     // Build four accordion sections
     body.innerHTML = /* html */`
       ${this._sectionHTML('identity',   '▶ Identity',   this._identityHTML(data, ext))}
       ${this._sectionHTML('hierarchy',  '▶ Hierarchy',  this._hierarchyHTML(data))}
+      ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
+      ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
     `
 
     // Restore open states
@@ -1281,8 +1782,13 @@ export default class OmniInspector {
 
     // Wire all interactive controls
     this._wireIdentity(body, data, ext)
+    this._wireHierarchy(body, data)
+    this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
     this._wireMedia(body, ext)
+    this._wireCreateSection(body)
+
+    if (this._isMaximized) this._toGridDashboard()
   }
 
   // ── Section scaffold HTML ─────────────────────────────────────────────────
@@ -1366,17 +1872,55 @@ export default class OmniInspector {
     `
   }
 
+  // ── DOMAIN section HTML — mark as space, enter/exit ─────────────────────
+
+  _domainHTML (data) {
+    const isDomain   = !!data.isDomain
+    const spaceImage = data.spaceImage ?? ''
+    const isCurrent  = this._currentSpaceId === data.id
+
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label">Is Domain</span>
+        <button class="oi-toggle ${isDomain ? 'is-on' : ''}" id="oi-is-domain" role="switch" aria-checked="${isDomain}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Space Img</span>
+        <input class="oi-input" id="oi-space-image" value="${spaceImage}"
+               placeholder="Image URL for this space's theme…">
+      </div>
+      <div class="oi-domain-status ${isCurrent ? 'is-current' : ''}">
+        ${isCurrent
+          ? '⟐ This is the currently entered space'
+          : (isDomain ? 'Marked as a domain — not currently entered' : 'Not yet marked as a domain')}
+      </div>
+      <div class="oi-row" style="gap:8px">
+        <button class="oi-domain-btn oi-domain-btn--enter" id="oi-enter-space" ${(!isDomain || isCurrent) ? 'disabled' : ''}>
+          ⟐ Enter as Space
+        </button>
+        <button class="oi-domain-btn oi-domain-btn--exit" id="oi-exit-space" ${!isCurrent ? 'disabled' : ''}>
+          Exit Space
+        </button>
+      </div>
+      <div class="oi-domain-note">
+        Objects created (below, or via the ⟐Objects panel) while this
+        space is entered will belong to it — parented to its geometry,
+        positioned relative to its own origin.
+      </div>
+    `
+  }
+
   // ── HIERARCHY section HTML ────────────────────────────────────────────────
 
   _hierarchyHTML (data) {
     const parentId = data.parentId ?? '—'
     const rootId   = data.rootId   ?? '—'
-    const depth    = data.depth    ?? '—'
+    const depth    = data.depth    ?? 0
     return /* html */`
       <div class="oi-row">
         <span class="oi-label">Parent</span>
-        <input class="oi-input" value="${parentId}" readonly tabindex="-1"
-               title="Set via PATH mode in ⟐N">
+        <button class="oi-input oi-parent-picker-btn" id="oi-parent-picker-btn"
+                title="Click to choose a parent from all created objects">${parentId}</button>
       </div>
       <div class="oi-row">
         <span class="oi-label">Root</span>
@@ -1385,6 +1929,15 @@ export default class OmniInspector {
       <div class="oi-row">
         <span class="oi-label">Depth</span>
         <input class="oi-input oi-input--sm" value="${depth}" readonly tabindex="-1">
+      </div>
+
+      <!-- Parent picker — populated live from the full node array on open -->
+      <div class="oi-parent-picker" id="oi-parent-picker" style="display:none">
+        <div class="oi-parent-picker-header">
+          <span>Choose parent</span>
+          <button class="oi-parent-picker-close" id="oi-parent-picker-close">✕</button>
+        </div>
+        <div class="oi-parent-picker-list" id="oi-parent-picker-list"></div>
       </div>
     `
   }
@@ -1520,6 +2073,29 @@ export default class OmniInspector {
 
   // ── MEDIA section HTML ────────────────────────────────────────────────────
 
+  // ── CREATE section HTML — mini live preview, create while inspecting ────
+  // Mirrors ui/ObjectPanel.js's preview+export, embedded here so you don't
+  // have to leave the Inspector to make a new object while looking at
+  // another one. Uses the exact same omni:node-create-request event, so
+  // it automatically respects space-scoping (OmniNode parents into
+  // whatever space is currently entered, same as ObjectPanel's button).
+
+  _createSectionHTML () {
+    return /* html */`
+      <div class="oi-create-preview-wrap">
+        <canvas class="oi-create-canvas" id="oi-create-canvas" width="120" height="120"></canvas>
+        <div class="oi-create-btns">
+          <button class="oi-create-btn" id="oi-create-morph">⟐ Morph → Sphere</button>
+          <button class="oi-create-btn oi-create-btn--export" id="oi-create-export">⟐ Export to Scene</button>
+        </div>
+        <div class="oi-row" style="justify-content:flex-start;gap:8px">
+          <button class="oi-toggle" id="oi-create-as-space" role="switch" aria-checked="false"></button>
+          <span class="oi-label" style="width:auto">Mark + enter as new space on export</span>
+        </div>
+      </div>
+    `
+  }
+
   _mediaHTML (ext) {
     const slots = [
       { key: 'images', label: 'Images', icon: '🖼',  accept: 'image/*'  },
@@ -1625,6 +2201,141 @@ export default class OmniInspector {
         detail: { id: data.id, color: rgbToHex(this._color.r, this._color.g, this._color.b) }
       }))
     })
+  }
+
+  // ── Wire HIERARCHY controls — parent picker ─────────────────────────────
+
+  _wireHierarchy (body, data) {
+    const btn    = body.querySelector('#oi-parent-picker-btn')
+    const picker = body.querySelector('#oi-parent-picker')
+    const list   = body.querySelector('#oi-parent-picker-list')
+    const close  = body.querySelector('#oi-parent-picker-close')
+    if (!btn || !picker || !list) return
+
+    btn.addEventListener('click', () => {
+      const isOpen = picker.style.display !== 'none'
+      if (isOpen) { picker.style.display = 'none'; return }
+      this._renderParentPickerList(list, data)
+      picker.style.display = 'flex'
+    })
+
+    close?.addEventListener('click', () => { picker.style.display = 'none' })
+  }
+
+  /**
+   * Populates the parent-picker list from the full node array (kept in
+   * sync via omni:nodes-updated — see _bindEvents). Excludes the node
+   * itself and anything already downstream of it (would create a cycle;
+   * OmniNode also refuses this server-side, but disabling it here avoids
+   * a confusing round-trip).
+   */
+  _renderParentPickerList (list, data) {
+    const all = this._allNodes ?? []
+    const descendantIds = this._descendantIdsOf(data.id, all)
+
+    const options = all.filter(n => n.id !== data.id)
+
+    let html = /* html */`
+      <div class="oi-parent-picker-item oi-parent-picker-none" data-parent-id="">
+        <span>— None (make root) —</span>
+      </div>
+    `
+
+    if (options.length === 0) {
+      list.innerHTML = html + `<div class="oi-parent-picker-empty">No other objects created yet.</div>`
+    } else {
+      html += options.map(n => {
+        const disabled = descendantIds.has(n.id)
+        return /* html */`
+          <div class="oi-parent-picker-item ${disabled ? 'is-disabled' : ''}"
+               data-parent-id="${disabled ? '' : n.id}"
+               title="${disabled ? 'Would create a cycle — this is a descendant' : ''}">
+            <span>${n.label || n.id}</span>
+            <span class="oi-parent-picker-item-geo">${(n.geometry ?? '').replace('Geometry', '')}</span>
+          </div>
+        `
+      }).join('')
+      list.innerHTML = html
+    }
+
+    list.querySelectorAll('.oi-parent-picker-item:not(.is-disabled)').forEach(item => {
+      item.addEventListener('click', () => {
+        const parentId = item.dataset.parentId || null
+        window.dispatchEvent(new CustomEvent('omni:node-parent-set', {
+          detail: { id: data.id, parentId }
+        }))
+        this._playSound('click')
+        list.closest('.oi-parent-picker').style.display = 'none'
+      })
+    })
+  }
+
+  _descendantIdsOf (id, allNodes) {
+    const out = new Set()
+    const walk = (parentId) => {
+      for (const n of allNodes) {
+        if (n.parentId === parentId && !out.has(n.id)) {
+          out.add(n.id)
+          walk(n.id)
+        }
+      }
+    }
+    walk(id)
+    return out
+  }
+
+  // ── Wire DOMAIN controls — mark as space, enter/exit ────────────────────
+
+  _wireDomain (body, data) {
+    const toggle = body.querySelector('#oi-is-domain')
+    const imgInput = body.querySelector('#oi-space-image')
+    const enterBtn = body.querySelector('#oi-enter-space')
+    const exitBtn  = body.querySelector('#oi-exit-space')
+
+    toggle?.addEventListener('click', () => {
+      const next = !toggle.classList.contains('is-on')
+      toggle.classList.toggle('is-on', next)
+      toggle.setAttribute('aria-checked', String(next))
+      data.isDomain = next
+      window.dispatchEvent(new CustomEvent('omni:node-set-domain', {
+        detail: { id: data.id, isDomain: next }
+      }))
+      this._refreshDomainSection()
+    })
+
+    let imgTimer = null
+    imgInput?.addEventListener('input', (e) => {
+      clearTimeout(imgTimer)
+      const value = e.target.value.trim()
+      imgTimer = setTimeout(() => {
+        data.spaceImage = value
+        window.dispatchEvent(new CustomEvent('omni:node-set-domain', {
+          detail: { id: data.id, isDomain: !!data.isDomain, spaceImage: value }
+        }))
+      }, 350)
+    })
+
+    enterBtn?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:enter-space-request', { detail: { id: data.id } }))
+      this._playSound('click')
+    })
+
+    exitBtn?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:exit-space-request', { detail: {} }))
+      this._playSound('click')
+    })
+  }
+
+  /** Re-render just the Domain section's HTML — used after entering/
+   *  exiting a space, or toggling Is Domain, so button enabled-state and
+   *  the status line stay accurate without a full panel re-render. */
+  _refreshDomainSection () {
+    if (!this._currentData || !this._isOpen) return
+    const body = this._el?.querySelector('#oi-body')
+    const section = body?.querySelector('#oisec-domain .oi-section-inner')
+    if (!section) return
+    section.innerHTML = this._domainHTML(this._currentData)
+    this._wireDomain(body, this._currentData)
   }
 
   // ── Wire APPEARANCE controls ──────────────────────────────────────────────
@@ -1852,6 +2563,183 @@ export default class OmniInspector {
         this._playSound('close')
       }
     })
+  }
+
+  // ── Wire CREATE section — mini preview, morph, export ────────────────────
+
+  _wireCreateSection (body) {
+    this._teardownCreatePreview()
+
+    const canvas = body.querySelector('#oi-create-canvas')
+    if (!canvas) return
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setSize(120, 120, false)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10)
+    camera.position.set(0, 0.6, 2.2)
+    camera.lookAt(0, 0, 0)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    const key = new THREE.DirectionalLight(0xffffff, 1.0)
+    key.position.set(2, 3, 2)
+    scene.add(key)
+
+    const geo  = new THREE.BoxGeometry(1, 1, 1)
+    const mat  = new THREE.MeshStandardMaterial({ color: 0xb99cff, roughness: 0.4, metalness: 0.1 })
+    const mesh = new THREE.Mesh(geo, mat)
+    scene.add(mesh)
+
+    this._createPreview = { renderer, scene, camera, mesh, geoType: 'BoxGeometry' }
+
+    body.querySelector('#oi-create-morph')?.addEventListener('click', () => this._createMorph())
+    body.querySelector('#oi-create-export')?.addEventListener('click', (e) => this._createExport(e.currentTarget))
+
+    const spaceToggle = body.querySelector('#oi-create-as-space')
+    spaceToggle?.addEventListener('click', () => {
+      const next = !spaceToggle.classList.contains('is-on')
+      spaceToggle.classList.toggle('is-on', next)
+      spaceToggle.setAttribute('aria-checked', String(next))
+    })
+  }
+
+  _teardownCreatePreview () {
+    if (!this._createPreview) return
+    this._createPreview.mesh.geometry?.dispose()
+    this._createPreview.mesh.material?.dispose()
+    this._createPreview.renderer.dispose()
+    this._createPreview = null
+  }
+
+  // ── Inspect preview — spinning view of the ACTUAL loaded node ───────────
+  // Same visual language as the Create section (and ui/ObjectPanel's own
+  // preview), but reflects the real selected node's geometry/color/
+  // wireframe rather than a blank new object. One renderer is created
+  // lazily and reused across node switches — just its mesh's geometry/
+  // material gets updated, rather than tearing the whole thing down and
+  // rebuilding it every time you select something different.
+
+  _setupInspectPreviewIfNeeded () {
+    if (this._inspectPreview) return
+    const canvas = this._el?.querySelector('#oi-inspect-canvas')
+    if (!canvas) return
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setSize(90, 90, false)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10)
+    camera.position.set(0, 0.5, 2.1)
+    camera.lookAt(0, 0, 0)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    const key = new THREE.DirectionalLight(0xffffff, 1.0)
+    key.position.set(2, 3, 2)
+    scene.add(key)
+
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 })
+    )
+    scene.add(mesh)
+
+    this._inspectPreview = { renderer, scene, camera, mesh, geoType: 'BoxGeometry' }
+  }
+
+  /** Syncs the inspect-preview mesh to match the currently loaded node's
+   *  geometry/color/wireframe. Called every time _renderLoaded() runs. */
+  _updateInspectPreview (data, ext) {
+    this._setupInspectPreviewIfNeeded()
+    const p = this._inspectPreview
+    if (!p) return
+
+    if (data.geometry && data.geometry !== p.geoType) {
+      const builder = GEOMETRY_DEFS[data.geometry]
+      p.mesh.geometry.dispose()
+      p.mesh.geometry = builder ? builder() : new THREE.BoxGeometry(1, 1, 1)
+      p.geoType = data.geometry
+    }
+    if (data.color) {
+      try { p.mesh.material.color.set(data.color) } catch (_) {}
+    }
+    p.mesh.material.wireframe = !!ext?.wireframe
+    p.mesh.material.needsUpdate = true
+  }
+
+  _teardownInspectPreview () {
+    if (!this._inspectPreview) return
+    this._inspectPreview.mesh.geometry?.dispose()
+    this._inspectPreview.mesh.material?.dispose()
+    this._inspectPreview.renderer.dispose()
+    this._inspectPreview = null
+  }
+
+  /** Same squash-swap-restore approximation as ObjectPanel's Domain
+   *  Expansion — see that file's comment for why it's not true
+   *  vertex-interpolated morphing. */
+  _createMorph () {
+    if (!this._createPreview) return
+    const mesh = this._createPreview.mesh
+    const toSphere = this._createPreview.geoType !== 'SphereGeometry'
+    const nextType = toSphere ? 'SphereGeometry' : 'BoxGeometry'
+
+    gsap.timeline()
+      .to(mesh.scale, { x: 0.01, y: 0.01, z: 1.4, duration: 0.22, ease: 'power2.in' })
+      .call(() => {
+        mesh.geometry.dispose()
+        mesh.geometry = toSphere
+          ? new THREE.SphereGeometry(0.62, 32, 32)
+          : new THREE.BoxGeometry(1, 1, 1)
+        this._createPreview.geoType = nextType
+      })
+      .to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.35, ease: 'elastic.out(1, 0.55)' })
+  }
+
+  /**
+   * Export to Scene — identical event contract to ObjectPanel's button
+   * (omni:node-create-request), so it automatically respects whatever
+   * space is currently entered (OmniNode handles the parenting) without
+   * this code needing to know anything about spaces itself. If "mark +
+   * enter as new space on export" is checked, also flags the new node as
+   * a domain and immediately enters it.
+   */
+  _createExport (btn) {
+    if (!this._createPreview) return
+    const mesh = this._createPreview.mesh
+    const cam  = this.ctx.camera
+    const dir  = new THREE.Vector3()
+    cam.getWorldDirection(dir)
+    dir.multiplyScalar(6)
+
+    const id = generateId()
+    const asSpace = this._el?.querySelector('#oi-create-as-space')?.classList.contains('is-on')
+
+    window.dispatchEvent(new CustomEvent('omni:node-create-request', {
+      detail: {
+        id,
+        label    : 'Container_' + Date.now().toString(36).slice(-4),
+        geometry : this._createPreview.geoType,
+        primitive: 'objective',
+        color    : '#' + (mesh.material.color?.getHexString?.() ?? 'ffffff'),
+        position : [cam.position.x + dir.x, Math.max(0.5, cam.position.y + dir.y), cam.position.z + dir.z],
+        parentId : null,
+      }
+    }))
+
+    if (asSpace) {
+      window.dispatchEvent(new CustomEvent('omni:node-set-domain', { detail: { id, isDomain: true } }))
+      // Give OmniNode a tick to register the node before entering it.
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('omni:enter-space-request', { detail: { id } }))
+      }, 50)
+    }
+
+    if (!btn) return
+    const original = btn.textContent
+    btn.textContent = '⟐ Exported ✓'
+    gsap.fromTo(btn, { scale: 1.08 }, { scale: 1, duration: 0.3, ease: 'back.out(2)' })
+    setTimeout(() => { btn.textContent = original }, 900)
   }
 
   // ── Color sync — pushes this._color state to all UI elements ─────────────
@@ -2201,11 +3089,41 @@ export default class OmniInspector {
       if (e.detail?.id === this._currentId) this.clearNode()
     }
 
+    // Full node array — cached for the parent picker, and used to keep
+    // the Root/Parent/Depth display live if this node's place in the
+    // hierarchy changes from elsewhere (e.g. another node re-parented
+    // under it, shifting its own depth).
+    this._onNodesUpdated = (e) => {
+      this._allNodes = e.detail?.nodes ?? []
+      if (!this._currentId || !this._isOpen) return
+      const updated = this._allNodes.find(n => n.id === this._currentId)
+      if (!updated) return
+      this._currentData = updated
+      const body = this._el?.querySelector('#oi-body')
+      const section = body?.querySelector('#oisec-hierarchy .oi-section-inner')
+      if (section) section.innerHTML = this._hierarchyHTML(updated)
+      if (section) this._wireHierarchy(body, updated)
+    }
+
+    // Space entered/exited — refresh the Domain section's Enter/Exit
+    // button state if it affects the currently loaded node.
+    this._onSpaceEntered = (e) => {
+      this._currentSpaceId = e.detail?.id ?? null
+      this._refreshDomainSection()
+    }
+    this._onSpaceExited = () => {
+      this._currentSpaceId = null
+      this._refreshDomainSection()
+    }
+
     window.addEventListener('omni:system-toggle', this._onToggle)
     window.addEventListener('omni:node-selected', this._onSelected)
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)
     window.addEventListener('omni:node-deleted',  this._onDeleted)
+    window.addEventListener('omni:nodes-updated', this._onNodesUpdated)
+    window.addEventListener('omni:space-entered', this._onSpaceEntered)
+    window.addEventListener('omni:space-exited', this._onSpaceExited)
   }
 
   // ── Sound ─────────────────────────────────────────────────────────────────

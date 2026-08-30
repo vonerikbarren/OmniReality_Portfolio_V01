@@ -415,6 +415,32 @@ function glitch (el) {
   })
 }
 
+/**
+ * Sweeps the header line horizontally left → right in a given color, then
+ * fades. Lightweight "this fired correctly" indicator — distinct from the
+ * vertical glitch() sequence used on minimize.
+ *
+ * @param {HTMLElement} el
+ * @param {string} color   — any valid CSS color, e.g. '#3ee08c'
+ */
+function flashHeaderLine (el, color = 'rgba(255,255,255,0.9)') {
+  const line = el.querySelector('.panel-glitch-line')
+  if (!line) return
+
+  gsap.killTweensOf(line)
+  gsap.set(line, {
+    left: '0%', width: '18%', top: '0px',
+    background: color, opacity: 0,
+  })
+  gsap.timeline()
+    .to(line, { opacity: 1, duration: 0.08 })
+    .to(line, { left: '82%', duration: 0.42, ease: 'power2.inOut' })
+    .to(line, { opacity: 0, duration: 0.15 }, '-=0.10')
+    .set(line, { background: 'rgba(255,255,255,0.35)', left: '0', width: '100%' })
+}
+
+export { flashHeaderLine }
+
 // ── Panel class ───────────────────────────────────────────────────────────────
 
 export default class Panel {
@@ -598,6 +624,19 @@ export default class Panel {
     if (this._state === STATE.OPEN) return
     await this.open()
     this._syncHandButton(true)
+  }
+
+  /**
+   * Lightweight "this event fired" indicator — sweeps the header line in
+   * the given color. Opens the panel first if it's minimized/closed so the
+   * flash is actually visible.
+   * @param {string} color
+   */
+  async flashIndicator (color = '#3ee08c') {
+    if (this._state !== STATE.OPEN && this._state !== STATE.ATTACHED) {
+      await this.open()
+    }
+    flashHeaderLine(this._el, color)
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────

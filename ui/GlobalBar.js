@@ -102,6 +102,26 @@ const STYLES = /* css */`
   border-right : none;
 }
 
+/* ── Hover — column brightens so it's clearer what's under the cursor ────── */
+
+.ob-col {
+  transition      : background 0.14s ease;
+}
+
+.ob-col:hover {
+  background      : rgba(255, 255, 255, 0.035);
+}
+
+.ob-col:hover .ob-label,
+.ob-col:hover .ob-value,
+.ob-col:hover .ob-value.muted,
+.ob-col:hover .ob-xyz-axis,
+.ob-col:hover .ob-kv-key,
+.ob-col:hover .ob-kv-val,
+.ob-col:hover .ob-fps-unit {
+  color           : rgba(255, 255, 255, 0.98);
+}
+
 /* ── Label row — pinned to collapsed height so all headers align ─────────── */
 
 .ob-label-row {
@@ -200,7 +220,7 @@ const STYLES = /* css */`
 
 .ob-label {
   font-size      : var(--label-size);
-  color          : var(--bar-text-muted);
+  color          : var(--bar-text);
   text-transform : uppercase;
   letter-spacing : 0.10em;
   line-height    : 1;

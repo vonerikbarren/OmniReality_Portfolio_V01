@@ -111,6 +111,16 @@ const SELECT_EMISSIVE     = 0x222244
 const PATH_START_EMISSIVE = 0x443300
 const FLOOR_PLANE         = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
+// Edge (genealogy line) tapering — root-to-child connections start thick
+// and taper thinner with each generation, but never fully disappear.
+// Native WebGL Line width is unreliable across browsers (most ignore
+// `linewidth` entirely), so edges are real tapered cylinders instead —
+// gives true, consistent thickness rather than an unreliable approximation.
+const EDGE_BASE_RADIUS = 0.05    // radius at depth 0 (root-level connections)
+const EDGE_MIN_RADIUS  = 0.012   // floor — thinnest an edge can ever get
+const EDGE_TAPER       = 0.72    // multiplier applied per additional depth level
+const GENEALOGY_HIGHLIGHT_COLOR = 0xb99cff   // persistent Ξ selection highlight
+
 // ── Primitive color map ───────────────────────────────────────────────────────
 
 const PRIMITIVE_COLORS = {
@@ -832,6 +842,11 @@ function glitch (el) {
 // OmniNode class
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Exported for reuse — e.g. ui/ObjectPanel.js's ParticleShape/MeshType pickers
+// need the same canonical geometry list rather than a duplicated one, and
+// generateId keeps any externally-requested node using the same id scheme.
+export { GEOMETRY_DEFS, GEO_LABELS, generateId }
+
 export default class OmniNode {
 
   /**
@@ -854,6 +869,9 @@ export default class OmniNode {
 
     // ── Selection / path state ─────────────────────────────────────
     this._selected   = null   // id of currently selected node
+    this._currentSpaceId = null   // id of the domain/space currently "entered" — null means top-level scene
+    this._genealogyHighlighted = new Set()   // node ids currently Ξ-highlighted
+    this._genealogyOutlines    = new Map()   // nodeId -> outline mesh, for cleanup
     this._pathStart  = null   // id of first node in PATH mode click
 
     // ── Pending node creation ──────────────────────────────────────
@@ -872,6 +890,16 @@ export default class OmniNode {
     this._onColorSet    = null
     this._onGeoSet      = null
     this._onPosSet      = null
+    this._onMaterialSet = null
+    this._onScaleSet    = null
+    this._onMediaSet    = null
+    this._onCreateRequest = null
+    this._onSetDomain     = null
+    this._onEnterSpace    = null
+    this._onExitSpace     = null
+    this._onForceSave     = null
+    this._onParentSet     = null
+    this._onGenealogySelect = null
     this._onMouseMove   = null
     this._onMouseClick  = null
   }
@@ -921,7 +949,17 @@ export default class OmniNode {
     window.removeEventListener('omni:node-label-set', this._onLabelSet)
     window.removeEventListener('omni:node-color-set', this._onColorSet)
     window.removeEventListener('omni:node-geo-set',   this._onGeoSet)
-    window.removeEventListener('omni:node-pos-set',   this._onPosSet)
+    window.removeEventListener('omni:node-pos-set',      this._onPosSet)
+    window.removeEventListener('omni:node-material-set', this._onMaterialSet)
+    window.removeEventListener('omni:node-scale-set',    this._onScaleSet)
+    window.removeEventListener('omni:node-media-set',    this._onMediaSet)
+    window.removeEventListener('omni:node-create-request', this._onCreateRequest)
+    window.removeEventListener('omni:node-set-domain', this._onSetDomain)
+    window.removeEventListener('omni:enter-space-request', this._onEnterSpace)
+    window.removeEventListener('omni:exit-space-request', this._onExitSpace)
+    window.removeEventListener('omni:force-save', this._onForceSave)
+    window.removeEventListener('omni:node-parent-set', this._onParentSet)
+    window.removeEventListener('omni:genealogy-select-request', this._onGenealogySelect)
 
     const canvas = this.ctx.renderer?.domElement
     if (canvas) {
@@ -1415,6 +1453,20 @@ export default class OmniNode {
     this.ctx.scene.add(mesh)
     this._nodes.set(data.id, { data, mesh })
 
+    // If a space/domain is currently "entered", new objects belong to it —
+    // re-parent into that space's container mesh. .attach() (rather than
+    // .add()) preserves the mesh's current WORLD position by adjusting its
+    // local transform for us, so `data.position` above can stay a normal
+    // world-space spawn point and still end up correctly placed relative
+    // to the space's own local origin once attached.
+    if (this._currentSpaceId && this._currentSpaceId !== data.id) {
+      const spaceEntry = this._nodes.get(this._currentSpaceId)
+      if (spaceEntry) {
+        spaceEntry.mesh.attach(mesh)
+        data.spaceId = this._currentSpaceId
+      }
+    }
+
     // If there's a parent node, draw an edge
     if (data.parentId && this._nodes.has(data.parentId)) {
       this._connectNodes(data.parentId, data.id)
@@ -1442,6 +1494,13 @@ export default class OmniNode {
   _deleteNode (id) {
     const entry = this._nodes.get(id)
     if (!entry) return
+
+    // Drop any Ξ genealogy outline this node was carrying
+    if (this._genealogyOutlines.has(id)) {
+      this._genealogyOutlines.get(id).material.dispose()
+      this._genealogyOutlines.delete(id)
+      this._genealogyHighlighted.delete(id)
+    }
 
     // Remove edges connected to this node
     const toRemove = this._edges.filter(e => e.from === id || e.to === id)
@@ -1542,10 +1601,14 @@ export default class OmniNode {
     const entryB = this._nodes.get(toId)
     if (!entryA || !entryB) return
 
-    const posA = entryA.mesh.position
-    const posB = entryB.mesh.position
+    const posA = entryA.mesh.getWorldPosition(new THREE.Vector3())
+    const posB = entryB.mesh.getWorldPosition(new THREE.Vector3())
 
-    const line = this._buildEdgeLine(posA, posB)
+    // toId is the child in this connection — its depth (parentId is
+    // already set on its data by the time _connectNodes runs) determines
+    // how thick/thin this edge renders.
+    const childDepth = this._computeAncestry(toId).depth
+    const line = this._buildEdgeLine(posA, posB, childDepth)
     this.ctx.scene.add(line)
 
     const edgeRecord = { from: fromId, to: toId, line }
@@ -1642,15 +1705,93 @@ export default class OmniNode {
    * @param {THREE.Vector3} posB
    * @returns {THREE.Line}
    */
-  _buildEdgeLine (posA, posB) {
-    const points = [posA.clone(), posB.clone()]
-    const geo    = new THREE.BufferGeometry().setFromPoints(points)
-    const mat    = new THREE.LineBasicMaterial({
+  /**
+   * Walk the parentId chain to find a node's root and depth. Cycle-safe
+   * (visited set + hard iteration cap) since parentId chains are
+   * user-editable now (via the Inspector's parent picker) and could in
+   * theory be pointed into a loop.
+   */
+  _computeAncestry (id) {
+    let depth = 0
+    let current = this._nodes.get(id)
+    let rootId = id
+    const visited = new Set([id])
+
+    while (current?.data?.parentId) {
+      const parentId = current.data.parentId
+      if (visited.has(parentId) || depth > 500) break   // cycle guard
+      visited.add(parentId)
+      const parentEntry = this._nodes.get(parentId)
+      if (!parentEntry) break
+      rootId = parentId
+      depth++
+      current = parentEntry
+    }
+
+    return { rootId, depth }
+  }
+
+  /** Every descendant id of `id` (children, grandchildren, ...), via parentId links. */
+  _collectDescendants (id, out = new Set()) {
+    for (const [nodeId, entry] of this._nodes) {
+      if (entry.data.parentId === id && !out.has(nodeId)) {
+        out.add(nodeId)
+        this._collectDescendants(nodeId, out)
+      }
+    }
+    return out
+  }
+
+  /** Removes every Ξ genealogy outline/highlight currently active. Safe
+   *  to call even when nothing is highlighted. */
+  _clearGenealogyHighlight () {
+    for (const [nodeId, outline] of this._genealogyOutlines) {
+      const n = this._nodes.get(nodeId)
+      n?.mesh?.remove(outline)
+      outline.material.dispose()   // never dispose outline.geometry — it's shared with the real mesh
+    }
+    this._genealogyOutlines.clear()
+
+    for (const nodeId of this._genealogyHighlighted) {
+      const n = this._nodes.get(nodeId)
+      if (n?.mesh?.material) {
+        n.mesh.material.emissive?.setHex?.(0x000000)
+        n.mesh.material.emissiveIntensity = 0
+        n.mesh.material.needsUpdate = true
+      }
+    }
+    for (const edge of this._edges) {
+      edge.line.material.opacity = 0.45
+      edge.line.material.color.setHex(0xffffff)
+    }
+    this._genealogyHighlighted = new Set()
+  }
+
+  _buildEdgeLine (posA, posB, depth = 0) {
+    const radius = Math.max(
+      EDGE_MIN_RADIUS,
+      EDGE_BASE_RADIUS * Math.pow(EDGE_TAPER, depth)
+    )
+
+    const direction = new THREE.Vector3().subVectors(posB, posA)
+    const length    = direction.length()
+    const midpoint  = new THREE.Vector3().addVectors(posA, posB).multiplyScalar(0.5)
+
+    const geo = new THREE.CylinderGeometry(radius, radius, length, 8, 1)
+    const mat = new THREE.MeshBasicMaterial({
       color       : 0xffffff,
       transparent : true,
       opacity     : 0,    // animated in after add
     })
-    return new THREE.Line(geo, mat)
+
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.copy(midpoint)
+    // Cylinders default to standing along Y — rotate to point along `direction`.
+    mesh.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      direction.clone().normalize()
+    )
+    return mesh
   }
 
   // ── Panel UI — node list ──────────────────────────────────────────────────
@@ -1840,6 +1981,7 @@ export default class OmniNode {
       entry.data.label = label
       this._save()
       this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
     }
 
     this._onColorSet = (e) => {
@@ -1852,6 +1994,7 @@ export default class OmniNode {
       }
       this._save()
       this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
     }
 
     this._onGeoSet = (e) => {
@@ -1878,6 +2021,208 @@ export default class OmniNode {
 
       this._save()
       this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
+    }
+
+    this._onMaterialSet = (e) => {
+      const { id, material } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      // Mesh material is already swapped by OmniInspector (same mesh object) —
+      // this just keeps OmniNode's own record in sync for persistence/TreeView.
+      entry.data.material = material
+      this._save()
+      this._updateNodeList()
+    }
+
+    this._onScaleSet = (e) => {
+      const { id, scale } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      // Mesh scale is already applied by OmniInspector (same mesh object) —
+      // this just keeps OmniNode's own record in sync.
+      entry.data.scale = scale
+      this._save()
+      this._updateNodeList()
+    }
+
+    this._onMediaSet = (e) => {
+      const { id, type, url, label } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      // Media itself lives in the Inspector's extended-record store already —
+      // just track a lightweight reference so TreeView/Pocket can show a badge.
+      entry.data.media = entry.data.media ?? []
+      entry.data.media.push({ type, url, label })
+      this._save()
+      this._updateNodeList()
+    }
+
+    // External creation request — lets other modules (e.g. ui/ObjectPanel's
+    // "Export to Scene" button) spawn a real, registered node without ever
+    // needing a direct reference to this OmniNode instance.
+    this._onCreateRequest = (e) => {
+      const d = e.detail ?? {}
+      this._createNode({
+        id        : d.id ?? generateId(),
+        label     : d.label ?? 'Object_' + Date.now().toString(36).slice(-4),
+        geometry  : d.geometry ?? 'BoxGeometry',
+        primitive : d.primitive ?? 'objective',
+        color     : d.color ?? '#ffffff',
+        position  : d.position ?? [0, 1, 0],
+        parentId  : d.parentId ?? this._selected ?? null,
+        createdAt : new Date().toISOString(),
+      })
+    }
+
+    // Explicit save request — from OmniInspector's Save button. All fields
+    // already autosave on change; this just guarantees an immediate,
+    // unconditional flush of whatever is currently in memory.
+    this._onForceSave = () => this._save()
+
+    // Parent reassignment — from OmniInspector's Root/Parent picker list.
+    // Refuses to create a cycle (can't set a node's parent to one of its
+    // own descendants).
+    this._onParentSet = (e) => {
+      const { id, parentId } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry || id === parentId) return
+      if (parentId && this._collectDescendants(id).has(parentId)) {
+        console.warn(`⟐N — refused to set parent: ${parentId} is a descendant of ${id} (would create a cycle).`)
+        return
+      }
+
+      // Remove any existing edge for this node as a child
+      const oldParentId = entry.data.parentId
+      if (oldParentId) this._removeEdge(oldParentId, id)
+
+      entry.data.parentId = parentId ?? null
+      if (parentId) this._connectNodes(parentId, id)
+
+      this._save()
+      this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    }
+
+    // Whole-genealogy selection — from OmniInspector's Ξ button. Finds the
+    // node's root, then pulses every node + edge in that whole connected
+    // tree. This is a visual "here's the structure" confirmation, not a
+    // persistent multi-select (nodes aren't individually selectable as a
+    // group yet — dragging/editing the whole tree together would be a
+    // separate, larger feature).
+    this._onGenealogySelect = (e) => {
+      const { id } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+
+      const { rootId } = this._computeAncestry(id)
+      const treeIds = new Set([rootId, ...this._collectDescendants(rootId)])
+
+      // Toggle off if this exact tree is already the highlighted one.
+      const sameTree = this._genealogyHighlighted.size === treeIds.size &&
+        [...treeIds].every(tid => this._genealogyHighlighted.has(tid))
+
+      this._clearGenealogyHighlight()
+
+      if (sameTree) {
+        window.dispatchEvent(new CustomEvent('omni:genealogy-selected', { detail: { rootId: null, ids: [] } }))
+        return
+      }
+
+      for (const nodeId of treeIds) {
+        const n = this._nodes.get(nodeId)
+        if (!n?.mesh) continue
+
+        if (n.mesh.material) {
+          n.mesh.material.emissive?.setHex?.(GENEALOGY_HIGHLIGHT_COLOR)
+          n.mesh.material.emissiveIntensity = 1.1
+          n.mesh.material.needsUpdate = true
+        }
+
+        // Outline — a slightly larger, backface-only duplicate sharing the
+        // same geometry (classic cheap selection-outline technique). Added
+        // as a child of the node's own mesh, so it inherits position and
+        // moves/scales with it automatically.
+        const outline = new THREE.Mesh(
+          n.mesh.geometry,
+          new THREE.MeshBasicMaterial({
+            color: GENEALOGY_HIGHLIGHT_COLOR, side: THREE.BackSide,
+            transparent: true, opacity: 0.85,
+          })
+        )
+        outline.scale.setScalar(1.12)   // local to parent — do NOT multiply by parent's own scale
+        n.mesh.add(outline)
+        this._genealogyOutlines.set(nodeId, outline)
+      }
+
+      this._genealogyHighlighted = treeIds
+
+      for (const edge of this._edges) {
+        if (treeIds.has(edge.from) && treeIds.has(edge.to)) {
+          edge.line.material.opacity = 1
+          edge.line.material.color.setHex(GENEALOGY_HIGHLIGHT_COLOR)
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent('omni:genealogy-selected', {
+        detail: { rootId, ids: [...treeIds] }
+      }))
+    }
+
+    // Mark/unmark a node as a domain/space, with an optional space image —
+    // from OmniInspector's new Domain section.
+    this._onSetDomain = (e) => {
+      const { id, isDomain, spaceImage } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      entry.data.isDomain = !!isDomain
+      if (spaceImage !== undefined) entry.data.spaceImage = spaceImage
+
+      // Becoming a domain: double-sided (camera ends up inside/near it
+      // once entered — single-sided faces would cull from that angle)
+      // and scaled up 10x to actually have room to contain other objects.
+      if (isDomain && entry.mesh?.material) {
+        entry.mesh.material.side = THREE.DoubleSide
+        entry.mesh.material.needsUpdate = true
+        entry.mesh.scale.set(10, 10, 10)
+        entry.data.scale = [10, 10, 10]
+      }
+
+      this._save()
+      this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
+    }
+
+    // Enter a space — everything created from now on is parented into it
+    // (see _createNode) until omni:exit-space-request fires. Camera moves
+    // to the space's own local origin, per the "context starts from the
+    // origin point" rule.
+    this._onEnterSpace = (e) => {
+      const { id } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      if (!entry.data.isDomain) {
+        console.warn(`⟐N — "${entry.data.label ?? id}" isn't marked as a domain/space yet — enable "Is Domain" in the Inspector first.`)
+        return
+      }
+
+      this._currentSpaceId = id
+      const worldPos = entry.mesh.getWorldPosition(new THREE.Vector3())
+      gsap.to(this.ctx.camera.position, {
+        x: worldPos.x, y: worldPos.y, z: worldPos.z,
+        duration: 1.4, ease: 'power2.inOut',
+      })
+
+      window.dispatchEvent(new CustomEvent('omni:space-entered', {
+        detail: { id, label: entry.data.label, spaceImage: entry.data.spaceImage ?? null }
+      }))
+    }
+
+    this._onExitSpace = () => {
+      const prevId = this._currentSpaceId
+      if (!prevId) return
+      this._currentSpaceId = null
+      window.dispatchEvent(new CustomEvent('omni:space-exited', { detail: { id: prevId } }))
     }
 
     this._onPosSet = (e) => {
@@ -1888,7 +2233,11 @@ export default class OmniNode {
       entry.mesh.position.set(...position)
       entry.data.position = position
 
-      // Rebuild all edges connected to this node
+      // Rebuild all edges connected to this node — edges are tapered
+      // cylinder meshes (not simple 2-point lines), so a moved endpoint
+      // means rebuilding the cylinder's geometry/orientation from
+      // scratch, not just patching a vertex buffer. Reuses the existing
+      // edge.line's material so its current opacity/color survives.
       this._edges
         .filter(edge => edge.from === id || edge.to === id)
         .forEach(edge => {
@@ -1896,21 +2245,37 @@ export default class OmniNode {
           const entryB = this._nodes.get(edge.to)
           if (!entryA || !entryB) return
 
-          // Update line geometry
-          const posAttr = edge.line.geometry.attributes.position
-          posAttr.setXYZ(0, entryA.mesh.position.x, entryA.mesh.position.y, entryA.mesh.position.z)
-          posAttr.setXYZ(1, entryB.mesh.position.x, entryB.mesh.position.y, entryB.mesh.position.z)
-          posAttr.needsUpdate = true
+          const posA  = entryA.mesh.getWorldPosition(new THREE.Vector3())
+          const posB  = entryB.mesh.getWorldPosition(new THREE.Vector3())
+          const depth = this._computeAncestry(edge.to).depth
+
+          const fresh = this._buildEdgeLine(posA, posB, depth)
+          edge.line.geometry.dispose()
+          edge.line.geometry = fresh.geometry
+          edge.line.position.copy(fresh.position)
+          edge.line.quaternion.copy(fresh.quaternion)
+          fresh.material.dispose()   // throwaway — edge.line keeps its own material
         })
 
       this._save()
+      window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
     }
 
     window.addEventListener('omni:system-toggle',  this._onToggle)
     window.addEventListener('omni:node-label-set', this._onLabelSet)
     window.addEventListener('omni:node-color-set', this._onColorSet)
     window.addEventListener('omni:node-geo-set',   this._onGeoSet)
-    window.addEventListener('omni:node-pos-set',   this._onPosSet)
+    window.addEventListener('omni:node-pos-set',      this._onPosSet)
+    window.addEventListener('omni:node-material-set', this._onMaterialSet)
+    window.addEventListener('omni:node-scale-set',    this._onScaleSet)
+    window.addEventListener('omni:node-media-set',    this._onMediaSet)
+    window.addEventListener('omni:node-create-request', this._onCreateRequest)
+    window.addEventListener('omni:node-set-domain', this._onSetDomain)
+    window.addEventListener('omni:enter-space-request', this._onEnterSpace)
+    window.addEventListener('omni:exit-space-request', this._onExitSpace)
+    window.addEventListener('omni:force-save', this._onForceSave)
+    window.addEventListener('omni:node-parent-set', this._onParentSet)
+    window.addEventListener('omni:genealogy-select-request', this._onGenealogySelect)
 
     // Escape key — cancel place mode or deselect
     document.addEventListener('keydown', (e) => {
@@ -1971,7 +2336,11 @@ export default class OmniNode {
           const entryB = this._nodes.get(to)
           if (!entryA || !entryB) return
 
-          const line = this._buildEdgeLine(entryA.mesh.position, entryB.mesh.position)
+          const line = this._buildEdgeLine(
+            entryA.mesh.getWorldPosition(new THREE.Vector3()),
+            entryB.mesh.getWorldPosition(new THREE.Vector3()),
+            this._computeAncestry(to).depth
+          )
           line.material.opacity = 0.45
           this.ctx.scene.add(line)
           this._edges.push({ from, to, line })
@@ -1989,7 +2358,10 @@ export default class OmniNode {
 
   _storageSnapshot () {
     return {
-      nodes : [...this._nodes.values()].map(n => n.data),
+      nodes : [...this._nodes.values()].map(n => {
+        const { rootId, depth } = this._computeAncestry(n.data.id)
+        return { ...n.data, rootId, depth }
+      }),
       edges : this._edges.map(e => ({ from: e.from, to: e.to })),
     }
   }

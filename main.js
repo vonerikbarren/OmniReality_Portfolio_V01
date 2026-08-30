@@ -16,6 +16,9 @@ import ParticleField     from './modules/ParticleField.js'
 import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
 import TerminalTunnel    from './modules/TerminalTunnel.js'
+import VoidBoundary      from './modules/VoidBoundary.js'
+import WallpaperSphere   from './modules/WallpaperSphere.js'
+import UserSpaceSphere   from './modules/UserSpaceSphere.js'
 
 // ── Phase 3 — UI Shell ────────────────────────────────────
 import UI                from './ui/index.js'
@@ -27,12 +30,17 @@ import OmniInspector     from './systems/OmniInspector.js'
 import OmniPresenter     from './systems/OmniPresenter.js'
 import OmniPocket        from './systems/OmniPocket.js'
 import NodeManager       from './systems/NodeManager.js'
+import EventTestIndicators from './systems/EventTestIndicators.js'
+import PocketCubes       from './systems/PocketCubes.js'
 
 // ── Phase 5 — Data Layer ──────────────────────────────────
 import NodeLoader        from './data/NodeLoader.js'
 
 // ── Phase 6 — Portfolio ───────────────────────────────────
-import Portfolio2D       from './modules/Portfolio2D.js'
+// Portfolio2D removed — the sphere-spawn approach (24 spheres × 4 zones
+// each, with per-frame raycasting/billboarding in update()) was too
+// expensive on FPS/memory. Rebuilding the ⟐Portfolio button flow from
+// scratch with a different approach.
 import Portfolio3D       from './modules/Portfolio3D.js'
 import PortfolioXD       from './modules/PortfolioXD.js'
 
@@ -41,6 +49,9 @@ import SoundManager      from './utils/SoundManager.js'
 import MiniMap           from './ui/MiniMap.js'
 import TreeView          from './ui/TreeView.js'
 import RadialMenu from './ui/RadialMenu.js'
+import ObjectPanel       from './ui/ObjectPanel.js'
+import AdminPanel        from './ui/AdminPanel.js'
+import * as ThemeManager from './ui/ThemeManager.js'
 
 
 
@@ -60,6 +71,9 @@ import RadialMenu from './ui/RadialMenu.js'
                    base.addModule(new PortalSpheres(base.context))
                    base.addModule(new OmniPlatform(base.context))
                    base.addModule(new TerminalTunnel(base.context))
+                   base.addModule(new VoidBoundary(base.context))
+                   base.addModule(new WallpaperSphere(base.context))
+                   base.addModule(new UserSpaceSphere(base.context))
 
   // ── Phase 4 — Core systems ───────────────────────────────
   const nodeManager   = new NodeManager(base.context)
@@ -77,9 +91,10 @@ import RadialMenu from './ui/RadialMenu.js'
   base.addModule(omniPresenter)
   base.addModule(omniPocket)
   base.addModule(nodeLoader)
+  base.addModule(new EventTestIndicators(base.context))
+  base.addModule(new PocketCubes(base.context))
 
   // ── Phase 6 — Portfolio (deferred — spawn on nav-select) ─
-  base.addModule(new Portfolio2D(base.context))
   base.addModule(new Portfolio3D(base.context))
   base.addModule(new PortfolioXD(base.context))
 
@@ -122,6 +137,14 @@ import RadialMenu from './ui/RadialMenu.js'
   const radialMenu = new RadialMenu(base.context)
   radialMenu.init()
   base.addModule(radialMenu)
+
+  const objectPanel = new ObjectPanel(base.context)
+  base.addModule(objectPanel)
+
+  const adminPanel = new AdminPanel(base.context)
+  base.addModule(adminPanel)
+
+  ThemeManager.initTheme()
 
   window.addEventListener('omni:movement', (e) => {
     const key = `${e.detail.hand}-${e.detail.direction}`
@@ -204,6 +227,78 @@ import RadialMenu from './ui/RadialMenu.js'
     }
   })
 
+  // ── 'c' — return to landing point coordinates ─────────────
+  // Matches the exact resting pose playEntryAnimation() ends on: position
+  // (0, 2, 0.001), levelled off looking down -Z (lookAt (0, 2, -1)).
+  function returnToLanding () {
+    const cam = base.camera
+    orbitMod.disable()
+    gsap.to(cam.position, {
+      x: 0, y: 2, z: 0.001,
+      duration: 1.2,
+      ease: 'power2.inOut',
+      onUpdate: () => cam.lookAt(0, 2, -1),
+      onComplete: () => {
+        cam.lookAt(0, 2, -1)
+        _syncOrbitTarget()
+        orbitMod.enable()
+      }
+    })
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'KeyC' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    returnToLanding()
+  })
+
+  // ── Key commands — hand menus ─────────────────────────────
+  // Clicking the real hand-cell button (rather than dispatching events
+  // ourselves) means every existing behavior — active-state tracking,
+  // click sound, the omni:hamburger / omni:radial-toggle payloads —
+  // stays exactly as it is for a mouse click. No logic duplicated here.
+  //
+  //   Shift (left)  → ⟐LH Tool menu   (.omni-hand--bl radial button)
+  //   Shift (right) → ⟐RH Tool menu   (.omni-hand--br radial button)
+  //   1 / Numpad1   → ⟐mniHand menu   (.omni-hand--tl hamburger button — top-left)
+  //   2 / Numpad2   → ⟐ConsciousHand menu (.omni-hand--tr hamburger button — top-right)
+  //   3 / Numpad3   → ⟐mniHand Tool menu       (.omni-hand--tl radial button)
+  //   4 / Numpad4   → ⟐ConsciousHand Tool menu (.omni-hand--tr radial button)
+  const HAND_KEY_BINDINGS = [
+    { codes: ['ShiftLeft'],              selector: '.omni-hand--bl .hand-cell--radial'    },
+    { codes: ['ShiftRight'],             selector: '.omni-hand--br .hand-cell--radial'    },
+    { codes: ['Digit1', 'Numpad1'],      selector: '.omni-hand--tl .hand-cell--hamburger' },
+    { codes: ['Digit2', 'Numpad2'],      selector: '.omni-hand--tr .hand-cell--hamburger' },
+    { codes: ['Digit3', 'Numpad3'],      selector: '.omni-hand--tl .hand-cell--radial'    },
+    { codes: ['Digit4', 'Numpad4'],      selector: '.omni-hand--tr .hand-cell--radial'    },
+  ]
+
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return   // don't re-trigger while a key is held
+
+    // Don't hijack Shift/1/2 while the person is typing in a text field
+    // (e.g. the Object Panel's text inputs, node label editing, etc).
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+
+    const binding = HAND_KEY_BINDINGS.find(b => b.codes.includes(e.code))
+    if (!binding) return
+
+    const btn = document.querySelector(binding.selector)
+    if (btn && !btn.disabled) btn.click()
+  })
+
   // ── Portal activation log ─────────────────────────────────
   window.addEventListener('omni:portal-activated', (e) => {
     console.log(`⟐ Portal activated → ${e.detail.label} (${e.detail.id})`)
@@ -261,6 +356,11 @@ import RadialMenu from './ui/RadialMenu.js'
   function dismissBoot() {
     const boot = document.getElementById('omni-boot')
     if (!boot) return
+    const bar = document.getElementById('boot-progress-bar')
+    if (bar) {
+      bar.classList.add('is-complete')
+      bar.style.width = '100%'
+    }
     boot.classList.add('fade-out')
     boot.addEventListener('transitionend', () => boot.remove(), { once: true })
   }

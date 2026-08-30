@@ -585,6 +585,14 @@ export default class NodeManager {
       }
     }))
 
+    // TreeView highlight + scroll-into-view — only meaningful for actual
+    // registered nodes (root/portal spaces have no TreeView entry).
+    if (destEntry) {
+      window.dispatchEvent(new CustomEvent('omni:node-entered', {
+        detail: { id: to }
+      }))
+    }
+
     // Feed GlobalBar — resolved by ui/index.js listening to omni:space-changed
     console.log(`⟐ NodeManager — navigated ${direction}: ${from ?? 'root'} → ${to} (${label}, depth ${depth})`)
   }

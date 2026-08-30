@@ -115,10 +115,45 @@ const STYLES = /* css */`
   z-index          : 80;
 }
 
-/* Near dock — glow intensifies, border brightens */
+/* ── Near dock — glow intensifies, border brightens */
 .omni-panel-icon.near-dock {
   border-color     : rgba(255, 255, 255, 0.40);
   box-shadow       : 0 0 28px rgba(255,255,255,0.28), 0 10px 32px rgba(0,0,0,0.70);
+}
+
+/* ── Orb variant — bright circle, thin ring spinning around it ─────────────── */
+
+.omni-panel-icon.is-orb {
+  border-radius    : 50%;
+  background       : radial-gradient(circle at 35% 32%, rgba(255,255,255,0.95), rgba(200,220,255,0.55) 55%, rgba(120,150,220,0.30) 100%);
+  border            : none;
+  box-shadow       : 0 0 18px rgba(180, 210, 255, 0.55), 0 0 4px rgba(255,255,255,0.8);
+}
+
+.omni-panel-icon.is-orb .orb-core {
+  position         : absolute;
+  inset            : 0;
+  border-radius    : 50%;
+  pointer-events   : none;
+}
+
+.omni-panel-icon.is-orb .orb-ring {
+  position         : absolute;
+  inset            : -5px;
+  border-radius    : 50%;
+  border           : 1.5px solid transparent;
+  border-top-color : rgba(255, 255, 255, 0.95);
+  pointer-events   : none;
+  animation        : omni-orb-spin 1.6s linear infinite;
+}
+
+.omni-panel-icon.is-orb:hover {
+  box-shadow       : 0 0 26px rgba(180, 210, 255, 0.75), 0 0 6px rgba(255,255,255,0.9);
+}
+
+@keyframes omni-orb-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* ── Icon label ───────────────────────────────────────────────────────────── */
@@ -300,34 +335,39 @@ export default class PanelIcon {
 
   _listen () {
     this._onMinimized = (e) => {
-      const { id, label, iconLabel, fromRect } = e.detail ?? {}
+      const { id, label, iconLabel, fromRect, variant } = e.detail ?? {}
       if (!id) return
       // If icon already exists (double-minimize guard), skip
       if (this._icons.has(id)) return
-      this._spawnIcon({ id, label, iconLabel, fromRect })
+      this._spawnIcon({ id, label, iconLabel, fromRect, variant })
     }
     window.addEventListener('omni:panel-minimized', this._onMinimized)
   }
 
   // ── Spawn ─────────────────────────────────────────────────────────────────
 
-  _spawnIcon ({ id, label, iconLabel, fromRect }) {
+  _spawnIcon ({ id, label, iconLabel, fromRect, variant }) {
     // Start position — centre of the panel's last bounding rect
     const startX = (fromRect?.x ?? window.innerWidth  / 2) + (fromRect?.w ?? 0) / 2 - ICON_SIZE / 2
     const startY = (fromRect?.y ?? window.innerHeight / 2) + (fromRect?.h ?? 0) / 2 - ICON_SIZE / 2
 
     const el = document.createElement('div')
-    el.className      = 'omni-panel-icon'
+    el.className      = variant === 'orb' ? 'omni-panel-icon is-orb' : 'omni-panel-icon'
     el.dataset.panelId = id
     el.dataset.tooltip = `${iconLabel} — click to restore`
     el.setAttribute('role', 'button')
     el.setAttribute('aria-label', `Restore ${label}`)
     el.setAttribute('tabindex', '0')
 
-    el.innerHTML = /* html */`
-      <span class="panel-icon-glyph">${iconLabel}</span>
-      <span class="panel-icon-sub">min</span>
-    `
+    el.innerHTML = variant === 'orb'
+      ? /* html */`
+        <span class="orb-ring" aria-hidden="true"></span>
+        <span class="orb-core"></span>
+      `
+      : /* html */`
+        <span class="panel-icon-glyph">${iconLabel}</span>
+        <span class="panel-icon-sub">min</span>
+      `
 
     // Position before mount so no layout flash
     gsap.set(el, { left: startX, top: startY, scale: 0.3, opacity: 0 })
