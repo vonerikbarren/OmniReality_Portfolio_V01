@@ -23,6 +23,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
+import { classifyChar, defaultKeyData } from './OmniKeys.js'
 
 const STYLES = /* css */`
 
@@ -99,6 +100,11 @@ const STYLES = /* css */`
   cursor           : pointer;
 }
 .oki-ctrl:hover { background: rgba(255,255,255,0.10); color: var(--oki-text); }
+.oki-ctrl--save { color: rgba(140, 255, 180, 0.85); border-color: rgba(140, 255, 180, 0.22); }
+.oki-ctrl--save:hover { background: rgba(140, 255, 180, 0.14); border-color: rgba(140, 255, 180, 0.35); }
+.oki-ctrl--save.is-saved { background: rgba(140, 255, 180, 0.22); border-color: rgba(140, 255, 180, 0.5); }
+.oki-ctrl--reset { color: rgba(255, 140, 140, 0.7); border-color: rgba(255, 140, 140, 0.18); }
+.oki-ctrl--reset:hover { background: rgba(255, 100, 100, 0.14); border-color: rgba(255, 100, 100, 0.35); color: rgba(255, 160, 160, 1); }
 
 .oki-notify-banner {
   flex-shrink      : 0;
@@ -258,6 +264,8 @@ export default class OmniKeysInspector {
       <div class="oki-header">
         <span class="oki-title">⟐OmniKeys Inspector</span>
         <div class="oki-controls">
+          <button class="oki-ctrl oki-ctrl--save" data-action="save" title="Save now">💾</button>
+          <button class="oki-ctrl oki-ctrl--reset" data-action="reset" title="Reset this key to its default">🗑</button>
           <button class="oki-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
@@ -269,6 +277,8 @@ export default class OmniKeysInspector {
     this._bindHeader(el)
     this._bindResize(el)
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
+    el.querySelector('[data-action="save"]').addEventListener('click', (e) => this._explicitSave(e.currentTarget))
+    el.querySelector('[data-action="reset"]').addEventListener('click', () => this._resetKey())
 
     el.dataset.winId = 'omnikeysinspector'
     WindowManager.register('omnikeysinspector', el, 'OmniKeys Inspector')
@@ -342,6 +352,7 @@ export default class OmniKeysInspector {
     })
     body.querySelector('#oki-string')?.addEventListener('input', (e) => {
       this._data.string = e.target.value
+      this._data.classType = classifyChar(e.target.value.trim()[0] ?? '')
       this._commit()
     })
 
@@ -375,13 +386,41 @@ export default class OmniKeysInspector {
     }, 200)
   }
 
-  _flashBanner () {
+  _flashBanner (text = '✓ Saved') {
     const banner = this._el?.querySelector('#oki-notify-banner')
     if (!banner) return
-    banner.textContent = '✓ Saved'
+    banner.textContent = text
     banner.classList.add('is-visible')
     clearTimeout(this._bannerTimer)
     this._bannerTimer = setTimeout(() => banner.classList.remove('is-visible'), 1400)
+  }
+
+  /** Explicit save button — everything already autosaves on a 200ms
+   *  debounce, so this mostly matters for flushing immediately +
+   *  giving the same visible confirmation Admin/OmniInspector's save
+   *  buttons give, rather than only relying on the debounce. */
+  _explicitSave (btn) {
+    if (this._index == null) return
+    clearTimeout(this._saveTimer)
+    window.dispatchEvent(new CustomEvent('omni:omnikeys-key-updated', {
+      detail: { index: this._index, keyData: this._data }
+    }))
+    this._flashBanner('✓ Saved')
+    btn?.classList.add('is-saved')
+    setTimeout(() => btn?.classList.remove('is-saved'), 500)
+  }
+
+  /** The "trash" equivalent for a fixed 128-key grid — keys can't be
+   *  removed the way a scene node can, so this resets the currently
+   *  selected key back to its default title/string/sequence instead. */
+  _resetKey () {
+    if (this._index == null) return
+    this._data = defaultKeyData(this._index)
+    this._render(null)
+    window.dispatchEvent(new CustomEvent('omni:omnikeys-key-updated', {
+      detail: { index: this._index, keyData: this._data }
+    }))
+    this._flashBanner('↺ Reset to default')
   }
 
   // ── Header drag / resize ─────────────────────────────────────────────────

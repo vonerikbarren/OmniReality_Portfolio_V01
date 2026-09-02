@@ -33,7 +33,7 @@ const STYLES = /* css */`
 
 #omni-start-hud {
   position        : fixed;
-  inset           : 0;
+  inset           : 7%;   /* meaningful margin from the true viewport edges — a HUD shouldn't fill the whole screen */
   z-index         : 90;
   pointer-events  : none;
   opacity         : 0;
@@ -156,6 +156,15 @@ const STYLES = /* css */`
 
 /* Real grid-line background — graph-paper style — data sits at its
    perimeter (corners/edges), center left open. */
+/* Real grid-line background — graph-paper style. Organized middle
+   outward by data class: the core transform data (Position/Rotation/
+   Scale) sits in the cells directly edge-adjacent to the empty center
+   (ml/mr/bm — sharing an actual edge with the middle, not just a
+   corner), while more contextual/peripheral data (Performance, System
+   Details, Dimension, Dimensional+) sits in the four corners, furthest
+   from center. A soft drop-shadow sits behind the grid lines
+   specifically so they stay visible whether the current domain's
+   background happens to be dark or light. */
 .osh-data-grid {
   display              : grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -172,15 +181,16 @@ const STYLES = /* css */`
     linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
   background-size      : 18px 18px;
+  filter               : drop-shadow(0 2px 10px rgba(0, 0, 0, 0.65));
 }
 
-.osh-data-group--position        { grid-area: tl; text-align: left;   }
-.osh-data-group--rotation        { grid-area: tr; text-align: right;  }
-.osh-data-group--scale           { grid-area: ml; text-align: left;   }
-.osh-data-group--performance     { grid-area: mr; text-align: right;  }
-.osh-data-group--systemdetails   { grid-area: bl; text-align: left;   }
-.osh-data-group--dimension       { grid-area: bm; text-align: center; }
-.osh-data-group--dimensionalplus { grid-area: br; text-align: right;  }
+.osh-data-group--performance      { grid-area: tl; text-align: left;   }
+.osh-data-group--systemdetails    { grid-area: tr; text-align: right;  }
+.osh-data-group--position         { grid-area: ml; text-align: left;   }
+.osh-data-group--rotation         { grid-area: mr; text-align: right;  }
+.osh-data-group--dimension        { grid-area: bl; text-align: left;   }
+.osh-data-group--scale            { grid-area: bm; text-align: center; }
+.osh-data-group--dimensionalplus  { grid-area: br; text-align: right;  }
 
 .osh-data-group-label {
   font-size        : 8.5px;
@@ -195,8 +205,8 @@ const STYLES = /* css */`
   flex-direction   : column;
   gap              : 2px;
 }
-.osh-data-group--rotation .osh-data-xyz,
-.osh-data-group--performance .osh-data-xyz { align-items: flex-end; }
+.osh-data-group--rotation .osh-data-xyz { align-items: flex-end; }
+.osh-data-group--scale .osh-data-xyz { align-items: center; }
 
 .osh-data-xyz-item {
   display          : flex;
@@ -213,8 +223,8 @@ const STYLES = /* css */`
   gap              : 8px;
   font-size        : 9.5px;
 }
-.osh-data-group--dimensionalplus .osh-data-kv,
-.osh-data-group--rotation .osh-data-kv { flex-direction: row-reverse; }
+.osh-data-group--systemdetails .osh-data-kv,
+.osh-data-group--dimensionalplus .osh-data-kv { flex-direction: row-reverse; }
 .osh-data-kv-key { color: rgba(255, 255, 255, 0.55); }
 .osh-data-kv-val { color: rgba(255, 255, 255, 1); font-weight: 600; }
 .osh-data-kv-val.undef { color: rgba(255, 255, 255, 0.4); font-weight: 400; }
@@ -223,7 +233,7 @@ const STYLES = /* css */`
   display          : flex;
   align-items      : baseline;
   gap              : 4px;
-  justify-content  : flex-end;
+  justify-content  : flex-start;   /* Performance now sits on the left (tl) */
 }
 .osh-data-fps-num {
   font-size        : 20px;

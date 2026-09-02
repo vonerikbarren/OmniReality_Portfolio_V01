@@ -47,30 +47,125 @@ import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
 
-const ROWS = 8
 const COLS = 16
-const TOTAL_KEYS = ROWS * COLS
 const STORE_KEY = 'omni:omnikeys:keys'
 
-const MODES = ['Edit', 'Delivery', 'Sequence']
+const MODES = ['Edit', 'Delivery', 'Sequence', 'Command']
 
-// Default character fill — letters, digits, common symbols, cycling to
-// fill all 128 slots. Not a real-keyboard layout by design.
-const DEFAULT_CHARS = (
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
-  'abcdefghijklmnopqrstuvwxyz' +
-  '0123456789' +
-  '!@#$%^&*()-_=+[]{};:\'",.<>/?\\|~` '
-).split('')
+/**
+ * Structured layout — an array of rows, each row an array of key specs
+ * ({ type, char, label }) or `null` for a blank/unused spacer cell.
+ * Organized class-first per request: media/system row, then Esc+F-row,
+ * then digits, then letters, then symbols, then modifiers + a compact
+ * directional pad, then a split spacebar — each class fills whole rows
+ * so nothing bleeds into the next row's class.
+ *
+ * A couple of genuinely ambiguous reads, stated plainly rather than
+ * guessed silently:
+ *   - "another row above that" (the media/system row) is placed as the
+ *     literal topmost row, with Esc+Function keys just below it.
+ *   - "diagonal left / diagonal right" — read as the two upper
+ *     diagonals (↖ ↗), paired with Up on the same row, since only two
+ *     diagonals (not all four) were asked for.
+ */
+function buildLayout () {
+  const mediaRow = [
+    { type: 'media', char: 'brightness-up',   label: '☀+' },
+    { type: 'media', char: 'brightness-down', label: '☀−' },
+    { type: 'media', char: 'start-menu',      label: '⟐' },
+    { type: 'media', char: 'search',          label: '🔍' },
+    { type: 'media', char: 'mic',             label: '🎤' },
+    { type: 'media', char: 'nightmode',       label: '🌙' },
+    { type: 'media', char: 'media-prev',      label: '⏮' },
+    { type: 'media', char: 'play-pause',      label: '⏯' },
+    { type: 'media', char: 'slow-down',       label: '⏪' },
+    { type: 'media', char: 'speed-up',        label: '⏩' },
+    { type: 'media', char: 'media-next',      label: '⏭' },
+    { type: 'media', char: 'vol-up',          label: '🔊' },
+    { type: 'media', char: 'vol-down',        label: '🔉' },
+    { type: 'media', char: 'mute',            label: '🔇' },
+    { type: 'media', char: 'power',           label: '⏻' },
+    null,
+  ]
 
-function defaultKeyData (index) {
-  const ch = DEFAULT_CHARS[index % DEFAULT_CHARS.length]
-  return {
-    title: ch === ' ' ? 'Space' : ch,
-    string: ch,
-    sequenceStart: { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
-    sequenceEnd:   { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
+  const fnRow = [
+    { type: 'function', char: 'Escape', label: 'Esc' },
+    ...Array.from({ length: 12 }, (_, i) => ({ type: 'function', char: `F${i + 1}`, label: `F${i + 1}` })),
+    null, null, null,
+  ]
+
+  const digits = '1234567890'.split('')
+  const digitRow = [...digits.map(d => ({ type: 'digit', char: d, label: d })), null, null, null, null, null, null]
+
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+  const letterRow1 = letters.slice(0, 16).map(l => ({ type: 'letter', char: l, label: l }))
+  const letterRow2 = [...letters.slice(16).map(l => ({ type: 'letter', char: l, label: l })), null, null, null, null, null, null]
+
+  const symbols = '!@#$%^&*()-_=+[]{};:\'",.<>/?\\|~`'.split('')
+  const symbolRow1 = symbols.slice(0, 16).map(s => ({ type: 'symbol', char: s, label: s }))
+  const symbolRow2 = [...symbols.slice(16).map(s => ({ type: 'symbol', char: s, label: s })), null, null]
+
+  const modRow = [
+    { type: 'modifier', char: 'Control', label: 'Ctrl' },
+    { type: 'modifier', char: 'Alt',     label: 'Opt' },
+    { type: 'modifier', char: 'Meta',    label: 'Cmd' },
+    { type: 'modifier', char: 'Shift',   label: 'Shift' },
+    null, null,
+    { type: 'directional', char: 'DiagUpLeft',  label: '↖' },
+    { type: 'directional', char: 'ArrowUp',     label: '↑' },
+    { type: 'directional', char: 'DiagUpRight', label: '↗' },
+    null, null,
+    { type: 'modifier', char: 'Shift',   label: 'Shift' },
+    { type: 'modifier', char: 'Meta',    label: 'Cmd' },
+    { type: 'modifier', char: 'Alt',     label: 'Opt' },
+    { type: 'modifier', char: 'Control', label: 'Ctrl' },
+    null,
+  ]
+
+  const dpadRow = [
+    null, null, null, null, null, null,
+    { type: 'directional', char: 'ArrowLeft',  label: '←' },
+    { type: 'directional', char: 'ArrowDown',  label: '↓' },
+    { type: 'directional', char: 'ArrowRight', label: '→' },
+    null, null, null, null, null, null, null,
+  ]
+
+  const spaceRow = [
+    { type: 'space', char: ' ', label: 'Space (L)', span: 8 },
+    { type: 'space', char: ' ', label: 'Space (R)', span: 8 },
+  ]
+
+  return [mediaRow, fnRow, digitRow, letterRow1, letterRow2, symbolRow1, symbolRow2, modRow, dpadRow, spaceRow]
+}
+
+const LAYOUT = buildLayout()
+const TOTAL_KEYS = LAYOUT.reduce((n, row) => n + row.length, 0)
+const ROWS = LAYOUT.length
+
+export function defaultKeyData (index) {
+  let i = 0
+  for (const row of LAYOUT) {
+    for (const spec of row) {
+      if (i === index) {
+        if (!spec) return { type: 'blank', title: '', string: '', classType: 'blank' }
+        return {
+          title: spec.label,
+          string: spec.char,
+          classType: spec.type,
+          sequenceStart: { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
+          sequenceEnd:   { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
+        }
+      }
+      i++
+    }
   }
+  return { type: 'blank', title: '', string: '', classType: 'blank' }
+}
+
+export function classifyChar (ch) {
+  if (/[a-zA-Z]/.test(ch)) return 'letter'
+  if (/[0-9]/.test(ch)) return 'digit'
+  return 'symbol'
 }
 
 function loadKeys () {
@@ -113,7 +208,7 @@ const STYLES = /* css */`
   width            : 760px;
   min-width        : 520px;
   max-width        : 96vw;
-  height           : 420px;
+  height           : 520px;
   min-height       : 300px;
   max-height       : 92vh;
 
@@ -188,6 +283,7 @@ const STYLES = /* css */`
 }
 .ok-mode-btn--delivery.is-active { background: rgba(140, 255, 180, 0.18); color: rgba(160, 255, 195, 0.95); }
 .ok-mode-btn--sequence.is-active { background: rgba(190, 160, 255, 0.18); color: rgba(210, 185, 255, 0.95); }
+.ok-mode-btn--command.is-active { background: rgba(255, 180, 100, 0.2); color: rgba(255, 200, 140, 0.95); }
 
 .ok-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .ok-ctrl {
@@ -254,6 +350,83 @@ const STYLES = /* css */`
 .ok-key:active { transform: scale(0.93); }
 .ok-key.is-selected { border-color: var(--ok-accent); box-shadow: 0 0 0 1px var(--ok-accent); color: var(--ok-text); }
 
+/* Letters — normal, the baseline .ok-key look above, no override needed */
+
+/* Digits — brighter background, clearly differentiated from letters */
+.ok-key--digit {
+  background       : rgba(255, 255, 255, 0.22);
+  font-weight      : 600;
+}
+.ok-key--digit:hover { background: rgba(255, 255, 255, 0.30); }
+
+/* Symbols — brighter text-shadow, darker background */
+.ok-key--symbol {
+  background       : rgba(0, 0, 0, 0.35);
+  border-color     : rgba(255, 255, 255, 0.08);
+  color            : rgba(255, 255, 255, 0.85);
+  text-shadow      : 0 0 6px rgba(255, 255, 255, 0.7);
+}
+.ok-key--symbol:hover {
+  background       : rgba(0, 0, 0, 0.45);
+  color            : #ffffff;
+  text-shadow      : 0 0 9px rgba(255, 255, 255, 0.9);
+}
+
+/* Media/system row — its own accent, distinct from ordinary characters */
+.ok-key--media {
+  background       : rgba(127, 216, 255, 0.10);
+  border-color     : rgba(127, 216, 255, 0.22);
+  color            : rgba(180, 230, 255, 0.9);
+  font-size        : 13px;
+}
+.ok-key--media:hover { background: rgba(127, 216, 255, 0.18); color: #fff; }
+
+/* Function row (Esc + F1-F12) */
+.ok-key--function {
+  background       : rgba(255, 255, 255, 0.03);
+  border-color     : rgba(255, 255, 255, 0.14);
+  color            : var(--ok-text-muted);
+  font-size        : 10px;
+}
+.ok-key--function:hover { background: rgba(255, 255, 255, 0.09); color: var(--ok-text); }
+
+/* Modifiers (Ctrl/Opt/Cmd/Shift) — held-down look when active in Command mode */
+.ok-key--modifier {
+  background       : rgba(190, 160, 255, 0.08);
+  border-color     : rgba(190, 160, 255, 0.2);
+  color            : rgba(210, 185, 255, 0.85);
+  font-size        : 9.5px;
+}
+.ok-key--modifier:hover { background: rgba(190, 160, 255, 0.16); }
+.ok-key--modifier.is-held {
+  background       : rgba(190, 160, 255, 0.4);
+  border-color     : rgba(210, 185, 255, 0.9);
+  color            : #fff;
+  box-shadow       : 0 0 10px rgba(190, 160, 255, 0.5);
+}
+
+/* Directional pad */
+.ok-key--directional {
+  background       : rgba(140, 255, 180, 0.08);
+  border-color     : rgba(140, 255, 180, 0.2);
+  color            : rgba(160, 255, 195, 0.9);
+  font-size        : 14px;
+}
+.ok-key--directional:hover { background: rgba(140, 255, 180, 0.18); }
+
+/* Split spacebar */
+.ok-key--space {
+  background       : rgba(255, 255, 255, 0.04);
+  font-size        : 9px;
+  letter-spacing   : 0.06em;
+  text-transform   : uppercase;
+  color            : var(--ok-text-muted);
+}
+.ok-key--space:hover { background: rgba(255, 255, 255, 0.09); }
+
+/* Blank layout spacer — invisible, non-interactive, just preserves grid rhythm */
+.ok-key-spacer { pointer-events: none; }
+
 .ok-resize-handle {
   position         : absolute; right: 0; bottom: 0;
   width            : 16px; height: 16px;
@@ -289,6 +462,7 @@ export default class OmniKeys {
     this._mode = 'Edit'
     this._keys = loadKeys()
     this._selectedIndex = null
+    this._heldModifiers = new Set()
     this._onNavSelect = null
     this._onInspectorUpdate = null
   }
@@ -410,23 +584,42 @@ export default class OmniKeys {
 
   _buildGrid (grid) {
     grid.innerHTML = ''
-    for (let i = 0; i < TOTAL_KEYS; i++) {
-      const key = this._keys[i]
-      const btn = document.createElement('div')
-      btn.className = 'ok-key'
-      btn.dataset.index = String(i)
-      btn.textContent = key.title
-      btn.title = key.string
-      btn.addEventListener('click', () => this._onKeyClick(i))
-      grid.appendChild(btn)
+    let i = 0
+    for (const row of LAYOUT) {
+      for (const spec of row) {
+        if (!spec) {
+          const spacer = document.createElement('div')
+          spacer.className = 'ok-key-spacer'
+          grid.appendChild(spacer)
+          i++
+          continue
+        }
+        const cellIndex = i   // fresh per-iteration binding — 'i' itself
+                                // is shared/mutated across the whole loop,
+                                // so closures below must capture a copy,
+                                // not the outer variable itself
+        const key = this._keys[cellIndex]
+        const btn = document.createElement('div')
+        btn.className = `ok-key ok-key--${key.classType ?? spec.type}`
+        btn.dataset.index = String(cellIndex)
+        btn.textContent = key.title
+        btn.title = key.string
+        if (spec.span) btn.style.gridColumn = `span ${spec.span}`
+        btn.addEventListener('click', () => this._onKeyClick(cellIndex))
+        grid.appendChild(btn)
+        i++
+      }
     }
   }
 
   _refreshKeyLabel (index) {
     const btn = this._el?.querySelector(`.ok-key[data-index="${index}"]`)
     if (!btn) return
-    btn.textContent = this._keys[index].title
-    btn.title = this._keys[index].string
+    const key = this._keys[index]
+    btn.textContent = key.title
+    btn.title = key.string
+    btn.className = `ok-key ok-key--${key.classType ?? 'letter'}`
+    if (this._selectedIndex === index) btn.classList.add('is-selected')
   }
 
   _setMode (mode, el) {
@@ -444,11 +637,17 @@ export default class OmniKeys {
       Edit: 'Click a key to edit its title + string in the Inspector',
       Delivery: 'Click a key to create a Dimensional Text node in the world',
       Sequence: 'Click a key to edit its start → end transformation in the Inspector',
+      Command: 'Click modifiers to hold them, then a key to fire the real shortcut',
     }
     note.textContent = notes[this._mode] ?? ''
   }
 
   _onKeyClick (index) {
+    if (this._mode === 'Command') {
+      this._onCommandKeyClick(index)
+      return
+    }
+
     this._selectedIndex = index
     this._el?.querySelectorAll('.ok-key').forEach(k => k.classList.remove('is-selected'))
     this._el?.querySelector(`.ok-key[data-index="${index}"]`)?.classList.add('is-selected')
@@ -462,6 +661,49 @@ export default class OmniKeys {
     // the Inspector itself decides which fields to bring into view
     // based on which mode requested it.
     this._openInspectorFor(index, this._mode)
+  }
+
+  /**
+   * Command mode — clicking a modifier (Ctrl/Opt/Cmd/Shift) toggles it
+   * "held" (visually latched); clicking any other key fires a REAL
+   * synthetic KeyboardEvent carrying whatever modifiers are currently
+   * held, then releases them. Dispatching a genuine KeyboardEvent
+   * (rather than inventing a parallel shortcut-mapping system) means
+   * every keydown listener already in this project — rotation toggles,
+   * the domain grid's 0/9, etc. — responds to it exactly as if it had
+   * been typed on a physical keyboard. One real mechanism, not two.
+   */
+  _onCommandKeyClick (index) {
+    const key = this._keys[index]
+    if (!key || key.classType === 'blank') return
+
+    if (key.classType === 'modifier') {
+      this._heldModifiers = this._heldModifiers ?? new Set()
+      const btn = this._el?.querySelector(`.ok-key[data-index="${index}"]`)
+      if (this._heldModifiers.has(key.string)) {
+        this._heldModifiers.delete(key.string)
+        btn?.classList.remove('is-held')
+      } else {
+        this._heldModifiers.add(key.string)
+        btn?.classList.add('is-held')
+      }
+      return
+    }
+
+    const held = this._heldModifiers ?? new Set()
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: key.string,
+      ctrlKey: held.has('Control'),
+      altKey: held.has('Alt'),
+      metaKey: held.has('Meta'),
+      shiftKey: held.has('Shift'),
+      bubbles: true,
+    }))
+
+    // A chord fires once, then releases — matches how a real keyboard
+    // shortcut works (you don't stay "holding" Cmd after Cmd+S fires).
+    this._heldModifiers = new Set()
+    this._el?.querySelectorAll('.ok-key--modifier.is-held').forEach(b => b.classList.remove('is-held'))
   }
 
   /** Delivery mode — actually spawns a Dimensional Text node in the
