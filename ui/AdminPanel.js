@@ -426,7 +426,7 @@ export default class AdminPanel {
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
 
     el.dataset.winId = 'adminpanel'
-    WindowManager.register('adminpanel', el)
+    WindowManager.register('adminpanel', el, 'Admin')
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
     WindowManager.makeMaximizable(el, el.querySelector('.ap-ctrl--maximize'), {
       onMaximize: () => this._toGridDashboard(),

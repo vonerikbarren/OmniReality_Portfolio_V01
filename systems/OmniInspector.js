@@ -135,6 +135,49 @@ const COLORLESS_MATS = new Set(['MeshNormalMaterial', 'MeshDepthMaterial'])
 // Materials that support the full PBR property set
 const PBR_MATS = new Set(['MeshStandardMaterial', 'MeshPhysicalMaterial'])
 
+// Deeper, material-specific property sets — shown as a dynamic panel
+// under the Material dropdown, swapping to match whichever type is
+// currently selected. MeshPhysicalMaterial gets the richest set since
+// it's the most-requested; MeshToonMaterial's real differentiator
+// (stepped gradient shading via gradientMap) is texture-based and isn't
+// exposed here since object-mesh texture mapping isn't built yet (see
+// BACKLOG.md) — its slot below is intentionally sparse for that reason,
+// not an oversight.
+const MATERIAL_EXTRA_PROPS = {
+  MeshStandardMaterial: [
+    { key: 'roughness', label: 'Roughness', min: 0, max: 1, step: 0.01, default: 0.35 },
+    { key: 'metalness', label: 'Metalness', min: 0, max: 1, step: 0.01, default: 0.08 },
+    { key: 'emissiveIntensity', label: 'Emissive Intensity', min: 0, max: 3, step: 0.05, default: 0 },
+  ],
+  MeshPhysicalMaterial: [
+    { key: 'roughness', label: 'Roughness', min: 0, max: 1, step: 0.01, default: 0.35 },
+    { key: 'metalness', label: 'Metalness', min: 0, max: 1, step: 0.01, default: 0.08 },
+    { key: 'clearcoat', label: 'Clearcoat', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'clearcoatRoughness', label: 'Clearcoat Roughness', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'transmission', label: 'Transmission', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'ior', label: 'IOR', min: 1, max: 2.33, step: 0.01, default: 1.5 },
+    { key: 'thickness', label: 'Thickness', min: 0, max: 5, step: 0.05, default: 0 },
+    { key: 'sheen', label: 'Sheen', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'sheenRoughness', label: 'Sheen Roughness', min: 0, max: 1, step: 0.01, default: 1 },
+    { key: 'specularIntensity', label: 'Specular Intensity', min: 0, max: 1, step: 0.01, default: 1 },
+    { key: 'iridescence', label: 'Iridescence', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 0.5 },
+  ],
+  MeshPhongMaterial: [
+    { key: 'shininess', label: 'Shininess', min: 0, max: 200, step: 1, default: 30 },
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshLambertMaterial: [
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshToonMaterial: [],
+  MeshBasicMaterial: [
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshNormalMaterial: [],
+  MeshDepthMaterial: [],
+}
+
 // ── Geometry type list (matches OmniNode.js) ──────────────────────────────────
 
 const GEO_TYPES = [
@@ -191,9 +234,9 @@ const STYLES = /* css */`
   --oi-border       : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
   --oi-sep          : var(--omni-theme-border, rgba(255, 255, 255, 0.05));
   --oi-header-bg    : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
-  --oi-text         : var(--omni-theme-text, rgba(255, 255, 255, 0.97));
-  --oi-text-dim     : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.74));
-  --oi-text-muted   : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.50));
+  --oi-text         : var(--omni-theme-text, rgba(255, 255, 255, 1));
+  --oi-text-dim     : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.88));
+  --oi-text-muted   : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.68));
   --oi-accent       : var(--omni-theme-accent, rgba(255, 255, 255, 0.96));
   --oi-ctrl-hover   : rgba(255, 255, 255, 0.08);
   --oi-ctrl-active  : rgba(255, 255, 255, 0.16);
@@ -580,6 +623,29 @@ const STYLES = /* css */`
   border-color  : rgba(190, 160, 255, 0.5);
 }
 
+.oi-ctrl--delete {
+  color         : rgba(255, 140, 140, 0.7);
+  border-color  : rgba(255, 140, 140, 0.18);
+}
+.oi-ctrl--delete:hover {
+  background    : rgba(255, 100, 100, 0.14);
+  border-color  : rgba(255, 100, 100, 0.35);
+  color         : rgba(255, 160, 160, 1);
+}
+/* Armed — click once to arm, click again within a few seconds to
+   actually delete. Avoids an accidental single misclick destroying a
+   node with no way back. */
+.oi-ctrl--delete.is-armed {
+  background    : rgba(255, 70, 70, 0.35);
+  border-color  : rgba(255, 90, 90, 0.8);
+  color         : #fff;
+  animation     : oi-delete-pulse 0.8s ease-in-out infinite;
+}
+@keyframes oi-delete-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 70, 70, 0); }
+  50%      { box-shadow: 0 0 10px rgba(255, 70, 70, 0.6); }
+}
+
 .oi-title {
   flex              : 1 1 auto;
   font-size         : 10px;
@@ -590,6 +656,33 @@ const STYLES = /* css */`
 }
 
 /* ── Node identity badge (below header, shown when node loaded) ───────────── */
+
+.oi-notify-banner {
+  flex-shrink      : 0;
+  max-height       : 0;
+  overflow         : hidden;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  font-size        : 9.5px;
+  letter-spacing   : 0.04em;
+  text-align       : center;
+  transition       : max-height 0.22s ease, padding 0.22s ease;
+}
+.oi-notify-banner.is-visible {
+  max-height       : 28px;
+  padding          : 6px;
+}
+.oi-notify-banner.is-saved {
+  color            : rgba(160, 255, 195, 0.95);
+  background       : rgba(140, 255, 180, 0.10);
+  border-bottom    : 1px solid rgba(140, 255, 180, 0.22);
+}
+.oi-notify-banner.is-delete {
+  color            : rgba(255, 170, 170, 0.95);
+  background       : rgba(255, 90, 90, 0.12);
+  border-bottom    : 1px solid rgba(255, 90, 90, 0.25);
+}
 
 .oi-node-badge {
   flex-shrink       : 0;
@@ -1136,6 +1229,34 @@ const STYLES = /* css */`
   gap               : 5px;
 }
 
+.oi-material-props-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 10px 0 4px;
+}
+
+.oi-material-props-empty {
+  font-size         : 9.5px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding           : 6px 0;
+  font-style        : italic;
+}
+
+.oi-mat-prop-range {
+  flex              : 1;
+  accent-color      : var(--oi-accent);
+}
+
+.oi-mat-prop-val {
+  width             : 34px;
+  font-size         : 9.5px;
+  color             : var(--oi-text-dim);
+  text-align        : right;
+}
+
 .oi-slot-label {
   font-size         : 8px;
   color             : var(--oi-text-muted);
@@ -1370,6 +1491,8 @@ export default class OmniInspector {
     this._currentSpaceId = null   // cached from omni:space-entered/exited
     this._createPreview = null   // the Create section's own tiny renderer/scene/mesh
     this._createTransform = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1 }
+    this._deleteArmTimer = null
+    this._bannerTimer = null
     this._inspectPreview = null   // spinning preview of the ACTUAL loaded node
     this._infoPlane = null   // floating plane showing External Display/Code
 
@@ -1501,12 +1624,37 @@ export default class OmniInspector {
    * @param {THREE.Mesh | THREE.LineSegments} mesh
    */
   loadNode (data, mesh) {
+    clearTimeout(this._deleteArmTimer)
+    this._el?.querySelector('.oi-ctrl--delete')?.classList.remove('is-armed')
+
     this._currentId   = data.id
     this._currentMesh = mesh
     this._currentData = data
 
     // Load extended inspector data from localStorage
     this._ext = { ...this._defaultExt(data), ...(this._loadExt(data.id) ?? {}) }
+
+    // Apply that extended state TO the real mesh — this was the actual
+    // "material/texture doesn't stick" bug: the Inspector's own preview
+    // reads ext directly (so it always looked correct), but nothing
+    // re-synced the REAL world mesh's live material to match, so it
+    // silently reverted to its default look whenever this panel wasn't
+    // the thing that had just changed it in the same session.
+    if (mesh?.material) {
+      if ('wireframe' in mesh.material) mesh.material.wireframe = !!this._ext.wireframe
+      const currentType = mesh.material.constructor?.name
+      if (this._ext.material && this._ext.material !== currentType) {
+        this._currentMesh = mesh   // _applyMaterial reads this
+        this._applyMaterial(this._ext.material)
+      }
+      // Same bug class as wireframe/material type — deeper properties
+      // (roughness, clearcoat, etc.) were saved correctly but never
+      // reapplied to the real mesh on load.
+      for (const [key, value] of Object.entries(this._ext.materialProps ?? {})) {
+        if (key in mesh.material) mesh.material[key] = value
+      }
+      mesh.material.needsUpdate = true
+    }
 
     // Sync color state from node data
     const meshColor = mesh?.material?.color
@@ -1571,10 +1719,16 @@ export default class OmniInspector {
           <button class="oi-ctrl oi-ctrl--attach"   data-action="attach"   title="⟐ Pocket attach" >⟐</button>
           <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">💾</button>
           <button class="oi-ctrl oi-ctrl--genealogy" data-action="genealogy" title="Select whole genealogy tree">Ξ</button>
+          <button class="oi-ctrl oi-ctrl--delete" data-action="delete" title="Delete this node">🗑</button>
           <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
         </div>
         <span class="oi-title">OmniInspector ⟐i</span>
       </div>
+
+      <!-- Change/action notification — same idea as Admin's unsaved banner,
+           but confirming AFTER a save (Inspector auto-saves) rather than
+           warning before one -->
+      <div class="oi-notify-banner" id="oi-notify-banner"></div>
 
       <!-- Node identity badge — visible when node is loaded -->
       <div class="oi-node-badge" id="oi-node-badge">
@@ -1620,13 +1774,14 @@ export default class OmniInspector {
         case 'minimize':   this._minimize(); break
         case 'attach':     this._attach();   break
         case 'genealogy':  this._selectGenealogy(btn); break
+        case 'delete':     this._confirmDelete(btn); break
       }
     })
 
     this._bindDrag(el)
 
     el.dataset.winId = 'omniinspector'
-    WindowManager.register('omniinspector', el)
+    WindowManager.register('omniinspector', el, 'Inspector')
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
     WindowManager.makeMaximizable(el, el.querySelector('.oi-ctrl--maximize'), {
       onMaximize: () => { this._isMaximized = true; this._toGridDashboard() },
@@ -1796,6 +1951,24 @@ export default class OmniInspector {
     if (!btn) return
     btn.classList.add('is-active')
     setTimeout(() => btn.classList.remove('is-active'), 900)
+  }
+
+  /** Deletes immediately on click — a confirm-then-click pattern was
+   *  here before, but it meant nothing visibly happened on the first
+   *  press, which read as "the button doesn't work." Gives clear
+   *  after-the-fact feedback (red flash) instead of a before-the-fact
+   *  gate. */
+  _confirmDelete (btn) {
+    if (!this._currentId || !btn) return
+
+    const id = this._currentId
+    window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id } }))
+
+    btn.classList.add('is-armed')
+    setTimeout(() => btn.classList.remove('is-armed'), 400)
+
+    this._flashBanner('🗑 Node deleted', 'delete')
+    this.clearNode()
   }
 
   // ── Empty state ───────────────────────────────────────────────────────────
@@ -2062,6 +2235,12 @@ export default class OmniInspector {
 
     const scl = ext?.scale ?? { x: 1, y: 1, z: 1 }
     const wf  = ext?.wireframe ?? false
+    const pos = data?.position
+      ? { x: data.position[0], y: data.position[1], z: data.position[2] }
+      : { x: 0, y: 0, z: 0 }
+    const rot = data?.rotation
+      ? { x: data.rotation[0], y: data.rotation[1], z: data.rotation[2] }
+      : { x: 0, y: 0, z: 0 }
 
     return /* html */`
       <!-- RGBA Color picker -->
@@ -2111,6 +2290,10 @@ export default class OmniInspector {
         <select class="oi-select" id="oi-material">${matOptions}</select>
       </div>
 
+      <!-- Deeper material-specific properties — swaps to match whichever
+           type is selected above -->
+      <div id="oi-material-props">${this._materialPropsHTML(ext?.material ?? 'MeshStandardMaterial', ext)}</div>
+
       <!-- Geometry selector -->
       <div class="oi-row">
         <span class="oi-label">Geometry</span>
@@ -2127,6 +2310,50 @@ export default class OmniInspector {
             <div class="oi-toggle-thumb"></div>
           </label>
           <span class="oi-toggle-label">Wireframe</span>
+        </div>
+      </div>
+
+      <!-- Position XYZ -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="oi-label">Position</span>
+        <div class="oi-xyz-row">
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">X</span>
+            <input class="oi-xyz-input" id="oi-px" type="number"
+                   value="${pos.x}" step="0.1">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Y</span>
+            <input class="oi-xyz-input" id="oi-py" type="number"
+                   value="${pos.y}" step="0.1">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Z</span>
+            <input class="oi-xyz-input" id="oi-pz" type="number"
+                   value="${pos.z}" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Rotation XYZ (radians) -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="oi-label">Rotation</span>
+        <div class="oi-xyz-row">
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">X</span>
+            <input class="oi-xyz-input" id="oi-rx" type="number"
+                   value="${rot.x}" step="0.05">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Y</span>
+            <input class="oi-xyz-input" id="oi-ry" type="number"
+                   value="${rot.y}" step="0.05">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Z</span>
+            <input class="oi-xyz-input" id="oi-rz" type="number"
+                   value="${rot.z}" step="0.05">
+          </div>
         </div>
       </div>
 
@@ -2169,6 +2396,60 @@ export default class OmniInspector {
         <input type="file" id="oi-tex-file" accept="image/*" style="display:none">
       </div>
     `
+  }
+
+  /** The dynamic property panel shown under the Material dropdown —
+   *  swaps to whichever set MATERIAL_EXTRA_PROPS defines for the given
+   *  type. Values come from ext.materialProps, falling back to each
+   *  property's own default. */
+  _materialPropsHTML (materialType, ext) {
+    const props = MATERIAL_EXTRA_PROPS[materialType] ?? []
+    const saved = ext?.materialProps ?? {}
+
+    if (props.length === 0) {
+      const note = materialType === 'MeshToonMaterial'
+        ? 'Toon shading\'s real control (stepped gradient bands) is texture-based (gradientMap) — needs the texture pipeline, not built yet.'
+        : 'No additional properties for this material type.'
+      return `<div class="oi-material-props-empty">${note}</div>`
+    }
+
+    return /* html */`
+      <div class="oi-material-props-title">Material Properties — ${materialType.replace('Mesh', '').replace('Material', '')}</div>
+      ${props.map(p => {
+        const val = saved[p.key] ?? p.default
+        return /* html */`
+          <div class="oi-row">
+            <span class="oi-row-label">${p.label}</span>
+            <input type="range" class="oi-mat-prop-range" data-mat-key="${p.key}"
+                   min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+            <span class="oi-mat-prop-val" data-mat-val-for="${p.key}">${Number(val).toFixed(2)}</span>
+          </div>
+        `
+      }).join('')}
+    `
+  }
+
+  _wireMaterialProps (body, ext) {
+    const container = body.querySelector('#oi-material-props')
+    if (!container) return
+
+    container.querySelectorAll('[data-mat-key]').forEach(input => {
+      input.addEventListener('input', () => {
+        const key = input.dataset.matKey
+        const value = Number(input.value)
+
+        if (this._currentMesh?.material && key in this._currentMesh.material) {
+          this._currentMesh.material[key] = value
+          this._currentMesh.material.needsUpdate = true
+        }
+
+        ext.materialProps = { ...(ext.materialProps ?? {}), [key]: value }
+        this._saveExt()
+
+        const valEl = container.querySelector(`[data-mat-val-for="${key}"]`)
+        if (valEl) valEl.textContent = value.toFixed(2)
+      })
+    })
   }
 
   // ── MEDIA section HTML ────────────────────────────────────────────────────
@@ -2602,6 +2883,7 @@ export default class OmniInspector {
   // ── Wire APPEARANCE controls ──────────────────────────────────────────────
 
   _wireAppearance (body, data, ext) {
+    this._wireMaterialProps(body, ext)
     // ── Color picker ─────────────────────────────────────────────────
 
     // Native color input (triggered by swatch click via z-stacked input)
@@ -2650,8 +2932,15 @@ export default class OmniInspector {
       const matName = e.target.value
       this._applyMaterial(matName)
       ext.material = matName
+      ext.materialProps = {}   // fresh set of defaults for the new type — old sliders don't apply
       this._saveExt()
       this._playSound('click')
+
+      const container = body.querySelector('#oi-material-props')
+      if (container) {
+        container.innerHTML = this._materialPropsHTML(matName, ext)
+        this._wireMaterialProps(body, ext)
+      }
     })
 
     // ── Geometry selector ─────────────────────────────────────────────
@@ -2681,6 +2970,60 @@ export default class OmniInspector {
       this._saveExt()
       this._playSound('click')
     })
+
+    // ── Position XYZ ──────────────────────────────────────────────────
+
+    let posTimer = null
+    const posHandler = () => {
+      clearTimeout(posTimer)
+      posTimer = setTimeout(() => {
+        const x = parseFloat(body.querySelector('#oi-px')?.value) || 0
+        const y = parseFloat(body.querySelector('#oi-py')?.value) || 0
+        const z = parseFloat(body.querySelector('#oi-pz')?.value) || 0
+        const position = [x, y, z]
+
+        if (this._currentMesh) {
+          this._currentMesh.position.set(x, y, z)
+        }
+        data.position = position
+
+        window.dispatchEvent(new CustomEvent('omni:node-pos-set', {
+          detail: { id: data.id, position }
+        }))
+        this._flashBanner('✓ Saved', 'saved')
+      }, 200)
+    }
+
+    body.querySelector('#oi-px')?.addEventListener('input', posHandler)
+    body.querySelector('#oi-py')?.addEventListener('input', posHandler)
+    body.querySelector('#oi-pz')?.addEventListener('input', posHandler)
+
+    // ── Rotation XYZ (radians) ───────────────────────────────────────
+
+    let rotTimer = null
+    const rotHandler = () => {
+      clearTimeout(rotTimer)
+      rotTimer = setTimeout(() => {
+        const x = parseFloat(body.querySelector('#oi-rx')?.value) || 0
+        const y = parseFloat(body.querySelector('#oi-ry')?.value) || 0
+        const z = parseFloat(body.querySelector('#oi-rz')?.value) || 0
+        const rotation = [x, y, z]
+
+        if (this._currentMesh) {
+          this._currentMesh.rotation.set(x, y, z)
+        }
+        data.rotation = rotation
+
+        window.dispatchEvent(new CustomEvent('omni:node-rotation-set', {
+          detail: { id: data.id, rotation }
+        }))
+        this._flashBanner('✓ Saved', 'saved')
+      }, 200)
+    }
+
+    body.querySelector('#oi-rx')?.addEventListener('input', rotHandler)
+    body.querySelector('#oi-ry')?.addEventListener('input', rotHandler)
+    body.querySelector('#oi-rz')?.addEventListener('input', rotHandler)
 
     // ── Scale XYZ ─────────────────────────────────────────────────────
 
@@ -3194,6 +3537,7 @@ export default class OmniInspector {
     window.dispatchEvent(new CustomEvent('omni:node-color-set', {
       detail: { id: this._currentId, color: rgbToHex(this._color.r, this._color.g, this._color.b) }
     }))
+    this._flashBanner('✓ Saved', 'saved')
   }
 
   // ── Apply material type swap ──────────────────────────────────────────────
@@ -3364,6 +3708,7 @@ export default class OmniInspector {
       externalDisplay : '',
       externalCode    : '',
       showOnPlane     : false,
+      materialProps   : {},
     }
   }
 
@@ -3380,9 +3725,24 @@ export default class OmniInspector {
         media   : (this._ext.media  ?? []).filter(i => !i.src?.startsWith('data:')),
       }
       localStorage.setItem(STORE_PREFIX + this._currentId, JSON.stringify(safe))
+      this._flashBanner('✓ Saved', 'saved')
     } catch (err) {
       console.warn('⟐i — localStorage save failed:', err)
+      this._flashBanner('⚠ Save failed', 'delete')
     }
+  }
+
+  /** Same idea as Admin's unsaved-changes banner — a strip that slides
+   *  down from the header — but Inspector auto-saves, so this confirms
+   *  AFTER the fact rather than warning before one. Reused for the
+   *  delete action too (different color variant). */
+  _flashBanner (text, variant = 'saved') {
+    const banner = this._el?.querySelector('#oi-notify-banner')
+    if (!banner) return
+    banner.textContent = text
+    banner.className = `oi-notify-banner is-visible is-${variant}`
+    clearTimeout(this._bannerTimer)
+    this._bannerTimer = setTimeout(() => banner.classList.remove('is-visible'), 1600)
   }
 
   _loadExt (id) {

@@ -262,7 +262,7 @@ export default class OmniExpression {
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
 
     el.dataset.winId = 'omniexpression'
-    WindowManager.register('omniexpression', el)
+    WindowManager.register('omniexpression', el, 'OmniExpression')
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
 
     return el

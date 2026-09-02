@@ -126,7 +126,7 @@ const STYLES = /* css */`
   display         : flex;
   align-items     : center;
   justify-content : center;
-  background      : rgba(8, 8, 12, 0.10);
+  background      : rgba(8, 8, 12, 0.50);
   backdrop-filter : saturate(1.4);   /* blur removed — this is a HUD, must stay see-through */
   -webkit-backdrop-filter: saturate(1.4);
   border          : 1px solid rgba(255, 255, 255, 0.14);
@@ -141,6 +141,104 @@ const STYLES = /* css */`
   font-size       : 12px;
   letter-spacing  : 0.2em;
   color           : rgba(255, 255, 255, 0.55);
+}
+
+/* ── Q1 live-data grid — moved here from GlobalBar's old expanded state ──── */
+
+.osh-panel--data {
+  align-items     : stretch;
+  justify-content  : stretch;
+  padding         : 10px;
+  overflow-y      : auto;
+  border           : 2px solid rgba(0, 0, 0, 0.7);
+  box-shadow       : inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* Real grid-line background — graph-paper style — data sits at its
+   perimeter (corners/edges), center left open. */
+.osh-data-grid {
+  display              : grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows   : auto 1fr auto;
+  grid-template-areas  :
+    "tl  .   tr"
+    "ml  .   mr"
+    "bl  bm  br";
+  gap                  : 8px 10px;
+  width                : 100%;
+  height               : 100%;
+  font-family          : 'Courier New', Courier, monospace;
+  background-image     :
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size      : 18px 18px;
+}
+
+.osh-data-group--position        { grid-area: tl; text-align: left;   }
+.osh-data-group--rotation        { grid-area: tr; text-align: right;  }
+.osh-data-group--scale           { grid-area: ml; text-align: left;   }
+.osh-data-group--performance     { grid-area: mr; text-align: right;  }
+.osh-data-group--systemdetails   { grid-area: bl; text-align: left;   }
+.osh-data-group--dimension       { grid-area: bm; text-align: center; }
+.osh-data-group--dimensionalplus { grid-area: br; text-align: right;  }
+
+.osh-data-group-label {
+  font-size        : 8.5px;
+  letter-spacing   : 0.1em;
+  text-transform   : uppercase;
+  color            : rgba(255, 255, 255, 0.65);
+  margin-bottom    : 2px;
+}
+
+.osh-data-xyz {
+  display          : flex;
+  flex-direction   : column;
+  gap              : 2px;
+}
+.osh-data-group--rotation .osh-data-xyz,
+.osh-data-group--performance .osh-data-xyz { align-items: flex-end; }
+
+.osh-data-xyz-item {
+  display          : flex;
+  align-items      : center;
+  gap              : 4px;
+  font-size        : 9.5px;
+}
+.osh-data-xyz-axis { color: rgba(255, 255, 255, 0.55); }
+.osh-data-xyz-val  { color: rgba(255, 255, 255, 1);    font-weight: 600; }
+
+.osh-data-kv {
+  display          : flex;
+  justify-content  : space-between;
+  gap              : 8px;
+  font-size        : 9.5px;
+}
+.osh-data-group--dimensionalplus .osh-data-kv,
+.osh-data-group--rotation .osh-data-kv { flex-direction: row-reverse; }
+.osh-data-kv-key { color: rgba(255, 255, 255, 0.55); }
+.osh-data-kv-val { color: rgba(255, 255, 255, 1); font-weight: 600; }
+.osh-data-kv-val.undef { color: rgba(255, 255, 255, 0.4); font-weight: 400; }
+
+.osh-data-fps-badge {
+  display          : flex;
+  align-items      : baseline;
+  gap              : 4px;
+  justify-content  : flex-end;
+}
+.osh-data-fps-num {
+  font-size        : 20px;
+  font-weight      : bold;
+  color            : #ffffff;
+  text-shadow      : 0 0 8px rgba(255, 255, 255, 0.5);
+}
+.osh-data-fps-unit {
+  font-size        : 9px;
+  color            : rgba(255, 255, 255, 0.6);
+}
+.osh-data-perf-label {
+  font-size        : 9px;
+  color            : rgba(255, 255, 255, 0.75);
+  margin-top       : 2px;
 }
 
 /* ── Center diamond — live preview of the current reality ─────────────────── */
@@ -223,6 +321,7 @@ export default class OmniStartHUD {
     this._el = null
     this._isOpen = false
     this._onToggle = null
+    this._onGlobalBarData = null
     this._preview = null   // the center diamond's own tiny renderer/scene/mesh
   }
 
@@ -233,9 +332,16 @@ export default class OmniStartHUD {
     shell.appendChild(this._el)
 
     this._setupPreview()
+    this._buildDataGrid()
 
     this._onToggle = () => this.toggle()
     window.addEventListener('omni:osh-toggle', this._onToggle)
+
+    // Q1's live-data grid — moved here from GlobalBar's old expanded
+    // state. GlobalBar still owns the actual computation (FPS averaging,
+    // camera feed); this just renders whatever it broadcasts.
+    this._onGlobalBarData = (e) => this._updateDataGrid(e.detail)
+    window.addEventListener('omni:globalbar-data', this._onGlobalBarData)
   }
 
   update (delta) {
@@ -249,6 +355,7 @@ export default class OmniStartHUD {
 
   destroy () {
     window.removeEventListener('omni:osh-toggle', this._onToggle)
+    window.removeEventListener('omni:globalbar-data', this._onGlobalBarData)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
   }
@@ -295,6 +402,101 @@ export default class OmniStartHUD {
     this._preview = null
   }
 
+  // ── Q1 live-data grid — same content GlobalBar's old expanded state
+  // showed, transplanted here rather than reinvented. GlobalBar still
+  // computes it (FPS averaging, camera feed) and broadcasts it; this
+  // just renders it.
+
+  _buildDataGrid () {
+    const grid = this._el?.querySelector('#osh-data-grid')
+    if (!grid) return
+
+    const xyzRow = (idPrefix) => /* html */`
+      <div class="osh-data-xyz">
+        <span class="osh-data-xyz-item"><span class="osh-data-xyz-axis">x</span><span class="osh-data-xyz-val" id="${idPrefix}-x">0.00</span></span>
+        <span class="osh-data-xyz-item"><span class="osh-data-xyz-axis">y</span><span class="osh-data-xyz-val" id="${idPrefix}-y">0.00</span></span>
+        <span class="osh-data-xyz-item"><span class="osh-data-xyz-axis">z</span><span class="osh-data-xyz-val" id="${idPrefix}-z">0.00</span></span>
+      </div>
+    `
+    const kvRow = (key, id) => /* html */`
+      <div class="osh-data-kv">
+        <span class="osh-data-kv-key">${key}</span>
+        <span class="osh-data-kv-val undef" id="${id}">undefined</span>
+      </div>
+    `
+
+    grid.innerHTML = /* html */`
+      <div class="osh-data-group osh-data-group--position">
+        <div class="osh-data-group-label">Position</div>
+        ${xyzRow('osh-pos')}
+      </div>
+      <div class="osh-data-group osh-data-group--rotation">
+        <div class="osh-data-group-label">Rotation</div>
+        ${xyzRow('osh-rot')}
+      </div>
+      <div class="osh-data-group osh-data-group--scale">
+        <div class="osh-data-group-label">Scale</div>
+        ${xyzRow('osh-sca')}
+      </div>
+      <div class="osh-data-group osh-data-group--performance">
+        <div class="osh-data-group-label">Performance</div>
+        <div class="osh-data-fps-badge">
+          <span class="osh-data-fps-num" id="osh-fps">--</span>
+          <span class="osh-data-fps-unit">fps</span>
+        </div>
+        <div class="osh-data-perf-label" id="osh-perf">—</div>
+      </div>
+      <div class="osh-data-group osh-data-group--systemdetails">
+        <div class="osh-data-group-label">System Details</div>
+        ${kvRow('Roots', 'osh-roots')}
+        ${kvRow('Parents', 'osh-parents')}
+        ${kvRow('Child', 'osh-child')}
+      </div>
+      <div class="osh-data-group osh-data-group--dimension">
+        <div class="osh-data-group-label">Dimension</div>
+        ${kvRow('Reality', 'osh-reality')}
+        ${kvRow('Experience', 'osh-experience')}
+        ${kvRow('Perspective', 'osh-perspective')}
+      </div>
+      <div class="osh-data-group osh-data-group--dimensionalplus">
+        <div class="osh-data-group-label">Dimensional+</div>
+        ${kvRow('Time', 'osh-dim-time')}
+        ${kvRow('Space', 'osh-dim-space')}
+        ${kvRow('Object', 'osh-dim-object')}
+      </div>
+    `
+  }
+
+  _updateDataGrid (d) {
+    if (!d || !this._el) return
+
+    const setEl = (id, text) => { const el = this._el.querySelector(`#${id}`); if (el) el.textContent = text }
+    const setKV = (id, value) => {
+      const el = this._el.querySelector(`#${id}`)
+      if (!el) return
+      if (value == null) { el.textContent = 'undefined'; el.classList.add('undef') }
+      else { el.textContent = String(value); el.classList.remove('undef') }
+    }
+    const fmt = (n) => (n == null || isNaN(n)) ? '---' : Number(n).toFixed(2)
+
+    if (d.pos)   { setEl('osh-pos-x', fmt(d.pos.x));   setEl('osh-pos-y', fmt(d.pos.y));   setEl('osh-pos-z', fmt(d.pos.z))   }
+    if (d.rot)   { setEl('osh-rot-x', fmt(d.rot.x));   setEl('osh-rot-y', fmt(d.rot.y));   setEl('osh-rot-z', fmt(d.rot.z))   }
+    if (d.scale) { setEl('osh-sca-x', fmt(d.scale.x)); setEl('osh-sca-y', fmt(d.scale.y)); setEl('osh-sca-z', fmt(d.scale.z)) }
+
+    setEl('osh-fps',  String(d.fps ?? 0))
+    setEl('osh-perf', d.perf ?? '—')
+
+    setKV('osh-roots',       d.roots)
+    setKV('osh-parents',     d.parents)
+    setKV('osh-child',       d.child)
+    setKV('osh-reality',     d.reality)
+    setKV('osh-experience',  d.experience)
+    setKV('osh-perspective', d.perspective)
+    setKV('osh-dim-time',    d.dimTime)
+    setKV('osh-dim-space',   d.dimSpace)
+    setKV('osh-dim-object',  d.dimObject)
+  }
+
   toggle () {
     this._isOpen ? this.close() : this.open()
   }
@@ -309,7 +511,7 @@ export default class OmniStartHUD {
       .to(this._el.querySelector('.osh-line--h'), { scaleX: 1, duration: 0.35, ease: 'power3.out' }, '<')
       .to(this._el.querySelector('.osh-line--v'), { scaleY: 1, duration: 0.35, ease: 'power3.out' }, '<')
       .to(this._el.querySelectorAll('.osh-panel'), {
-        opacity: 0.1, scale: 1, duration: 0.3, ease: 'back.out(1.6)', stagger: 0.05,
+        opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(1.6)', stagger: 0.05,
       }, '-=0.1')
       .to(this._el.querySelector('.osh-diamond-wrap'), {
         opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(1.8)',
@@ -348,7 +550,11 @@ export default class OmniStartHUD {
       <div class="osh-line osh-line--v" aria-hidden="true"></div>
 
       <div class="osh-quadrant osh-quadrant--tl">
-        <div class="osh-panel" data-panel="CUIQ01"><span class="osh-panel-label">CUIQ01</span></div>
+        <div class="osh-panel osh-panel--data" data-panel="CUIQ01">
+          <div class="osh-data-grid" id="osh-data-grid">
+            <!-- populated by _updateDataGrid() from omni:globalbar-data -->
+          </div>
+        </div>
       </div>
       <div class="osh-quadrant osh-quadrant--tr">
         <div class="osh-panel" data-panel="CUIQ02"><span class="osh-panel-label">CUIQ02</span></div>

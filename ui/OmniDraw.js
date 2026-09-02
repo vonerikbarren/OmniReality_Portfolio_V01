@@ -122,8 +122,10 @@ const SCHEMA = [
   { group: 'Automation', key: 'autoRotationSpeedY', label: 'Horizontal rotation speed', type: 'range', default: 1, min: -5, max: 5, step: 0.1, live: true },
   { group: 'Automation', key: 'autoRotationAxisZ', label: 'Depth rotation (rz)', type: 'bool', default: false, live: true },
   { group: 'Automation', key: 'autoRotationSpeedZ', label: 'Depth rotation speed', type: 'range', default: 1, min: -5, max: 5, step: 0.1, live: true },
-  { group: 'Automation', key: 'autoRotationToObject', label: 'rotationToObject (id list)', type: 'text', default: '', placeholder: 'node ids, comma separated' },
-  { group: 'Automation', key: 'autoRotationToOriginCoordinates', label: 'rotationToOriginCoordinates', type: 'bool', default: false },
+  { group: 'Automation', key: 'lookAtMode', label: 'Look At', type: 'select', options: ['None', 'Camera', 'Coordinate'], default: 'None', live: true },
+  { group: 'Automation', key: 'lookAtX', label: 'Look At X', type: 'number', default: 0, step: 0.5 },
+  { group: 'Automation', key: 'lookAtY', label: 'Look At Y', type: 'number', default: 0, step: 0.5 },
+  { group: 'Automation', key: 'lookAtZ', label: 'Look At Z', type: 'number', default: 0, step: 0.5 },
 ]
 
 // ── Style injection ───────────────────────────────────────────────────────────
@@ -586,6 +588,7 @@ export default class OmniDraw {
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omnidraw')
+    WindowManager.unregisterContextMenu('omnidraw')
   }
 
   // ── Events ───────────────────────────────────────────────────────────────
@@ -694,7 +697,14 @@ export default class OmniDraw {
     this._loadPersisted()
 
     el.dataset.winId = 'omnidraw'
-    WindowManager.register('omnidraw', el)
+    WindowManager.register('omnidraw', el, 'OmniDraw')
+    WindowManager.registerContextMenu('omnidraw', {
+      Objects: [
+        { label: '⟐ Export to Scene',   action: () => this._exportToScene() },
+        { label: '⟐ Domain Expansion',  action: () => this._domainExpansion() },
+        { label: 'Toggle Draggable',     action: () => this._toggleDraggableFromMenu() },
+      ],
+    })
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
     WindowManager.makeMaximizable(el, el.querySelector('.od-ctrl--maximize'), {
       onMaximize: () => this._toGridDashboard(),
@@ -1128,6 +1138,20 @@ export default class OmniDraw {
     })
   }
 
+  /** Global Context Menu's "Toggle Draggable" action — a real flip in
+   *  either direction, unlike the Drag-mode tab which only ever forces
+   *  it on. Syncs the actual field toggle switch either way. */
+  _toggleDraggableFromMenu () {
+    this._data.draggable = !this._data.draggable
+    const header = this._el?.querySelector('.od-header')
+    if (header) header.style.cursor = this._data.draggable ? 'grab' : 'default'
+    this._el?.querySelectorAll('.od-row').forEach(row => {
+      if (row.querySelector('.od-row-label')?.textContent === 'Draggable') {
+        row.querySelector('.od-toggle')?.classList.toggle('is-on', this._data.draggable)
+      }
+    })
+  }
+
   /**
    * "Export to Scene" — this is the piece that was missing: everything
    * above only drives this panel's own small embedded preview. This is
@@ -1178,6 +1202,8 @@ export default class OmniDraw {
         autoRotationSpeedX: this._data.autoRotationSpeedX,
         autoRotationSpeedY: this._data.autoRotationSpeedY,
         autoRotationSpeedZ: this._data.autoRotationSpeedZ,
+        lookAtMode: this._data.lookAtMode,
+        lookAtCoordinate: [this._data.lookAtX, this._data.lookAtY, this._data.lookAtZ],
       }
     }))
 

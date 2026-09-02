@@ -3,6 +3,20 @@
 Larger features flagged during the event-activation pass (not built yet —
 tracked here so they aren't lost).
 
+## OmniKeyboard — full design doc, not built yet
+
+A Dock-toggleable virtual keyboard, with a dimensional/cube-key mode
+via its own Inspector (each key becomes a cube with up to 6 usable
+faces, rotating the whole keyboard swaps layers, faces can hold
+multi-character macro strings). Full spec, open questions, and
+architecture notes are in `OMNIKEYBOARD_DESIGN.md` — kept as its own
+file rather than folded in here given the size and detail.
+
+Also noted there: the hand radial menus' planned "page 3" should be a
+*launcher* for this same keyboard, not a second implementation — and
+page 1 (search + a Metroid-Prime-style scan function) is a related but
+separate feature to scope on its own later.
+
 ## MiniMap → real 3D wireframe map
 
 Replace the current 2D DOM minimap with a proper 3D map, in the style of

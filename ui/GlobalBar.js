@@ -32,12 +32,13 @@
  */
 
 import gsap from 'gsap'
+import * as WindowManager from './WindowManager.js'
+import { flashHeaderLine } from './Panel.js'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const COLLAPSED_H = 48   // px — collapsed bar height (increased for touch)
-const EXPANDED_H  = 130   // px — expanded bar height
-const ANIM_DUR    = 0.32 // seconds — expand / collapse tween
+const COLLAPSED_H = 48   // px — bar height (fixed now — no more expand/collapse)
+const CATEGORIES  = ['Realities', 'Experiences', 'Perspectives', 'Times', 'Spaces', 'Objects', 'Windows', 'Assistance']
 
 // ── Stylesheet (injected once) ───────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ const STYLES = /* css */`
   flex-shrink     : 0;
   border-right    : 1px solid var(--bar-separator);
   position        : relative;
-  height          : ${EXPANDED_H}px;  /* full height always — bar clips */
+  height          : 100%;
 }
 
 .ob-col:last-child {
@@ -168,8 +169,6 @@ const STYLES = /* css */`
   font-size     : 35px;
   color         : var(--bar-accent);
   line-height   : 1;
-  margin-top    : -80px;
-  margin-bottom : -10px;
   letter-spacing: 0;
   text-shadow   : 0 0 12px rgba(255,255,255,0.90), 0 0 24px rgba(255,255,255,0.45);
   transition    : text-shadow 0.2s ease, color 0.2s ease;
@@ -365,23 +364,136 @@ const STYLES = /* css */`
   background: rgba(255,255,255,0.15);
 }
 
-/* ── Mobile guard — hide numeric columns below 700 px ───────────────────── */
+/* ── Mobile guard — trim the context menu, not hide it, below 700px ─────── */
 
 @media (max-width: 700px) {
-  #ob-col04,
-  #ob-col05,
-  #ob-col06,
-  #ob-col07,
-  #ob-col08,
-  #ob-col09,
-  #ob-col10 {
-    display: none;
-  }
+  .ob-app-title { display: none; }
   #ob-col03 { width: auto; flex-grow: 1; }
 }
 
 @media (max-width: 460px) {
   #ob-col02 { display: none; }
+}
+
+/* ── Global Context Menu ──────────────────────────────────────────────────── */
+
+.ob-context-menu {
+  flex             : 1;
+  display          : flex;
+  align-items      : center;
+  gap              : 18px;
+  padding          : 0 16px;
+  min-width        : 0;
+}
+
+.ob-app-title {
+  font-size        : 11px;
+  font-weight      : bold;
+  letter-spacing   : 0.04em;
+  color            : var(--bar-text);
+  white-space      : nowrap;
+  flex-shrink      : 0;
+}
+
+.ob-menu-cats {
+  display          : flex;
+  gap              : 4px;
+  height           : 100%;
+  align-items      : center;
+  overflow-x       : auto;
+  scrollbar-width  : none;
+}
+.ob-menu-cats::-webkit-scrollbar { display: none; }
+
+.ob-menu-cat {
+  position         : relative;
+  display          : flex;
+  align-items      : center;
+  height           : 100%;
+}
+
+.ob-menu-cat-btn {
+  background       : none;
+  border           : none;
+  color            : var(--bar-text-dim);
+  font-family      : var(--mono);
+  font-size        : 10px;
+  letter-spacing   : 0.03em;
+  padding          : 6px 9px;
+  border-radius    : 5px;
+  cursor           : pointer;
+  white-space      : nowrap;
+  transition       : color 0.12s ease, background 0.12s ease;
+}
+.ob-menu-cat-btn:hover,
+.ob-menu-cat-btn.is-open {
+  color            : var(--bar-text);
+  background       : rgba(255, 255, 255, 0.06);
+}
+
+/* Dropdown — the "quiet piece of light" reveal: no bounce, quick, calm */
+.ob-menu-dropdown {
+  position         : absolute;
+  top              : 100%;
+  left             : 0;
+  min-width        : 200px;
+  max-width        : 280px;
+  background       : rgba(8, 8, 12, 0.95);
+  backdrop-filter  : blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border           : 1px solid rgba(255, 255, 255, 0.12);
+  border-radius    : 0 0 8px 8px;
+  box-shadow       : 0 12px 32px rgba(0,0,0,0.5);
+  padding          : 4px;
+  z-index          : 60;
+  overflow         : hidden;
+
+  opacity          : 0;
+  transform        : translateY(-4px) scaleY(0.94);
+  transform-origin : top;
+  pointer-events   : none;
+}
+.ob-menu-dropdown.is-open { pointer-events: auto; }
+
+.ob-menu-dropdown .panel-glitch-line {
+  position         : absolute;
+  left             : 0;
+  top              : 0;
+  width            : 18%;
+  height           : 2px;
+  background       : rgba(255, 255, 255, 0.9);
+  opacity          : 0;
+  pointer-events   : none;
+}
+
+.ob-menu-item {
+  display          : flex;
+  align-items      : center;
+  justify-content  : space-between;
+  gap              : 10px;
+  padding          : 7px 10px;
+  border-radius    : 5px;
+  font-size        : 10.5px;
+  color            : var(--bar-text-dim);
+  cursor           : pointer;
+  transition       : color 0.1s ease, background 0.1s ease;
+}
+
+/* Hover — darker background, brighter text (inverted from the usual
+   pattern) — matches the project's dark-glass aesthetic, reads as
+   "focus" rather than "glow". */
+.ob-menu-item:hover {
+  background       : rgba(0, 0, 0, 0.28);
+  color            : var(--bar-text);
+}
+
+.ob-menu-item.is-window-closed { opacity: 0.55; }
+
+.ob-menu-empty {
+  padding          : 10px;
+  font-size        : 9.5px;
+  color            : var(--bar-text-muted);
+  text-align       : center;
 }
 
 `
@@ -398,42 +510,6 @@ function injectStyles () {
 
 // ── Helper: format a float to fixed width ───────────────────────────────────
 
-function fmt (n, decimals = 2) {
-  if (n == null || isNaN(n)) return '---'
-  const s = Number(n).toFixed(decimals)
-  return n >= 0 ? ' ' + s : s
-}
-
-// ── Helper: build an XYZ triple element ─────────────────────────────────────
-
-function xyzEl (idPrefix) {
-  return /* html */`
-    <div class="ob-xyz">
-      <div class="ob-xyz-item">
-        <span class="ob-xyz-axis">x</span>
-        <span class="ob-xyz-val" id="${idPrefix}-x">  0.00</span>
-      </div>
-      <div class="ob-xyz-item">
-        <span class="ob-xyz-axis">y</span>
-        <span class="ob-xyz-val" id="${idPrefix}-y">  0.00</span>
-      </div>
-      <div class="ob-xyz-item">
-        <span class="ob-xyz-axis">z</span>
-        <span class="ob-xyz-val" id="${idPrefix}-z">  0.00</span>
-      </div>
-    </div>`
-}
-
-// ── Helper: key–value row ────────────────────────────────────────────────────
-
-function kvEl (key, id, modifiers = '') {
-  return /* html */`
-    <div class="ob-kv">
-      <span class="ob-kv-key">${key}</span>
-      <span class="ob-kv-val undef ${modifiers}" id="${id}">undefined</span>
-    </div>`
-}
-
 // ── GlobalBar class ──────────────────────────────────────────────────────────
 
 export default class GlobalBar {
@@ -441,7 +517,6 @@ export default class GlobalBar {
   constructor (context) {
     this.ctx       = context
     this._el       = null
-    this._expanded = false
 
     this._data = {
       pos           : { x: 0, y: 0, z: 0 },
@@ -498,6 +573,8 @@ export default class GlobalBar {
 
   destroy () {
     clearInterval(this._clockInterval)
+    window.removeEventListener('omni:frontmost-changed', this._onFrontmostChanged)
+    document.removeEventListener('click', this._onDocumentClick)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
     document.getElementById('omni-globalbar-styles')?.remove()
   }
@@ -507,12 +584,6 @@ export default class GlobalBar {
   setData (data) {
     Object.assign(this._data, data)
     this._refreshAll()
-  }
-
-  setExpanded (val) {
-    if (val === this._expanded) return
-    this._expanded = val
-    this._animateBar()
   }
 
   // ── DOM construction ────────────────────────────────────────────────────
@@ -531,10 +602,9 @@ export default class GlobalBar {
   _template () {
     return /* html */`
 
-      <!-- Col00 — Identity + toggle -->
-      <div class="ob-col" id="ob-col00" title="Toggle Global Bar">
+      <!-- Col00 — Identity -->
+      <div class="ob-col" id="ob-col00">
         <span class="ob-logo">⟐</span>
-        <span class="ob-toggle" id="ob-toggle-arrow">▾</span>
       </div>
 
       <!-- Col01 — User avatar -->
@@ -576,84 +646,12 @@ export default class GlobalBar {
         </div>
       </div>
 
-      <!-- Col04 — Position -->
-      <div class="ob-col ob-col-group" id="ob-col04">
-        <div class="ob-label-row">
-          <span class="ob-label">Position</span>
-        </div>
-        <div class="ob-data-rows">
-          ${xyzEl('ob-pos')}
-        </div>
-      </div>
-
-      <!-- Col05 — Rotation -->
-      <div class="ob-col ob-col-group" id="ob-col05">
-        <div class="ob-label-row">
-          <span class="ob-label">Rotation</span>
-        </div>
-        <div class="ob-data-rows">
-          ${xyzEl('ob-rot')}
-        </div>
-      </div>
-
-      <!-- Col06 — Scale -->
-      <div class="ob-col ob-col-group" id="ob-col06">
-        <div class="ob-label-row">
-          <span class="ob-label">Scale</span>
-        </div>
-        <div class="ob-data-rows">
-          ${xyzEl('ob-sca')}
-        </div>
-      </div>
-
-      <!-- Col07 — Performance -->
-      <div class="ob-col ob-col-group" id="ob-col07">
-        <div class="ob-label-row">
-          <span class="ob-label">Perf</span>
-        </div>
-        <div class="ob-data-rows">
-          <div class="ob-fps-badge">
-            <span class="ob-fps-num" id="ob-fps">--</span>
-            <span class="ob-fps-unit">fps</span>
-          </div>
-          <div class="ob-perf-label" id="ob-perf">—</div>
-        </div>
-      </div>
-
-      <!-- Col08 — System Details -->
-      <div class="ob-col ob-col-group" id="ob-col08">
-        <div class="ob-label-row">
-          <span class="ob-label">Roots</span>
-        </div>
-        <div class="ob-data-rows">
-          ${kvEl('Roots',   'ob-roots')}
-          ${kvEl('Parents', 'ob-parents')}
-          ${kvEl('Child',   'ob-child')}
-        </div>
-      </div>
-
-      <!-- Col09 — Dimension Details -->
-      <div class="ob-col ob-col-group" id="ob-col09">
-        <div class="ob-label-row">
-          <span class="ob-label">Reality</span>
-        </div>
-        <div class="ob-data-rows">
-          ${kvEl('Reality',     'ob-reality')}
-          ${kvEl('Experience',  'ob-experience')}
-          ${kvEl('Perspective', 'ob-perspective')}
-        </div>
-      </div>
-
-      <!-- Col10 — Dimensional Details cont. -->
-      <div class="ob-col ob-col-group" id="ob-col10">
-        <div class="ob-label-row">
-          <span class="ob-label">Time</span>
-        </div>
-        <div class="ob-data-rows">
-          ${kvEl('Time',   'ob-dim-time')}
-          ${kvEl('Space',  'ob-dim-space')}
-          ${kvEl('Object', 'ob-dim-object')}
-        </div>
+      <!-- Global Context Menu — App title + 8 fixed categories, contents
+           adapt to whichever panel currently has focus (WindowManager's
+           frontmost tracking). See OmniDimensionalApps.md. -->
+      <div class="ob-context-menu" id="ob-context-menu">
+        <span class="ob-app-title" id="ob-app-title">⟐OmniEXP</span>
+        <div class="ob-menu-cats" id="ob-menu-cats"></div>
       </div>
 
     `
@@ -662,28 +660,111 @@ export default class GlobalBar {
   // ── Event binding ────────────────────────────────────────────────────────
 
   _bindEvents () {
-    const col00 = this._el.querySelector('#ob-col00')
-    col00.addEventListener('click', () => {
-      this._playSound('click')
-      this._expanded = !this._expanded
-      this._animateBar()
+    this._buildContextMenu()
+    this._onFrontmostChanged = (e) => this._refreshContextMenu(e.detail?.id)
+    window.addEventListener('omni:frontmost-changed', this._onFrontmostChanged)
+
+    this._onDocumentClick = () => this._closeAllDropdowns()
+    document.addEventListener('click', this._onDocumentClick)
+  }
+
+  // ── Global Context Menu ──────────────────────────────────────────────────
+
+  _buildContextMenu () {
+    const container = this._el.querySelector('#ob-menu-cats')
+    if (!container) return
+
+    container.innerHTML = CATEGORIES.map(cat => /* html */`
+      <div class="ob-menu-cat" data-cat="${cat}">
+        <button class="ob-menu-cat-btn" data-cat-btn="${cat}">${cat}</button>
+        <div class="ob-menu-dropdown" data-dropdown="${cat}">
+          <span class="panel-glitch-line" aria-hidden="true"></span>
+          <div class="ob-menu-dropdown-list" data-list="${cat}"></div>
+        </div>
+      </div>
+    `).join('')
+
+    container.querySelectorAll('[data-cat-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const cat = btn.dataset.catBtn
+        const wasOpen = btn.classList.contains('is-open')
+        this._closeAllDropdowns()
+        if (!wasOpen) this._openDropdown(cat)
+      })
+    })
+
+    this._refreshContextMenu(WindowManager.getFrontmost())
+  }
+
+  /** Quiet, non-bouncy reveal — power2.out, no overshoot — plus the same
+   *  light-sweep used across ui/OmniDraw.js and elsewhere, so this reads
+   *  as the same visual language rather than a one-off effect. */
+  _openDropdown (cat) {
+    const btn      = this._el.querySelector(`[data-cat-btn="${cat}"]`)
+    const dropdown = this._el.querySelector(`[data-dropdown="${cat}"]`)
+    if (!btn || !dropdown) return
+
+    btn.classList.add('is-open')
+    dropdown.classList.add('is-open')
+    gsap.to(dropdown, { opacity: 1, y: 0, scaleY: 1, duration: 0.18, ease: 'power2.out' })
+    flashHeaderLine(dropdown, 'rgba(255,255,255,0.85)')
+    this._playSound('open')
+  }
+
+  _closeAllDropdowns () {
+    this._el?.querySelectorAll('.ob-menu-cat-btn.is-open').forEach(b => b.classList.remove('is-open'))
+    this._el?.querySelectorAll('.ob-menu-dropdown.is-open').forEach(dd => {
+      dd.classList.remove('is-open')
+      gsap.to(dd, { opacity: 0, y: -4, scaleY: 0.94, duration: 0.12, ease: 'power1.in' })
     })
   }
 
-  // ── Animation ────────────────────────────────────────────────────────────
+  /**
+   * Rebuilds the app title + all 8 dropdowns' contents for whichever
+   * panel id is now frontmost. `Windows` is special-cased — it's always
+   * auto-populated from WindowManager's registry, not from a panel's
+   * own registered categories.
+   */
+  _refreshContextMenu (frontmostId) {
+    this._setEl('ob-app-title', frontmostId ? WindowManager.getLabel(frontmostId) : '⟐OmniEXP')
+    const categories = frontmostId ? WindowManager.getContextMenu(frontmostId) : {}
 
-  _animateBar () {
-    const arrow = this._el.querySelector('#ob-toggle-arrow')
+    CATEGORIES.forEach(cat => {
+      const list = this._el?.querySelector(`[data-list="${cat}"]`)
+      if (!list) return
 
-    if (this._expanded) {
-      this._playSound('open')
-      gsap.to(this._el, { height: EXPANDED_H, duration: ANIM_DUR, ease: 'power2.out' })
-      if (arrow) arrow.textContent = '▴'
-    } else {
-      this._playSound('close')
-      gsap.to(this._el, { height: COLLAPSED_H, duration: ANIM_DUR, ease: 'power2.inOut' })
-      if (arrow) arrow.textContent = '▾'
-    }
+      if (cat === 'Windows') {
+        const windows = WindowManager.getRegisteredWindows()
+        list.innerHTML = windows.length
+          ? windows.map(w => /* html */`
+              <div class="ob-menu-item ${w.isOpen ? '' : 'is-window-closed'}" data-window-id="${w.id}">
+                <span>${w.label}</span>
+              </div>`).join('')
+          : `<div class="ob-menu-empty">No windows open</div>`
+        list.querySelectorAll('[data-window-id]').forEach(item => {
+          item.addEventListener('click', () => {
+            WindowManager.bringToFront(item.dataset.windowId)
+            this._playSound('click')
+            this._closeAllDropdowns()
+          })
+        })
+        return
+      }
+
+      const items = categories[cat] ?? []
+      list.innerHTML = items.length
+        ? items.map((it, i) => `<div class="ob-menu-item" data-action-idx="${i}"><span>${it.label}</span></div>`).join('')
+        : `<div class="ob-menu-empty">No actions here</div>`
+      list.querySelectorAll('[data-action-idx]').forEach(item => {
+        const idx = Number(item.dataset.actionIdx)
+        item.addEventListener('click', () => {
+          try { items[idx]?.action?.() } catch (err) { console.warn('⟐GlobalBar — context action failed:', err) }
+          this._playSound('click')
+          this._closeAllDropdowns()
+        })
+      })
+    })
   }
 
   // ── Clock tick (1 Hz) ────────────────────────────────────────────────────
@@ -708,41 +789,17 @@ export default class GlobalBar {
 
   _refreshAll () {
     const d = this._data
-
     this._setEl('ob-space-name', d.spaceName || 'Root')
-
-    if (d.pos) {
-      this._setEl('ob-pos-x', fmt(d.pos.x))
-      this._setEl('ob-pos-y', fmt(d.pos.y))
-      this._setEl('ob-pos-z', fmt(d.pos.z))
-    }
-
-    if (d.rot) {
-      this._setEl('ob-rot-x', fmt(d.rot.x))
-      this._setEl('ob-rot-y', fmt(d.rot.y))
-      this._setEl('ob-rot-z', fmt(d.rot.z))
-    }
-
-    if (d.scale) {
-      this._setEl('ob-sca-x', fmt(d.scale.x))
-      this._setEl('ob-sca-y', fmt(d.scale.y))
-      this._setEl('ob-sca-z', fmt(d.scale.z))
-    }
-
-    this._setKV('ob-roots',       d.roots)
-    this._setKV('ob-parents',     d.parents)
-    this._setKV('ob-child',       d.child)
-    this._setKV('ob-reality',     d.reality)
-    this._setKV('ob-experience',  d.experience)
-    this._setKV('ob-perspective', d.perspective)
-    this._setKV('ob-dim-time',    d.dimTime)
-    this._setKV('ob-dim-space',   d.dimSpace)
-    this._setKV('ob-dim-object',  d.dimObject)
+    this._broadcastData()
   }
 
   _refreshFPS () {
-    this._setEl('ob-fps',  String(this._data.fps))
-    this._setEl('ob-perf', this._data.perf)
+    this._broadcastData()
+  }
+
+  /** Q1 of OmniStartHUD renders this same data — see ui/OmniStartHUD.js. */
+  _broadcastData () {
+    window.dispatchEvent(new CustomEvent('omni:globalbar-data', { detail: { ...this._data } }))
   }
 
   _setEl (id, text) {

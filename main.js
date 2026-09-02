@@ -52,6 +52,8 @@ import RadialMenu from './ui/RadialMenu.js'
 import OmniDraw          from './ui/OmniDraw.js'
 import AdminPanel        from './ui/AdminPanel.js'
 import OmniExpression    from './ui/OmniExpression.js'
+import OmniKeys          from './ui/OmniKeys.js'
+import OmniKeysInspector from './ui/OmniKeysInspector.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -148,6 +150,12 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)
+
+  const omniKeys = new OmniKeys(base.context)
+  base.addModule(omniKeys)
+
+  const omniKeysInspector = new OmniKeysInspector(base.context)
+  base.addModule(omniKeysInspector)
 
   const omniStartHUD = new OmniStartHUD(base.context)
   base.addModule(omniStartHUD)

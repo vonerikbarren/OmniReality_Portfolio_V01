@@ -892,6 +892,10 @@ export default class OmniNode {
     this._onPosSet      = null
     this._onMaterialSet = null
     this._onScaleSet    = null
+    this._onRotationSet = null
+    this._onDeleteRequest = null
+    this._onTextSet = null
+    this._onSequenceSet = null
     this._onMediaSet    = null
     this._onCreateRequest = null
     this._onSetDomain     = null
@@ -925,6 +929,18 @@ export default class OmniNode {
     // Auto-rotation applies regardless of whether ⟐N's own panel is
     // open — it's a property of the object, not of the editor UI.
     for (const entry of this._nodes.values()) {
+      const mode = entry.data.lookAtMode
+      if (mode === 'Camera') {
+        entry.mesh.lookAt(this.ctx.camera.position)
+        continue   // lookAt and auto-rotation are mutually exclusive — an
+                    // object can't both hold a fixed orientation toward
+                    // something and spin freely at the same time.
+      }
+      if (mode === 'Coordinate' && entry.data.lookAtCoordinate) {
+        entry.mesh.lookAt(...entry.data.lookAtCoordinate)
+        continue
+      }
+
       if (!entry.data.autoRotation) continue
       const mesh = entry.mesh
       if (entry.data.autoRotationAxisX) mesh.rotation.x += entry.data.autoRotationSpeedX * delta
@@ -962,6 +978,10 @@ export default class OmniNode {
     window.removeEventListener('omni:node-pos-set',      this._onPosSet)
     window.removeEventListener('omni:node-material-set', this._onMaterialSet)
     window.removeEventListener('omni:node-scale-set',    this._onScaleSet)
+    window.removeEventListener('omni:node-rotation-set', this._onRotationSet)
+    window.removeEventListener('omni:node-delete-request', this._onDeleteRequest)
+    window.removeEventListener('omni:node-text-set', this._onTextSet)
+    window.removeEventListener('omni:node-sequence-set', this._onSequenceSet)
     window.removeEventListener('omni:node-media-set',    this._onMediaSet)
     window.removeEventListener('omni:node-create-request', this._onCreateRequest)
     window.removeEventListener('omni:node-set-domain', this._onSetDomain)
@@ -1454,8 +1474,8 @@ export default class OmniNode {
    * @param {object} data  — node schema object
    */
   _createNode (data) {
-    const color  = PRIMITIVE_COLORS[data.primitive] ?? 0xffffff
-    const mesh   = this._buildMesh(data.geometry, color)
+    const color  = data.geometry === 'DimensionalText' ? (data.color ?? '#ffffff') : (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
+    const mesh   = this._buildMesh(data.geometry, color, data.text)
 
     mesh.position.set(...data.position)
     if (data.rotation) mesh.rotation.set(...data.rotation)
@@ -1692,7 +1712,9 @@ export default class OmniNode {
    * @param {number} color   — hex integer
    * @returns {THREE.Mesh | THREE.LineSegments}
    */
-  _buildMesh (geoType, color) {
+  _buildMesh (geoType, color, text) {
+    if (geoType === 'DimensionalText') return this._buildTextSprite(text ?? '', color)
+
     const factory = GEOMETRY_DEFS[geoType] ?? GEOMETRY_DEFS.SphereGeometry
     const geo     = factory()
 
@@ -1709,6 +1731,80 @@ export default class OmniNode {
       emissiveIntensity: 1,
     })
     return new THREE.Mesh(geo, mat)
+  }
+
+  /**
+   * Dimensional Text — the foundational version. A THREE.Sprite (not a
+   * Mesh/PlaneGeometry) is deliberately the most performance-conscious
+   * choice available: sprites are natively billboarded by the renderer
+   * (no manual lookAt bookkeeping) and use the cheapest possible quad
+   * geometry — this matters once a scene has many of these. Text itself
+   * is drawn once onto a canvas and uploaded as a texture (same
+   * technique already used elsewhere in this project — Inspector's
+   * info-plane, the wallpaper sphere) rather than real 3D letterforms,
+   * which would be dramatically more expensive per node.
+   *
+   * The plane "extends with the text" per the design brief — canvas
+   * width is measured from the actual string, not fixed.
+   *
+   * Deliberately NOT built here yet (see DIMENSIONAL_TEXT_DESIGN.md):
+   * the comic-book-style transformational animation system, sound/FX
+   * attachment, and multi-axis (textX/textY/textZ) composition. This is
+   * the foundation those build on, not those systems themselves.
+   */
+  _buildTextSprite (text, color) {
+    const canvas = document.createElement('canvas')
+    const c2d    = canvas.getContext('2d')
+    const fontSize = 64
+
+    c2d.font = `bold ${fontSize}px 'Courier New', monospace`
+    const measured = c2d.measureText(text || ' ').width
+    canvas.width  = Math.max(64, Math.ceil(measured) + 48)
+    canvas.height = Math.ceil(fontSize * 1.7)
+
+    // Canvas resize clears context state — font must be reapplied.
+    c2d.font = `bold ${fontSize}px 'Courier New', monospace`
+    c2d.textBaseline = 'middle'
+    c2d.textAlign    = 'center'
+    c2d.fillStyle    = typeof color === 'number' ? '#' + color.toString(16).padStart(6, '0') : (color ?? '#ffffff')
+    c2d.fillText(text || ' ', canvas.width / 2, canvas.height / 2)
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true })
+    const sprite = new THREE.Sprite(mat)
+    const aspect = canvas.width / canvas.height
+    sprite.scale.set(aspect * 1.4, 1.4, 1)
+    sprite.userData.isDimensionalText = true
+    sprite.userData.text = text ?? ''
+    return sprite
+  }
+
+  /** Redraws an existing text sprite's canvas in place — used when a
+   *  Dimensional Text node's string or color changes, without needing
+   *  to rebuild the whole node/mesh. */
+  _updateTextSprite (sprite, text, color) {
+    if (!sprite?.material?.map?.image) return
+    const canvas = sprite.material.map.image
+    const c2d = canvas.getContext('2d')
+    const fontSize = 64
+
+    c2d.font = `bold ${fontSize}px 'Courier New', monospace`
+    const measured = c2d.measureText(text || ' ').width
+    canvas.width  = Math.max(64, Math.ceil(measured) + 48)
+    canvas.height = Math.ceil(fontSize * 1.7)
+
+    c2d.font = `bold ${fontSize}px 'Courier New', monospace`
+    c2d.textBaseline = 'middle'
+    c2d.textAlign    = 'center'
+    c2d.fillStyle    = color ?? '#ffffff'
+    c2d.fillText(text || ' ', canvas.width / 2, canvas.height / 2)
+
+    sprite.material.map.needsUpdate = true
+    const aspect = canvas.width / canvas.height
+    sprite.scale.set(aspect * 1.4, 1.4, 1)
+    sprite.userData.text = text ?? ''
   }
 
   /**
@@ -2001,12 +2097,34 @@ export default class OmniNode {
       const entry = this._nodes.get(id)
       if (!entry) return
       entry.data.color = color
-      if (entry.mesh?.material?.color) {
+      if (entry.mesh?.userData?.isDimensionalText) {
+        this._updateTextSprite(entry.mesh, entry.data.text, color)
+      } else if (entry.mesh?.material?.color) {
         entry.mesh.material.color.set(color)
       }
       this._save()
       this._updateNodeList()
       window.dispatchEvent(new CustomEvent('omni:node-updated', { detail: { node: entry.data } }))
+    }
+
+    /** Dimensional Text nodes only — redraws the sprite's canvas with
+     *  new content, rather than rebuilding the whole node. */
+    this._onTextSet = (e) => {
+      const { id, text } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry || !entry.mesh?.userData?.isDimensionalText) return
+      entry.data.text = text
+      this._updateTextSprite(entry.mesh, text, entry.data.color)
+      this._save()
+      this._updateNodeList()
+    }
+
+    this._onSequenceSet = (e) => {
+      const { id, textSequence } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      entry.data.textSequence = textSequence
+      this._save()
     }
 
     this._onGeoSet = (e) => {
@@ -2058,6 +2176,53 @@ export default class OmniNode {
       this._updateNodeList()
     }
 
+    this._onRotationSet = (e) => {
+      const { id, rotation } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      // Same pattern as scale — mesh rotation is already applied by
+      // OmniInspector (same mesh object), this just keeps OmniNode's
+      // own record in sync for persistence/TreeView.
+      entry.data.rotation = rotation
+      this._save()
+      this._updateNodeList()
+    }
+
+    /** Inspector's trashcan button. Removes the node + its own mesh and
+     *  any edges touching it. Children are re-parented to the deleted
+     *  node's own parent rather than being silently orphaned or deleted
+     *  themselves — same instinct as deleting a folder: its contents
+     *  move up a level, they don't vanish with it. */
+    this._onDeleteRequest = (e) => {
+      const { id } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+
+      this._edges = this._edges.filter(edge => {
+        if (edge.from !== id && edge.to !== id) return true
+        this.ctx.scene.remove(edge.line)
+        edge.line.geometry?.dispose()
+        edge.line.material?.dispose()
+        return false
+      })
+
+      this._nodes.forEach(childEntry => {
+        if (childEntry.data.parentId === id) {
+          childEntry.data.parentId = entry.data.parentId ?? null
+        }
+      })
+
+      this.ctx.scene.remove(entry.mesh)
+      entry.mesh.geometry?.dispose()
+      entry.mesh.material?.map?.dispose()   // canvas texture, for Dimensional Text sprites
+      entry.mesh.material?.dispose()
+      this._nodes.delete(id)
+
+      this._save()
+      this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:node-deleted', { detail: { id } }))
+    }
+
     this._onMediaSet = (e) => {
       const { id, type, url, label } = e.detail ?? {}
       const entry = this._nodes.get(id)
@@ -2093,6 +2258,10 @@ export default class OmniNode {
         autoRotationSpeedX: d.autoRotationSpeedX ?? 1,
         autoRotationSpeedY: d.autoRotationSpeedY ?? 1,
         autoRotationSpeedZ: d.autoRotationSpeedZ ?? 1,
+        lookAtMode: d.lookAtMode ?? 'None',
+        lookAtCoordinate: d.lookAtCoordinate ?? [0, 0, 0],
+        text: d.text ?? '',
+        textSequence: d.textSequence ?? null,
       })
     }
 
@@ -2289,6 +2458,10 @@ export default class OmniNode {
     window.addEventListener('omni:node-pos-set',      this._onPosSet)
     window.addEventListener('omni:node-material-set', this._onMaterialSet)
     window.addEventListener('omni:node-scale-set',    this._onScaleSet)
+    window.addEventListener('omni:node-rotation-set', this._onRotationSet)
+    window.addEventListener('omni:node-delete-request', this._onDeleteRequest)
+    window.addEventListener('omni:node-text-set', this._onTextSet)
+    window.addEventListener('omni:node-sequence-set', this._onSequenceSet)
     window.addEventListener('omni:node-media-set',    this._onMediaSet)
     window.addEventListener('omni:node-create-request', this._onCreateRequest)
     window.addEventListener('omni:node-set-domain', this._onSetDomain)
@@ -2341,9 +2514,19 @@ export default class OmniNode {
       if (rawNodes) {
         const nodes = JSON.parse(rawNodes)
         nodes.forEach(data => {
-          const color = PRIMITIVE_COLORS[data.primitive] ?? 0xffffff
-          const mesh  = this._buildMesh(data.geometry, color)
+          // Use the node's own saved color if it has one — falling back
+          // to the primitive-type default only for older saves that
+          // predate per-node color. This was the actual "color/texture
+          // doesn't stick after reload" bug: it always used the
+          // primitive default here, discarding whatever the user set.
+          const color = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
+          const mesh  = this._buildMesh(data.geometry, color, data.text)
           mesh.position.set(...(data.position ?? [0, PLACE_Y_OFFSET, 0]))
+          // Same bug for rotation/scale — previously never reapplied on
+          // restore, so a saved node always came back at default
+          // rotation and scale=1 regardless of what was saved.
+          if (data.rotation) mesh.rotation.set(...data.rotation)
+          if (data.scale)    mesh.scale.set(...data.scale)
           mesh.userData.nodeId = data.id
           this.ctx.scene.add(mesh)
           this._nodes.set(data.id, { data, mesh })

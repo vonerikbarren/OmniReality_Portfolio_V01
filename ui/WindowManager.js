@@ -20,6 +20,12 @@
  *                            under omni:panel-lastsaved:{panelId}, and
  *                            updates the button's tooltip with it.
  *   getLastSaved(panelId)  — reads that timestamp back (e.g. on panel open)
+ *   getFrontmost()          — id of the most-recently-focused panel
+ *   registerContextMenu(contextId, categories) — a panel declares what it
+ *                            contributes to the Global Context Menu (see
+ *                            ui/GlobalBar.js) — { Objects: [{label,action}], ... }
+ *   unregisterContextMenu(contextId)
+ *   getContextMenu(contextId)
  */
 
 import gsap from 'gsap'
@@ -30,6 +36,7 @@ const STORE_PREFIX = 'omni:panel-lastsaved:'
 
 const registry = new Map()   // id -> { el }
 let topZ = BASE_Z
+let currentFrontmost = null
 
 function injectStyles () {
   if (document.getElementById('omni-window-manager-styles')) return
@@ -46,17 +53,20 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
-/** Register a panel's root element for bring-to-front stacking. Returns
- *  false (and logs a warning) if the 10-window cap is already full. */
-export function register (id, el) {
+/** Register a panel's root element for bring-to-front stacking. `label`
+ *  is an optional human-readable name (e.g. 'OmniDraw') — used by the
+ *  Global Context Menu's Windows category and app-title display; falls
+ *  back to `id` if omitted. Returns false (and logs a warning) if the
+ *  10-window cap is already full. */
+export function register (id, el, label) {
   injectStyles()
   if (registry.has(id)) { bringToFront(id); return true }
   if (registry.size >= MAX_WINDOWS) {
     console.warn(`⟐ WindowManager — window cap (${MAX_WINDOWS}) reached, refusing to register "${id}".`)
     return false
   }
-  registry.set(id, { el })
-  bringToFront(id)
+  registry.set(id, { el, label: label ?? id })
+  bringToFront(id, false)   // z-index only — not a real user focus event
   el.addEventListener('mousedown', () => bringToFront(id))
   return true
 }
@@ -65,11 +75,76 @@ export function unregister (id) {
   registry.delete(id)
 }
 
-export function bringToFront (id) {
+/** { id, label, isOpen } for every currently-registered panel — feeds
+ *  the Global Context Menu's Windows category. isOpen is a best-effort
+ *  guess from the element's own visibility, since WindowManager doesn't
+ *  track each panel's open/closed state itself. */
+export function getRegisteredWindows () {
+  return [...registry.entries()].map(([id, { el, label }]) => ({
+    id, label,
+    isOpen: el.style.visibility !== 'hidden',
+  }))
+}
+
+export function getLabel (id) {
+  return registry.get(id)?.label ?? id
+}
+
+export function bringToFront (id, isUserAction = true) {
   const entry = registry.get(id)
   if (!entry) return
   topZ += 1
   entry.el.style.zIndex = String(topZ)
+
+  // Only real user interaction (opening a panel, clicking into one)
+  // should change what the Global Context Menu considers "focused."
+  // Registration itself also needs a z-index bump (so a freshly built
+  // panel renders above the background), but that's a layout concern,
+  // not the user choosing to focus it — without this distinction, every
+  // panel registering during boot would silently overwrite the context
+  // menu's default with whichever one happened to register last.
+  if (!isUserAction) return
+
+  if (id && id !== currentFrontmost) {
+    currentFrontmost = id
+    window.dispatchEvent(new CustomEvent('omni:frontmost-changed', { detail: { id } }))
+  }
+}
+
+/** The id most recently brought to front, or null if nothing has been
+ *  focused yet. This is today's proxy for "current dimensional level" —
+ *  see OmniDimensionalApps.md. Once apps grow real levels, a panel can
+ *  register a more specific context id (e.g. 'omnidraw:edit-mode')
+ *  instead of just its own panel id, without this function changing. */
+export function getFrontmost () {
+  return currentFrontmost
+}
+
+// ── Global Context Menu — per-context action registry ─────────────────────
+// Panels register what they contribute under each of the 8 fixed
+// categories (see ui/GlobalBar.js). Keyed by a context id — normally a
+// panel's own id, but deliberately not required to be, so a panel with
+// multiple dimensional levels can register a different action set per
+// level later without this API changing.
+
+const contextMenus = new Map()   // contextId -> { CategoryName: [{label, action}] }
+
+/**
+ * @param {string} contextId   — usually a panel's own id (e.g. 'omnidraw')
+ * @param {object} categories  — { Objects: [{label, action}], ... } —
+ *        only the categories this context actually contributes need be present
+ */
+export function registerContextMenu (contextId, categories) {
+  contextMenus.set(contextId, categories)
+}
+
+export function unregisterContextMenu (contextId) {
+  contextMenus.delete(contextId)
+}
+
+/** Categories contributed by the given context id, or {} if none registered. */
+export function getContextMenu (contextId) {
+  return contextMenus.get(contextId) ?? {}
 }
 
 /**
