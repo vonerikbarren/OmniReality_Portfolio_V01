@@ -23,7 +23,15 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { classifyChar, defaultKeyData } from './OmniKeys.js'
+import { classifyChar, defaultStaticKeyData, defaultPaginatedKeyData } from './OmniKeys.js'
+
+/** Mirrors OmniKeys.js's own default-lookup branching, keyed by a
+ *  descriptor ({kind:'static',row,col} or {kind:'letter'|'symbol',page,slot})
+ *  instead of the old flat index. */
+function defaultForDescriptor (descriptor) {
+  if (descriptor.kind === 'static') return defaultStaticKeyData(descriptor.row, descriptor.col)
+  return defaultPaginatedKeyData(descriptor.kind, descriptor.page, descriptor.slot)
+}
 
 const STYLES = /* css */`
 
@@ -208,7 +216,7 @@ export default class OmniKeysInspector {
     this._el = null
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
-    this._index = null
+    this._descriptor = null
     this._data = null
     this._saveTimer = null
     this._bannerTimer = null
@@ -218,9 +226,9 @@ export default class OmniKeysInspector {
   init () {
     injectStyles()
     this._onInspectRequest = (e) => {
-      const { index, keyData, focusMode } = e.detail ?? {}
-      if (index == null) return
-      this._index = index
+      const { descriptor, keyData, focusMode } = e.detail ?? {}
+      if (!descriptor) return
+      this._descriptor = descriptor
       this._data = structuredClone(keyData)
       this.open()
       this._render(focusMode)
@@ -319,7 +327,7 @@ export default class OmniKeysInspector {
     `
 
     body.innerHTML = /* html */`
-      <div class="oki-key-badge">Key #${this._index}</div>
+      <div class="oki-key-badge">${this._descriptorLabel()}</div>
 
       <div class="oki-field">
         <label class="oki-field-label">Title</label>
@@ -380,7 +388,7 @@ export default class OmniKeysInspector {
     clearTimeout(this._saveTimer)
     this._saveTimer = setTimeout(() => {
       window.dispatchEvent(new CustomEvent('omni:omnikeys-key-updated', {
-        detail: { index: this._index, keyData: this._data }
+        detail: { descriptor: this._descriptor, keyData: this._data }
       }))
       this._flashBanner()
     }, 200)
@@ -395,30 +403,40 @@ export default class OmniKeysInspector {
     this._bannerTimer = setTimeout(() => banner.classList.remove('is-visible'), 1400)
   }
 
+  /** A human-readable label for whichever key is loaded — e.g.
+   *  "special · col 5" or "letters · page 3, slot 12" — since keys no
+   *  longer have one flat numeric index. */
+  _descriptorLabel () {
+    const d = this._descriptor
+    if (!d) return 'No key selected'
+    if (d.kind === 'static') return `${d.row} · col ${d.col}`
+    return `${d.kind}s · page ${d.page + 1}, slot ${d.slot}`
+  }
+
   /** Explicit save button — everything already autosaves on a 200ms
    *  debounce, so this mostly matters for flushing immediately +
    *  giving the same visible confirmation Admin/OmniInspector's save
    *  buttons give, rather than only relying on the debounce. */
   _explicitSave (btn) {
-    if (this._index == null) return
+    if (!this._descriptor) return
     clearTimeout(this._saveTimer)
     window.dispatchEvent(new CustomEvent('omni:omnikeys-key-updated', {
-      detail: { index: this._index, keyData: this._data }
+      detail: { descriptor: this._descriptor, keyData: this._data }
     }))
     this._flashBanner('✓ Saved')
     btn?.classList.add('is-saved')
     setTimeout(() => btn?.classList.remove('is-saved'), 500)
   }
 
-  /** The "trash" equivalent for a fixed 128-key grid — keys can't be
-   *  removed the way a scene node can, so this resets the currently
-   *  selected key back to its default title/string/sequence instead. */
+  /** The "trash" equivalent — keys can't be removed from a fixed
+   *  layout, so this resets the currently selected key back to its
+   *  default title/string/sequence instead. */
   _resetKey () {
-    if (this._index == null) return
-    this._data = defaultKeyData(this._index)
+    if (!this._descriptor) return
+    this._data = defaultForDescriptor(this._descriptor)
     this._render(null)
     window.dispatchEvent(new CustomEvent('omni:omnikeys-key-updated', {
-      detail: { index: this._index, keyData: this._data }
+      detail: { descriptor: this._descriptor, keyData: this._data }
     }))
     this._flashBanner('↺ Reset to default')
   }

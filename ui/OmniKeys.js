@@ -2,43 +2,56 @@
  * ui/OmniKeys.js — ⟐mniReality OmniKeys
  *
  * The flat (2D) layer of the dimensional keyboard — see
- * OMNIKEYBOARD_DESIGN.md for the full staged design. This is Stage 1:
- * a flat panel, same chrome as every other panel, with a basic grid of
- * keys. The dimensional (3D cube-face) system, Hybrid/QuadBrid
- * hand-split modes, and RGBA/spacing controls are all documented there
- * and deliberately NOT built here.
+ * OMNIKEYBOARD_DESIGN.md for the full staged design. The dimensional
+ * (3D cube-face) system, Hybrid/QuadBrid hand-split modes, and
+ * RGBA/spacing controls are all documented there and deliberately NOT
+ * built here.
  *
- * Opens from the top-left drawer (⟐mniMenu → ⟐OmniKeys™ — a top-level
- * trademark item).
+ * Opens from the top-left drawer (⟐mniMenu → ⟐OmniKeys™).
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * Layout
+ * Layout — 16 columns wide, organized class-first so no row mixes types
  * ─────────────────────────────────────────────────────────────────────────────
- * 8 rows × 16 columns (128 keys) — deliberately not a real-keyboard
- * mirror ("it doesn't need to, and I think it's outdated anyway").
- * Pre-filled with a sensible default character layout on first use.
+ *   Row 0       Media/system (brightness, start-menu, search, mic,
+ *               nightmode, media transport, volume, power, refresh)
+ *   Row 1       Esc + F1–F15
+ *   Row 2       Digits 0–9, then two wide press-and-hold pickers for
+ *               superscript/subscript characters
+ *   Rows 3–4    Letters — PAGED (20 pages, one per "alphabet of your
+ *               type"). Page 0 defaults to A–Z; pages 1–19 start blank
+ *               for the user to fill in. A language-selector key sits
+ *               after a skipped space following Z.
+ *   Rows 5–6    Symbols — PAGED (20 pages). Page 0 defaults to the
+ *               original symbol set; pages 1–19 start blank
+ *               ("I will fill these in as time moves forward").
+ *   Row 7       The 16-slot special/system row: Sys, Exp, View, Time,
+ *               Http, Ctrl, Opt, Cmd, Shift, Obj, Prpty, Complx, Purps,
+ *               Enrgy, State, Func
+ *   Rows 8–10   Three full 8-directional pads side by side (left,
+ *               middle, right) — cardinal + all four diagonals each
+ *   Row 11      16 individual spacebars (Space01–Space16), each its
+ *               own independently CRUD-editable key
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * Three modes
+ * Four modes
  * ─────────────────────────────────────────────────────────────────────────────
- *   Edit     — click a key to open it in OmniKeys' own Inspector
- *              (title + string macro value). CRUD, persisted.
- *   Delivery — click a key to actually create a Dimensional Text node
- *              in the 3D world using that key's string (see
- *              systems/OmniNode.js's _buildTextSprite — canvas-texture
- *              sprite, not real 3D letterforms, for performance).
+ *   Edit     — click a key to open it in OmniKeys' own Inspector.
+ *   Delivery — click a key to create a Dimensional Text node in the
+ *              3D world using that key's string.
  *   Sequence — click a key to open it in the Inspector focused on its
- *              start/end transformation fields (see
- *              DIMENSIONAL_TEXT_DESIGN.md). Fields only in this pass —
- *              the actual transformation playback is future work.
+ *              start/end transformation fields.
+ *   Command  — click modifiers to hold them, click a key to fire a
+ *              real KeyboardEvent (see _onCommandKeyClick).
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * Persistence
+ * Persistence — two separate blobs, since paginated content genuinely
+ * is a different shape from fixed single-instance keys
  * ─────────────────────────────────────────────────────────────────────────────
- * All 128 keys' title/string/sequence data live in one localStorage
- * key (`omni:omnikeys:keys`) — a flat object keyed by key index,
- * following the same "one blob" pattern as Admin's settings rather
- * than 128 separate storage entries.
+ *   omni:omnikeys:static        — the non-paginated rows (media, F-row,
+ *                                 digits, special, directional, space),
+ *                                 keyed by "row-col"
+ *   omni:omnikeys:letterPages   — 20 pages × 32 slots
+ *   omni:omnikeys:symbolPages   — 20 pages × 32 slots
  *
  * Follows the standard module contract (constructor / init / update / destroy).
  */
@@ -48,118 +61,137 @@ import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
 
 const COLS = 16
-const STORE_KEY = 'omni:omnikeys:keys'
+const PAGE_COUNT = 20
+const PAGE_SLOTS = 32   // 2 rows x 16 cols
 
 const MODES = ['Edit', 'Delivery', 'Sequence', 'Command']
 
-/**
- * Structured layout — an array of rows, each row an array of key specs
- * ({ type, char, label }) or `null` for a blank/unused spacer cell.
- * Organized class-first per request: media/system row, then Esc+F-row,
- * then digits, then letters, then symbols, then modifiers + a compact
- * directional pad, then a split spacebar — each class fills whole rows
- * so nothing bleeds into the next row's class.
- *
- * A couple of genuinely ambiguous reads, stated plainly rather than
- * guessed silently:
- *   - "another row above that" (the media/system row) is placed as the
- *     literal topmost row, with Esc+Function keys just below it.
- *   - "diagonal left / diagonal right" — read as the two upper
- *     diagonals (↖ ↗), paired with Up on the same row, since only two
- *     diagonals (not all four) were asked for.
- */
-function buildLayout () {
-  const mediaRow = [
-    { type: 'media', char: 'brightness-up',   label: '☀+' },
-    { type: 'media', char: 'brightness-down', label: '☀−' },
-    { type: 'media', char: 'start-menu',      label: '⟐' },
-    { type: 'media', char: 'search',          label: '🔍' },
-    { type: 'media', char: 'mic',             label: '🎤' },
-    { type: 'media', char: 'nightmode',       label: '🌙' },
-    { type: 'media', char: 'media-prev',      label: '⏮' },
-    { type: 'media', char: 'play-pause',      label: '⏯' },
-    { type: 'media', char: 'slow-down',       label: '⏪' },
-    { type: 'media', char: 'speed-up',        label: '⏩' },
-    { type: 'media', char: 'media-next',      label: '⏭' },
-    { type: 'media', char: 'vol-up',          label: '🔊' },
-    { type: 'media', char: 'vol-down',        label: '🔉' },
-    { type: 'media', char: 'mute',            label: '🔇' },
-    { type: 'media', char: 'power',           label: '⏻' },
-    null,
-  ]
+const STORE_STATIC  = 'omni:omnikeys:static'
+const STORE_LETTERS = 'omni:omnikeys:letterPages'
+const STORE_SYMBOLS = 'omni:omnikeys:symbolPages'
 
-  const fnRow = [
-    { type: 'function', char: 'Escape', label: 'Esc' },
-    ...Array.from({ length: 12 }, (_, i) => ({ type: 'function', char: `F${i + 1}`, label: `F${i + 1}` })),
-    null, null, null,
-  ]
+// ── Static (non-paginated) rows ─────────────────────────────────────────────
 
-  const digits = '1234567890'.split('')
-  const digitRow = [...digits.map(d => ({ type: 'digit', char: d, label: d })), null, null, null, null, null, null]
+const MEDIA_ROW = [
+  { type: 'media', char: 'brightness-up',   label: '☀+' },
+  { type: 'media', char: 'brightness-down', label: '☀−' },
+  { type: 'media', char: 'start-menu',      label: '⟐' },
+  { type: 'media', char: 'search',          label: '🔍' },
+  { type: 'media', char: 'mic',             label: '🎤' },
+  { type: 'media', char: 'nightmode',       label: '🌙' },
+  { type: 'media', char: 'media-prev',      label: '⏮' },
+  { type: 'media', char: 'play-pause',      label: '⏯' },
+  { type: 'media', char: 'slow-down',       label: '⏪' },
+  { type: 'media', char: 'speed-up',        label: '⏩' },
+  { type: 'media', char: 'media-next',      label: '⏭' },
+  { type: 'media', char: 'vol-up',          label: '🔊' },
+  { type: 'media', char: 'vol-down',        label: '🔉' },
+  { type: 'media', char: 'mute',            label: '🔇' },
+  { type: 'media', char: 'power',           label: '⏻' },
+  { type: 'media', char: 'refresh',         label: '⟳' },
+]
 
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-  const letterRow1 = letters.slice(0, 16).map(l => ({ type: 'letter', char: l, label: l }))
-  const letterRow2 = [...letters.slice(16).map(l => ({ type: 'letter', char: l, label: l })), null, null, null, null, null, null]
+const FN_ROW = [
+  { type: 'function', char: 'Escape', label: 'Esc' },
+  ...Array.from({ length: 15 }, (_, i) => ({ type: 'function', char: `F${i + 1}`, label: `F${i + 1}` })),
+]
 
-  const symbols = '!@#$%^&*()-_=+[]{};:\'",.<>/?\\|~`'.split('')
-  const symbolRow1 = symbols.slice(0, 16).map(s => ({ type: 'symbol', char: s, label: s }))
-  const symbolRow2 = [...symbols.slice(16).map(s => ({ type: 'symbol', char: s, label: s })), null, null]
+const DIGIT_ROW = [
+  ...['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => ({ type: 'digit', char: d, label: d })),
+  { type: 'digit-modifier', char: 'superscript', label: 'Sup ⁿ', span: 3, picker: '⁰¹²³⁴⁵⁶⁷⁸⁹' },
+  { type: 'digit-modifier', char: 'subscript',   label: 'Sub ₙ', span: 3, picker: '₀₁₂₃₄₅₆₇₈₉' },
+]
 
-  const modRow = [
-    { type: 'modifier', char: 'Control', label: 'Ctrl' },
-    { type: 'modifier', char: 'Alt',     label: 'Opt' },
-    { type: 'modifier', char: 'Meta',    label: 'Cmd' },
-    { type: 'modifier', char: 'Shift',   label: 'Shift' },
-    null, null,
-    { type: 'directional', char: 'DiagUpLeft',  label: '↖' },
-    { type: 'directional', char: 'ArrowUp',     label: '↑' },
-    { type: 'directional', char: 'DiagUpRight', label: '↗' },
-    null, null,
-    { type: 'modifier', char: 'Shift',   label: 'Shift' },
-    { type: 'modifier', char: 'Meta',    label: 'Cmd' },
-    { type: 'modifier', char: 'Alt',     label: 'Opt' },
-    { type: 'modifier', char: 'Control', label: 'Ctrl' },
-    null,
-  ]
+const SPECIAL_ROW = [
+  { type: 'special',  char: 'Sys',     label: 'Sys' },
+  { type: 'special',  char: 'Exp',     label: 'Exp' },
+  { type: 'special',  char: 'View',    label: 'View' },
+  { type: 'special',  char: 'Time',    label: 'Time' },
+  { type: 'special',  char: 'Http',    label: 'Http' },
+  { type: 'modifier', char: 'Control', label: 'Ctrl' },
+  { type: 'modifier', char: 'Alt',     label: 'Opt' },
+  { type: 'modifier', char: 'Meta',    label: 'Cmd' },
+  { type: 'modifier', char: 'Shift',   label: 'Shift' },
+  { type: 'special',  char: 'Obj',     label: 'Obj' },
+  { type: 'special',  char: 'Prpty',   label: 'Prpty' },
+  { type: 'special',  char: 'Complx',  label: 'Complx' },
+  { type: 'special',  char: 'Purps',   label: 'Purps' },
+  { type: 'special',  char: 'Enrgy',   label: 'Enrgy' },
+  { type: 'special',  char: 'State',   label: 'State' },
+  { type: 'special',  char: 'Func',    label: 'Func' },
+]
 
-  const dpadRow = [
-    null, null, null, null, null, null,
-    { type: 'directional', char: 'ArrowLeft',  label: '←' },
-    { type: 'directional', char: 'ArrowDown',  label: '↓' },
-    { type: 'directional', char: 'ArrowRight', label: '→' },
-    null, null, null, null, null, null, null,
-  ]
-
-  const spaceRow = [
-    { type: 'space', char: ' ', label: 'Space (L)', span: 8 },
-    { type: 'space', char: ' ', label: 'Space (R)', span: 8 },
-  ]
-
-  return [mediaRow, fnRow, digitRow, letterRow1, letterRow2, symbolRow1, symbolRow2, modRow, dpadRow, spaceRow]
+/** One 8-directional cluster (3x3, center empty) for a given prefix —
+ *  used three times (left/middle/right) so each direction key has a
+ *  unique char per cluster. */
+function dirCluster (prefix) {
+  return {
+    top: [
+      { type: 'directional', char: `${prefix}-DiagUpLeft`,    label: '↖' },
+      { type: 'directional', char: `${prefix}-ArrowUp`,       label: '↑' },
+      { type: 'directional', char: `${prefix}-DiagUpRight`,   label: '↗' },
+    ],
+    mid: [
+      { type: 'directional', char: `${prefix}-ArrowLeft`,     label: '←' },
+      null,
+      { type: 'directional', char: `${prefix}-ArrowRight`,    label: '→' },
+    ],
+    bottom: [
+      { type: 'directional', char: `${prefix}-DiagDownLeft`,  label: '↙' },
+      { type: 'directional', char: `${prefix}-ArrowDown`,     label: '↓' },
+      { type: 'directional', char: `${prefix}-DiagDownRight`, label: '↘' },
+    ],
+  }
 }
 
-const LAYOUT = buildLayout()
-const TOTAL_KEYS = LAYOUT.reduce((n, row) => n + row.length, 0)
-const ROWS = LAYOUT.length
+function buildDirRow (rowKey) {
+  const L = dirCluster('L')[rowKey]
+  const M = dirCluster('M')[rowKey]
+  const R = dirCluster('R')[rowKey]
+  // 1 blank + 3(L) + 2 blank + 3(M) + 2 blank + 3(R) + 2 blank = 16
+  return [null, ...L, null, null, ...M, null, null, ...R, null, null]
+}
 
-export function defaultKeyData (index) {
-  let i = 0
-  for (const row of LAYOUT) {
-    for (const spec of row) {
-      if (i === index) {
-        if (!spec) return { type: 'blank', title: '', string: '', classType: 'blank' }
-        return {
-          title: spec.label,
-          string: spec.char,
-          classType: spec.type,
-          sequenceStart: { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
-          sequenceEnd:   { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
-        }
-      }
-      i++
-    }
-  }
-  return { type: 'blank', title: '', string: '', classType: 'blank' }
+const DIR_TOP_ROW    = buildDirRow('top')
+const DIR_MID_ROW    = buildDirRow('mid')
+const DIR_BOTTOM_ROW = buildDirRow('bottom')
+
+const SPACE_ROW = Array.from({ length: 16 }, (_, i) => ({
+  type: 'space', char: ' ', label: `Space${String(i + 1).padStart(2, '0')}`,
+}))
+
+/** The complete static (non-paginated) layout, in render order. The
+ *  paginated letter/symbol row-blocks aren't in here — _buildGrid
+ *  renders those separately from _letterPages/_symbolPages instead. */
+const STATIC_ROWS = {
+  media: MEDIA_ROW,
+  fn: FN_ROW,
+  digits: DIGIT_ROW,
+  special: SPECIAL_ROW,
+  dirTop: DIR_TOP_ROW,
+  dirMid: DIR_MID_ROW,
+  dirBottom: DIR_BOTTOM_ROW,
+  space: SPACE_ROW,
+}
+
+// ── Paginated rows — letters, symbols ───────────────────────────────────────
+
+function letterPageDefault (pageNum) {
+  const slots = new Array(PAGE_SLOTS).fill(null)
+  if (pageNum !== 0) return slots   // pages 1-19 start blank — a different alphabet per page, user's to fill
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+  letters.forEach((l, i) => { slots[i] = { type: 'letter', char: l, label: l } })
+  // 26 letters, slot 26 skipped (blank) per request, slot 27 = language selector
+  slots[27] = { type: 'lang-selector', char: 'lang', label: '🌐 Lang' }
+  return slots
+}
+
+function symbolPageDefault (pageNum) {
+  const slots = new Array(PAGE_SLOTS).fill(null)
+  if (pageNum !== 0) return slots   // pages 1-19 start blank — "I will fill these in as time moves forward"
+  const symbols = '!@#$%^&*()-_=+[]{};:\'",.<>/?\\|~`'.split('')
+  symbols.forEach((s, i) => { slots[i] = { type: 'symbol', char: s, label: s } })
+  return slots
 }
 
 export function classifyChar (ch) {
@@ -168,25 +200,70 @@ export function classifyChar (ch) {
   return 'symbol'
 }
 
-function loadKeys () {
-  try {
-    const raw = localStorage.getItem(STORE_KEY)
-    const saved = raw ? JSON.parse(raw) : {}
-    const keys = {}
-    for (let i = 0; i < TOTAL_KEYS; i++) {
-      keys[i] = { ...defaultKeyData(i), ...(saved[i] ?? {}) }
-    }
-    return keys
-  } catch (_) {
-    const keys = {}
-    for (let i = 0; i < TOTAL_KEYS; i++) keys[i] = defaultKeyData(i)
-    return keys
+function specToKeyData (spec) {
+  if (!spec) return { type: 'blank', title: '', string: '', classType: 'blank' }
+  return {
+    title: spec.label,
+    string: spec.char,
+    classType: spec.type,
+    sequenceStart: { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
+    sequenceEnd:   { fontSize: 1, case: 'none', opacity: 1, color: '#ffffff' },
   }
 }
 
-function saveKeys (keys) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(keys)) } catch (err) {
-    console.warn('⟐OmniKeys — localStorage save failed:', err)
+export function defaultStaticKeyData (rowName, col) {
+  return specToKeyData(STATIC_ROWS[rowName]?.[col])
+}
+
+export function defaultPaginatedKeyData (kind, page, slot) {
+  const specs = kind === 'letter' ? letterPageDefault(page) : symbolPageDefault(page)
+  return specToKeyData(specs[slot])
+}
+
+function loadStatic () {
+  const out = {}
+  try {
+    const raw = localStorage.getItem(STORE_STATIC)
+    const saved = raw ? JSON.parse(raw) : {}
+    for (const [rowName, row] of Object.entries(STATIC_ROWS)) {
+      row.forEach((spec, col) => {
+        const id = `${rowName}-${col}`
+        out[id] = { ...specToKeyData(spec), ...(saved[id] ?? {}) }
+      })
+    }
+  } catch (_) {
+    for (const [rowName, row] of Object.entries(STATIC_ROWS)) {
+      row.forEach((spec, col) => { out[`${rowName}-${col}`] = specToKeyData(spec) })
+    }
+  }
+  return out
+}
+
+function saveStatic (staticKeys) {
+  try { localStorage.setItem(STORE_STATIC, JSON.stringify(staticKeys)) } catch (err) {
+    console.warn('⟐OmniKeys — static save failed:', err)
+  }
+}
+
+function loadPages (storeKey, defaultFn) {
+  let saved = null
+  try {
+    const raw = localStorage.getItem(storeKey)
+    saved = raw ? JSON.parse(raw) : null
+  } catch (_) { saved = null }
+
+  const pages = []
+  for (let p = 0; p < PAGE_COUNT; p++) {
+    const defaults = defaultFn(p).map(specToKeyData)
+    const savedPage = saved?.[p]
+    pages.push(defaults.map((d, slot) => ({ ...d, ...(savedPage?.[slot] ?? {}) })))
+  }
+  return pages
+}
+
+function savePages (storeKey, pages) {
+  try { localStorage.setItem(storeKey, JSON.stringify(pages)) } catch (err) {
+    console.warn('⟐OmniKeys — page save failed:', err)
   }
 }
 
@@ -203,13 +280,13 @@ const STYLES = /* css */`
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 90px;
-  left             : 90px;
-  width            : 760px;
-  min-width        : 520px;
+  top              : 70px;
+  left             : 70px;
+  width            : 820px;
+  min-width        : 560px;
   max-width        : 96vw;
-  height           : 520px;
-  min-height       : 300px;
+  height           : 640px;
+  min-height       : 340px;
   max-height       : 92vh;
 
   display          : flex;
@@ -249,12 +326,7 @@ const STYLES = /* css */`
 }
 .ok-header.is-dragging { cursor: grabbing; }
 
-.ok-title {
-  font-size        : 12px;
-  letter-spacing   : 0.06em;
-  color            : var(--ok-text-dim);
-  flex-shrink      : 0;
-}
+.ok-title { font-size: 12px; letter-spacing: 0.06em; color: var(--ok-text-dim); flex-shrink: 0; }
 
 .ok-modes {
   display          : flex;
@@ -271,32 +343,26 @@ const STYLES = /* css */`
   font-family      : var(--mono);
   font-size        : 10px;
   letter-spacing   : 0.03em;
-  padding          : 5px 10px;
+  padding          : 5px 9px;
   border-radius    : 5px;
   cursor           : pointer;
   transition       : background 0.12s ease, color 0.12s ease;
 }
 .ok-mode-btn:hover { color: var(--ok-text); }
-.ok-mode-btn.is-active {
-  background       : rgba(127, 216, 255, 0.18);
-  color            : var(--ok-accent);
-}
+.ok-mode-btn.is-active { background: rgba(127, 216, 255, 0.18); color: var(--ok-accent); }
 .ok-mode-btn--delivery.is-active { background: rgba(140, 255, 180, 0.18); color: rgba(160, 255, 195, 0.95); }
 .ok-mode-btn--sequence.is-active { background: rgba(190, 160, 255, 0.18); color: rgba(210, 185, 255, 0.95); }
 .ok-mode-btn--command.is-active { background: rgba(255, 180, 100, 0.2); color: rgba(255, 200, 140, 0.95); }
 
 .ok-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .ok-ctrl {
-  width            : 24px;
-  height           : 24px;
+  width            : 24px; height: 24px;
   border-radius    : 6px;
   border           : 1px solid var(--ok-border);
   background       : rgba(255,255,255,0.04);
   color            : var(--ok-text-dim);
   font-size        : 11px;
-  display          : flex;
-  align-items      : center;
-  justify-content  : center;
+  display          : flex; align-items: center; justify-content: center;
   cursor           : pointer;
   transition       : background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
@@ -317,15 +383,27 @@ const STYLES = /* css */`
   flex             : 1 1 auto;
   overflow         : auto;
   padding          : 10px;
+  scrollbar-width  : thin;
+  scrollbar-color  : rgba(255,255,255,0.3) transparent;
 }
+.ok-grid-wrap::-webkit-scrollbar { width: 10px; }
+.ok-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 5px; }
+.ok-grid-wrap::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+.ok-grid-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
 
 .ok-grid {
   display              : grid;
   grid-template-columns: repeat(${COLS}, minmax(34px, 1fr));
-  grid-template-rows   : repeat(${ROWS}, minmax(34px, 1fr));
+  grid-auto-rows       : minmax(30px, 1fr);
   gap                  : 4px;
-  min-width            : 620px;
-  height               : 100%;
+  min-width            : 700px;
+}
+
+.ok-row-divider {
+  grid-column      : 1 / -1;
+  height           : 1px;
+  background       : rgba(255,255,255,0.06);
+  margin           : 3px 0;
 }
 
 .ok-key {
@@ -340,6 +418,7 @@ const STYLES = /* css */`
   font-size        : 11px;
   cursor           : pointer;
   user-select      : none;
+  position         : relative;
   transition       : background 0.1s ease, border-color 0.1s ease, transform 0.06s ease;
   overflow         : hidden;
   white-space      : nowrap;
@@ -350,14 +429,21 @@ const STYLES = /* css */`
 .ok-key:active { transform: scale(0.93); }
 .ok-key.is-selected { border-color: var(--ok-accent); box-shadow: 0 0 0 1px var(--ok-accent); color: var(--ok-text); }
 
-/* Letters — normal, the baseline .ok-key look above, no override needed */
+.ok-key-spacer { pointer-events: none; }
+
+/* Letters — normal baseline */
 
 /* Digits — brighter background, clearly differentiated from letters */
-.ok-key--digit {
-  background       : rgba(255, 255, 255, 0.22);
-  font-weight      : 600;
-}
+.ok-key--digit { background: rgba(255, 255, 255, 0.22); font-weight: 600; }
 .ok-key--digit:hover { background: rgba(255, 255, 255, 0.30); }
+
+/* Digit modifiers — superscript/subscript pickers */
+.ok-key--digit-modifier {
+  background       : rgba(255, 255, 255, 0.14);
+  font-size        : 10px;
+  letter-spacing   : 0.04em;
+}
+.ok-key--digit-modifier:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* Symbols — brighter text-shadow, darker background */
 .ok-key--symbol {
@@ -366,13 +452,9 @@ const STYLES = /* css */`
   color            : rgba(255, 255, 255, 0.85);
   text-shadow      : 0 0 6px rgba(255, 255, 255, 0.7);
 }
-.ok-key--symbol:hover {
-  background       : rgba(0, 0, 0, 0.45);
-  color            : #ffffff;
-  text-shadow      : 0 0 9px rgba(255, 255, 255, 0.9);
-}
+.ok-key--symbol:hover { background: rgba(0, 0, 0, 0.45); color: #ffffff; text-shadow: 0 0 9px rgba(255, 255, 255, 0.9); }
 
-/* Media/system row — its own accent, distinct from ordinary characters */
+/* Media/system row */
 .ok-key--media {
   background       : rgba(127, 216, 255, 0.10);
   border-color     : rgba(127, 216, 255, 0.22);
@@ -381,7 +463,7 @@ const STYLES = /* css */`
 }
 .ok-key--media:hover { background: rgba(127, 216, 255, 0.18); color: #fff; }
 
-/* Function row (Esc + F1-F12) */
+/* Function row */
 .ok-key--function {
   background       : rgba(255, 255, 255, 0.03);
   border-color     : rgba(255, 255, 255, 0.14);
@@ -390,7 +472,16 @@ const STYLES = /* css */`
 }
 .ok-key--function:hover { background: rgba(255, 255, 255, 0.09); color: var(--ok-text); }
 
-/* Modifiers (Ctrl/Opt/Cmd/Shift) — held-down look when active in Command mode */
+/* Special/system row */
+.ok-key--special {
+  background       : rgba(255, 200, 140, 0.08);
+  border-color     : rgba(255, 200, 140, 0.2);
+  color            : rgba(255, 210, 160, 0.85);
+  font-size        : 9.5px;
+}
+.ok-key--special:hover { background: rgba(255, 200, 140, 0.16); }
+
+/* Modifiers — held-down look when active in Command mode */
 .ok-key--modifier {
   background       : rgba(190, 160, 255, 0.08);
   border-color     : rgba(190, 160, 255, 0.2);
@@ -405,7 +496,7 @@ const STYLES = /* css */`
   box-shadow       : 0 0 10px rgba(190, 160, 255, 0.5);
 }
 
-/* Directional pad */
+/* Directional pads */
 .ok-key--directional {
   background       : rgba(140, 255, 180, 0.08);
   border-color     : rgba(140, 255, 180, 0.2);
@@ -417,15 +508,72 @@ const STYLES = /* css */`
 /* Split spacebar */
 .ok-key--space {
   background       : rgba(255, 255, 255, 0.04);
-  font-size        : 9px;
-  letter-spacing   : 0.06em;
+  font-size        : 8.5px;
+  letter-spacing   : 0.04em;
   text-transform   : uppercase;
   color            : var(--ok-text-muted);
 }
 .ok-key--space:hover { background: rgba(255, 255, 255, 0.09); }
 
-/* Blank layout spacer — invisible, non-interactive, just preserves grid rhythm */
-.ok-key-spacer { pointer-events: none; }
+/* Language selector */
+.ok-key--lang-selector {
+  background       : rgba(255, 255, 255, 0.08);
+  border-color     : rgba(255, 255, 255, 0.2);
+  font-size        : 9px;
+}
+
+/* Blank layout placeholder inside a paginated page (not the same as a
+   true row spacer — still occupies its grid cell invisibly) */
+.ok-key--blank { visibility: hidden; pointer-events: none; }
+
+/* Pagination controls, shown just above a paged section */
+.ok-page-nav {
+  grid-column      : 1 / -1;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 8px;
+  padding          : 2px 0 4px;
+  font-size        : 9px;
+  color            : var(--ok-text-muted);
+}
+.ok-page-nav-btn {
+  background       : rgba(255,255,255,0.06);
+  border           : 1px solid var(--ok-border);
+  color            : var(--ok-text-dim);
+  border-radius    : 4px;
+  width            : 20px; height: 18px;
+  cursor           : pointer;
+  font-size        : 10px;
+  display          : flex; align-items: center; justify-content: center;
+}
+.ok-page-nav-btn:hover { background: rgba(255,255,255,0.14); color: var(--ok-text); }
+
+/* Press-and-hold superscript/subscript popover */
+.ok-popover {
+  position         : absolute;
+  bottom           : 100%;
+  left             : 50%;
+  transform        : translateX(-50%);
+  margin-bottom    : 4px;
+  display          : flex;
+  gap              : 2px;
+  background       : rgba(10, 10, 14, 0.96);
+  border           : 1px solid var(--ok-accent);
+  border-radius    : 6px;
+  padding          : 4px;
+  z-index          : 20;
+  box-shadow       : 0 4px 16px rgba(0,0,0,0.6);
+}
+.ok-popover-char {
+  width            : 22px; height: 22px;
+  display          : flex; align-items: center; justify-content: center;
+  border-radius    : 4px;
+  font-size        : 12px;
+  color            : var(--ok-text);
+  cursor           : pointer;
+}
+.ok-popover-char:hover { background: rgba(127, 216, 255, 0.25); }
 
 .ok-resize-handle {
   position         : absolute; right: 0; bottom: 0;
@@ -460,8 +608,14 @@ export default class OmniKeys {
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
     this._mode = 'Edit'
-    this._keys = loadKeys()
-    this._selectedIndex = null
+
+    this._staticKeys = loadStatic()
+    this._letterPages = loadPages(STORE_LETTERS, letterPageDefault)
+    this._symbolPages = loadPages(STORE_SYMBOLS, symbolPageDefault)
+    this._letterPage = 0
+    this._symbolPage = 0
+
+    this._selected = null   // { kind, row?, col?, page?, slot? }
     this._heldModifiers = new Set()
     this._onNavSelect = null
     this._onInspectorUpdate = null
@@ -476,13 +630,11 @@ export default class OmniKeys {
     window.addEventListener('omni:nav-select', this._onNavSelect)
 
     // OmniKeysInspector edits flow back here so the grid's own display
-    // (key titles) and persistence stay in sync with the Inspector.
+    // and persistence stay in sync with the Inspector.
     this._onInspectorUpdate = (e) => {
-      const { index, keyData } = e.detail ?? {}
-      if (index == null) return
-      this._keys[index] = keyData
-      saveKeys(this._keys)
-      this._refreshKeyLabel(index)
+      const { descriptor, keyData } = e.detail ?? {}
+      if (!descriptor) return
+      this._applyKeyUpdate(descriptor, keyData)
     }
     window.addEventListener('omni:omnikeys-key-updated', this._onInspectorUpdate)
   }
@@ -530,6 +682,51 @@ export default class OmniKeys {
         variant: 'orb',
       }
     }))
+  }
+
+  /** Applies an edit coming back from OmniKeysInspector to the right
+   *  storage location, based on the descriptor's kind. */
+  _applyKeyUpdate (descriptor, keyData) {
+    if (descriptor.kind === 'static') {
+      const id = `${descriptor.row}-${descriptor.col}`
+      this._staticKeys[id] = keyData
+      saveStatic(this._staticKeys)
+    } else if (descriptor.kind === 'letter') {
+      this._letterPages[descriptor.page][descriptor.slot] = keyData
+      savePages(STORE_LETTERS, this._letterPages)
+    } else if (descriptor.kind === 'symbol') {
+      this._symbolPages[descriptor.page][descriptor.slot] = keyData
+      savePages(STORE_SYMBOLS, this._symbolPages)
+    }
+    this._refreshKeyLabel(descriptor)
+  }
+
+  _keyDataFor (descriptor) {
+    if (descriptor.kind === 'static') return this._staticKeys[`${descriptor.row}-${descriptor.col}`]
+    if (descriptor.kind === 'letter') return this._letterPages[descriptor.page][descriptor.slot]
+    if (descriptor.kind === 'symbol') return this._symbolPages[descriptor.page][descriptor.slot]
+    return null
+  }
+
+  _descriptorSelector (descriptor) {
+    if (descriptor.kind === 'static') return `[data-kind="static"][data-row="${descriptor.row}"][data-col="${descriptor.col}"]`
+    return `[data-kind="${descriptor.kind}"][data-page="${descriptor.page}"][data-slot="${descriptor.slot}"]`
+  }
+
+  _refreshKeyLabel (descriptor) {
+    const btn = this._el?.querySelector(`.ok-key${this._descriptorSelector(descriptor)}`)
+    if (!btn) return
+    const key = this._keyDataFor(descriptor)
+    btn.textContent = key.title
+    btn.title = key.string
+    btn.className = `ok-key ok-key--${key.classType ?? 'letter'}`
+    if (this._selected && this._isSameDescriptor(this._selected, descriptor)) btn.classList.add('is-selected')
+  }
+
+  _isSameDescriptor (a, b) {
+    if (a.kind !== b.kind) return false
+    if (a.kind === 'static') return a.row === b.row && a.col === b.col
+    return a.page === b.page && a.slot === b.slot
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────
@@ -582,44 +779,150 @@ export default class OmniKeys {
     return el
   }
 
+  // ── Grid building — static rows + paginated blocks ───────────────────────
+
   _buildGrid (grid) {
     grid.innerHTML = ''
-    let i = 0
-    for (const row of LAYOUT) {
-      for (const spec of row) {
-        if (!spec) {
-          const spacer = document.createElement('div')
-          spacer.className = 'ok-key-spacer'
-          grid.appendChild(spacer)
-          i++
-          continue
-        }
-        const cellIndex = i   // fresh per-iteration binding — 'i' itself
-                                // is shared/mutated across the whole loop,
-                                // so closures below must capture a copy,
-                                // not the outer variable itself
-        const key = this._keys[cellIndex]
-        const btn = document.createElement('div')
-        btn.className = `ok-key ok-key--${key.classType ?? spec.type}`
-        btn.dataset.index = String(cellIndex)
-        btn.textContent = key.title
-        btn.title = key.string
-        if (spec.span) btn.style.gridColumn = `span ${spec.span}`
-        btn.addEventListener('click', () => this._onKeyClick(cellIndex))
-        grid.appendChild(btn)
-        i++
-      }
+    this._renderStaticRow(grid, 'media')
+    this._renderStaticRow(grid, 'fn')
+    this._renderStaticRow(grid, 'digits')
+    this._renderPageNav(grid, 'letter')
+    this._renderPaginatedBlock(grid, 'letter')
+    this._renderPageNav(grid, 'symbol')
+    this._renderPaginatedBlock(grid, 'symbol')
+    this._renderStaticRow(grid, 'special')
+    this._renderStaticRow(grid, 'dirTop')
+    this._renderStaticRow(grid, 'dirMid')
+    this._renderStaticRow(grid, 'dirBottom')
+    this._renderStaticRow(grid, 'space')
+  }
+
+  _makeKeyButton (descriptor, spec) {
+    const key = this._keyDataFor(descriptor)
+    const btn = document.createElement('div')
+
+    if (!spec || key.classType === 'blank') {
+      btn.className = 'ok-key ok-key-spacer'
+      return btn
+    }
+
+    btn.className = `ok-key ok-key--${key.classType ?? spec.type}`
+    btn.dataset.kind = descriptor.kind
+    if (descriptor.kind === 'static') {
+      btn.dataset.row = descriptor.row
+      btn.dataset.col = String(descriptor.col)
+    } else {
+      btn.dataset.page = String(descriptor.page)
+      btn.dataset.slot = String(descriptor.slot)
+    }
+    btn.textContent = key.title
+    btn.title = key.string
+    if (spec.span) btn.style.gridColumn = `span ${spec.span}`
+
+    if (spec.type === 'digit-modifier') {
+      this._wireDigitModifierKey(btn, spec)
+    } else if (spec.type === 'lang-selector') {
+      btn.addEventListener('click', () => this._openLangPicker())
+    } else {
+      btn.addEventListener('click', () => this._onKeyClick(descriptor))
+    }
+
+    return btn
+  }
+
+  _renderStaticRow (grid, rowName) {
+    STATIC_ROWS[rowName].forEach((spec, col) => {
+      const descriptor = { kind: 'static', row: rowName, col }
+      grid.appendChild(this._makeKeyButton(descriptor, spec))
+    })
+  }
+
+  _renderPaginatedBlock (grid, kind) {
+    const page = kind === 'letter' ? this._letterPage : this._symbolPage
+    const pages = kind === 'letter' ? this._letterPages : this._symbolPages
+    pages[page].forEach((_, slot) => {
+      const descriptor = { kind, page, slot }
+      const key = this._keyDataFor(descriptor)
+      // spec presence only matters for span/type defaults, which paginated
+      // slots don't use — a non-blank keyData is enough to know it's real.
+      const spec = key.classType === 'blank' ? null : { type: key.classType }
+      grid.appendChild(this._makeKeyButton(descriptor, spec))
+    })
+  }
+
+  _renderPageNav (grid, kind) {
+    const nav = document.createElement('div')
+    nav.className = 'ok-page-nav'
+    const page = kind === 'letter' ? this._letterPage : this._symbolPage
+    nav.innerHTML = /* html */`
+      <button class="ok-page-nav-btn" data-page-action="prev" data-page-kind="${kind}">◀</button>
+      <span>${kind === 'letter' ? 'Letters' : 'Symbols'} — Page ${page + 1}/${PAGE_COUNT}</span>
+      <button class="ok-page-nav-btn" data-page-action="next" data-page-kind="${kind}">▶</button>
+    `
+    nav.querySelector('[data-page-action="prev"]').addEventListener('click', () => this._changePage(kind, -1))
+    nav.querySelector('[data-page-action="next"]').addEventListener('click', () => this._changePage(kind, 1))
+    grid.appendChild(nav)
+  }
+
+  _changePage (kind, delta) {
+    if (kind === 'letter') {
+      this._letterPage = (this._letterPage + delta + PAGE_COUNT) % PAGE_COUNT
+    } else {
+      this._symbolPage = (this._symbolPage + delta + PAGE_COUNT) % PAGE_COUNT
+    }
+    this._buildGrid(this._el.querySelector('#ok-grid'))
+  }
+
+  _openLangPicker () {
+    // A direct jump list — simpler and more reliable than gesture
+    // detection for picking one of 20 pages/alphabets.
+    const choice = prompt?.(`Jump to letters page (1-${PAGE_COUNT}):`, String(this._letterPage + 1))
+    const n = parseInt(choice, 10)
+    if (!Number.isNaN(n) && n >= 1 && n <= PAGE_COUNT) {
+      this._letterPage = n - 1
+      this._buildGrid(this._el.querySelector('#ok-grid'))
     }
   }
 
-  _refreshKeyLabel (index) {
-    const btn = this._el?.querySelector(`.ok-key[data-index="${index}"]`)
-    if (!btn) return
-    const key = this._keys[index]
-    btn.textContent = key.title
-    btn.title = key.string
-    btn.className = `ok-key ok-key--${key.classType ?? 'letter'}`
-    if (this._selectedIndex === index) btn.classList.add('is-selected')
+  // ── Press-and-hold superscript/subscript picker ─────────────────────────
+  // "Press and hold" per request — holding for 400ms reveals a small
+  // popover of the ten characters to choose from. Selecting one always
+  // delivers a Dimensional Text node with that character, regardless of
+  // the panel's current mode — these are a quick-access picker, not a
+  // persistent grid slot with its own Edit/Sequence identity the way
+  // real keys have.
+  _wireDigitModifierKey (btn, spec) {
+    let holdTimer = null
+    const openPopover = () => {
+      this._el?.querySelectorAll('.ok-popover').forEach(p => p.remove())
+      const pop = document.createElement('div')
+      pop.className = 'ok-popover'
+      spec.picker.split('').forEach(ch => {
+        const c = document.createElement('div')
+        c.className = 'ok-popover-char'
+        c.textContent = ch
+        c.addEventListener('click', (e) => {
+          e.stopPropagation()
+          this._deliverString(ch)
+          pop.remove()
+        })
+        pop.appendChild(c)
+      })
+      btn.appendChild(pop)
+      const onOutside = (e) => {
+        if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('click', onOutside) }
+      }
+      setTimeout(() => document.addEventListener('click', onOutside), 0)
+    }
+
+    const start = () => { holdTimer = setTimeout(openPopover, 400) }
+    const cancel = () => clearTimeout(holdTimer)
+
+    btn.addEventListener('mousedown', start)
+    btn.addEventListener('mouseup', cancel)
+    btn.addEventListener('mouseleave', cancel)
+    btn.addEventListener('touchstart', start, { passive: true })
+    btn.addEventListener('touchend', cancel)
   }
 
   _setMode (mode, el) {
@@ -642,44 +945,37 @@ export default class OmniKeys {
     note.textContent = notes[this._mode] ?? ''
   }
 
-  _onKeyClick (index) {
+  _onKeyClick (descriptor) {
     if (this._mode === 'Command') {
-      this._onCommandKeyClick(index)
+      this._onCommandKeyClick(descriptor)
       return
     }
 
-    this._selectedIndex = index
+    this._selected = descriptor
     this._el?.querySelectorAll('.ok-key').forEach(k => k.classList.remove('is-selected'))
-    this._el?.querySelector(`.ok-key[data-index="${index}"]`)?.classList.add('is-selected')
+    this._el?.querySelector(`.ok-key${this._descriptorSelector(descriptor)}`)?.classList.add('is-selected')
 
     if (this._mode === 'Delivery') {
-      this._deliverKey(index)
+      const key = this._keyDataFor(descriptor)
+      this._deliverString(key.string, key)
       return
     }
 
-    // Edit and Sequence modes both open the Inspector — same panel,
-    // the Inspector itself decides which fields to bring into view
-    // based on which mode requested it.
-    this._openInspectorFor(index, this._mode)
+    this._openInspectorFor(descriptor, this._mode)
   }
 
-  /**
-   * Command mode — clicking a modifier (Ctrl/Opt/Cmd/Shift) toggles it
-   * "held" (visually latched); clicking any other key fires a REAL
-   * synthetic KeyboardEvent carrying whatever modifiers are currently
-   * held, then releases them. Dispatching a genuine KeyboardEvent
-   * (rather than inventing a parallel shortcut-mapping system) means
-   * every keydown listener already in this project — rotation toggles,
-   * the domain grid's 0/9, etc. — responds to it exactly as if it had
-   * been typed on a physical keyboard. One real mechanism, not two.
-   */
-  _onCommandKeyClick (index) {
-    const key = this._keys[index]
+  /** Command mode — clicking a modifier toggles it "held"; clicking any
+   *  other key fires a REAL synthetic KeyboardEvent carrying whatever
+   *  modifiers are currently held, then releases them. One real
+   *  mechanism (genuine KeyboardEvents), not a parallel shortcut map —
+   *  every keydown listener already in this project responds exactly
+   *  as if it had been typed on a physical keyboard. */
+  _onCommandKeyClick (descriptor) {
+    const key = this._keyDataFor(descriptor)
     if (!key || key.classType === 'blank') return
 
     if (key.classType === 'modifier') {
-      this._heldModifiers = this._heldModifiers ?? new Set()
-      const btn = this._el?.querySelector(`.ok-key[data-index="${index}"]`)
+      const btn = this._el?.querySelector(`.ok-key${this._descriptorSelector(descriptor)}`)
       if (this._heldModifiers.has(key.string)) {
         this._heldModifiers.delete(key.string)
         btn?.classList.remove('is-held')
@@ -690,7 +986,7 @@ export default class OmniKeys {
       return
     }
 
-    const held = this._heldModifiers ?? new Set()
+    const held = this._heldModifiers
     window.dispatchEvent(new KeyboardEvent('keydown', {
       key: key.string,
       ctrlKey: held.has('Control'),
@@ -700,18 +996,13 @@ export default class OmniKeys {
       bubbles: true,
     }))
 
-    // A chord fires once, then releases — matches how a real keyboard
-    // shortcut works (you don't stay "holding" Cmd after Cmd+S fires).
     this._heldModifiers = new Set()
     this._el?.querySelectorAll('.ok-key--modifier.is-held').forEach(b => b.classList.remove('is-held'))
   }
 
-  /** Delivery mode — actually spawns a Dimensional Text node in the
-   *  world using this key's string. Positioned a few units in front of
-   *  the camera, same convention used by ui/OmniDraw.js and the
-   *  Inspector's own Create section. */
-  _deliverKey (index) {
-    const key = this._keys[index]
+  /** Delivery mode's actual node-creation — factored out so the
+   *  superscript/subscript popover can reuse it too. */
+  _deliverString (string, key) {
     const cam = this.ctx.camera
     const fx = -Math.sin(cam.rotation.y) * Math.cos(cam.rotation.x)
     const fy = Math.sin(cam.rotation.x)
@@ -723,9 +1014,9 @@ export default class OmniKeys {
         label: 'Text_' + Date.now().toString(36).slice(-4),
         geometry: 'DimensionalText',
         primitive: 'objective',
-        color: key.sequenceStart?.color ?? '#ffffff',
-        text: key.string,
-        textSequence: { start: key.sequenceStart, end: key.sequenceEnd },
+        color: key?.sequenceStart?.color ?? '#ffffff',
+        text: string,
+        textSequence: key ? { start: key.sequenceStart, end: key.sequenceEnd } : null,
         position: [cam.position.x + fx * 5, Math.max(0.5, cam.position.y + fy * 5), cam.position.z + fz * 5],
         parentId: null,
       }
@@ -733,13 +1024,13 @@ export default class OmniKeys {
   }
 
   _openInspectorForSelected () {
-    if (this._selectedIndex == null) return
-    this._openInspectorFor(this._selectedIndex, this._mode === 'Sequence' ? 'Sequence' : 'Edit')
+    if (!this._selected) return
+    this._openInspectorFor(this._selected, this._mode === 'Sequence' ? 'Sequence' : 'Edit')
   }
 
-  _openInspectorFor (index, focusMode) {
+  _openInspectorFor (descriptor, focusMode) {
     window.dispatchEvent(new CustomEvent('omni:omnikeys-inspect-request', {
-      detail: { index, keyData: this._keys[index], focusMode }
+      detail: { descriptor, keyData: this._keyDataFor(descriptor), focusMode }
     }))
   }
 
