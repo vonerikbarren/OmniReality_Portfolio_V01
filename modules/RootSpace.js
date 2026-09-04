@@ -18,6 +18,7 @@
  */
 
 import * as THREE from 'three'
+import gsap       from 'gsap'
 
 // ── Cylinder constants ──────────────────────────────────────
 const CYLINDER_HEIGHT   = 260
@@ -35,6 +36,15 @@ export default class RootSpace {
     this.ctx     = context
     this.group   = new THREE.Group()
     this.meshes  = {}
+
+    // ⟐OmniChronos controls — tunnel enabled/disabled with a light-
+    // teleport transition, and Y-axis (default) vs Z-axis orientation.
+    this._chronosEnabled = true
+    this._chronosAxis = 'y'
+    this._flashLight = null
+    this._flashSprite = null
+    this._onChronosToggle = null
+    this._onChronosAxisSet = null
   }
 
   init() {
@@ -43,8 +53,105 @@ export default class RootSpace {
     this._buildInner()
     this._buildFloor()
     this._buildTopLight()
+    this._buildFlashEffect()
 
     this.ctx.scene.add(this.group)
+
+    // ⟐OmniChronos — "It is time." Two toggles, dispatched from
+    // ui/OmniChronos.js's Admin-style Save button (not live-per-change,
+    // per that panel's explicit save pattern):
+    //   omni:chronos-toggle    { enabled }  — plays the light-teleport
+    //     transition in or out, Wind Waker warp / Mega Man teleport
+    //     style: a bright flash from the top, then the tunnel snaps
+    //     into existence (or gets yanked away).
+    //   omni:chronos-axis-set  { axis: 'y'|'z' }  — reorients the whole
+    //     tunnel from vertical (Y, default — "start it from the top")
+    //     to Z-axis, with radius scaled 1.5x in Z mode.
+    this._onChronosToggle = (e) => {
+      const enabled = !!e.detail?.enabled
+      if (enabled === this._chronosEnabled) return
+      this._chronosEnabled = enabled
+      enabled ? this._playTeleportIn() : this._playTeleportOut()
+    }
+    window.addEventListener('omni:chronos-toggle', this._onChronosToggle)
+
+    this._onChronosAxisSet = (e) => {
+      const axis = e.detail?.axis === 'z' ? 'z' : 'y'
+      this._chronosAxis = axis
+      this._applyAxis(axis)
+    }
+    window.addEventListener('omni:chronos-axis-set', this._onChronosAxisSet)
+  }
+
+  /** A bright flash — light + a camera-facing sprite — used by both
+   *  the teleport-in and teleport-out transitions. Built once, reused. */
+  _buildFlashEffect() {
+    this._flashLight = new THREE.PointLight(0xffffff, 0, 200, 1.0)
+    this._flashLight.position.set(0, CYLINDER_Y + CYLINDER_HEIGHT * 0.48, 0)
+    this.group.add(this._flashLight)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 128; canvas.height = 128
+    const c2d = canvas.getContext('2d')
+    const grad = c2d.createRadialGradient(64, 64, 0, 64, 64, 64)
+    grad.addColorStop(0, 'rgba(255,255,255,1)')
+    grad.addColorStop(1, 'rgba(255,255,255,0)')
+    c2d.fillStyle = grad
+    c2d.fillRect(0, 0, 128, 128)
+
+    const texture = new THREE.CanvasTexture(canvas)
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0, depthWrite: false })
+    this._flashSprite = new THREE.Sprite(mat)
+    this._flashSprite.scale.set(60, 60, 1)
+    this._flashSprite.position.copy(this._flashLight.position)
+    this.group.add(this._flashSprite)
+  }
+
+  /** Toggle ON — "light then it teleports kind of out... like an
+   *  inverse of Mega Man entering a scene." A bright flash from the
+   *  top, then the tunnel snaps into existence with a quick
+   *  overshoot-settle, as if it just arrived. */
+  _playTeleportIn() {
+    this.group.visible = true
+    const targetScale = this._chronosAxis === 'z' ? { x: 1.5, y: 1.5, z: 1 } : { x: 1, y: 1, z: 1 }
+    const tl = gsap.timeline()
+    tl.set(this.group.scale, { x: 0, y: 0, z: 0 })
+    tl.to(this._flashLight, { intensity: 6, duration: 0.12, ease: 'power2.out' })
+    tl.to(this._flashSprite.material, { opacity: 1, duration: 0.12, ease: 'power2.out' }, '<')
+    tl.to(this.group.scale, { ...targetScale, duration: 0.5, ease: 'back.out(2.2)' }, '-=0.05')
+    tl.to(this._flashLight, { intensity: 0, duration: 0.35, ease: 'power2.in' }, '-=0.35')
+    tl.to(this._flashSprite.material, { opacity: 0, duration: 0.35, ease: 'power2.in' }, '<')
+  }
+
+  /** Toggle OFF — the reverse: a flash from the top, then the tunnel
+   *  gets yanked up and vanishes (Wind Waker light-arrow-warp read on
+   *  Mega Man's own teleport-out). */
+  _playTeleportOut() {
+    const tl = gsap.timeline()
+    tl.to(this._flashLight, { intensity: 6, duration: 0.1, ease: 'power2.out' })
+    tl.to(this._flashSprite.material, { opacity: 1, duration: 0.1, ease: 'power2.out' }, '<')
+    tl.to(this.group.scale, { x: 0.02, y: 3, z: 0.02, duration: 0.22, ease: 'power3.in' }, '-=0.02')
+    tl.to(this.group.scale, { x: 0, y: 0, z: 0, duration: 0.1, ease: 'power1.in' })
+    tl.to(this._flashLight, { intensity: 0, duration: 0.25, ease: 'power2.in' }, '-=0.3')
+    tl.to(this._flashSprite.material, { opacity: 0, duration: 0.25, ease: 'power2.in' }, '<')
+    tl.set(this.group, { visible: false })
+  }
+
+  /** Reorients the tunnel: 'y' is the default (vertical, "start it
+   *  from the top"); 'z' rotates the whole group 90° so the cylinders'
+   *  length runs along world Z instead, with radius scaled 1.5x (the
+   *  cylinders' original cross-section — X/Z locally — becomes the
+   *  X/Y world plane after this rotation, so scaling X and Y is what
+   *  actually grows the visible radius; the new length axis, Z, is
+   *  left at 1x so the tunnel's length doesn't change). */
+  _applyAxis(axis) {
+    if (axis === 'z') {
+      gsap.to(this.group.rotation, { x: Math.PI / 2, duration: 0.6, ease: 'power2.inOut' })
+      gsap.to(this.group.scale, { x: 1.5, y: 1.5, z: 1, duration: 0.6, ease: 'power2.inOut' })
+    } else {
+      gsap.to(this.group.rotation, { x: 0, duration: 0.6, ease: 'power2.inOut' })
+      gsap.to(this.group.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: 'power2.inOut' })
+    }
   }
 
   // ── Outer cylinder — structural shell ──────────────────────
@@ -196,12 +303,16 @@ export default class RootSpace {
   }
 
   destroy() {
-    // Dispose all geometries + materials
+    window.removeEventListener('omni:chronos-toggle', this._onChronosToggle)
+    window.removeEventListener('omni:chronos-axis-set', this._onChronosAxisSet)
+
+    // Dispose all geometries + materials (+ any texture maps, e.g. the
+    // flash sprite's canvas texture)
     this.group.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose()
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose())
-        else obj.material.dispose()
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+        mats.forEach(m => { m.map?.dispose(); m.dispose() })
       }
     })
 

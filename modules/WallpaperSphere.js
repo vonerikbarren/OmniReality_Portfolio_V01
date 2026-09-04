@@ -55,7 +55,7 @@
 import * as THREE from 'three'
 
 const CENTER_Y = 28        // matches VoidBoundary / RootSpace
-const RADIUS   = 210       // slightly larger than VoidBoundary's sphere (200)
+const RADIUS   = 1050      // 5x — the space should feel genuinely massive
 
 const DEFAULT_COLOR   = '#445566'
 const DEFAULT_ALPHA   = 0.9

@@ -1,30 +1,110 @@
 /**
- * ui/OmniExpression.js — ⟐mniReality OmniExpression (formerly OmniPresentation)
+ * ui/OmniExpression.js — ⟐mniReality OmniExpression
  *
- * Opens from the top-left drawer (⟐mniMenu → ⟐OmniExpression™ — a
- * top-level trademark item, not nested under ⟐Experiences anymore).
- * Same window chrome as every other panel — draggable, resizable,
- * minimizable, maximizable — via the shared ui/WindowManager.js.
+ * Merges what was going to be a separate "OmniUser/OmniPresenter"
+ * module into OmniExpression instead — systems/OmniPresenter.js
+ * already exists and does something different (node-sequence camera
+ * touring), so rather than collide with that name, this whole concept
+ * — a presenter avatar the Owner of a Reality can author a spatial
+ * presentation with — lives here.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * Scope of this pass — shell only
+ * The core idea
  * ─────────────────────────────────────────────────────────────────────────────
- * This is deliberately minimal: it opens, and shows the path location
- * starting at 0, per request. It does NOT yet implement:
- *   - the primary-mesh preview with events as particles inside it
- *   - stop-rotation / zoom controls on that preview
- *   - alternative-path branching (number-line + letter addressing)
- *   - the visible transition when switching paths
- *   - automatic vs. manual (arrow-key) traversal
- * That's the larger OmniExpression build still ahead — this establishes
- * the panel's place in the drawer and its path-location state so the
- * rest can be layered on without moving the entry point again.
+ * A circle-shaped avatar carrying a looped video or image — the
+ * Owner's guide-through-the-space presence. It has two positioning
+ * modes:
+ *
+ *   Panel mode  — "stuck to the camera," positioned in screen space.
+ *                 Eight named lock points exist (center, tl, tr, l, r,
+ *                 bl, b, br) as quick-snap references, but per request
+ *                 these are NOT a required order or a fixed set — the
+ *                 avatar can sit anywhere on screen; the lock points
+ *                 are just convenient presets.
+ *   Scene mode  — detached, freely positioned anywhere in world space
+ *                 like any other object.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The presentation (the "video software but spatial" part)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The Owner records waypoints — each one captures the avatar's mode +
+ * position + how long to hold there — building an ordered sequence.
+ * Playing it animates the AVATAR through that sequence over time.
+ *
+ * Deliberately different from systems/OmniPresenter.js's fly-to: that
+ * system moves the VIEWER'S CAMERA through a node sequence, forcing
+ * the view. Here, only the avatar moves — the viewer's own camera and
+ * orbit controls are left completely alone throughout playback. That's
+ * the "free will to look at the one presenting, or look at the scene"
+ * the brief asked for: the presentation runs regardless of where the
+ * viewer chooses to look.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * What's deliberately NOT built this pass — see
+ * OMNI_EXPRESSION_PRESENTER_DESIGN.md
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The full three-circle system (circle of life / time / choice, each
+ * user's personal three, exp-based unlocks), the OmniUser/OmniPlayer
+ * role framework, and the deeper philosophy behind it are documented
+ * there in depth rather than built now — this pass builds ONE
+ * representative circle avatar and the panel/scene/timeline mechanics
+ * everything else would eventually sit on top of.
+ *
+ * Its own Inspector lives in ui/OmniExpressionInspector.js.
  *
  * Follows the standard module contract (constructor / init / update / destroy).
  */
 
+import * as THREE from 'three'
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
+
+const LOCK_POINTS = {
+  center: { x: 0.5, y: 0.5 },
+  tl:     { x: 0.14, y: 0.14 },
+  tr:     { x: 0.86, y: 0.14 },
+  l:      { x: 0.14, y: 0.5 },
+  r:      { x: 0.86, y: 0.5 },
+  bl:     { x: 0.14, y: 0.86 },
+  b:      { x: 0.5, y: 0.86 },
+  br:     { x: 0.86, y: 0.86 },
+}
+const PANEL_DISTANCE = 3.2   // how far in front of the camera the avatar sits, in panel mode
+
+const STORE_KEY = 'omni:expression:presenter'
+
+function loadState () {
+  const defaults = {
+    mode: 'panel',
+    panelX: 0.86, panelY: 0.86,   // default bottom-right, out of the way
+    scenePos: { x: 0, y: 2, z: -3 },
+    radius: 0.5,
+    mediaUrl: '',
+    mediaType: 'image',
+    waypoints: [],   // { id, mode, panelX, panelY, scenePos, holdMs }
+    // Simple circles layered behind the main avatar — transparent
+    // looping media, not separate interactive objects. The three
+    // defaults every OmniUser/OmniPlayer has, plus room to add more
+    // personal ones later (see OMNI_EXPRESSION_PRESENTER_DESIGN.md).
+    backingCircles: [
+      { id: 'life',   label: 'Circle of Life',   mediaUrl: '', mediaType: 'image', radiusScale: 1.3 },
+      { id: 'time',   label: 'Circle of Time',   mediaUrl: '', mediaType: 'image', radiusScale: 1.6 },
+      { id: 'choice', label: 'Circle of Choice', mediaUrl: '', mediaType: 'image', radiusScale: 1.9 },
+    ],
+  }
+  try {
+    const raw = localStorage.getItem(STORE_KEY)
+    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+  } catch (_) {
+    return defaults
+  }
+}
+
+function saveState (state) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)) } catch (err) {
+    console.warn('⟐Expression — save failed:', err)
+  }
+}
 
 const STYLES = /* css */`
 
@@ -32,21 +112,21 @@ const STYLES = /* css */`
   --oe-bg          : var(--omni-theme-bg, rgba(8, 8, 12, 0.92));
   --oe-border      : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
   --oe-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
-  --oe-text        : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
-  --oe-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.68));
-  --oe-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.45));
+  --oe-text        : var(--omni-theme-text, rgba(255, 255, 255, 1));
+  --oe-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.85));
+  --oe-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.6));
   --oe-accent      : var(--omni-theme-accent, #c9a3ff);
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 110px;
-  left             : 140px;
-  width            : 340px;
-  min-width        : 280px;
-  max-width        : 640px;
-  height           : 260px;
-  min-height       : 200px;
-  max-height       : 90vh;
+  top              : 100px;
+  left             : 120px;
+  width            : 420px;
+  min-width        : 340px;
+  max-width        : 90vw;
+  height           : 460px;
+  min-height       : 340px;
+  max-height       : 92vh;
 
   display          : flex;
   flex-direction   : column;
@@ -63,6 +143,7 @@ const STYLES = /* css */`
   z-index          : 60;
   overflow         : hidden;
   pointer-events   : auto;
+  resize           : both;
 
   opacity          : 0;
   transform        : scale(0.92);
@@ -81,66 +162,161 @@ const STYLES = /* css */`
   user-select      : none;
 }
 .oe-header.is-dragging { cursor: grabbing; }
-
-.oe-title {
-  position         : absolute;
-  left             : 14px;
-  font-size        : 12px;
-  letter-spacing   : 0.06em;
-  color            : var(--oe-text-dim);
-  pointer-events   : none;
-}
-
-.oe-controls { display: flex; align-items: center; gap: 8px; }
-
+.oe-title { position: absolute; left: 14px; font-size: 12px; letter-spacing: 0.06em; color: var(--oe-text-dim); }
+.oe-controls { position: absolute; right: 10px; display: flex; align-items: center; gap: 8px; }
 .oe-ctrl {
-  width            : 24px;
-  height           : 24px;
-  border-radius    : 6px;
-  border           : 1px solid var(--oe-border);
-  background       : rgba(255,255,255,0.04);
-  color            : var(--oe-text-dim);
-  font-size        : 11px;
-  display          : flex;
-  align-items      : center;
-  justify-content  : center;
-  cursor           : pointer;
-  transition       : background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid var(--oe-border);
+  background: rgba(255,255,255,0.04);
+  color: var(--oe-text-dim);
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .oe-ctrl:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.24); color: var(--oe-text); }
-.oe-ctrl--minimize { order: -1; }
+.oe-ctrl--inspector { color: rgba(201, 163, 255, 0.85); border-color: rgba(201, 163, 255, 0.22); }
+.oe-ctrl--inspector:hover { background: rgba(201, 163, 255, 0.14); }
 
 .oe-body {
   flex             : 1 1 auto;
   overflow-y       : auto;
-  padding          : 18px 16px;
+  padding          : 14px;
   display          : flex;
   flex-direction   : column;
-  align-items      : center;
-  justify-content  : center;
   gap              : 10px;
-  text-align       : center;
 }
 
-.oe-location-label {
+.oe-mode-row {
+  display          : flex;
+  gap              : 6px;
+}
+.oe-mode-btn {
+  flex             : 1;
+  background       : rgba(255,255,255,0.05);
+  border           : 1px solid var(--oe-border);
+  color            : var(--oe-text-muted);
+  border-radius    : 7px;
+  padding          : 8px;
+  font-family      : var(--mono);
   font-size        : 10px;
-  letter-spacing   : 0.14em;
-  text-transform   : uppercase;
+  letter-spacing   : 0.04em;
+  cursor           : pointer;
+}
+.oe-mode-btn:hover { color: var(--oe-text); }
+.oe-mode-btn.is-active { background: rgba(201, 163, 255, 0.18); border-color: rgba(201, 163, 255, 0.4); color: var(--oe-accent); }
+
+.oe-lock-grid {
+  display              : grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas   :
+    "tl top tr"
+    "l  c   r"
+    "bl bot br";
+  gap                  : 4px;
+  aspect-ratio         : 16 / 10;
+}
+.oe-lock-btn {
+  background       : rgba(255,255,255,0.05);
+  border           : 1px solid var(--oe-border);
+  border-radius    : 5px;
   color            : var(--oe-text-muted);
+  font-size        : 8px;
+  cursor           : pointer;
 }
+.oe-lock-btn:hover { background: rgba(255,255,255,0.11); color: var(--oe-text); }
+.oe-lock-btn.is-active { background: rgba(201, 163, 255, 0.22); border-color: rgba(201, 163, 255, 0.5); color: var(--oe-accent); }
+.oe-lock-btn--tl { grid-area: tl; } .oe-lock-btn--top { grid-area: top; } .oe-lock-btn--tr { grid-area: tr; }
+.oe-lock-btn--l  { grid-area: l; }  .oe-lock-btn--c   { grid-area: c; }   .oe-lock-btn--r  { grid-area: r; }
+.oe-lock-btn--bl { grid-area: bl; } .oe-lock-btn--bot { grid-area: bot; } .oe-lock-btn--br { grid-area: br; }
 
-.oe-location-value {
-  font-size        : 40px;
-  font-weight      : bold;
-  color            : var(--oe-accent);
-  text-shadow      : 0 0 16px rgba(201, 163, 255, 0.5);
-}
-
-.oe-note {
+.oe-group-title {
   font-size        : 9px;
-  line-height      : 1.6;
+  letter-spacing   : 0.08em;
+  text-transform   : uppercase;
+  color            : var(--oe-accent);
+  margin-top       : 4px;
+}
+
+.oe-media-row { display: flex; gap: 6px; }
+.oe-media-input {
+  flex: 1;
+  background: var(--omni-theme-input-bg, rgba(255,255,255,0.09));
+  border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,0.18));
+  border-radius: 5px;
+  color: var(--oe-text);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 7px;
+}
+.oe-media-type-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--oe-border);
+  color: var(--oe-text-muted);
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 9px;
+  cursor: pointer;
+}
+.oe-media-type-btn.is-active { background: rgba(201, 163, 255, 0.18); color: var(--oe-accent); }
+
+.oe-waypoint-controls { display: flex; gap: 6px; align-items: center; }
+.oe-btn-small {
+  background: rgba(201, 163, 255, 0.1);
+  border: 1px solid rgba(201, 163, 255, 0.3);
+  color: var(--oe-accent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  cursor: pointer;
+}
+.oe-btn-small:hover { background: rgba(201, 163, 255, 0.18); }
+.oe-btn-small--play { background: rgba(140, 255, 180, 0.1); border-color: rgba(140, 255, 180, 0.3); color: rgba(160, 255, 195, 0.95); }
+.oe-btn-small--play:hover { background: rgba(140, 255, 180, 0.18); }
+.oe-btn-small--play.is-playing { background: rgba(255, 140, 140, 0.15); border-color: rgba(255, 140, 140, 0.35); color: rgba(255, 170, 170, 0.95); }
+
+.oe-timeline-wrap {
+  margin-top       : auto;
+  flex-shrink      : 0;
+  padding-top      : 10px;
+  border-top       : 1px solid rgba(255,255,255,0.08);
+}
+.oe-timeline-track {
+  position         : relative;
+  height           : 34px;
+  background       : rgba(255,255,255,0.04);
+  border           : 1px solid var(--oe-border);
+  border-radius    : 8px;
+  margin-top       : 8px;
+}
+.oe-timeline-marker {
+  position         : absolute;
+  top              : 4px;
+  width            : 10px;
+  height           : 26px;
+  border-radius    : 3px;
+  background       : rgba(201, 163, 255, 0.35);
+  border           : 1px solid rgba(201, 163, 255, 0.6);
+  cursor           : pointer;
+  transform        : translateX(-50%);
+}
+.oe-timeline-marker:hover { background: rgba(201, 163, 255, 0.55); }
+.oe-timeline-marker.is-current { background: rgba(140, 255, 180, 0.55); border-color: rgba(140, 255, 180, 0.8); }
+.oe-timeline-playhead {
+  position         : absolute;
+  top              : 0; bottom: 0;
+  width            : 2px;
+  background       : #fff;
+  box-shadow       : 0 0 6px rgba(255,255,255,0.8);
+  pointer-events   : none;
+  left             : 0%;
+}
+.oe-timeline-empty {
+  font-size        : 9px;
   color            : var(--oe-text-muted);
-  max-width        : 260px;
+  text-align       : center;
+  padding          : 8px;
 }
 
 .oe-resize-handle {
@@ -175,26 +351,536 @@ export default class OmniExpression {
     this._el = null
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
-    this._pathLocation = 0   // origin — see BACKLOG for the full number-line/letter addressing scheme
+
+    this._state = loadState()
+    this._avatarGroup = null
+    this._avatarMesh = null
+    this._mediaVideoEl = null
+    this._backingMeshes = []   // parallel to this._state.backingCircles: { mesh, videoEl }
+    this._isPlaying = false
+    this._playTimeline = null
+    this._currentWaypointIndex = -1
+
     this._onNavSelect = null
+    this._onInspectorUpdate = null
   }
 
   init () {
     injectStyles()
+    this._buildAvatar()
+
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐OmniExpression') return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+
+    // OmniExpressionInspector edits flow back here — it doesn't own
+    // the avatar mesh or storage itself.
+    this._onInspectorUpdate = (e) => {
+      const patch = e.detail ?? {}
+      Object.assign(this._state, patch)
+      saveState(this._state)
+      this._applyStateToAvatar()
+      this._syncPanelUI()
+    }
+    window.addEventListener('omni:expression-state-set', this._onInspectorUpdate)
+
+    this._onBackingCircleRequest = (e) => {
+      const { action, id, patch } = e.detail ?? {}
+      if (action === 'add') this._addBackingCircle()
+      else if (action === 'remove') this._removeBackingCircle(id)
+      else if (action === 'update') this._updateBackingCircle(id, patch)
+
+      // Re-share state so the Inspector (if open) reflects the change
+      // immediately — matters most for 'add', since the new circle's
+      // id is generated here, not known to the Inspector beforehand.
+      window.dispatchEvent(new CustomEvent('omni:expression-inspect-request', {
+        detail: { state: structuredClone(this._state) }
+      }))
+    }
+    window.addEventListener('omni:expression-backing-circle-request', this._onBackingCircleRequest)
   }
 
-  update () {}
+  update () {
+    if (!this._avatarGroup) return
+    if (this._state.mode === 'panel') this._updatePanelPosition()
+    // Always billboard toward the camera — a flat circle not facing
+    // the viewer would just look like an edge-on line. Rotating the
+    // GROUP (not just the avatar mesh) keeps every backing circle
+    // facing the camera together with it.
+    this._avatarGroup.quaternion.copy(this.ctx.camera.quaternion)
+  }
+
   onResize () {}
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:expression-state-set', this._onInspectorUpdate)
+    window.removeEventListener('omni:expression-backing-circle-request', this._onBackingCircleRequest)
+    this._disposeMediaTexture()
+    this._backingMeshes.forEach((_, i) => this._disposeBackingMedia(i))
+    if (this._avatarGroup) {
+      this.ctx.scene.remove(this._avatarGroup)
+      this._avatarGroup.traverse(obj => {
+        obj.geometry?.dispose()
+        obj.material?.dispose()
+      })
+    }
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniexpression')
+  }
+
+  // ── Avatar (the circle + looped media guide) + backing circles ──────────
+
+  _buildAvatar () {
+    this._avatarGroup = new THREE.Group()
+    this.ctx.scene.add(this._avatarGroup)
+
+    const geo = new THREE.CircleGeometry(this._state.radius, 48)
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true })
+    this._avatarMesh = new THREE.Mesh(geo, mat)
+    this._avatarMesh.renderOrder = 998
+    this._avatarMesh.position.z = 0   // front-most, within the group
+    this._avatarGroup.add(this._avatarMesh)
+
+    this._buildBackingCircles()
+    this._applyStateToAvatar()
+    if (this._state.mediaUrl) this._loadMedia(this._state.mediaUrl, this._state.mediaType)
+  }
+
+  /** The life/time/choice circles (+ any personal ones added later) —
+   *  simple transparent-looping-media circles, layered behind the main
+   *  avatar within the same group so they move/rotate together with
+   *  it. NOT separate interactive objects — no modes, no waypoints of
+   *  their own, just a visual stack. */
+  _buildBackingCircles () {
+    this._state.backingCircles.forEach((circle, i) => {
+      const radius = this._state.radius * (circle.radiusScale ?? 1.5)
+      const geo = new THREE.CircleGeometry(radius, 40)
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.position.z = -(i + 1) * 0.15   // increasing distance behind the avatar
+      mesh.renderOrder = 997 - i
+      this._avatarGroup.add(mesh)
+      this._backingMeshes[i] = { mesh, videoEl: null }
+      if (circle.mediaUrl) this._loadBackingMedia(i, circle.mediaUrl, circle.mediaType)
+    })
+  }
+
+  _addBackingCircle () {
+    const id = 'circle_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
+    const i = this._state.backingCircles.length
+    this._state.backingCircles.push({ id, label: `Circle ${i + 1}`, mediaUrl: '', mediaType: 'image', radiusScale: 1.3 + i * 0.3 })
+    saveState(this._state)
+
+    const radius = this._state.radius * (1.3 + i * 0.3)
+    const geo = new THREE.CircleGeometry(radius, 40)
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.z = -(i + 1) * 0.15
+    mesh.renderOrder = 997 - i
+    this._avatarGroup.add(mesh)
+    this._backingMeshes[i] = { mesh, videoEl: null }
+  }
+
+  _removeBackingCircle (id) {
+    const i = this._state.backingCircles.findIndex(c => c.id === id)
+    if (i === -1) return
+    this._disposeBackingMedia(i)
+    const entry = this._backingMeshes[i]
+    if (entry?.mesh) {
+      this._avatarGroup.remove(entry.mesh)
+      entry.mesh.geometry?.dispose()
+      entry.mesh.material?.dispose()
+    }
+    this._state.backingCircles.splice(i, 1)
+    this._backingMeshes.splice(i, 1)
+    saveState(this._state)
+  }
+
+  _updateBackingCircle (id, patch) {
+    const circle = this._state.backingCircles.find(c => c.id === id)
+    const i = this._state.backingCircles.findIndex(c => c.id === id)
+    if (!circle || i === -1) return
+    Object.assign(circle, patch)
+    saveState(this._state)
+
+    const entry = this._backingMeshes[i]
+    if (!entry?.mesh) return
+    if (patch.radiusScale != null) {
+      const radius = this._state.radius * patch.radiusScale
+      entry.mesh.geometry.dispose()
+      entry.mesh.geometry = new THREE.CircleGeometry(radius, 40)
+    }
+    if (patch.mediaUrl != null || patch.mediaType != null) {
+      this._loadBackingMedia(i, circle.mediaUrl, circle.mediaType)
+    }
+  }
+
+  _loadBackingMedia (index, url, type) {
+    const entry = this._backingMeshes[index]
+    if (!url || !entry?.mesh) return
+    this._disposeBackingMedia(index)
+
+    if (type === 'video') {
+      const video = document.createElement('video')
+      video.src = url
+      video.loop = true
+      video.muted = true
+      video.playsInline = true
+      video.crossOrigin = 'anonymous'
+      video.play().catch(() => {})
+      entry.videoEl = video
+      const texture = new THREE.VideoTexture(video)
+      entry.mesh.material.map = texture
+      entry.mesh.material.needsUpdate = true
+    } else {
+      const loader = new THREE.TextureLoader()
+      loader.load(url, (texture) => {
+        if (entry.mesh) {
+          entry.mesh.material.map = texture
+          entry.mesh.material.needsUpdate = true
+        }
+      })
+    }
+  }
+
+  _disposeBackingMedia (index) {
+    const entry = this._backingMeshes[index]
+    if (!entry) return
+    if (entry.videoEl) {
+      entry.videoEl.pause()
+      entry.videoEl.src = ''
+      entry.videoEl = null
+    }
+    if (entry.mesh?.material.map) {
+      entry.mesh.material.map.dispose()
+      entry.mesh.material.map = null
+    }
+  }
+
+  _applyStateToAvatar () {
+    if (!this._avatarMesh) return
+    if (this._avatarMesh.geometry.parameters.radius !== this._state.radius) {
+      this._avatarMesh.geometry.dispose()
+      this._avatarMesh.geometry = new THREE.CircleGeometry(this._state.radius, 48)
+    }
+    if (this._state.mode === 'scene') {
+      this._avatarGroup.position.set(this._state.scenePos.x, this._state.scenePos.y, this._state.scenePos.z)
+    }
+    // panel mode position is computed live every frame in update()
+  }
+
+  _loadMedia (url, type) {
+    if (!url || !this._avatarMesh) return
+    this._disposeMediaTexture()
+
+    if (type === 'video') {
+      const video = document.createElement('video')
+      video.src = url
+      video.loop = true
+      video.muted = true       // required by browsers for autoplay
+      video.playsInline = true
+      video.crossOrigin = 'anonymous'
+      video.play().catch(() => {})   // ignore autoplay-blocked errors — still loads, just paused
+      this._mediaVideoEl = video
+      const texture = new THREE.VideoTexture(video)
+      this._avatarMesh.material.map = texture
+      this._avatarMesh.material.needsUpdate = true
+    } else {
+      const loader = new THREE.TextureLoader()
+      loader.load(url, (texture) => {
+        if (this._avatarMesh) {
+          this._avatarMesh.material.map = texture
+          this._avatarMesh.material.needsUpdate = true
+        }
+      })
+    }
+  }
+
+  _disposeMediaTexture () {
+    if (this._mediaVideoEl) {
+      this._mediaVideoEl.pause()
+      this._mediaVideoEl.src = ''
+      this._mediaVideoEl = null
+    }
+    if (this._avatarMesh?.material.map) {
+      this._avatarMesh.material.map.dispose()
+      this._avatarMesh.material.map = null
+    }
+  }
+
+  /** Panel mode — "stuck to the camera." Unprojects a screen-space
+   *  point (0..1 in each axis) into world space at a fixed distance in
+   *  front of the camera, every frame, so it tracks as the camera
+   *  moves/rotates. This runs regardless of which of the 8 lock points
+   *  (if any) was used to set panelX/panelY — those are just presets
+   *  for this same free x/y positioning, not a separate mechanism.
+   *  Positions the GROUP, so the avatar and every backing circle move
+   *  together. */
+  _updatePanelPosition () {
+    const ndcX = this._state.panelX * 2 - 1
+    const ndcY = -(this._state.panelY * 2 - 1)
+    const vector = new THREE.Vector3(ndcX, ndcY, 0.5)
+    vector.unproject(this.ctx.camera)
+    const dir = vector.sub(this.ctx.camera.position).normalize()
+    const pos = this.ctx.camera.position.clone().add(dir.multiplyScalar(PANEL_DISTANCE))
+    this._avatarGroup.position.copy(pos)
+  }
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+
+  _buildDOM () {
+    const el = document.createElement('div')
+    el.className = 'omni-expression'
+    el.innerHTML = /* html */`
+      <div class="oe-header">
+        <span class="oe-title">⟐OmniExpression</span>
+        <div class="oe-controls">
+          <button class="oe-ctrl oe-ctrl--inspector" data-action="inspector" title="Open Inspector">⟐i</button>
+          <button class="oe-ctrl" data-action="minimize" title="Minimize">–</button>
+          <button class="oe-ctrl" data-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="oe-body" id="oe-body">
+
+        <div class="oe-mode-row">
+          <button class="oe-mode-btn ${this._state.mode === 'panel' ? 'is-active' : ''}" data-mode="panel">Panel Mode</button>
+          <button class="oe-mode-btn ${this._state.mode === 'scene' ? 'is-active' : ''}" data-mode="scene">Scene Mode</button>
+        </div>
+
+        <div id="oe-lock-section" style="${this._state.mode === 'panel' ? '' : 'display:none'}">
+          <div class="oe-group-title">Lock Points (presets, not an order — drag anywhere)</div>
+          <div class="oe-lock-grid" id="oe-lock-grid">
+            <button class="oe-lock-btn oe-lock-btn--tl"  data-lock="tl">↖</button>
+            <button class="oe-lock-btn oe-lock-btn--top" data-lock="center-top">Top</button>
+            <button class="oe-lock-btn oe-lock-btn--tr"  data-lock="tr">↗</button>
+            <button class="oe-lock-btn oe-lock-btn--l"   data-lock="l">←</button>
+            <button class="oe-lock-btn oe-lock-btn--c"   data-lock="center">●</button>
+            <button class="oe-lock-btn oe-lock-btn--r"   data-lock="r">→</button>
+            <button class="oe-lock-btn oe-lock-btn--bl"  data-lock="bl">↙</button>
+            <button class="oe-lock-btn oe-lock-btn--bot" data-lock="b">Bot</button>
+            <button class="oe-lock-btn oe-lock-btn--br"  data-lock="br">↘</button>
+          </div>
+        </div>
+
+        <div class="oe-group-title">Guide Media (looped)</div>
+        <div class="oe-media-row">
+          <input type="text" class="oe-media-input" id="oe-media-url" placeholder="Image or video URL…" value="${this._state.mediaUrl}">
+          <button class="oe-media-type-btn ${this._state.mediaType === 'image' ? 'is-active' : ''}" data-media-type="image">Img</button>
+          <button class="oe-media-type-btn ${this._state.mediaType === 'video' ? 'is-active' : ''}" data-media-type="video">Vid</button>
+        </div>
+
+        <div class="oe-group-title">Presentation</div>
+        <div class="oe-waypoint-controls">
+          <button class="oe-btn-small" id="oe-record-waypoint">+ Record Waypoint</button>
+          <button class="oe-btn-small oe-btn-small--play" id="oe-play-toggle">▶ Play</button>
+        </div>
+
+        <div class="oe-timeline-wrap">
+          <div class="oe-group-title">Timeline</div>
+          <div class="oe-timeline-track" id="oe-timeline-track"></div>
+        </div>
+      </div>
+      <div class="oe-resize-handle" aria-hidden="true"></div>
+    `
+
+    this._bindHeader(el)
+    this._bindResize(el)
+    this._bindControls(el)
+    this._renderTimeline()
+
+    el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
+    el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
+    el.querySelector('[data-action="inspector"]').addEventListener('click', () => this._openInspector())
+
+    el.dataset.winId = 'omniexpression'
+    WindowManager.register('omniexpression', el, 'OmniExpression')
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
+
+    return el
+  }
+
+  _bindControls (el) {
+    el.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._state.mode = btn.dataset.mode
+        saveState(this._state)
+        this._applyStateToAvatar()
+        el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', b === btn))
+        el.querySelector('#oe-lock-section').style.display = this._state.mode === 'panel' ? '' : 'none'
+      })
+    })
+
+    el.querySelectorAll('[data-lock]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // 'center-top' isn't in LOCK_POINTS (named tl/tr/l/r/bl/b/br/center
+        // cover the corners+sides+center already) — "Top" reuses tl/tr's y at center x.
+        const resolved = btn.dataset.lock === 'center-top' ? { x: 0.5, y: 0.14 } : LOCK_POINTS[btn.dataset.lock]
+        if (!resolved) return
+        this._state.panelX = resolved.x
+        this._state.panelY = resolved.y
+        saveState(this._state)
+        el.querySelectorAll('[data-lock]').forEach(b => b.classList.toggle('is-active', b === btn))
+      })
+    })
+
+    el.querySelector('#oe-media-url').addEventListener('change', (e) => {
+      this._state.mediaUrl = e.target.value
+      saveState(this._state)
+      this._loadMedia(this._state.mediaUrl, this._state.mediaType)
+    })
+
+    el.querySelectorAll('[data-media-type]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._state.mediaType = btn.dataset.mediaType
+        saveState(this._state)
+        el.querySelectorAll('[data-media-type]').forEach(b => b.classList.toggle('is-active', b === btn))
+        if (this._state.mediaUrl) this._loadMedia(this._state.mediaUrl, this._state.mediaType)
+      })
+    })
+
+    el.querySelector('#oe-record-waypoint').addEventListener('click', () => this._recordWaypoint())
+    el.querySelector('#oe-play-toggle').addEventListener('click', () => this._togglePlay())
+  }
+
+  _openInspector () {
+    window.dispatchEvent(new CustomEvent('omni:expression-inspect-request', {
+      detail: { state: structuredClone(this._state) }
+    }))
+  }
+
+  _syncPanelUI () {
+    if (!this._el) return
+    this._el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', b.dataset.mode === this._state.mode))
+    this._el.querySelector('#oe-lock-section').style.display = this._state.mode === 'panel' ? '' : 'none'
+    const urlInput = this._el.querySelector('#oe-media-url')
+    if (urlInput) urlInput.value = this._state.mediaUrl
+    this._el.querySelectorAll('[data-media-type]').forEach(b => b.classList.toggle('is-active', b.dataset.mediaType === this._state.mediaType))
+  }
+
+  // ── Waypoints / Timeline — the "spatial video editor" authoring layer ────
+
+  _recordWaypoint () {
+    const wp = {
+      id: 'wp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      mode: this._state.mode,
+      panelX: this._state.panelX,
+      panelY: this._state.panelY,
+      scenePos: { ...this._state.scenePos },
+      holdMs: 1500,
+    }
+    this._state.waypoints.push(wp)
+    saveState(this._state)
+    this._renderTimeline()
+  }
+
+  _renderTimeline () {
+    const track = this._el?.querySelector('#oe-timeline-track')
+    if (!track) return
+    const wps = this._state.waypoints
+
+    if (wps.length === 0) {
+      track.innerHTML = '<div class="oe-timeline-empty">No waypoints yet — set a position, then "Record Waypoint."</div>'
+      return
+    }
+
+    track.innerHTML = wps.map((wp, i) => {
+      const pct = wps.length === 1 ? 50 : (i / (wps.length - 1)) * 96 + 2
+      return `<div class="oe-timeline-marker ${i === this._currentWaypointIndex ? 'is-current' : ''}" data-wp-index="${i}" style="left:${pct}%" title="${wp.mode} · hold ${wp.holdMs}ms"></div>`
+    }).join('') + '<div class="oe-timeline-playhead" id="oe-playhead"></div>'
+
+    track.querySelectorAll('[data-wp-index]').forEach(marker => {
+      marker.addEventListener('click', () => this._previewWaypoint(Number(marker.dataset.wpIndex)))
+    })
+  }
+
+  /** Clicking a marker jumps the avatar there instantly, without
+   *  playing the whole sequence — a quick way to check a waypoint. */
+  _previewWaypoint (index) {
+    const wp = this._state.waypoints[index]
+    if (!wp) return
+    this._state.mode = wp.mode
+    this._state.panelX = wp.panelX
+    this._state.panelY = wp.panelY
+    this._state.scenePos = { ...wp.scenePos }
+    this._applyStateToAvatar()
+    this._syncPanelUI()
+    this._currentWaypointIndex = index
+    this._renderTimeline()
+  }
+
+  _togglePlay () {
+    if (this._isPlaying) this._stopPlay()
+    else this._startPlay()
+  }
+
+  /** Animates the AVATAR through the recorded waypoints — deliberately
+   *  never touches this.ctx.camera or orbit controls. The viewer's own
+   *  view stays exactly where they left it, free to watch the avatar
+   *  or look anywhere else, the whole time this runs. */
+  _startPlay () {
+    if (this._state.waypoints.length === 0 || this._isPlaying) return
+    this._isPlaying = true
+    this._el?.querySelector('#oe-play-toggle')?.classList.add('is-playing')
+    if (this._el) this._el.querySelector('#oe-play-toggle').textContent = '■ Stop'
+
+    const tl = gsap.timeline({
+      onComplete: () => this._stopPlay(),
+    })
+    this._playTimeline = tl
+
+    this._state.waypoints.forEach((wp, i) => {
+      tl.call(() => {
+        this._currentWaypointIndex = i
+        this._renderTimeline()
+      })
+
+      const prevMode = i === 0 ? this._state.mode : this._state.waypoints[i - 1].mode
+      const sameModeAsPrev = i === 0 || prevMode === wp.mode
+
+      if (wp.mode === 'panel' && sameModeAsPrev) {
+        const proxy = { x: this._state.panelX, y: this._state.panelY }
+        tl.to(proxy, {
+          x: wp.panelX, y: wp.panelY, duration: 1, ease: 'power2.inOut',
+          onUpdate: () => { this._state.panelX = proxy.x; this._state.panelY = proxy.y },
+        })
+      } else if (wp.mode === 'scene' && sameModeAsPrev) {
+        const proxy = { ...this._state.scenePos }
+        tl.to(proxy, {
+          x: wp.scenePos.x, y: wp.scenePos.y, z: wp.scenePos.z, duration: 1, ease: 'power2.inOut',
+          onUpdate: () => {
+            this._state.scenePos.x = proxy.x; this._state.scenePos.y = proxy.y; this._state.scenePos.z = proxy.z
+            this._avatarGroup.position.set(proxy.x, proxy.y, proxy.z)
+          },
+        })
+      } else {
+        // Mode changed since the last waypoint — an instant cut rather
+        // than trying to blend panel-space and world-space positions,
+        // which don't share a coordinate system to interpolate between.
+        tl.call(() => {
+          this._state.mode = wp.mode
+          this._state.panelX = wp.panelX
+          this._state.panelY = wp.panelY
+          this._state.scenePos = { ...wp.scenePos }
+          this._applyStateToAvatar()
+        })
+      }
+
+      tl.call(() => this._applyStateToAvatar())
+      tl.to({}, { duration: wp.holdMs / 1000 })
+    })
+  }
+
+  _stopPlay () {
+    this._playTimeline?.kill()
+    this._playTimeline = null
+    this._isPlaying = false
+    this._currentWaypointIndex = -1
+    this._renderTimeline()
+    const btn = this._el?.querySelector('#oe-play-toggle')
+    if (btn) { btn.classList.remove('is-playing'); btn.textContent = '▶ Play' }
   }
 
   open () {
@@ -225,52 +911,19 @@ export default class OmniExpression {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
-        id: 'omniexpression', label: '⟐Expression', iconLabel: '⟐E',
+        id: 'omniexpression', label: '⟐OmniExpression', iconLabel: '⟐E',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
         variant: 'orb',
       }
     }))
   }
 
-  // ── DOM ──────────────────────────────────────────────────────────────────
-
-  _buildDOM () {
-    const el = document.createElement('div')
-    el.className = 'omni-expression'
-    el.innerHTML = /* html */`
-      <div class="oe-header">
-        <span class="oe-title">⟐OmniExpression</span>
-        <div class="oe-controls">
-          <button class="oe-ctrl oe-ctrl--minimize" data-action="minimize" title="Minimize">–</button>
-          <button class="oe-ctrl oe-ctrl--close" data-action="close" title="Close">×</button>
-        </div>
-      </div>
-      <div class="oe-body">
-        <span class="oe-location-label">Path Location</span>
-        <span class="oe-location-value">${this._pathLocation}</span>
-        <span class="oe-note">
-          Main path origin. Alternative paths, the primary-mesh event
-          preview, and arrow-key traversal are still being built.
-        </span>
-      </div>
-      <div class="oe-resize-handle" aria-hidden="true"></div>
-    `
-
-    this._bindHeader(el)
-    this._bindResize(el)
-    el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
-    el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
-
-    el.dataset.winId = 'omniexpression'
-    WindowManager.register('omniexpression', el, 'OmniExpression')
-    WindowManager.watchPanelOpacity(el, () => this._isOpen)
-
-    return el
-  }
+  // ── Header drag / resize — same pattern as every other panel ─────────────
 
   _bindHeader (el) {
     const header = el.querySelector('.oe-header')
     const onDown = (e) => {
+      if (e.target.closest('button')) return
       const cx = e.touches?.[0]?.clientX ?? e.clientX
       const cy = e.touches?.[0]?.clientY ?? e.clientY
       const rect = el.getBoundingClientRect()

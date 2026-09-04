@@ -111,7 +111,7 @@ const SPECIAL_ROW = [
   { type: 'modifier', char: 'Control', label: 'Ctrl' },
   { type: 'modifier', char: 'Alt',     label: 'Opt' },
   { type: 'modifier', char: 'Meta',    label: 'Cmd' },
-  { type: 'modifier', char: 'Shift',   label: 'Shift' },
+  { type: 'modifier', char: 'ShiftLeft',   label: 'Shift L' },
   { type: 'special',  char: 'Obj',     label: 'Obj' },
   { type: 'special',  char: 'Prpty',   label: 'Prpty' },
   { type: 'special',  char: 'Complx',  label: 'Complx' },
@@ -183,6 +183,8 @@ function letterPageDefault (pageNum) {
   letters.forEach((l, i) => { slots[i] = { type: 'letter', char: l, label: l } })
   // 26 letters, slot 26 skipped (blank) per request, slot 27 = language selector
   slots[27] = { type: 'lang-selector', char: 'lang', label: '🌐 Lang' }
+  slots[28] = { type: 'function', char: 'Enter', label: 'Enter' }
+  slots[29] = { type: 'modifier', char: 'ShiftRight', label: 'Shift R' }
   return slots
 }
 
@@ -198,6 +200,56 @@ export function classifyChar (ch) {
   if (/[a-zA-Z]/.test(ch)) return 'letter'
   if (/[0-9]/.test(ch)) return 'digit'
   return 'symbol'
+}
+
+/**
+ * Computes the KeyboardEvent.code for a key, alongside its .key value —
+ * several of the app's existing physical-keyboard shortcuts check
+ * .code specifically (the return-to-landing 'c' shortcut, vertical
+ * movement R/F, and the entire hand-menu system's ShiftLeft/
+ * ShiftRight/Digit1-4/Numpad1-4 bindings), so Command mode needs to
+ * set both to actually reach them, not just .key.
+ *
+ * One real scope limit, not an oversight: Control/Alt/Meta each still
+ * have only ONE key (not separate Left/Right pairs), so those default
+ * to the Left variant. Shift is the exception — the app's hand-menu
+ * system needs both ShiftLeft and ShiftRight as distinct triggers, so
+ * the layout has two explicit Shift keys (char 'ShiftLeft' /
+ * 'ShiftRight') rather than one generic 'Shift'.
+ */
+export function computeCode (classType, char) {
+  if (classType === 'letter') return `Key${char.toUpperCase()}`
+  if (classType === 'digit') return `Digit${char}`
+  if (classType === 'function') return char   // 'Escape', 'F1'..'F15' all match their code directly
+  if (classType === 'modifier') {
+    if (char === 'ShiftLeft' || char === 'ShiftRight') return char
+    return { Control: 'ControlLeft', Alt: 'AltLeft', Meta: 'MetaLeft', Shift: 'ShiftLeft' }[char] ?? undefined
+  }
+  if (classType === 'directional') {
+    const base = char.split('-').pop()
+    return ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(base) ? base : undefined
+  }
+  if (classType === 'space') return 'Space'
+  if (classType === 'symbol') {
+    // Shifted symbols share their unshifted key's physical code (e.g.
+    // '!' and '1' are the same physical key) — DOM UI Events code names.
+    return {
+      '`': 'Backquote', '~': 'Backquote',
+      '-': 'Minus', '_': 'Minus',
+      '=': 'Equal', '+': 'Equal',
+      '[': 'BracketLeft', '{': 'BracketLeft',
+      ']': 'BracketRight', '}': 'BracketRight',
+      '\\': 'Backslash', '|': 'Backslash',
+      ';': 'Semicolon', ':': 'Semicolon',
+      '\'': 'Quote', '"': 'Quote',
+      ',': 'Comma', '<': 'Comma',
+      '.': 'Period', '>': 'Period',
+      '/': 'Slash', '?': 'Slash',
+      '!': 'Digit1', '@': 'Digit2', '#': 'Digit3', '$': 'Digit4', '%': 'Digit5',
+      '^': 'Digit6', '&': 'Digit7', '*': 'Digit8', '(': 'Digit9', ')': 'Digit0',
+    }[char] ?? undefined
+  }
+  return undefined
 }
 
 function specToKeyData (spec) {
@@ -378,6 +430,20 @@ const STYLES = /* css */`
   padding          : 4px;
   border-bottom    : 1px solid rgba(255,255,255,0.05);
 }
+
+.ok-save-banner {
+  flex-shrink      : 0;
+  max-height       : 0;
+  overflow         : hidden;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  font-size        : 9px;
+  color            : rgba(160, 255, 195, 0.95);
+  background       : rgba(140, 255, 180, 0.10);
+  transition       : max-height 0.2s ease, padding 0.2s ease;
+}
+.ok-save-banner.is-visible { max-height: 22px; padding: 5px; }
 
 .ok-grid-wrap {
   flex             : 1 1 auto;
@@ -616,6 +682,7 @@ export default class OmniKeys {
     this._symbolPage = 0
 
     this._selected = null   // { kind, row?, col?, page?, slot? }
+    this._saveBannerTimer = null
     this._heldModifiers = new Set()
     this._onNavSelect = null
     this._onInspectorUpdate = null
@@ -699,6 +766,19 @@ export default class OmniKeys {
       savePages(STORE_SYMBOLS, this._symbolPages)
     }
     this._refreshKeyLabel(descriptor)
+    this._flashSaveBanner()
+  }
+
+  /** Visible save confirmation directly on OmniKeys' own panel — not
+   *  just in the separate Inspector — so edits made in Edit mode are
+   *  confirmed persisted without needing to check another window. */
+  _flashSaveBanner () {
+    const banner = this._el?.querySelector('#ok-save-banner')
+    if (!banner) return
+    banner.textContent = '✓ Saved'
+    banner.classList.add('is-visible')
+    clearTimeout(this._saveBannerTimer)
+    this._saveBannerTimer = setTimeout(() => banner.classList.remove('is-visible'), 1400)
   }
 
   _keyDataFor (descriptor) {
@@ -749,6 +829,7 @@ export default class OmniKeys {
         </div>
       </div>
       <div class="ok-mode-note" id="ok-mode-note"></div>
+      <div class="ok-save-banner" id="ok-save-banner"></div>
       <div class="ok-grid-wrap">
         <div class="ok-grid" id="ok-grid"></div>
       </div>
@@ -970,29 +1051,60 @@ export default class OmniKeys {
    *  mechanism (genuine KeyboardEvents), not a parallel shortcut map —
    *  every keydown listener already in this project responds exactly
    *  as if it had been typed on a physical keyboard. */
+  /** Maps a modifier's char to which KeyboardEvent boolean flag it
+   *  represents — needed both for the standalone dispatch below and
+   *  for checking "is any Shift variant currently held" later. */
+  _modifierFlagKey (char) {
+    if (char === 'ShiftLeft' || char === 'ShiftRight' || char === 'Shift') return 'shiftKey'
+    if (char === 'Control') return 'ctrlKey'
+    if (char === 'Alt') return 'altKey'
+    if (char === 'Meta') return 'metaKey'
+    return null
+  }
+
   _onCommandKeyClick (descriptor) {
     const key = this._keyDataFor(descriptor)
     if (!key || key.classType === 'blank') return
 
     if (key.classType === 'modifier') {
       const btn = this._el?.querySelector(`.ok-key${this._descriptorSelector(descriptor)}`)
+      const flagKey = this._modifierFlagKey(key.string)
+
       if (this._heldModifiers.has(key.string)) {
         this._heldModifiers.delete(key.string)
         btn?.classList.remove('is-held')
-      } else {
-        this._heldModifiers.add(key.string)
-        btn?.classList.add('is-held')
+        return
       }
+
+      this._heldModifiers.add(key.string)
+      btn?.classList.add('is-held')
+
+      // A bare modifier press is itself a real, distinct keydown — the
+      // app's hand-menu system listens for exactly this (ShiftLeft /
+      // ShiftRight pressed alone, not held for a combo). Dispatching
+      // only on the "held" transition (not on release) matches how a
+      // real keydown behaves — it fires once per press, not per toggle.
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: key.string,
+        code: computeCode('modifier', key.string),
+        ctrlKey: flagKey === 'ctrlKey',
+        altKey: flagKey === 'altKey',
+        metaKey: flagKey === 'metaKey',
+        shiftKey: flagKey === 'shiftKey',
+        bubbles: true,
+      }))
       return
     }
 
     const held = this._heldModifiers
+    const shiftHeld = ['Shift', 'ShiftLeft', 'ShiftRight'].some(v => held.has(v))
     window.dispatchEvent(new KeyboardEvent('keydown', {
       key: key.string,
+      code: computeCode(key.classType, key.string),
       ctrlKey: held.has('Control'),
       altKey: held.has('Alt'),
       metaKey: held.has('Meta'),
-      shiftKey: held.has('Shift'),
+      shiftKey: shiftHeld,
       bubbles: true,
     }))
 

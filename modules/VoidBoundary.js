@@ -24,8 +24,8 @@
 import * as THREE from 'three'
 
 const CENTER_Y       = 28     // matches RootSpace's CYLINDER_Y
-const SPHERE_RADIUS  = 200    // 2x — well outside the tunnel's OUTER_RADIUS (38)
-const CUBE_SIZE      = 600    // 2x — half-extent 300, larger than the sphere
+const SPHERE_RADIUS  = 1000   // 5x — kept proportional to WallpaperSphere's new radius (1050)
+const CUBE_SIZE      = 3000   // 5x — half-extent 1500, still larger than the sphere
 
 const SPHERE_COLOR_DEFAULT   = 0x888888   // grey, per request — admin-overridable
 const SPHERE_OPACITY_DEFAULT = 0.35

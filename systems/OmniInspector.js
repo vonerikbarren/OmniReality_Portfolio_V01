@@ -885,6 +885,18 @@ const STYLES = /* css */`
 }
 .oi-textarea:focus { border-color: var(--oi-focus-border); }
 
+.oi-btn-small {
+  background       : rgba(140, 255, 180, 0.1);
+  border           : 1px solid rgba(140, 255, 180, 0.3);
+  color            : rgba(160, 255, 195, 0.95);
+  border-radius    : 6px;
+  padding          : 4px 10px;
+  font-family      : var(--mono, 'Courier New', monospace);
+  font-size        : 9.5px;
+  cursor           : pointer;
+}
+.oi-btn-small:hover { background: rgba(140, 255, 180, 0.18); }
+
 .oi-data-field {
   display           : flex;
   flex-direction    : column;
@@ -1566,6 +1578,7 @@ export default class OmniInspector {
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
+    window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
@@ -1640,7 +1653,16 @@ export default class OmniInspector {
     // re-synced the REAL world mesh's live material to match, so it
     // silently reverted to its default look whenever this panel wasn't
     // the thing that had just changed it in the same session.
-    if (mesh?.material) {
+    // Dimensional Text nodes are THREE.Sprite, not THREE.Mesh — they use
+    // SpriteMaterial, a fundamentally different material system that
+    // isn't part of the regular MATERIALS registry at all. Applying any
+    // of this reapply logic to one would swap its SpriteMaterial for an
+    // incompatible Mesh material (e.g. MeshStandardMaterial), which
+    // breaks Three.js's dedicated sprite renderer — this was the actual
+    // "clicking a Dimensional Text node doesn't open the Inspector" bug:
+    // the corrupted material broke rendering before the panel could
+    // meaningfully show.
+    if (mesh?.material && !(mesh instanceof THREE.Sprite)) {
       if ('wireframe' in mesh.material) mesh.material.wireframe = !!this._ext.wireframe
       const currentType = mesh.material.constructor?.name
       if (this._ext.material && this._ext.material !== currentType) {
@@ -2218,6 +2240,7 @@ export default class OmniInspector {
   // ── APPEARANCE section HTML ───────────────────────────────────────────────
 
   _appearanceHTML (data, ext) {
+    const isSprite = data.geometry === 'DimensionalText'
     const { r, g, b, a } = this._color
     const hex = rgbToHex(r, g, b)
     const apc = Math.round(a * 100)
@@ -2287,12 +2310,12 @@ export default class OmniInspector {
       <!-- Material selector -->
       <div class="oi-row">
         <span class="oi-label">Material</span>
-        <select class="oi-select" id="oi-material">${matOptions}</select>
+        <select class="oi-select" id="oi-material" ${isSprite ? 'disabled title="Dimensional Text uses a Sprite + canvas texture — not a swappable material"' : ''}>${matOptions}</select>
       </div>
 
       <!-- Deeper material-specific properties — swaps to match whichever
            type is selected above -->
-      <div id="oi-material-props">${this._materialPropsHTML(ext?.material ?? 'MeshStandardMaterial', ext)}</div>
+      <div id="oi-material-props">${isSprite ? '<div class="oi-material-props-empty">Dimensional Text renders via a canvas texture, not a swappable material — color is set above.</div>' : this._materialPropsHTML(ext?.material ?? 'MeshStandardMaterial', ext)}</div>
 
       <!-- Geometry selector -->
       <div class="oi-row">
@@ -2305,7 +2328,7 @@ export default class OmniInspector {
         <span class="oi-label">Wire</span>
         <div class="oi-toggle-wrap">
           <label class="oi-toggle">
-            <input type="checkbox" id="oi-wireframe" ${wf ? 'checked' : ''}>
+            <input type="checkbox" id="oi-wireframe" ${wf ? 'checked' : ''} ${isSprite ? 'disabled title="Not applicable to Dimensional Text"' : ''}>
             <div class="oi-toggle-track"></div>
             <div class="oi-toggle-thumb"></div>
           </label>
@@ -2475,8 +2498,16 @@ export default class OmniInspector {
       </div>
     `
     return /* html */`
-      ${ta('Internal Display', 'internalDisplay', ext.internalDisplay)}
-      ${ta('Internal Code', 'internalCode', ext.internalCode, true)}
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Internal Data</span>
+        <button class="oi-btn-small" id="oi-internal-panel-open">Open Panel ⟐</button>
+      </div>
+      <div class="oi-data-note">
+        Internal Display/Code are edited in their own panel now, not
+        inline here. Saving there saves for real — no need to also
+        save in this Inspector.
+      </div>
+
       ${ta('External Display', 'externalDisplay', ext.externalDisplay)}
       ${ta('External Code', 'externalCode', ext.externalCode, true)}
       <div class="oi-row">
@@ -2514,6 +2545,12 @@ export default class OmniInspector {
       this._saveExt()
       if (next) this._showInfoPlane(data, ext)
       else this._hideInfoPlane()
+    })
+
+    body.querySelector('#oi-internal-panel-open')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:internal-panel-open-request', {
+        detail: { id: data.id, internalDisplay: ext.internalDisplay, internalCode: ext.internalCode }
+      }))
     })
   }
 
@@ -3546,6 +3583,11 @@ export default class OmniInspector {
     const mesh = this._currentMesh
     if (!mesh) return
 
+    // Sprites (Dimensional Text) use SpriteMaterial, not one of the
+    // regular Mesh material types in MATERIALS — swapping it out breaks
+    // Three.js's sprite renderer. See the matching guard in loadNode().
+    if (mesh instanceof THREE.Sprite) return
+
     const MatClass = MATERIALS[typeName]
     if (!MatClass) return
 
@@ -3871,6 +3913,31 @@ export default class OmniInspector {
     }
 
     window.addEventListener('omni:system-toggle', this._onToggle)
+    // Internal panel (ui/OmniInternalPanel.js) save — this is a REAL,
+    // unconditional persist the moment it fires, not staged behind
+    // this Inspector's own save/auto-save. Also updates in-memory
+    // state if that same node happens to be currently loaded here,
+    // so a later edit to some other field (e.g. color) can't
+    // overwrite this with stale internal data.
+    this._onInternalDataSet = (e) => {
+      const { id, internalDisplay, internalCode } = e.detail ?? {}
+      if (!id) return
+
+      const existing = this._loadExt(id) ?? {}
+      const merged = { ...existing, internalDisplay, internalCode }
+      try {
+        localStorage.setItem(STORE_PREFIX + id, JSON.stringify(merged))
+      } catch (err) {
+        console.warn('⟐i — Internal panel save failed:', err)
+      }
+
+      if (id === this._currentId && this._ext) {
+        this._ext.internalDisplay = internalDisplay
+        this._ext.internalCode = internalCode
+      }
+    }
+    window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+
     window.addEventListener('omni:node-selected', this._onSelected)
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)

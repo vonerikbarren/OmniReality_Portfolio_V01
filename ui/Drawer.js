@@ -67,6 +67,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniExpression'  },
   { label: '⟐OmniDraw'        },
   { label: '⟐OmniKeys'        },
+  { label: '⟐OmniSelect'      },
   { divider: true },
   { divider: true },
   { label: '⟐Admin',          children: ['⟐mniAdminSettings'] },
