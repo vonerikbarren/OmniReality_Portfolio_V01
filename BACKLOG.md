@@ -103,3 +103,12 @@ detached/restore-handler events are actually wired. None of it is real
 feature behavior — replace piece by piece as each underlying feature
 (GridPanel's actual purpose, RadialMenu tool behavior, etc.) gets
 designed for real.
+
+## OmniInspector's External info-plane — animation options (noted, not built)
+
+Explicit request, for a future pass: animation options for the
+floating External-data plane (`systems/OmniInspector.js` —
+`_showInfoPlane`/`_updateInfoPlaneTexture`). Nothing scoped yet beyond
+the ask itself — no specific animation types, triggers, or timing were
+specified. Whoever picks this up should treat it as open design space,
+not a spec to follow.

@@ -227,6 +227,7 @@ export default class OmniChronos {
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
+    this._playSound('open')
   }
 
   close () {
@@ -236,6 +237,7 @@ export default class OmniChronos {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
   }
 
   minimize () {
@@ -246,6 +248,7 @@ export default class OmniChronos {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
         id: 'omnichronos', label: '⟐OmniChronos', iconLabel: '⟐C',
@@ -253,6 +256,13 @@ export default class OmniChronos {
         variant: 'orb',
       }
     }))
+  }
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────

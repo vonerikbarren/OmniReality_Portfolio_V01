@@ -79,6 +79,8 @@ function loadState () {
     panelX: 0.86, panelY: 0.86,   // default bottom-right, out of the way
     scenePos: { x: 0, y: 2, z: -3 },
     radius: 0.5,
+    color: { r: 255, g: 255, b: 255, a: 1 },
+    cameraLocked: false,
     mediaUrl: '',
     mediaType: 'image',
     waypoints: [],   // { id, mode, panelX, panelY, scenePos, holdMs }
@@ -186,6 +188,62 @@ const STYLES = /* css */`
   flex-direction   : column;
   gap              : 10px;
 }
+
+.oe-ctrl--save { color: rgba(140, 255, 180, 0.9); border-color: rgba(140, 255, 180, 0.25); }
+.oe-ctrl--save:hover { background: rgba(140, 255, 180, 0.14); }
+
+.oe-unsaved-banner {
+  flex-shrink      : 0;
+  display          : none;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 6px;
+  padding          : 6px;
+  font-size        : 9.5px;
+  letter-spacing   : 0.03em;
+  color            : rgba(255, 200, 140, 0.95);
+  background       : rgba(255, 180, 100, 0.12);
+  border-bottom    : 1px solid rgba(255, 180, 100, 0.2);
+}
+.oe-unsaved-banner.is-visible { display: flex; }
+
+.oe-size-row { display: flex; align-items: center; gap: 8px; }
+.oe-size-slider { flex: 1; accent-color: var(--oe-accent); }
+.oe-size-num {
+  width: 56px;
+  background: var(--omni-theme-input-bg, rgba(255,255,255,0.09));
+  border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,0.18));
+  border-radius: 5px;
+  color: var(--oe-text);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+.oe-rgba-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.oe-rgba-label { width: 14px; flex-shrink: 0; font-size: 9.5px; color: var(--oe-text-muted); }
+.oe-rgba-val { width: 32px; text-align: right; font-size: 9px; color: var(--oe-text-dim); }
+
+.oe-row-flex { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; gap: 8px; }
+.oe-toggle-sm {
+  width: 34px; height: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--oe-border);
+  background: rgba(255,255,255,0.08);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.oe-toggle-sm::after {
+  content: '';
+  position: absolute; top: 1px; left: 1px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--oe-text-dim);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.oe-toggle-sm.is-on { background: rgba(201, 163, 255, 0.3); border-color: rgba(201, 163, 255, 0.5); }
+.oe-toggle-sm.is-on::after { transform: translateX(16px); background: var(--oe-accent); }
 
 .oe-mode-row {
   display          : flex;
@@ -353,6 +411,12 @@ export default class OmniExpression {
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
 
     this._state = loadState()
+    // Staged copy of the "appearance" fields only — mode, position,
+    // media, radius, color, camera-lock. Waypoints/backing-circles
+    // stay immediate CRUD, unaffected by this — matches the Admin/
+    // Chronos save pattern: edits here don't touch the real avatar in
+    // the scene until Save is pressed.
+    this._staged = this._extractStaged(this._state)
     this._avatarGroup = null
     this._avatarMesh = null
     this._mediaVideoEl = null
@@ -382,6 +446,7 @@ export default class OmniExpression {
       Object.assign(this._state, patch)
       saveState(this._state)
       this._applyStateToAvatar()
+      this._staged = this._extractStaged(this._state)   // Inspector edits apply immediately — keep the main panel's form in sync, no stale "unsaved" banner for a change that's already live
       this._syncPanelUI()
     }
     window.addEventListener('omni:expression-state-set', this._onInspectorUpdate)
@@ -560,16 +625,51 @@ export default class OmniExpression {
     }
   }
 
+  /** Pulls just the appearance-related fields out of full state, for
+   *  the staged working copy the form fields bind to. */
+  _extractStaged (state) {
+    return {
+      mode: state.mode,
+      panelX: state.panelX, panelY: state.panelY,
+      scenePos: { ...state.scenePos },
+      radius: state.radius,
+      color: { ...state.color },
+      cameraLocked: state.cameraLocked,
+      mediaUrl: state.mediaUrl,
+      mediaType: state.mediaType,
+    }
+  }
+
   _applyStateToAvatar () {
     if (!this._avatarMesh) return
     if (this._avatarMesh.geometry.parameters.radius !== this._state.radius) {
       this._avatarMesh.geometry.dispose()
       this._avatarMesh.geometry = new THREE.CircleGeometry(this._state.radius, 48)
     }
+    this._resizeBackingCircles()
+    const { r, g, b, a } = this._state.color
+    this._avatarMesh.material.color.setRGB(r / 255, g / 255, b / 255)
+    this._avatarMesh.material.opacity = a
     if (this._state.mode === 'scene') {
       this._avatarGroup.position.set(this._state.scenePos.x, this._state.scenePos.y, this._state.scenePos.z)
     }
     // panel mode position is computed live every frame in update()
+  }
+
+  /** Keeps every backing circle proportional to the main avatar's
+   *  radius (each one is radius * its own radiusScale) — these were
+   *  only ever sized once, at creation, with nothing re-syncing them
+   *  when the main radius changed later. Called whenever radius
+   *  changes, live or via Save. */
+  _resizeBackingCircles () {
+    this._state.backingCircles.forEach((circle, i) => {
+      const entry = this._backingMeshes[i]
+      if (!entry?.mesh) return
+      const radius = this._state.radius * (circle.radiusScale ?? 1.5)
+      if (entry.mesh.geometry.parameters.radius === radius) return
+      entry.mesh.geometry.dispose()
+      entry.mesh.geometry = new THREE.CircleGeometry(radius, 40)
+    })
   }
 
   _loadMedia (url, type) {
@@ -634,23 +734,26 @@ export default class OmniExpression {
   _buildDOM () {
     const el = document.createElement('div')
     el.className = 'omni-expression'
+    const s = this._staged
     el.innerHTML = /* html */`
       <div class="oe-header">
         <span class="oe-title">⟐OmniExpression</span>
         <div class="oe-controls">
+          <button class="oe-ctrl oe-ctrl--save" data-action="save" title="Save">💾</button>
           <button class="oe-ctrl oe-ctrl--inspector" data-action="inspector" title="Open Inspector">⟐i</button>
           <button class="oe-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="oe-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
+      <div class="oe-unsaved-banner" id="oe-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
       <div class="oe-body" id="oe-body">
 
         <div class="oe-mode-row">
-          <button class="oe-mode-btn ${this._state.mode === 'panel' ? 'is-active' : ''}" data-mode="panel">Panel Mode</button>
-          <button class="oe-mode-btn ${this._state.mode === 'scene' ? 'is-active' : ''}" data-mode="scene">Scene Mode</button>
+          <button class="oe-mode-btn ${s.mode === 'panel' ? 'is-active' : ''}" data-mode="panel">Panel Mode</button>
+          <button class="oe-mode-btn ${s.mode === 'scene' ? 'is-active' : ''}" data-mode="scene">Scene Mode</button>
         </div>
 
-        <div id="oe-lock-section" style="${this._state.mode === 'panel' ? '' : 'display:none'}">
+        <div id="oe-lock-section" style="${s.mode === 'panel' ? '' : 'display:none'}">
           <div class="oe-group-title">Lock Points (presets, not an order — drag anywhere)</div>
           <div class="oe-lock-grid" id="oe-lock-grid">
             <button class="oe-lock-btn oe-lock-btn--tl"  data-lock="tl">↖</button>
@@ -665,11 +768,28 @@ export default class OmniExpression {
           </div>
         </div>
 
+        <div class="oe-group-title">Size</div>
+        <div class="oe-size-row">
+          <input type="range" class="oe-size-slider" id="oe-radius-slider" min="0.1" max="3" step="0.05" value="${s.radius}">
+          <input type="number" class="oe-size-num" id="oe-radius-num" min="0.1" max="3" step="0.05" value="${s.radius}">
+        </div>
+
+        <div class="oe-group-title">Color (RGBA)</div>
+        <div class="oe-rgba-row"><span class="oe-rgba-label">R</span><input type="range" class="oe-size-slider" data-rgba="r" min="0" max="255" value="${s.color.r}"><span class="oe-rgba-val" data-rgba-val="r">${s.color.r}</span></div>
+        <div class="oe-rgba-row"><span class="oe-rgba-label">G</span><input type="range" class="oe-size-slider" data-rgba="g" min="0" max="255" value="${s.color.g}"><span class="oe-rgba-val" data-rgba-val="g">${s.color.g}</span></div>
+        <div class="oe-rgba-row"><span class="oe-rgba-label">B</span><input type="range" class="oe-size-slider" data-rgba="b" min="0" max="255" value="${s.color.b}"><span class="oe-rgba-val" data-rgba-val="b">${s.color.b}</span></div>
+        <div class="oe-rgba-row"><span class="oe-rgba-label">A</span><input type="range" class="oe-size-slider" data-rgba="a" min="0" max="1" step="0.01" value="${s.color.a}"><span class="oe-rgba-val" data-rgba-val="a">${Number(s.color.a).toFixed(2)}</span></div>
+
         <div class="oe-group-title">Guide Media (looped)</div>
         <div class="oe-media-row">
-          <input type="text" class="oe-media-input" id="oe-media-url" placeholder="Image or video URL…" value="${this._state.mediaUrl}">
-          <button class="oe-media-type-btn ${this._state.mediaType === 'image' ? 'is-active' : ''}" data-media-type="image">Img</button>
-          <button class="oe-media-type-btn ${this._state.mediaType === 'video' ? 'is-active' : ''}" data-media-type="video">Vid</button>
+          <input type="text" class="oe-media-input" id="oe-media-url" placeholder="Image or video URL…" value="${s.mediaUrl}">
+          <button class="oe-media-type-btn ${s.mediaType === 'image' ? 'is-active' : ''}" data-media-type="image">Img</button>
+          <button class="oe-media-type-btn ${s.mediaType === 'video' ? 'is-active' : ''}" data-media-type="video">Vid</button>
+        </div>
+
+        <div class="oe-row-flex">
+          <span class="oe-group-title" style="margin:0">Lock Viewer Camera During Playback</span>
+          <button class="oe-toggle-sm ${s.cameraLocked ? 'is-on' : ''}" id="oe-camera-locked" role="switch" aria-checked="${s.cameraLocked}"></button>
         </div>
 
         <div class="oe-group-title">Presentation</div>
@@ -691,6 +811,7 @@ export default class OmniExpression {
     this._bindControls(el)
     this._renderTimeline()
 
+    el.querySelector('[data-action="save"]').addEventListener('click', () => this._save())
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('[data-action="inspector"]').addEventListener('click', () => this._openInspector())
@@ -705,11 +826,10 @@ export default class OmniExpression {
   _bindControls (el) {
     el.querySelectorAll('[data-mode]').forEach(btn => {
       btn.addEventListener('click', () => {
-        this._state.mode = btn.dataset.mode
-        saveState(this._state)
-        this._applyStateToAvatar()
+        this._staged.mode = btn.dataset.mode
+        this._markUnsaved()
         el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', b === btn))
-        el.querySelector('#oe-lock-section').style.display = this._state.mode === 'panel' ? '' : 'none'
+        el.querySelector('#oe-lock-section').style.display = this._staged.mode === 'panel' ? '' : 'none'
       })
     })
 
@@ -719,30 +839,94 @@ export default class OmniExpression {
         // cover the corners+sides+center already) — "Top" reuses tl/tr's y at center x.
         const resolved = btn.dataset.lock === 'center-top' ? { x: 0.5, y: 0.14 } : LOCK_POINTS[btn.dataset.lock]
         if (!resolved) return
-        this._state.panelX = resolved.x
-        this._state.panelY = resolved.y
-        saveState(this._state)
+        this._staged.panelX = resolved.x
+        this._staged.panelY = resolved.y
+        this._markUnsaved()
         el.querySelectorAll('[data-lock]').forEach(b => b.classList.toggle('is-active', b === btn))
       })
     })
 
+    const radiusSlider = el.querySelector('#oe-radius-slider')
+    const radiusNum = el.querySelector('#oe-radius-num')
+    let radiusSaveTimer = null
+    const onRadiusChange = (val) => {
+      const radius = Number(val)
+      this._staged.radius = radius
+      this._state.radius = radius   // live — size applies immediately, not gated behind Save
+      radiusSlider.value = val
+      radiusNum.value = val
+      this._applyStateToAvatar()
+      // Also persists on its own (debounced) — "instead of only saving"
+      // means this field shouldn't revert on reload just because the
+      // Save button (which still gates the other fields) wasn't
+      // separately clicked.
+      clearTimeout(radiusSaveTimer)
+      radiusSaveTimer = setTimeout(() => saveState(this._state), 400)
+    }
+    radiusSlider.addEventListener('input', (e) => onRadiusChange(e.target.value))
+    radiusNum.addEventListener('input', (e) => onRadiusChange(e.target.value))
+
+    el.querySelectorAll('[data-rgba]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const ch = input.dataset.rgba
+        this._staged.color[ch] = Number(e.target.value)
+        el.querySelector(`[data-rgba-val="${ch}"]`).textContent = ch === 'a' ? Number(e.target.value).toFixed(2) : e.target.value
+        this._markUnsaved()
+      })
+    })
+
     el.querySelector('#oe-media-url').addEventListener('change', (e) => {
-      this._state.mediaUrl = e.target.value
-      saveState(this._state)
-      this._loadMedia(this._state.mediaUrl, this._state.mediaType)
+      this._staged.mediaUrl = e.target.value
+      this._markUnsaved()
     })
 
     el.querySelectorAll('[data-media-type]').forEach(btn => {
       btn.addEventListener('click', () => {
-        this._state.mediaType = btn.dataset.mediaType
-        saveState(this._state)
+        this._staged.mediaType = btn.dataset.mediaType
+        this._markUnsaved()
         el.querySelectorAll('[data-media-type]').forEach(b => b.classList.toggle('is-active', b === btn))
-        if (this._state.mediaUrl) this._loadMedia(this._state.mediaUrl, this._state.mediaType)
       })
+    })
+
+    el.querySelector('#oe-camera-locked').addEventListener('click', (e) => {
+      this._staged.cameraLocked = !this._staged.cameraLocked
+      e.currentTarget.classList.toggle('is-on', this._staged.cameraLocked)
+      e.currentTarget.setAttribute('aria-checked', String(this._staged.cameraLocked))
+      this._markUnsaved()
     })
 
     el.querySelector('#oe-record-waypoint').addEventListener('click', () => this._recordWaypoint())
     el.querySelector('#oe-play-toggle').addEventListener('click', () => this._togglePlay())
+  }
+
+  _markUnsaved () {
+    this._el?.querySelector('#oe-unsaved-banner')?.classList.add('is-visible')
+  }
+
+  /** Save button — the ONLY place staged appearance changes actually
+   *  take effect: merged into the real (applied) state, persisted, and
+   *  pushed onto the avatar in the scene. Everything else on this
+   *  panel (waypoints, backing circles) is unaffected — those commit
+   *  immediately, as before; this staged pattern covers appearance
+   *  fields specifically, per explicit request to match Admin/Chronos. */
+  _save () {
+    const mediaChanged = this._staged.mediaUrl !== this._state.mediaUrl || this._staged.mediaType !== this._state.mediaType
+
+    Object.assign(this._state, {
+      mode: this._staged.mode,
+      panelX: this._staged.panelX, panelY: this._staged.panelY,
+      scenePos: { ...this._staged.scenePos },
+      radius: this._staged.radius,
+      color: { ...this._staged.color },
+      cameraLocked: this._staged.cameraLocked,
+      mediaUrl: this._staged.mediaUrl,
+      mediaType: this._staged.mediaType,
+    })
+    saveState(this._state)
+    this._applyStateToAvatar()
+    if (mediaChanged) this._loadMedia(this._state.mediaUrl, this._state.mediaType)
+
+    this._el?.querySelector('#oe-unsaved-banner')?.classList.remove('is-visible')
   }
 
   _openInspector () {
@@ -753,11 +937,28 @@ export default class OmniExpression {
 
   _syncPanelUI () {
     if (!this._el) return
-    this._el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', b.dataset.mode === this._state.mode))
-    this._el.querySelector('#oe-lock-section').style.display = this._state.mode === 'panel' ? '' : 'none'
+    const s = this._staged
+    this._el.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('is-active', b.dataset.mode === s.mode))
+    this._el.querySelector('#oe-lock-section').style.display = s.mode === 'panel' ? '' : 'none'
     const urlInput = this._el.querySelector('#oe-media-url')
-    if (urlInput) urlInput.value = this._state.mediaUrl
-    this._el.querySelectorAll('[data-media-type]').forEach(b => b.classList.toggle('is-active', b.dataset.mediaType === this._state.mediaType))
+    if (urlInput) urlInput.value = s.mediaUrl
+    this._el.querySelectorAll('[data-media-type]').forEach(b => b.classList.toggle('is-active', b.dataset.mediaType === s.mediaType))
+    const radiusSlider = this._el.querySelector('#oe-radius-slider')
+    const radiusNum = this._el.querySelector('#oe-radius-num')
+    if (radiusSlider) radiusSlider.value = s.radius
+    if (radiusNum) radiusNum.value = s.radius
+    ;['r', 'g', 'b', 'a'].forEach(ch => {
+      const input = this._el.querySelector(`[data-rgba="${ch}"]`)
+      const val = this._el.querySelector(`[data-rgba-val="${ch}"]`)
+      if (input) input.value = s.color[ch]
+      if (val) val.textContent = ch === 'a' ? Number(s.color[ch]).toFixed(2) : s.color[ch]
+    })
+    const cameraToggle = this._el.querySelector('#oe-camera-locked')
+    if (cameraToggle) {
+      cameraToggle.classList.toggle('is-on', s.cameraLocked)
+      cameraToggle.setAttribute('aria-checked', String(s.cameraLocked))
+    }
+    this._el.querySelector('#oe-unsaved-banner')?.classList.remove('is-visible')
   }
 
   // ── Waypoints / Timeline — the "spatial video editor" authoring layer ────
@@ -826,6 +1027,16 @@ export default class OmniExpression {
     this._el?.querySelector('#oe-play-toggle')?.classList.add('is-playing')
     if (this._el) this._el.querySelector('#oe-play-toggle').textContent = '■ Stop'
 
+    // Optional — off by default. When on, freezes the viewer's own
+    // camera for the duration of playback, same orbit-disable event
+    // systems/OmniPresenter.js already uses for its own fly-to. This
+    // does NOT contradict the "free will" default (avatar-only
+    // movement, camera untouched) — that stays the default; this is
+    // an explicit opt-in the Owner can turn on for a more guided feel.
+    if (this._state.cameraLocked) {
+      window.dispatchEvent(new CustomEvent('omni:orbit-disable'))
+    }
+
     const tl = gsap.timeline({
       onComplete: () => this._stopPlay(),
     })
@@ -881,6 +1092,9 @@ export default class OmniExpression {
     this._renderTimeline()
     const btn = this._el?.querySelector('#oe-play-toggle')
     if (btn) { btn.classList.remove('is-playing'); btn.textContent = '▶ Play' }
+    if (this._state.cameraLocked) {
+      window.dispatchEvent(new CustomEvent('omni:orbit-enable'))
+    }
   }
 
   open () {
@@ -890,6 +1104,7 @@ export default class OmniExpression {
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
+    this._playSound('open')
   }
 
   close () {
@@ -899,6 +1114,7 @@ export default class OmniExpression {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
   }
 
   minimize () {
@@ -909,6 +1125,7 @@ export default class OmniExpression {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
         id: 'omniexpression', label: '⟐OmniExpression', iconLabel: '⟐E',
@@ -916,6 +1133,13 @@ export default class OmniExpression {
         variant: 'orb',
       }
     }))
+  }
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
   }
 
   // ── Header drag / resize — same pattern as every other panel ─────────────

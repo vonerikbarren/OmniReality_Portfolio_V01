@@ -267,6 +267,7 @@ export default class OmniSelector {
     if (!this._preview) this._setupPreview()
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
+    this._playSound('open')
   }
 
   close () {
@@ -276,6 +277,7 @@ export default class OmniSelector {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
   }
 
   minimize () {
@@ -286,6 +288,7 @@ export default class OmniSelector {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
         id: 'omniselector', label: '⟐OmniSelect', iconLabel: '⟐S',
@@ -293,6 +296,13 @@ export default class OmniSelector {
         variant: 'orb',
       }
     }))
+  }
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────

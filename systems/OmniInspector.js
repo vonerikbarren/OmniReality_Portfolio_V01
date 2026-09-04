@@ -1119,6 +1119,19 @@ const STYLES = /* css */`
 
 /* ── Select / dropdown ────────────────────────────────────────────────────── */
 
+.oi-num-input {
+  flex              : 1 1 auto;
+  height            : 26px;
+  padding           : 0 8px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+}
+
 .oi-select {
   flex              : 1 1 auto;
   height            : 26px;
@@ -1506,7 +1519,7 @@ export default class OmniInspector {
     this._deleteArmTimer = null
     this._bannerTimer = null
     this._inspectPreview = null   // spinning preview of the ACTUAL loaded node
-    this._infoPlane = null   // floating plane showing External Display/Code
+    this._infoPlanes = new Map()   // nodeId -> { mesh, canvas, ctx2d, texture, offset, targetMesh } — floating planes showing External Display/Code; a Map (not a single ref) because Persistent mode lets more than one coexist
 
     // ── Loaded node ────────────────────────────────────────────────────
     this._currentId   = null   // node ID currently loaded
@@ -1562,19 +1575,20 @@ export default class OmniInspector {
       this._inspectPreview.mesh.rotation.y += delta * 0.4
       this._inspectPreview.renderer.render(this._inspectPreview.scene, this._inspectPreview.camera)
     }
-    if (this._infoPlane && this._currentMesh) {
+    this._infoPlanes.forEach(plane => {
+      if (!plane.targetMesh) return
       // Follows the node in case it moves/rotates, and always faces the
       // camera (billboard) so the text stays readable.
-      const worldPos = this._currentMesh.getWorldPosition(new THREE.Vector3())
-      this._infoPlane.mesh.position.copy(worldPos).add(this._infoPlane.offset)
-      this._infoPlane.mesh.lookAt(this.ctx.camera.position)
-    }
+      const worldPos = plane.targetMesh.getWorldPosition(new THREE.Vector3())
+      plane.mesh.position.copy(worldPos).add(plane.offset)
+      plane.mesh.lookAt(this.ctx.camera.position)
+    })
   }
 
   destroy () {
     this._teardownCreatePreview()
     this._teardownInspectPreview()
-    this._hideInfoPlane()
+    this._infoPlanes.forEach((_, nodeId) => this._hideInfoPlane(nodeId))
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
@@ -1711,13 +1725,17 @@ export default class OmniInspector {
 
   /** Clear the inspector back to its empty state. */
   clearNode () {
+    // Persistent mode — the whole point of the option — means the
+    // plane should survive deselection, so only hide it if this node
+    // wasn't marked persistent.
+    if (!this._ext?.persistent) this._hideInfoPlane(this._currentId)
+
     this._currentId   = null
     this._currentMesh = null
     this._currentData = null
     this._ext         = null
     this._teardownCreatePreview()
     this._teardownInspectPreview()
-    this._hideInfoPlane()
     this._el?.querySelector('#oi-inspect-preview-wrap')?.classList.remove('is-visible')
     this._showEmpty()
     this._updateFooter()
@@ -2514,9 +2532,34 @@ export default class OmniInspector {
         <span class="oi-label" style="width:auto">Show External on plane</span>
         <button class="oi-toggle ${ext.showOnPlane ? 'is-on' : ''}" id="oi-show-on-plane" role="switch" aria-checked="${ext.showOnPlane}"></button>
       </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Persistent (survives deselect)</span>
+        <button class="oi-toggle ${ext.persistent ? 'is-on' : ''}" id="oi-plane-persistent" role="switch" aria-checked="${ext.persistent}"></button>
+      </div>
+      <div class="oi-data-note">
+        Off by default — the plane normally disappears when you click
+        away from this object, same as before. Turn this on to leave
+        it floating in place, so you can build up different pieces of
+        information scattered through the space as you move around,
+        instead of losing each one the moment you look elsewhere.
+      </div>
       <div class="oi-data-note">
         External fields render onto a floating plane next to the object
-        in the 3D world while this is on.
+        in the 3D world while this is on. The data in this field is
+        rarely uniform in length — resize the plane below to fit it.
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Width (X)</span>
+        <input type="number" class="oi-num-input" id="oi-plane-width" min="0.5" max="20" step="0.1" value="${ext.planeWidth ?? 2.4}">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Height (Y)</span>
+        <input type="number" class="oi-num-input" id="oi-plane-height" min="0.5" max="20" step="0.1" value="${ext.planeHeight ?? 2.4}">
+      </div>
+      <div class="oi-data-note">
+        No Z field here — this is a flat plane, so depth wouldn't do
+        anything visually. Say the word if you'd rather it be a thin
+        box instead, so Z actually means something.
       </div>
     `
   }
@@ -2546,6 +2589,30 @@ export default class OmniInspector {
       if (next) this._showInfoPlane(data, ext)
       else this._hideInfoPlane()
     })
+
+    const persistentToggle = body.querySelector('#oi-plane-persistent')
+    persistentToggle?.addEventListener('click', () => {
+      const next = !persistentToggle.classList.contains('is-on')
+      persistentToggle.classList.toggle('is-on', next)
+      persistentToggle.setAttribute('aria-checked', String(next))
+      ext.persistent = next
+      this._saveExt()
+    })
+
+    let planeSizeTimer = null
+    const onPlaneSizeChange = () => {
+      const w = parseFloat(body.querySelector('#oi-plane-width')?.value)
+      const h = parseFloat(body.querySelector('#oi-plane-height')?.value)
+      ext.planeWidth = Number.isFinite(w) && w > 0 ? w : 2.4
+      ext.planeHeight = Number.isFinite(h) && h > 0 ? h : 2.4
+      clearTimeout(planeSizeTimer)
+      planeSizeTimer = setTimeout(() => {
+        this._saveExt()
+        if (ext.showOnPlane) this._resizeInfoPlane(ext)
+      }, 250)
+    }
+    body.querySelector('#oi-plane-width')?.addEventListener('input', onPlaneSizeChange)
+    body.querySelector('#oi-plane-height')?.addEventListener('input', onPlaneSizeChange)
 
     body.querySelector('#oi-internal-panel-open')?.addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('omni:internal-panel-open-request', {
@@ -3348,15 +3415,19 @@ export default class OmniInspector {
   _showInfoPlane (data, ext) {
     if (!this._currentMesh) return
 
-    if (!this._infoPlane) {
+    if (!this._infoPlanes.has(data.id)) {
+      const width = ext.planeWidth ?? 2.4
+      const height = ext.planeHeight ?? 2.4
       const canvas = document.createElement('canvas')
+      // Canvas resolution stays proportional to the plane's aspect
+      // ratio — otherwise a non-square plane would stretch the text.
       canvas.width = 512
-      canvas.height = 512
+      canvas.height = Math.round(512 * (height / width))
       const texture = new THREE.CanvasTexture(canvas)
       const mat = new THREE.MeshBasicMaterial({
         map: texture, transparent: true, side: THREE.DoubleSide, depthTest: false,
       })
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), mat)
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat)
       mesh.renderOrder = 999   // always draw on top, like a HUD label
       this.ctx.scene.add(mesh)
 
@@ -3365,24 +3436,56 @@ export default class OmniInspector {
       const scale = this._currentMesh.scale
       const offset = new THREE.Vector3(2 + Math.max(scale.x, scale.y, scale.z), 0, 0)
 
-      this._infoPlane = { mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset }
+      // targetMesh is captured here, not read from this._currentMesh
+      // later — once Persistent mode lets this plane outlive the
+      // Inspector moving on to a different node, this._currentMesh
+      // will no longer refer to the right object.
+      this._infoPlanes.set(data.id, { mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset, targetMesh: this._currentMesh })
     }
 
-    this._updateInfoPlaneTexture()
+    this._updateInfoPlaneTexture(data.id)
   }
 
-  _hideInfoPlane () {
-    if (!this._infoPlane) return
-    this.ctx.scene.remove(this._infoPlane.mesh)
-    this._infoPlane.mesh.geometry.dispose()
-    this._infoPlane.mesh.material.dispose()
-    this._infoPlane.texture.dispose()
-    this._infoPlane = null
+  /** Called when the Width/Height fields change — rebuilds the plane
+   *  geometry and proportionally resizes the canvas, since a plain
+   *  scale transform would stretch the rendered text instead of
+   *  reflowing it at the new size. */
+  _resizeInfoPlane (ext, nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    const width = ext.planeWidth ?? 2.4
+    const height = ext.planeHeight ?? 2.4
+
+    plane.mesh.geometry.dispose()
+    plane.mesh.geometry = new THREE.PlaneGeometry(width, height)
+
+    plane.canvas.width = 512
+    plane.canvas.height = Math.round(512 * (height / width))
+    // Canvas resize clears its content — recreate the 2D context
+    // reference and let _updateInfoPlaneTexture redraw everything.
+    plane.ctx2d = plane.canvas.getContext('2d')
+
+    this._updateInfoPlaneTexture(nodeId)
   }
 
-  _updateInfoPlaneTexture () {
-    if (!this._infoPlane) return
-    const { ctx2d: c, canvas } = this._infoPlane
+  /** Removes ONE specific plane (by node id) — never all of them, since
+   *  Persistent mode means other nodes' planes may still be showing.
+   *  Defaults to the currently-loaded node for old call sites that
+   *  don't pass an id explicitly. */
+  _hideInfoPlane (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    this.ctx.scene.remove(plane.mesh)
+    plane.mesh.geometry.dispose()
+    plane.mesh.material.dispose()
+    plane.texture.dispose()
+    this._infoPlanes.delete(nodeId)
+  }
+
+  _updateInfoPlaneTexture (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    const { ctx2d: c, canvas } = plane
     const ext = this._ext ?? {}
 
     c.clearRect(0, 0, canvas.width, canvas.height)
@@ -3392,23 +3495,47 @@ export default class OmniInspector {
     c.fillRect(0, 0, canvas.width, canvas.height)
     c.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
 
+    /** Preserves the text's actual shape — real line breaks and each
+     *  line's leading indentation stay intact — rather than treating
+     *  all whitespace (including newlines) as interchangeable and
+     *  re-flowing everything into generic word-wrap. A line only gets
+     *  word-wrapped if it's genuinely too wide for the canvas; when it
+     *  is, the wrapped continuation still carries the same indent
+     *  prefix, so pasted JSON/code keeps reading as itself. */
     const wrapText = (text, x, y, maxWidth, lineHeight, maxLines) => {
-      const words = (text ?? '').split(/\s+/)
-      let line = ''
-      let lines = 0
-      for (const word of words) {
-        const test = line ? line + ' ' + word : word
-        if (c.measureText(test).width > maxWidth && line) {
-          c.fillText(line, x, y)
-          line = word
+      const rawLines = (text ?? '').replace(/\t/g, '  ').split('\n')
+      let count = 0
+      for (const rawLine of rawLines) {
+        if (count >= maxLines) { c.fillText('…', x, y); return y }
+
+        const indentMatch = rawLine.match(/^ */)
+        const indent = indentMatch ? indentMatch[0] : ''
+        const content = rawLine.slice(indent.length)
+
+        if (content === '') {
           y += lineHeight
-          lines++
-          if (lines >= maxLines) { c.fillText(line + ' …', x, y); return y }
-        } else {
-          line = test
+          count++
+          continue
         }
+
+        const words = content.split(' ')
+        let line = ''
+        for (const word of words) {
+          const test = line ? line + ' ' + word : word
+          if (c.measureText(indent + test).width > maxWidth && line) {
+            c.fillText(indent + line, x, y)
+            y += lineHeight
+            count++
+            if (count >= maxLines) { c.fillText('…', x, y); return y }
+            line = word
+          } else {
+            line = test
+          }
+        }
+        c.fillText(indent + line, x, y)
+        y += lineHeight
+        count++
       }
-      if (line) c.fillText(line, x, y)
       return y
     }
 
@@ -3434,7 +3561,7 @@ export default class OmniInspector {
     c.font = '14px "Courier New", monospace'
     wrapText(ext.externalCode || '(empty)', 24, y + 30, canvas.width - 48, 19, 10)
 
-    this._infoPlane.texture.needsUpdate = true
+    plane.texture.needsUpdate = true
   }
 
   /** Same squash-swap-restore approximation as OmniDraw's Domain
@@ -3751,6 +3878,9 @@ export default class OmniInspector {
       externalCode    : '',
       showOnPlane     : false,
       materialProps   : {},
+      planeWidth      : 2.4,
+      planeHeight     : 2.4,
+      persistent      : false,
     }
   }
 
@@ -3882,7 +4012,9 @@ export default class OmniInspector {
 
     // Node deleted → clear if this was the loaded node
     this._onDeleted = (e) => {
-      if (e.detail?.id === this._currentId) this.clearNode()
+      const deletedId = e.detail?.id
+      this._hideInfoPlane(deletedId)   // clean up a persistent plane too, if this node had one
+      if (deletedId === this._currentId) this.clearNode()
     }
 
     // Full node array — cached for the parent picker, and used to keep

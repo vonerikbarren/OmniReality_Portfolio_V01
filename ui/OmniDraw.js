@@ -619,6 +619,7 @@ export default class OmniDraw {
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     flashHeaderLine(this._el.querySelector('.od-header'), 'rgba(255,255,255,0.9)')
     this._isOpen = true
+    this._playSound('open')
   }
 
   close () {
@@ -628,6 +629,7 @@ export default class OmniDraw {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
   }
 
   minimize () {
@@ -639,6 +641,7 @@ export default class OmniDraw {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
 
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
@@ -649,6 +652,13 @@ export default class OmniDraw {
         variant  : 'orb',
       }
     }))
+  }
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────

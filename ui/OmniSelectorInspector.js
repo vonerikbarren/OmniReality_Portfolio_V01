@@ -199,6 +199,7 @@ export default class OmniSelectorInspector {
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
+    this._playSound('open')
   }
 
   close () {
@@ -208,6 +209,14 @@ export default class OmniSelectorInspector {
       onComplete: () => { this._el.style.visibility = 'hidden' },
     })
     this._isOpen = false
+    this._playSound('close')
+  }
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
   }
 
   // ── DOM ──────────────────────────────────────────────────────────────────
