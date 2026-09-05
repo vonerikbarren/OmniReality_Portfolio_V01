@@ -243,8 +243,13 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
   
 
-  // Single delegated listener on the UI shell — fires on every
-  // click except drawer items.
+  // Single delegated listener on the UI shell — fires on every click
+  // except drawer items, EXCEPT when something more specific (a
+  // panel's own open/close/minimize button, or anything else that
+  // calls Sound.play itself) already played a sound for this exact
+  // click — direct/target handlers always run before this ancestor
+  // listener sees the event, so playedThisTick reflects that
+  // correctly without needing to enumerate every button by name.
   document.getElementById('omni-ui')?.addEventListener('click', (e) => {
     let el = e.target
     while (el && el.id !== 'omni-ui') {
@@ -254,6 +259,7 @@ import * as ThemeManager from './ui/ThemeManager.js'
       ) return
       el = el.parentElement
     }
+    if (Sound.playedThisTick) return
     Sound.play('click')
   })
 

@@ -24,9 +24,9 @@
  *
  *   const Sound = new SoundManager({
  *     sounds: {
- *       click : './sounds/click.wav',
- *       open  : './sounds/open.wav',
- *       close : './sounds/close.wav',
+ *       click : './assets/sounds/click.wav',
+ *       open  : './assets/sounds/open.wav',
+ *       close : './assets/sounds/close.wav',
  *     }
  *   })
  *
@@ -63,9 +63,9 @@ const LOAD_TIMEOUT_MS = 8000   // give up waiting for Howler after 8 s
 // ── Default sound paths (relative to index.html) ─────────────────────────────
 
 const DEFAULT_SOUNDS = {
-  click : './sounds/click.wav',
-  open  : './sounds/open.wav',
-  close : './sounds/close.wav',
+  click : './assets/sounds/click.wav',
+  open  : './assets/sounds/open.wav',
+  close : './assets/sounds/close.wav',
 }
 
 // ── SoundManager ──────────────────────────────────────────────────────────────
@@ -89,6 +89,7 @@ export default class SoundManager {
     this._howls  = new Map()   // id → Howl instance
     this._loaded = false
     this._warned = false       // one-time degradation warning
+    this._playedThisTick = false
   }
 
   // ── Public interface ─────────────────────────────────────────────────────
@@ -120,6 +121,14 @@ export default class SoundManager {
     return this
   }
 
+  /** @returns {boolean} true if play() was called synchronously during
+   *  the current click's dispatch (i.e. by a more specific handler that
+   *  ran first, since direct/target handlers fire before an ancestor's
+   *  delegated listener). Lets a generic "click" fallback sound defer
+   *  to whatever a button already played for itself, instead of
+   *  layering a second, more generic sound on top of it. */
+  get playedThisTick () { return this._playedThisTick }
+
   /**
    * Play a sound by ID.
    * No-op if: not loaded, muted, id unknown, or audio context suspended.
@@ -134,6 +143,9 @@ export default class SoundManager {
       this._warn(`Unknown sound id: "${id}"`)
       return
     }
+
+    this._playedThisTick = true
+    setTimeout(() => { this._playedThisTick = false }, 0)
 
     try {
       // Howler returns the sound's unique play ID — we don't need to track it
