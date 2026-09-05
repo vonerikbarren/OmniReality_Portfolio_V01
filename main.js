@@ -59,6 +59,7 @@ import OmniSelector      from './ui/OmniSelector.js'
 import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
 import OmniChronos from './ui/OmniChronos.js'
 import OmniInternalPanel from './ui/OmniInternalPanel.js'
+import PanelControl from './ui/PanelControl.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -176,6 +177,9 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
   const omniInternalPanel = new OmniInternalPanel(base.context)
   base.addModule(omniInternalPanel)
+
+  const panelControl = new PanelControl(base.context)
+  base.addModule(panelControl)
 
   const omniStartHUD = new OmniStartHUD(base.context)
   base.addModule(omniStartHUD)

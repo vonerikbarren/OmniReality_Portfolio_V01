@@ -106,7 +106,7 @@ const GLITCH_DUR = 0.20  // s  — glitch sequence total
 
 const DEFAULT_NODE_SCALE  = 0.8     // world units — default new node radius/half-size
 const PLACE_Y_OFFSET      = 0.4     // lift node slightly above floor (y = 0)
-const HOVER_SCALE_FACTOR  = 1.12    // scale-up on hover
+const HOVER_SCALE_FACTOR  = 1.12    // scale-up on hover, RELATIVE to the node's own base scale — not an absolute target
 const SELECT_EMISSIVE     = 0x222244
 const PATH_START_EMISSIVE = 0x443300
 const FLOOR_PLANE         = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -985,6 +985,7 @@ export default class OmniNode {
     window.removeEventListener('omni:node-media-set',    this._onMediaSet)
     window.removeEventListener('omni:node-create-request', this._onCreateRequest)
     window.removeEventListener('omni:node-set-domain', this._onSetDomain)
+    window.removeEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
     window.removeEventListener('omni:enter-space-request', this._onEnterSpace)
     window.removeEventListener('omni:exit-space-request', this._onExitSpace)
     window.removeEventListener('omni:force-save', this._onForceSave)
@@ -1336,6 +1337,17 @@ export default class OmniNode {
     }
   }
 
+  /** Hover/select scale pulses need to be RELATIVE to a node's own
+   *  actual scale, not an absolute target — otherwise any node that
+   *  isn't at scale 1 (a domain marked via "Is Domain," scaled to 10x;
+   *  or anything the user resized via the Inspector) would visibly
+   *  snap back down to scale 1 the moment it's deselected or
+   *  hover-ends, even though its real saved scale never changed. */
+  _baseScale (entry) {
+    const [x, y, z] = entry.data.scale ?? [1, 1, 1]
+    return { x, y, z }
+  }
+
   _setHover (id) {
     this._hovered = id
     const entry = this._nodes.get(id)
@@ -1343,8 +1355,9 @@ export default class OmniNode {
     const mesh = entry.mesh
     // Only scale-pulse meshes (not LineSegments)
     if (mesh instanceof THREE.Mesh) {
+      const base = this._baseScale(entry)
       gsap.to(mesh.scale, {
-        x: HOVER_SCALE_FACTOR, y: HOVER_SCALE_FACTOR, z: HOVER_SCALE_FACTOR,
+        x: base.x * HOVER_SCALE_FACTOR, y: base.y * HOVER_SCALE_FACTOR, z: base.z * HOVER_SCALE_FACTOR,
         duration: 0.18, ease: 'power2.out'
       })
     }
@@ -1355,9 +1368,10 @@ export default class OmniNode {
     const entry = this._nodes.get(this._hovered)
     if (entry?.mesh instanceof THREE.Mesh) {
       const isSelected = this._hovered === this._selected
-      const target = isSelected ? 1.04 : 1.0
+      const factor = isSelected ? 1.04 : 1.0
+      const base = this._baseScale(entry)
       gsap.to(entry.mesh.scale, {
-        x: target, y: target, z: target,
+        x: base.x * factor, y: base.y * factor, z: base.z * factor,
         duration: 0.18, ease: 'power2.out'
       })
     }
@@ -1586,7 +1600,8 @@ export default class OmniNode {
 
     if (mesh instanceof THREE.Mesh) {
       mesh.material.emissive?.setHex(SELECT_EMISSIVE)
-      gsap.to(mesh.scale, { x: 1.04, y: 1.04, z: 1.04, duration: 0.15 })
+      const base = this._baseScale(entry)
+      gsap.to(mesh.scale, { x: base.x * 1.04, y: base.y * 1.04, z: base.z * 1.04, duration: 0.15 })
     }
 
     this._updateNodeList()
@@ -1602,7 +1617,8 @@ export default class OmniNode {
     const entry = this._nodes.get(this._selected)
     if (entry?.mesh instanceof THREE.Mesh) {
       entry.mesh.material.emissive?.setHex(0x000000)
-      gsap.to(entry.mesh.scale, { x: 1, y: 1, z: 1, duration: 0.15 })
+      const base = this._baseScale(entry)
+      gsap.to(entry.mesh.scale, { x: base.x, y: base.y, z: base.z, duration: 0.15 })
     }
 
     this._selected = null
@@ -2465,6 +2481,20 @@ export default class OmniNode {
     window.addEventListener('omni:node-media-set',    this._onMediaSet)
     window.addEventListener('omni:node-create-request', this._onCreateRequest)
     window.addEventListener('omni:node-set-domain', this._onSetDomain)
+
+    // Rotation automation — previously only ever set once, at
+    // creation time, via ui/OmniDraw.js's schema, with no way to
+    // adjust it afterward on an already-placed object. Mirrors
+    // WallpaperSphere's own pattern: stays editable anytime, not just
+    // at the moment of creation.
+    this._onRotationAutomationSet = (e) => {
+      const { id, ...patch } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+      Object.assign(entry.data, patch)
+      this._save()
+    }
+    window.addEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
     window.addEventListener('omni:enter-space-request', this._onEnterSpace)
     window.addEventListener('omni:exit-space-request', this._onExitSpace)
     window.addEventListener('omni:force-save', this._onForceSave)

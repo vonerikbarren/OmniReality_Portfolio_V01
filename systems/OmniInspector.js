@@ -1577,11 +1577,12 @@ export default class OmniInspector {
     }
     this._infoPlanes.forEach(plane => {
       if (!plane.targetMesh) return
-      // Follows the node in case it moves/rotates, and always faces the
-      // camera (billboard) so the text stays readable.
+      // Follows the node in case it moves/rotates. Facing the camera
+      // (billboard) is now optional — static planes keep whatever
+      // orientation they had when created, per the Face Camera toggle.
       const worldPos = plane.targetMesh.getWorldPosition(new THREE.Vector3())
       plane.mesh.position.copy(worldPos).add(plane.offset)
-      plane.mesh.lookAt(this.ctx.camera.position)
+      if (plane.faceCamera) plane.mesh.lookAt(this.ctx.camera.position)
     })
   }
 
@@ -1594,6 +1595,8 @@ export default class OmniInspector {
     window.removeEventListener('omni:system-toggle', this._onToggle)
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:node-selected', this._onSelected)
+    window.removeEventListener('wheel', this._onWheel)
+    window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
@@ -1932,7 +1935,7 @@ export default class OmniInspector {
 
     const labels = {
       identity: 'Identity', hierarchy: 'Hierarchy', domain: 'Domain',
-      appearance: 'Appearance', media: 'Media', create: 'Create New',
+      appearance: 'Appearance', automation: 'Automation', media: 'Media', create: 'Create New',
     }
 
     const widgets = []
@@ -2065,6 +2068,7 @@ export default class OmniInspector {
       ${this._sectionHTML('hierarchy',  '▶ Hierarchy',  this._hierarchyHTML(data))}
       ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
+      ${this._sectionHTML('automation', '▶ Automation', this._automationHTML(data))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
       ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
       ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
@@ -2094,6 +2098,7 @@ export default class OmniInspector {
     this._wireHierarchy(body, data)
     this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
+    this._wireAutomation(body, data)
     this._wireMedia(body, ext)
     this._wireData(body, data, ext)
     this._wireCreateSection(body)
@@ -2221,6 +2226,114 @@ export default class OmniInspector {
   }
 
   // ── HIERARCHY section HTML ────────────────────────────────────────────────
+
+  /** Rotation automation for an already-placed object — same fields
+   *  ui/OmniDraw.js offers at creation time, but editable anytime here
+   *  instead of being locked in once at creation. Same pattern as
+   *  WallpaperSphere's own always-adjustable rotation. */
+  _automationHTML (data) {
+    const d = data
+    const rangeRow = (label, key, val, min = -5, max = 5, step = 0.1) => /* html */`
+      <div class="oi-row">
+        <span class="oi-row-label">${label}</span>
+        <input type="range" class="oi-mat-prop-range" data-auto-key="${key}" min="${min}" max="${max}" step="${step}" value="${val}">
+        <span class="oi-mat-prop-val" data-auto-val-for="${key}">${Number(val).toFixed(2)}</span>
+      </div>
+    `
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Auto-Rotate</span>
+        <button class="oi-toggle ${d.autoRotation ? 'is-on' : ''}" id="oi-auto-rotation" role="switch" aria-checked="${!!d.autoRotation}"></button>
+      </div>
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">X (vertical)</span>
+        <button class="oi-toggle ${d.autoRotationAxisX ? 'is-on' : ''}" data-auto-axis="X" role="switch" aria-checked="${!!d.autoRotationAxisX}"></button>
+      </div>
+      ${rangeRow('Speed X', 'autoRotationSpeedX', d.autoRotationSpeedX ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Y (horizontal)</span>
+        <button class="oi-toggle ${d.autoRotationAxisY ? 'is-on' : ''}" data-auto-axis="Y" role="switch" aria-checked="${!!d.autoRotationAxisY}"></button>
+      </div>
+      ${rangeRow('Speed Y', 'autoRotationSpeedY', d.autoRotationSpeedY ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Z (depth)</span>
+        <button class="oi-toggle ${d.autoRotationAxisZ ? 'is-on' : ''}" data-auto-axis="Z" role="switch" aria-checked="${!!d.autoRotationAxisZ}"></button>
+      </div>
+      ${rangeRow('Speed Z', 'autoRotationSpeedZ', d.autoRotationSpeedZ ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Look At</span>
+        <select class="oi-select" id="oi-lookat-mode">
+          ${['None', 'Camera', 'Coordinate'].map(m => `<option value="${m}" ${(d.lookAtMode ?? 'None') === m ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div id="oi-lookat-coord" style="${(d.lookAtMode ?? 'None') === 'Coordinate' ? '' : 'display:none'}">
+        <div class="oi-row">
+          <span class="oi-row-label">X</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="0" step="0.1" value="${d.lookAtCoordinate?.[0] ?? 0}">
+          <span class="oi-row-label">Y</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="1" step="0.1" value="${d.lookAtCoordinate?.[1] ?? 0}">
+          <span class="oi-row-label">Z</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="2" step="0.1" value="${d.lookAtCoordinate?.[2] ?? 0}">
+        </div>
+      </div>
+    `
+  }
+
+  _wireAutomation (body, data) {
+    const dispatch = (patch) => {
+      Object.assign(data, patch)
+      window.dispatchEvent(new CustomEvent('omni:node-rotation-automation-set', {
+        detail: { id: data.id, ...patch }
+      }))
+    }
+
+    body.querySelector('#oi-auto-rotation')?.addEventListener('click', (e) => {
+      const next = !e.currentTarget.classList.contains('is-on')
+      e.currentTarget.classList.toggle('is-on', next)
+      e.currentTarget.setAttribute('aria-checked', String(next))
+      dispatch({ autoRotation: next })
+    })
+
+    body.querySelectorAll('[data-auto-axis]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const axis = btn.dataset.autoAxis
+        const next = !btn.classList.contains('is-on')
+        btn.classList.toggle('is-on', next)
+        btn.setAttribute('aria-checked', String(next))
+        dispatch({ [`autoRotationAxis${axis}`]: next })
+      })
+    })
+
+    body.querySelectorAll('[data-auto-key]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const key = input.dataset.autoKey
+        const value = Number(e.target.value)
+        const valEl = body.querySelector(`[data-auto-val-for="${key}"]`)
+        if (valEl) valEl.textContent = value.toFixed(2)
+        dispatch({ [key]: value })
+      })
+    })
+
+    body.querySelector('#oi-lookat-mode')?.addEventListener('change', (e) => {
+      const mode = e.target.value
+      dispatch({ lookAtMode: mode })
+      const coordWrap = body.querySelector('#oi-lookat-coord')
+      if (coordWrap) coordWrap.style.display = mode === 'Coordinate' ? '' : 'none'
+    })
+
+    body.querySelectorAll('[data-lookat-coord]').forEach(input => {
+      input.addEventListener('input', () => {
+        const idx = Number(input.dataset.lookatCoord)
+        const coord = [...(data.lookAtCoordinate ?? [0, 0, 0])]
+        coord[idx] = Number(input.value)
+        dispatch({ lookAtCoordinate: coord })
+      })
+    })
+  }
 
   _hierarchyHTML (data) {
     const parentId = data.parentId ?? '—'
@@ -2362,16 +2475,19 @@ export default class OmniInspector {
             <span class="oi-xyz-label">X</span>
             <input class="oi-xyz-input" id="oi-px" type="number"
                    value="${pos.x}" step="0.1">
+            <input class="oi-mat-prop-range" id="oi-px-slider" type="range" min="-50" max="50" step="0.1" value="${pos.x}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Y</span>
             <input class="oi-xyz-input" id="oi-py" type="number"
                    value="${pos.y}" step="0.1">
+            <input class="oi-mat-prop-range" id="oi-py-slider" type="range" min="-50" max="50" step="0.1" value="${pos.y}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Z</span>
             <input class="oi-xyz-input" id="oi-pz" type="number"
                    value="${pos.z}" step="0.1">
+            <input class="oi-mat-prop-range" id="oi-pz-slider" type="range" min="-50" max="50" step="0.1" value="${pos.z}">
           </div>
         </div>
       </div>
@@ -2384,16 +2500,19 @@ export default class OmniInspector {
             <span class="oi-xyz-label">X</span>
             <input class="oi-xyz-input" id="oi-rx" type="number"
                    value="${rot.x}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-rx-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.x}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Y</span>
             <input class="oi-xyz-input" id="oi-ry" type="number"
                    value="${rot.y}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-ry-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.y}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Z</span>
             <input class="oi-xyz-input" id="oi-rz" type="number"
                    value="${rot.z}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-rz-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.z}">
           </div>
         </div>
       </div>
@@ -2406,16 +2525,19 @@ export default class OmniInspector {
             <span class="oi-xyz-label">X</span>
             <input class="oi-xyz-input" id="oi-sx" type="number"
                    value="${scl.x}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sx-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.x}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Y</span>
             <input class="oi-xyz-input" id="oi-sy" type="number"
                    value="${scl.y}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sy-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.y}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Z</span>
             <input class="oi-xyz-input" id="oi-sz" type="number"
                    value="${scl.z}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sz-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.z}">
           </div>
         </div>
       </div>
@@ -2536,6 +2658,37 @@ export default class OmniInspector {
         <span class="oi-label" style="width:auto">Persistent (survives deselect)</span>
         <button class="oi-toggle ${ext.persistent ? 'is-on' : ''}" id="oi-plane-persistent" role="switch" aria-checked="${ext.persistent}"></button>
       </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Face Camera</span>
+        <button class="oi-toggle ${ext.planeFaceCamera !== false ? 'is-on' : ''}" id="oi-plane-face-camera" role="switch" aria-checked="${ext.planeFaceCamera !== false}"></button>
+      </div>
+      <div class="oi-data-note">
+        On by default — the plane always turns to face you. Turn this
+        off to leave it at a fixed, static orientation instead (set
+        once, at whatever angle it happened to be created at).
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Auto-size to Content</span>
+        <button class="oi-toggle ${ext.planeAutoSize ? 'is-on' : ''}" id="oi-plane-autosize" role="switch" aria-checked="${ext.planeAutoSize}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Scrollable</span>
+        <button class="oi-toggle ${ext.planeScrollable ? 'is-on' : ''}" id="oi-plane-scrollable" role="switch" aria-checked="${ext.planeScrollable}"></button>
+      </div>
+      <div class="oi-row" id="oi-open-panelcontrol-row" style="${ext.planeScrollable ? '' : 'display:none'}">
+        <span class="oi-label" style="width:auto">Scroll Controls</span>
+        <button class="oi-btn-small" id="oi-open-panelcontrol">Open ⟐PanelControl</button>
+      </div>
+      <div class="oi-data-note">
+        Text always wraps to fit the Width you set below — the plane
+        itself never stretches or distorts to squeeze more in. For
+        content longer than the configured Height: Auto-size grows the
+        plane's actual height to fit everything, no cutoff. Scrollable
+        keeps the size you set and lets you scroll through it instead —
+        mouse wheel while looking at it, or open ⟐PanelControl for
+        button-based scrolling (works on mobile). With both off, content
+        past the configured height just clips at the edge.
+      </div>
       <div class="oi-data-note">
         Off by default — the plane normally disappears when you click
         away from this object, same as before. Turn this on to leave
@@ -2597,6 +2750,63 @@ export default class OmniInspector {
       persistentToggle.setAttribute('aria-checked', String(next))
       ext.persistent = next
       this._saveExt()
+    })
+
+    const faceCameraToggle = body.querySelector('#oi-plane-face-camera')
+    faceCameraToggle?.addEventListener('click', () => {
+      const next = !faceCameraToggle.classList.contains('is-on')
+      faceCameraToggle.classList.toggle('is-on', next)
+      faceCameraToggle.setAttribute('aria-checked', String(next))
+      ext.planeFaceCamera = next
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) plane.faceCamera = next
+    })
+
+    const autoSizeToggle = body.querySelector('#oi-plane-autosize')
+    autoSizeToggle?.addEventListener('click', () => {
+      const next = !autoSizeToggle.classList.contains('is-on')
+      autoSizeToggle.classList.toggle('is-on', next)
+      autoSizeToggle.setAttribute('aria-checked', String(next))
+      ext.planeAutoSize = next
+      if (next) {
+        ext.planeScrollable = false
+        const scrollToggle = body.querySelector('#oi-plane-scrollable')
+        scrollToggle?.classList.remove('is-on')
+        scrollToggle?.setAttribute('aria-checked', 'false')
+        const pcRow = body.querySelector('#oi-open-panelcontrol-row')
+        if (pcRow) pcRow.style.display = 'none'
+      }
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) { plane.autoSize = next; plane.scrollable = ext.planeScrollable; plane.scrollOffset = 0 }
+      if (ext.showOnPlane) this._resizeInfoPlane(ext)
+    })
+
+    const scrollableToggle = body.querySelector('#oi-plane-scrollable')
+    scrollableToggle?.addEventListener('click', () => {
+      const next = !scrollableToggle.classList.contains('is-on')
+      scrollableToggle.classList.toggle('is-on', next)
+      scrollableToggle.setAttribute('aria-checked', String(next))
+      ext.planeScrollable = next
+      if (next) {
+        ext.planeAutoSize = false
+        autoSizeToggle?.classList.remove('is-on')
+        autoSizeToggle?.setAttribute('aria-checked', 'false')
+      }
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) { plane.scrollable = next; plane.autoSize = ext.planeAutoSize; plane.scrollOffset = 0 }
+      if (ext.showOnPlane) this._resizeInfoPlane(ext)
+      const pcRow = body.querySelector('#oi-open-panelcontrol-row')
+      if (pcRow) pcRow.style.display = next ? '' : 'none'
+    })
+
+    // Opens the exact same way the drawer does — PanelControl already
+    // listens for this, so no new event/plumbing is needed just to
+    // surface an existing shortcut here.
+    body.querySelector('#oi-open-panelcontrol')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐PanelControl' } }))
     })
 
     let planeSizeTimer = null
@@ -3102,6 +3312,27 @@ export default class OmniInspector {
     body.querySelector('#oi-py')?.addEventListener('input', posHandler)
     body.querySelector('#oi-pz')?.addEventListener('input', posHandler)
 
+    // Slider <-> number sync for Position/Rotation/Scale — the slider
+    // drives its paired number field's value then re-dispatches
+    // 'input' on it, so the existing debounced handlers above (which
+    // read from the number fields by id) fire exactly as if the user
+    // had typed there. The number field also updates the slider on
+    // direct typing, so they never visibly disagree.
+    const syncSliderAndNumber = (numId, sliderId) => {
+      const numEl = body.querySelector(`#${numId}`)
+      const sliderEl = body.querySelector(`#${sliderId}`)
+      if (!numEl || !sliderEl) return
+      sliderEl.addEventListener('input', () => {
+        numEl.value = sliderEl.value
+        numEl.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      numEl.addEventListener('input', () => {
+        const v = parseFloat(numEl.value)
+        if (Number.isFinite(v)) sliderEl.value = v
+      })
+    }
+    ;['px', 'py', 'pz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz'].forEach(k => syncSliderAndNumber(`oi-${k}`, `oi-${k}-slider`))
+
     // ── Rotation XYZ (radians) ───────────────────────────────────────
 
     let rotTimer = null
@@ -3440,7 +3671,13 @@ export default class OmniInspector {
       // later — once Persistent mode lets this plane outlive the
       // Inspector moving on to a different node, this._currentMesh
       // will no longer refer to the right object.
-      this._infoPlanes.set(data.id, { mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset, targetMesh: this._currentMesh })
+      this._infoPlanes.set(data.id, {
+        mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset, targetMesh: this._currentMesh,
+        faceCamera: ext.planeFaceCamera !== false,
+        autoSize: !!ext.planeAutoSize,
+        scrollable: !!ext.planeScrollable,
+        scrollOffset: 0,
+      })
     }
 
     this._updateInfoPlaneTexture(data.id)
@@ -3482,84 +3719,155 @@ export default class OmniInspector {
     this._infoPlanes.delete(nodeId)
   }
 
-  _updateInfoPlaneTexture (nodeId = this._currentId) {
-    const plane = this._infoPlanes.get(nodeId)
-    if (!plane) return
-    const { ctx2d: c, canvas } = plane
-    const ext = this._ext ?? {}
+  /** Builds the full content as a flat list of drawable line-items —
+   *  headers, wrapped text lines (indent preserved), dividers, blanks —
+   *  without drawing anything yet. This measurement pass is what makes
+   *  auto-size and scrolling both possible: we need to know the total
+   *  content height BEFORE deciding whether to grow the plane to fit
+   *  it, or keep the configured size and let the user scroll through
+   *  it instead. Text wrapping only ever depends on canvas WIDTH,
+   *  which stays fixed regardless of mode — nothing here stretches the
+   *  plane horizontally to fit more; only height changes, per mode.
+   */
+  _buildInfoPlaneLayout (ctx2d, contentWidth, ext) {
+    const items = []   // { type, text, indent, color, font, height }
+    const LINE_H = 20
+    const HEADER_H = 34
+    const DIVIDER_H = 30
 
-    c.clearRect(0, 0, canvas.width, canvas.height)
-    c.fillStyle = 'rgba(8, 8, 14, 0.88)'
-    c.strokeStyle = 'rgba(255, 255, 255, 0.25)'
-    c.lineWidth = 3
-    c.fillRect(0, 0, canvas.width, canvas.height)
-    c.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
-
-    /** Preserves the text's actual shape — real line breaks and each
-     *  line's leading indentation stay intact — rather than treating
-     *  all whitespace (including newlines) as interchangeable and
-     *  re-flowing everything into generic word-wrap. A line only gets
-     *  word-wrapped if it's genuinely too wide for the canvas; when it
-     *  is, the wrapped continuation still carries the same indent
-     *  prefix, so pasted JSON/code keeps reading as itself. */
-    const wrapText = (text, x, y, maxWidth, lineHeight, maxLines) => {
+    const wrapInto = (text, color, font) => {
+      ctx2d.font = font
       const rawLines = (text ?? '').replace(/\t/g, '  ').split('\n')
-      let count = 0
       for (const rawLine of rawLines) {
-        if (count >= maxLines) { c.fillText('…', x, y); return y }
-
         const indentMatch = rawLine.match(/^ */)
         const indent = indentMatch ? indentMatch[0] : ''
         const content = rawLine.slice(indent.length)
 
-        if (content === '') {
-          y += lineHeight
-          count++
-          continue
-        }
+        if (content === '') { items.push({ type: 'blank', height: LINE_H }); continue }
 
         const words = content.split(' ')
         let line = ''
         for (const word of words) {
           const test = line ? line + ' ' + word : word
-          if (c.measureText(indent + test).width > maxWidth && line) {
-            c.fillText(indent + line, x, y)
-            y += lineHeight
-            count++
-            if (count >= maxLines) { c.fillText('…', x, y); return y }
+          if (ctx2d.measureText(indent + test).width > contentWidth && line) {
+            items.push({ type: 'text', text: indent + line, color, font, height: LINE_H })
             line = word
           } else {
             line = test
           }
         }
-        c.fillText(indent + line, x, y)
-        y += lineHeight
-        count++
+        items.push({ type: 'text', text: indent + line, color, font, height: LINE_H })
       }
-      return y
     }
 
-    // "DISPLAY" section
-    c.fillStyle = 'rgba(150, 220, 255, 0.9)'
-    c.font = 'bold 20px "Courier New", monospace'
-    c.fillText('DISPLAY', 24, 40)
-    c.fillStyle = 'rgba(255, 255, 255, 0.92)'
-    c.font = '16px "Courier New", monospace'
-    let y = wrapText(ext.externalDisplay || '(empty)', 24, 72, canvas.width - 48, 22, 8)
+    items.push({ type: 'header', text: 'DISPLAY', color: 'rgba(150, 220, 255, 0.9)', font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalDisplay || '(empty)', 'rgba(255, 255, 255, 0.92)', '16px "Courier New", monospace')
+    items.push({ type: 'divider', height: DIVIDER_H })
+    items.push({ type: 'header', text: 'CODE', color: 'rgba(150, 255, 190, 0.9)', font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalCode || '(empty)', 'rgba(150, 255, 190, 0.85)', '14px "Courier New", monospace')
 
-    // Divider
-    y += 24
-    c.strokeStyle = 'rgba(255,255,255,0.15)'
-    c.beginPath(); c.moveTo(24, y); c.lineTo(canvas.width - 24, y); c.stroke()
+    return items
+  }
 
-    // "CODE" section
-    y += 32
-    c.fillStyle = 'rgba(150, 255, 190, 0.9)'
-    c.font = 'bold 20px "Courier New", monospace'
-    c.fillText('CODE', 24, y)
-    c.fillStyle = 'rgba(150, 255, 190, 0.85)'
-    c.font = '14px "Courier New", monospace'
-    wrapText(ext.externalCode || '(empty)', 24, y + 30, canvas.width - 48, 19, 10)
+  /** Scrolls whichever plane is currently loaded in the Inspector, by
+   *  a raw pixel amount — shared by the mouse-wheel handler and
+   *  ui/PanelControl.js's button commands, so there's one real
+   *  scrolling mechanism, not two that could drift apart. */
+  _scrollInfoPlane (amount, nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane || !plane.scrollable || plane.autoSize) return
+    plane.scrollOffset = (plane.scrollOffset ?? 0) + amount
+    this._updateInfoPlaneTexture(nodeId)
+  }
+
+  _infoPlanePageHeight (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    return (plane?.canvas.height ?? 300) * 0.7
+  }
+
+  _updateInfoPlaneTexture (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    const { ctx2d: c } = plane
+    const ext = this._ext ?? {}
+    const TOP = 40
+    const SIDE = 24
+    const BOTTOM = 20
+
+    const items = this._buildInfoPlaneLayout(c, plane.canvas.width - SIDE * 2, ext)
+    const contentHeight = items.reduce((sum, i) => sum + i.height, 0)
+
+    if (plane.autoSize) {
+      // Grow the REAL plane height to fit everything — width is never
+      // touched, so text never stretches, only the canvas/plane gets
+      // taller to hold more of it.
+      const neededHeight = TOP + contentHeight + BOTTOM
+      const aspect = ext.planeWidth && ext.planeHeight ? ext.planeHeight / ext.planeWidth : 1
+      const currentPixelHeight = plane.canvas.width * aspect
+      if (Math.abs(neededHeight - plane.canvas.height) > 4) {
+        plane.canvas.height = Math.max(neededHeight, 64)
+        plane.ctx2d = plane.canvas.getContext('2d')
+        const worldWidth = ext.planeWidth ?? 2.4
+        const worldHeight = worldWidth * (plane.canvas.height / plane.canvas.width)
+        plane.mesh.geometry.dispose()
+        plane.mesh.geometry = new THREE.PlaneGeometry(worldWidth, worldHeight)
+        return this._updateInfoPlaneTexture(nodeId)   // canvas was replaced — redraw against the fresh context
+      }
+    }
+
+    const { ctx2d: c2, canvas } = plane
+    c2.clearRect(0, 0, canvas.width, canvas.height)
+    c2.fillStyle = 'rgba(8, 8, 14, 0.88)'
+    c2.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+    c2.lineWidth = 3
+    c2.fillRect(0, 0, canvas.width, canvas.height)
+    c2.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
+
+    const visibleHeight = canvas.height - TOP - BOTTOM
+    const maxScroll = Math.max(0, contentHeight - visibleHeight)
+    const clipPadding = 4
+
+    if (plane.scrollable && !plane.autoSize) {
+      plane.scrollOffset = Math.min(Math.max(plane.scrollOffset ?? 0, 0), maxScroll)
+    } else {
+      plane.scrollOffset = 0
+    }
+
+    // Clip to the plane's own bounds so scrolled/overflowing content
+    // never draws outside it — otherwise a scrolled-past line would
+    // visibly poke out past the border.
+    c2.save()
+    c2.beginPath()
+    c2.rect(0, TOP - clipPadding, canvas.width, visibleHeight + clipPadding)
+    c2.clip()
+
+    let y = TOP - plane.scrollOffset
+    for (const item of items) {
+      if (item.type === 'divider') {
+        if (y > TOP - 20 && y < canvas.height) {
+          c2.strokeStyle = 'rgba(255,255,255,0.15)'
+          c2.beginPath(); c2.moveTo(SIDE, y); c2.lineTo(canvas.width - SIDE, y); c2.stroke()
+        }
+      } else if (item.type === 'text' || item.type === 'header') {
+        if (y > TOP - item.height && y < canvas.height) {
+          c2.fillStyle = item.color
+          c2.font = item.font
+          c2.fillText(item.text, SIDE, y)
+        }
+      }
+      y += item.height
+    }
+    c2.restore()
+
+    // Scrollable-with-overflow gets a visible scrollbar affordance —
+    // otherwise there's no indication there's more content below.
+    if (plane.scrollable && !plane.autoSize && maxScroll > 0) {
+      const barTrackH = visibleHeight
+      const barH = Math.max(20, barTrackH * (visibleHeight / contentHeight))
+      const barY = TOP + (barTrackH - barH) * (plane.scrollOffset / maxScroll)
+      c2.fillStyle = 'rgba(255,255,255,0.3)'
+      c2.fillRect(canvas.width - 10, barY, 5, barH)
+    }
 
     plane.texture.needsUpdate = true
   }
@@ -3881,6 +4189,9 @@ export default class OmniInspector {
       planeWidth      : 2.4,
       planeHeight     : 2.4,
       persistent      : false,
+      planeFaceCamera : true,
+      planeAutoSize   : false,
+      planeScrollable : false,
     }
   }
 
@@ -4071,6 +4382,49 @@ export default class OmniInspector {
     window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
 
     window.addEventListener('omni:node-selected', this._onSelected)
+
+    // Scroll interaction for Scrollable info-planes — raycasts on
+    // wheel so scrolling only affects a plane the mouse is actually
+    // pointing at, the same way scrolling a real 3D world object
+    // should work, rather than a screen-space hotkey.
+    this._onWheel = (e) => {
+      if (this._infoPlanes.size === 0) return
+      const scrollablePlanes = [...this._infoPlanes.values()].filter(p => p.scrollable && !p.autoSize)
+      if (scrollablePlanes.length === 0) return
+
+      const rect = this.ctx.renderer.domElement.getBoundingClientRect()
+      const ndc = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      )
+      const raycaster = new THREE.Raycaster()
+      raycaster.setFromCamera(ndc, this.ctx.camera)
+      const hits = raycaster.intersectObjects(scrollablePlanes.map(p => p.mesh), false)
+      if (hits.length === 0) return
+
+      e.preventDefault()
+      const hitMesh = hits[0].object
+      const plane = scrollablePlanes.find(p => p.mesh === hitMesh)
+      const nodeId = [...this._infoPlanes.entries()].find(([, p]) => p === plane)?.[0]
+      if (!nodeId) return
+
+      this._scrollInfoPlane(e.deltaY * 0.5, nodeId)
+    }
+    window.addEventListener('wheel', this._onWheel, { passive: false })
+
+    // ui/PanelControl.js's button commands — applies to whichever node
+    // is currently loaded in this Inspector. Kept as an abstract
+    // direction command rather than PanelControl reaching into plane
+    // internals itself, so this Inspector stays the one place that
+    // owns the actual scrolling mechanism.
+    this._onPanelControlScroll = (e) => {
+      const { direction } = e.detail ?? {}
+      const page = this._infoPlanePageHeight()
+      const amounts = { up: -24, down: 24, pageup: -page, pagedown: page }
+      if (amounts[direction] !== undefined) this._scrollInfoPlane(amounts[direction])
+    }
+    window.addEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
+
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)
     window.addEventListener('omni:node-deleted',  this._onDeleted)
