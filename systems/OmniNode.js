@@ -991,6 +991,7 @@ export default class OmniNode {
     window.removeEventListener('omni:force-save', this._onForceSave)
     window.removeEventListener('omni:node-parent-set', this._onParentSet)
     window.removeEventListener('omni:genealogy-select-request', this._onGenealogySelect)
+    window.removeEventListener('omni:nodes-request', this._onNodesRequest)
 
     const canvas = this.ctx.renderer?.domElement
     if (canvas) {
@@ -2500,6 +2501,14 @@ export default class OmniNode {
     window.addEventListener('omni:force-save', this._onForceSave)
     window.addEventListener('omni:node-parent-set', this._onParentSet)
     window.addEventListener('omni:genealogy-select-request', this._onGenealogySelect)
+
+    // On-demand snapshot — for anything (e.g. ui/OmniInspection.js)
+    // that needs the current node list right now, rather than relying
+    // on having already caught a prior passive nodes-updated broadcast.
+    this._onNodesRequest = () => {
+      window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    }
+    window.addEventListener('omni:nodes-request', this._onNodesRequest)
 
     // Escape key — cancel place mode or deselect
     document.addEventListener('keydown', (e) => {
