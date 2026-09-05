@@ -992,6 +992,7 @@ export default class OmniNode {
     window.removeEventListener('omni:node-parent-set', this._onParentSet)
     window.removeEventListener('omni:genealogy-select-request', this._onGenealogySelect)
     window.removeEventListener('omni:nodes-request', this._onNodesRequest)
+    window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
 
     const canvas = this.ctx.renderer?.domElement
     if (canvas) {
@@ -2510,6 +2511,38 @@ export default class OmniNode {
     }
     window.addEventListener('omni:nodes-request', this._onNodesRequest)
 
+    // Clear Scene — from ui/AdminPanel.js's Data Management section.
+    // Disposes every mesh/edge properly (not just removing from the
+    // scene graph — geometry/material/texture memory too), clears
+    // storage, and broadcasts the empty result so every other panel
+    // watching node state (Inspector, PanelControl, OmniInspection)
+    // correctly reflects the now-empty scene rather than holding
+    // references to meshes that no longer exist.
+    this._onSceneClear = () => {
+      this._nodes.forEach(entry => {
+        this.ctx.scene.remove(entry.mesh)
+        entry.mesh.geometry?.dispose()
+        if (Array.isArray(entry.mesh.material)) entry.mesh.material.forEach(m => m.dispose())
+        else entry.mesh.material?.dispose()
+      })
+      this._edges.forEach(edge => {
+        this.ctx.scene.remove(edge.line)
+        edge.line.geometry?.dispose()
+        edge.line.material?.dispose()
+      })
+      this._nodes.clear()
+      this._edges = []
+      this._selected = null
+      this._hovered = null
+      localStorage.removeItem(STORE_NODES)
+      localStorage.removeItem(STORE_EDGES)
+      window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: { nodes: [], edges: [] } }))
+      this._updateNodeList()
+      this._updateEdgeList()
+      console.log('⟐N — scene cleared.')
+    }
+    window.addEventListener('omni:scene-clear-request', this._onSceneClear)
+
     // Escape key — cancel place mode or deselect
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -2566,6 +2599,15 @@ export default class OmniNode {
           // rotation and scale=1 regardless of what was saved.
           if (data.rotation) mesh.rotation.set(...data.rotation)
           if (data.scale)    mesh.scale.set(...data.scale)
+          // Same bug again — a domain's double-sided material (so the
+          // camera can see its interior once entered) was only ever
+          // applied live, at the moment "Is Domain" was toggled. It
+          // never got reapplied on restore, so a domain-marked object
+          // silently came back single-sided after a page reload.
+          if (data.isDomain && mesh.material) {
+            mesh.material.side = THREE.DoubleSide
+            mesh.material.needsUpdate = true
+          }
           mesh.userData.nodeId = data.id
           this.ctx.scene.add(mesh)
           this._nodes.set(data.id, { data, mesh })

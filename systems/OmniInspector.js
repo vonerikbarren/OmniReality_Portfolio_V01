@@ -1581,8 +1581,16 @@ export default class OmniInspector {
       // (billboard) is now optional — static planes keep whatever
       // orientation they had when created, per the Face Camera toggle.
       const worldPos = plane.targetMesh.getWorldPosition(new THREE.Vector3())
+      const mOffset = plane.manualOffset ?? { x: 0, y: 0, z: 0 }
       plane.mesh.position.copy(worldPos).add(plane.offset)
-      if (plane.faceCamera) plane.mesh.lookAt(this.ctx.camera.position)
+      plane.mesh.position.x += mOffset.x
+      plane.mesh.position.y += mOffset.y
+      plane.mesh.position.z += mOffset.z
+      if (plane.faceCamera) {
+        plane.mesh.lookAt(this.ctx.camera.position)
+      } else if (plane.manualRotation) {
+        plane.mesh.rotation.set(plane.manualRotation.x, plane.manualRotation.y, plane.manualRotation.z)
+      }
     })
   }
 
@@ -1597,6 +1605,8 @@ export default class OmniInspector {
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('wheel', this._onWheel)
     window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
+    window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+    window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
@@ -3677,7 +3687,11 @@ export default class OmniInspector {
         autoSize: !!ext.planeAutoSize,
         scrollable: !!ext.planeScrollable,
         scrollOffset: 0,
+        manualOffset: { ...(ext.planeOffset ?? { x: 0, y: 0, z: 0 }) },
+        manualRotation: { ...(ext.planeRotation ?? { x: 0, y: 0, z: 0 }) },
+        manualScale: { ...(ext.planeScale ?? { x: 1, y: 1, z: 1 }) },
       })
+      mesh.scale.set(this._infoPlanes.get(data.id).manualScale.x, this._infoPlanes.get(data.id).manualScale.y, this._infoPlanes.get(data.id).manualScale.z)
     }
 
     this._updateInfoPlaneTexture(data.id)
@@ -3760,11 +3774,15 @@ export default class OmniInspector {
       }
     }
 
-    items.push({ type: 'header', text: 'DISPLAY', color: 'rgba(150, 220, 255, 0.9)', font: 'bold 20px "Courier New", monospace', height: HEADER_H })
-    wrapInto(ext.externalDisplay || '(empty)', 'rgba(255, 255, 255, 0.92)', '16px "Courier New", monospace')
+    const t = ext.planeTextColor ?? { r: 220, g: 230, b: 255, a: 0.9 }
+    const bodyColor = `rgba(${t.r}, ${t.g}, ${t.b}, ${t.a})`
+    const headerColor = `rgba(${t.r}, ${t.g}, ${t.b}, ${Math.min(1, t.a + 0.08)})`
+
+    items.push({ type: 'header', text: 'DISPLAY', color: headerColor, font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalDisplay || '(empty)', bodyColor, '16px "Courier New", monospace')
     items.push({ type: 'divider', height: DIVIDER_H })
-    items.push({ type: 'header', text: 'CODE', color: 'rgba(150, 255, 190, 0.9)', font: 'bold 20px "Courier New", monospace', height: HEADER_H })
-    wrapInto(ext.externalCode || '(empty)', 'rgba(150, 255, 190, 0.85)', '14px "Courier New", monospace')
+    items.push({ type: 'header', text: 'CODE', color: headerColor, font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalCode || '(empty)', bodyColor, '14px "Courier New", monospace')
 
     return items
   }
@@ -3816,9 +3834,11 @@ export default class OmniInspector {
     }
 
     const { ctx2d: c2, canvas } = plane
+    const bg = ext.planeBgColor ?? { r: 8, g: 8, b: 14, a: 0.88 }
+    const border = ext.planeBorderColor ?? { r: 255, g: 255, b: 255, a: 0.25 }
     c2.clearRect(0, 0, canvas.width, canvas.height)
-    c2.fillStyle = 'rgba(8, 8, 14, 0.88)'
-    c2.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+    c2.fillStyle = `rgba(${bg.r}, ${bg.g}, ${bg.b}, ${bg.a})`
+    c2.strokeStyle = `rgba(${border.r}, ${border.g}, ${border.b}, ${border.a})`
     c2.lineWidth = 3
     c2.fillRect(0, 0, canvas.width, canvas.height)
     c2.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
@@ -4190,6 +4210,17 @@ export default class OmniInspector {
       planeHeight     : 2.4,
       persistent      : false,
       planeFaceCamera : true,
+      // Extra transform on top of the automatic offset-from-target
+      // positioning and (if Face Camera is on) continuous billboard
+      // rotation. Position always applies; rotation only visibly
+      // "sticks" when Face Camera is off, since that overrides
+      // orientation every frame otherwise.
+      planeOffset     : { x: 0, y: 0, z: 0 },
+      planeRotation   : { x: 0, y: 0, z: 0 },
+      planeScale      : { x: 1, y: 1, z: 1 },
+      planeBgColor    : { r: 8, g: 8, b: 14, a: 0.88 },
+      planeBorderColor: { r: 255, g: 255, b: 255, a: 0.25 },
+      planeTextColor  : { r: 220, g: 230, b: 255, a: 0.9 },
       planeAutoSize   : false,
       planeScrollable : false,
     }
@@ -4424,6 +4455,54 @@ export default class OmniInspector {
       if (amounts[direction] !== undefined) this._scrollInfoPlane(amounts[direction])
     }
     window.addEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
+
+    // PanelControl requests the current plane's transform/color state
+    // (position offset, rotation, scale, and the three colors) when it
+    // opens, so its fields reflect whatever this Inspector's currently
+    // loaded node's plane actually has — rather than starting blank or
+    // guessing. Applies to this._currentId, same target resolution as
+    // the scroll commands above.
+    this._onPanelControlStateRequest = () => {
+      const ext = this._ext ?? {}
+      window.dispatchEvent(new CustomEvent('omni:panelcontrol-state-response', {
+        detail: {
+          hasPlane: this._infoPlanes.has(this._currentId),
+          offset: { ...(ext.planeOffset ?? { x: 0, y: 0, z: 0 }) },
+          rotation: { ...(ext.planeRotation ?? { x: 0, y: 0, z: 0 }) },
+          scale: { ...(ext.planeScale ?? { x: 1, y: 1, z: 1 }) },
+          bgColor: { ...(ext.planeBgColor ?? { r: 8, g: 8, b: 14, a: 0.88 }) },
+          borderColor: { ...(ext.planeBorderColor ?? { r: 255, g: 255, b: 255, a: 0.25 }) },
+          textColor: { ...(ext.planeTextColor ?? { r: 220, g: 230, b: 255, a: 0.9 }) },
+        }
+      }))
+    }
+    window.addEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+
+    // Live updates from PanelControl — a partial patch, only whichever
+    // top-level keys actually changed (offset/rotation/scale/bgColor/
+    // borderColor/textColor). Applies immediately to the real plane
+    // and persists via the normal debounced _saveExt path.
+    this._onPanelControlTransformSet = (e) => {
+      const patch = e.detail ?? {}
+      const ext = this._ext
+      const plane = this._infoPlanes.get(this._currentId)
+      if (!ext || !plane) return
+
+      if (patch.offset) { ext.planeOffset = { ...ext.planeOffset, ...patch.offset }; plane.manualOffset = { ...ext.planeOffset } }
+      if (patch.rotation) { ext.planeRotation = { ...ext.planeRotation, ...patch.rotation }; plane.manualRotation = { ...ext.planeRotation } }
+      if (patch.scale) {
+        ext.planeScale = { ...ext.planeScale, ...patch.scale }
+        plane.manualScale = { ...ext.planeScale }
+        plane.mesh.scale.set(plane.manualScale.x, plane.manualScale.y, plane.manualScale.z)
+      }
+      if (patch.bgColor) ext.planeBgColor = { ...ext.planeBgColor, ...patch.bgColor }
+      if (patch.borderColor) ext.planeBorderColor = { ...ext.planeBorderColor, ...patch.borderColor }
+      if (patch.textColor) ext.planeTextColor = { ...ext.planeTextColor, ...patch.textColor }
+
+      if (patch.bgColor || patch.borderColor || patch.textColor) this._updateInfoPlaneTexture()
+      this._saveExt()
+    }
+    window.addEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
 
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)

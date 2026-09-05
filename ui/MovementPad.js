@@ -271,7 +271,7 @@ const STYLES = `
   -webkit-user-select    : none;
   user-select            : none;
   -webkit-tap-highlight-color: transparent;
-  touch-action     : manipulation;
+  touch-action     : none;
 
   /* Depth shadow — makes buttons look raised */
   /* Subtle — still reads as raised but doesn't compete */

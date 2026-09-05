@@ -239,6 +239,27 @@ const STYLES = /* css */`
   cursor           : pointer;
 }
 
+.ap-action-btn {
+  width            : 100%;
+  padding          : 9px;
+  margin-bottom    : 6px;
+  background       : rgba(255,255,255,0.06);
+  border           : 1px solid var(--ap-input-border, rgba(255,255,255,0.18));
+  border-radius    : 6px;
+  color            : var(--ap-text-dim, rgba(255,255,255,0.85));
+  font-family      : var(--mono);
+  font-size        : 10.5px;
+  cursor           : pointer;
+}
+.ap-action-btn:hover { background: rgba(255,255,255,0.12); }
+.ap-action-btn--danger {
+  background       : rgba(255, 100, 100, 0.1);
+  border-color     : rgba(255, 100, 100, 0.3);
+  color            : rgba(255, 160, 160, 0.9);
+}
+.ap-action-btn--danger:hover { background: rgba(255, 100, 100, 0.18); }
+.ap-import-input { display: none; }
+
 .ap-toggle {
   width            : 30px;
   height           : 16px;
@@ -525,10 +546,23 @@ export default class AdminPanel {
       ) +
       group('UI Settings', 'uisettings',
         numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02)
+      ) +
+      group('Data Management', 'datamanagement',
+        `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
+         <button class="ap-action-btn" id="ap-export-data">⬇ Export Data</button>
+         <label class="ap-action-btn" for="ap-import-input" style="display:block;text-align:center;box-sizing:border-box">⬆ Import Data</label>
+         <input type="file" accept="application/json,.json" class="ap-import-input" id="ap-import-input">
+         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4;margin-top:4px">
+           Clear Scene removes every created object — cannot be undone.
+           Export downloads everything currently in local storage as one
+           JSON file. Import replaces local storage with a previously
+           exported file and reloads the page to apply it.
+         </div>`
       )
 
     this._populateThemeSelect(body)
     this._bindFields(body)
+    this._bindDataManagement(body)
   }
 
   async _populateThemeSelect (body) {
@@ -540,6 +574,65 @@ export default class AdminPanel {
       .join('')
     select.addEventListener('change', () => {
       this._setStaged('theme', select.value)
+    })
+  }
+
+  /** Clear Scene dispatches an event rather than reaching into
+   *  OmniNode's storage keys directly — this panel doesn't (and
+   *  shouldn't need to) know that system's internal key names. Export
+   *  /Import work directly against localStorage since "whatever is in
+   *  local storage" is explicitly the whole point of those two. */
+  _bindDataManagement (body) {
+    body.querySelector('#ap-clear-scene')?.addEventListener('click', () => {
+      const ok = window.confirm('Clear every object in the scene? This cannot be undone.')
+      if (!ok) return
+      window.dispatchEvent(new CustomEvent('omni:scene-clear-request'))
+    })
+
+    body.querySelector('#ap-export-data')?.addEventListener('click', () => {
+      const dump = {}
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        dump[key] = localStorage.getItem(key)
+      }
+      const json = JSON.stringify(dump, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      a.download = `omnireality-export-${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    })
+
+    body.querySelector('#ap-import-input')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      const ok = window.confirm(
+        'Importing replaces everything currently in local storage with ' +
+        'the contents of this file, then reloads the page. Continue?'
+      )
+      if (!ok) { e.target.value = ''; return }
+
+      try {
+        const text = await file.text()
+        const data = JSON.parse(text)
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+          throw new Error('Expected a JSON object of key/value pairs, like an exported file.')
+        }
+        localStorage.clear()
+        for (const [key, value] of Object.entries(data)) {
+          localStorage.setItem(key, value)
+        }
+        window.location.reload()
+      } catch (err) {
+        window.alert(`Import failed: ${err?.message ?? err}`)
+        e.target.value = ''
+      }
     })
   }
 
