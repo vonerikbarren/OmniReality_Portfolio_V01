@@ -521,16 +521,11 @@ export default class AdminPanel {
       group('Theme', 'theme',
         `<div class="ap-row"><span class="ap-row-label">Panel theme</span><select class="ap-select" id="ap-theme-select" data-key="theme"></select></div>`
       ) +
-      group('Space Wallpaper', 'wallpaper',
-        colorRow('Color', 'wallpaper.color', s.wallpaper.color) +
-        numRow('Alpha (0–1)', 'wallpaper.alpha', s.wallpaper.alpha, 0.05) +
-        fileRow('Image', 'wallpaper.imgUrl', s.wallpaper.imgUrl, 'image/*') +
-        fileRow('Video', 'wallpaper.videoUrl', s.wallpaper.videoUrl, 'video/*') +
-        numRow('Rotation speed', 'wallpaper.rotationSpeed', s.wallpaper.rotationSpeed, 0.05, -2, 2) +
-        toggleRow('x-autoSpin', 'wallpaper.autoSpinX', s.wallpaper.autoSpinX) +
-        toggleRow('y-autoSpin', 'wallpaper.autoSpinY', s.wallpaper.autoSpinY) +
-        toggleRow('z-autoSpin', 'wallpaper.autoSpinZ', s.wallpaper.autoSpinZ)
-      ) +
+      // Space Wallpaper settings moved to their own dedicated panel
+      // (Admin03 -> ui/WallpaperSettingsPanel.js) — shape, position/
+      // rotation/scale, and the 20-slot wallpaper browser all live
+      // there now, consolidated with color/alpha/rotation instead of
+      // splitting wallpaper options across two panels.
       group('Domain Grid', 'domain',
         colorRow('Grid color', 'domainGridColor', s.domainGridColor) +
         numRow('Opacity (0–1)', 'domainGridOpacity', s.domainGridOpacity, 0.05) +

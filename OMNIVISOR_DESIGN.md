@@ -121,12 +121,25 @@ buildable now or later, no functional dependency either way.
 
 ## Status
 
-- **Everything in this document**: designed, not built. No code exists
-  for OmniInspection, lens-perimeter detection, quadrant data display,
-  perception-gating, or the ring VFX yet.
-- **What already exists that this can build on**: `OmniInspector`'s
-  underlying node data (position/rotation/scale/material/color),
-  `OmniStartHUD`'s quadrant chrome and center-preview pattern, the
-  hand system's four-way structural layout, and `OmniNode`'s
-  parent/child genealogy (a candidate source for "layers" in the
-  Cosmic quadrant later).
+- **Built**: `ui/OmniInspection.js` — the 3D wireframe ground-grid
+  lens, real ground-radius perimeter detection, toggled via
+  `⟐OmniVisor` in the drawer. `ui/OmniInspectionHUD.js` — the
+  four-quadrant display, visually matching `OmniStartHUD`'s chrome.
+  Physical/Dimensional and Senses/Experiential show real, live data
+  for whatever's in the lens; Cosmic shows one real number (objects in
+  range) plus an honest "not yet defined" for anything deeper;
+  Metaphysical is entirely undefined and says so. The two modules are
+  fully decoupled — the HUD only consumes
+  `omni:inspection-scope-updated` / `omni:inspection-active-changed`,
+  it has no idea how the lens itself works.
+- **Not built**: perception-gating (still explicitly deferred), the
+  fuller rings-emanating-from-the-user choreography (the lens currently
+  just grows in from zero — simple and working, not the full
+  choreography from earlier in this doc), and anything for the
+  TruthData/FalseData/UndefinedData/SpectrumData/RealityCapacityData
+  theory once it's explained.
+- **v1 simplification worth knowing**: when multiple objects are in
+  range, Physical/Senses show the *first* one found, not the nearest —
+  true nearest-object sorting needs the HUD to also know the
+  inspection center point, which isn't shared between the two modules
+  yet. Fine for now; revisit if it matters in practice.

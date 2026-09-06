@@ -322,8 +322,8 @@ export default class PanelControl {
         <div class="pc-btn-grid">
           <button class="pc-scroll-btn pc-scroll-btn--page" id="pc-pageup"><span>⏫</span><span class="pc-btn-label">Page Up</span></button>
           <button class="pc-scroll-btn" id="pc-up"><span>▲</span><span class="pc-btn-label">Up</span></button>
-          <button class="pc-scroll-btn" id="pc-down"><span>▼</span><span class="pc-btn-label">Down</span></button>
           <button class="pc-scroll-btn pc-scroll-btn--page" id="pc-pagedown"><span>⏬</span><span class="pc-btn-label">Page Down</span></button>
+          <button class="pc-scroll-btn" id="pc-down"><span>▼</span><span class="pc-btn-label">Down</span></button>
         </div>
 
         <div class="pc-section-title">Transform</div>

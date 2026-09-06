@@ -1607,6 +1607,8 @@ export default class OmniInspector {
     window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
     window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
     window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+    window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+    window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
@@ -2649,6 +2651,14 @@ export default class OmniInspector {
     `
     return /* html */`
       <div class="oi-row">
+        <span class="oi-label" style="width:auto">GoTo / TravelTo</span>
+        <button class="oi-btn-small" id="oi-goto-object">🎯 Take Me There</button>
+      </div>
+      <div class="oi-data-note">
+        Moves the camera to a spot right in front of this object,
+        facing it — from wherever you currently are.
+      </div>
+      <div class="oi-row">
         <span class="oi-label" style="width:auto">Internal Data</span>
         <button class="oi-btn-small" id="oi-internal-panel-open">Open Panel ⟐</button>
       </div>
@@ -2728,6 +2738,8 @@ export default class OmniInspector {
   }
 
   _wireData (body, data, ext) {
+    body.querySelector('#oi-goto-object')?.addEventListener('click', () => this._goToObject(data))
+
     body.querySelectorAll('[data-data-key]').forEach(textarea => {
       let timer = null
       textarea.addEventListener('input', () => {
@@ -3392,8 +3404,17 @@ export default class OmniInspector {
         ext.scale = scale
         this._saveExt()
 
+        // Dispatched as an array, not the {x,y,z} object above — every
+        // other consumer of data.scale (OmniNode's _baseScale, _load,
+        // mesh.scale.set(...data.scale) via spread) expects the array
+        // shape posHandler/rotHandler already use correctly. Sending an
+        // object here made _baseScale throw the next time hover/select/
+        // deselect ran (array-destructuring a plain object throws) —
+        // which is what caused the scale to appear to revert AND made
+        // the object stop responding to clicks afterward, since the
+        // throw interrupted the deselect flow's own cleanup.
         window.dispatchEvent(new CustomEvent('omni:node-scale-set', {
-          detail: { id: data.id, scale }
+          detail: { id: data.id, scale: [scale.x, scale.y, scale.z] }
         }))
       }, 200)
     }
@@ -3791,6 +3812,32 @@ export default class OmniInspector {
    *  a raw pixel amount — shared by the mouse-wheel handler and
    *  ui/PanelControl.js's button commands, so there's one real
    *  scrolling mechanism, not two that could drift apart. */
+  /** GoTo / TravelTo — moves the camera to a point offset from the
+   *  object back toward wherever the camera currently is (so the
+   *  approach direction matches whatever side the viewer was already
+   *  on, rather than snapping to some arbitrary fixed side of the
+   *  object), then faces the object. Standoff distance scales with the
+   *  object's own size so large objects aren't approached too closely
+   *  and tiny ones aren't viewed from oddly far away. */
+  _goToObject (data) {
+    if (!this._currentMesh) return
+    const objectPos = this._currentMesh.getWorldPosition(new THREE.Vector3())
+    const camera = this.ctx.camera
+
+    const away = camera.position.clone().sub(objectPos)
+    if (away.lengthSq() < 0.0001) away.set(0, 0, 1)   // camera essentially AT the object — pick an arbitrary side
+    away.normalize()
+
+    const scale = this._currentMesh.scale
+    const standoff = 2.5 + Math.max(scale.x, scale.y, scale.z)
+    const target = objectPos.clone().add(away.multiplyScalar(standoff))
+
+    gsap.to(camera.position, {
+      x: target.x, y: target.y, z: target.z, duration: 0.6, ease: 'power2.inOut',
+      onUpdate: () => camera.lookAt(objectPos),
+    })
+  }
+
   _scrollInfoPlane (amount, nodeId = this._currentId) {
     const plane = this._infoPlanes.get(nodeId)
     if (!plane || !plane.scrollable || plane.autoSize) return

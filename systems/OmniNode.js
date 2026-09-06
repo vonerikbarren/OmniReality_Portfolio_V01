@@ -1345,9 +1345,27 @@ export default class OmniNode {
    *  or anything the user resized via the Inspector) would visibly
    *  snap back down to scale 1 the moment it's deselected or
    *  hover-ends, even though its real saved scale never changed. */
+  /** Normalizes a scale value to the array shape every consumer here
+   *  expects — self-healing for any node whose data.scale was already
+   *  persisted as a plain {x,y,z} object by the pre-fix scale handler,
+   *  which would otherwise keep throwing on reload (spreading a plain
+   *  object throws the same way array-destructuring one does). */
+  _normalizeScale (scale) {
+    if (Array.isArray(scale)) return scale
+    if (scale && typeof scale === 'object') return [scale.x ?? 1, scale.y ?? 1, scale.z ?? 1]
+    return [1, 1, 1]
+  }
+
   _baseScale (entry) {
-    const [x, y, z] = entry.data.scale ?? [1, 1, 1]
-    return { x, y, z }
+    const s = entry.data.scale
+    if (Array.isArray(s)) {
+      const [x, y, z] = s
+      return { x: x ?? 1, y: y ?? 1, z: z ?? 1 }
+    }
+    if (s && typeof s === 'object') {
+      return { x: s.x ?? 1, y: s.y ?? 1, z: s.z ?? 1 }
+    }
+    return { x: 1, y: 1, z: 1 }
   }
 
   _setHover (id) {
@@ -1495,7 +1513,10 @@ export default class OmniNode {
 
     mesh.position.set(...data.position)
     if (data.rotation) mesh.rotation.set(...data.rotation)
-    if (data.scale) mesh.scale.set(...data.scale)
+    if (data.scale) {
+      data.scale = this._normalizeScale(data.scale)
+      mesh.scale.set(...data.scale)
+    }
     mesh.userData.nodeId = data.id
 
     this.ctx.scene.add(mesh)
@@ -2188,8 +2209,12 @@ export default class OmniNode {
       const entry = this._nodes.get(id)
       if (!entry) return
       // Mesh scale is already applied by OmniInspector (same mesh object) —
-      // this just keeps OmniNode's own record in sync.
-      entry.data.scale = scale
+      // this just keeps OmniNode's own record in sync. Normalized to the
+      // array shape regardless of what shape the caller sent — this is
+      // the one place every scale-set event passes through, so it's the
+      // right choke point to guarantee consumers elsewhere (_baseScale,
+      // _load, etc.) always get the shape they expect.
+      entry.data.scale = this._normalizeScale(scale)
       this._save()
       this._updateNodeList()
     }
@@ -2598,7 +2623,10 @@ export default class OmniNode {
           // restore, so a saved node always came back at default
           // rotation and scale=1 regardless of what was saved.
           if (data.rotation) mesh.rotation.set(...data.rotation)
-          if (data.scale)    mesh.scale.set(...data.scale)
+          if (data.scale) {
+            data.scale = this._normalizeScale(data.scale)
+            mesh.scale.set(...data.scale)
+          }
           // Same bug again — a domain's double-sided material (so the
           // camera can see its interior once entered) was only ever
           // applied live, at the moment "Is Domain" was toggled. It

@@ -20,11 +20,19 @@ import Ticker    from '../utils/ticker.js'
 export default class BaseScene {
   /**
    * @param {string} canvasSelector  — CSS selector for the <canvas> element
+   * @param {object} [Sound]         — a loaded SoundManager instance, made
+   *                                    available to every module as ctx.Sound.
+   *                                    Must be passed in here, not attached
+   *                                    later — this.context is frozen at the
+   *                                    end of this constructor, so there is
+   *                                    no way to add or reassign a property
+   *                                    on it afterward.
    */
-  constructor(canvasSelector = '#omni-canvas') {
+  constructor(canvasSelector = '#omni-canvas', Sound = null) {
     this._canvas   = document.querySelector(canvasSelector)
     this._modules  = []
     this._tickerId = null
+    this._Sound    = Sound
 
     this._initSizes()
     this._initRenderer()
@@ -41,6 +49,7 @@ export default class BaseScene {
       renderer: this.renderer,
       sizes:    this.sizes,
       ticker:   this.ticker,
+      Sound:    this._Sound,
     })
   }
 

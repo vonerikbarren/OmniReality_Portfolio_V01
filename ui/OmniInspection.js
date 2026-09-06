@@ -207,6 +207,7 @@ export default class OmniInspection {
   _setStatus (active) {
     if (!this._statusEl) return
     this._statusEl.style.display = active ? 'block' : 'none'
+    window.dispatchEvent(new CustomEvent('omni:inspection-active-changed', { detail: { active } }))
   }
 
   _updateStatusCount (count) {

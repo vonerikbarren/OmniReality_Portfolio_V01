@@ -61,6 +61,10 @@ import OmniChronos from './ui/OmniChronos.js'
 import OmniInternalPanel from './ui/OmniInternalPanel.js'
 import PanelControl from './ui/PanelControl.js'
 import OmniInspection from './ui/OmniInspection.js'
+import OmniInspectionHUD from './ui/OmniInspectionHUD.js'
+import IndexedPanel from './ui/IndexedPanel.js'
+import ParticleSettingsPanel from './ui/ParticleSettingsPanel.js'
+import WallpaperSettingsPanel from './ui/WallpaperSettingsPanel.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -72,8 +76,24 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
 ;(async () => {
 
+  // ── Sound ─────────────────────────────────────────────────
+  // Must be created and loaded BEFORE `new BaseScene(...)` — its
+  // context object is frozen at construction time, so Sound has to be
+  // passed in as a constructor argument to end up inside it. Anything
+  // reading ctx.Sound afterward would silently get undefined otherwise.
+  const Sound = new SoundManager(
+    {
+      sounds: {
+        click: './assets/sounds/click.wav',
+        open:  './assets/sounds/open.wav',
+        close: './assets/sounds/close.wav',
+      }
+    }
+  )
+  await Sound.load()
+
   // ── Base scene ──────────────────────────────────────────
-  const base = new BaseScene('#omni-canvas')
+  const base = new BaseScene('#omni-canvas', Sound)
 
   // ── Phase 2 modules ─────────────────────────────────────
   const orbitMod = base.addModule(new OrbitModule(base.context))
@@ -155,6 +175,12 @@ import * as ThemeManager from './ui/ThemeManager.js'
   const adminPanel = new AdminPanel(base.context)
   base.addModule(adminPanel)
 
+  const particleSettingsPanel = new ParticleSettingsPanel(base.context)
+  base.addModule(particleSettingsPanel)
+
+  const wallpaperSettingsPanel = new WallpaperSettingsPanel(base.context)
+  base.addModule(wallpaperSettingsPanel)
+
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)
 
@@ -184,6 +210,115 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
   const omniInspection = new OmniInspection(base.context)
   base.addModule(omniInspection)
+
+  const omniInspectionHUD = new OmniInspectionHUD(base.context)
+  base.addModule(omniInspectionHUD)
+
+  // ── Spaces: real save-a-coordinate / teleport-there system ──
+  // An empty slot saves the current camera position there; a saved
+  // slot teleports back to it. Deliberately position-only for now
+  // (no rotation/orientation saved) — simplest version that's still
+  // genuinely useful; can grow into full domains/sub-realities later,
+  // per the containerization notes.
+  const SPACES_STORE_KEY = 'omni:spaces:coordinates'
+  const loadSpacesData = () => {
+    try { return JSON.parse(localStorage.getItem(SPACES_STORE_KEY) ?? '{}') } catch (_) { return {} }
+  }
+  const saveSpacesData = (data) => {
+    try { localStorage.setItem(SPACES_STORE_KEY, JSON.stringify(data)) } catch (_) {}
+  }
+  let spacesPanelRef = null
+
+  const spacesConfig = {
+    id: 'spaces', navLabel: '⟐Spaces', title: '⟐Spaces', prefix: 'Space', iconLabel: '⟐S',
+    getSlotLabel: (i) => {
+      const data = loadSpacesData()
+      const padded = String(i).padStart(2, '0')
+      return data[i] ? `Space${padded} 📍` : `Space${padded}`
+    },
+    getSlotAction: (i) => () => {
+      const data = loadSpacesData()
+      if (data[i]) {
+        const coord = data[i]
+        gsap.to(base.camera.position, { x: coord.x, y: coord.y, z: coord.z, duration: 0.6, ease: 'power2.inOut' })
+      } else {
+        data[i] = { x: base.camera.position.x, y: base.camera.position.y, z: base.camera.position.z }
+        saveSpacesData(data)
+        spacesPanelRef?.refresh()
+      }
+    },
+  }
+
+  // ── Indexed panels — one per non-Omni drawer section ─────
+  const indexedPanelConfigs = [
+    {
+      id: 'admin', navLabel: '⟐Admin', title: '⟐Admin', prefix: 'Admin', iconLabel: '⟐A',
+      specialSlots: {
+        1: { label: 'OmniAdminSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐mniAdminSettings' } })) },
+        2: { label: 'OmniParticleSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniParticleSettings' } })) },
+        3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
+      }
+    },
+    { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
+    { id: 'realities',       navLabel: '⟐Realities',       title: '⟐Realities',       prefix: 'Reality',        iconLabel: '⟐R' },
+    { id: 'times',           navLabel: '⟐Times',           title: '⟐Times',           prefix: 'Time',           iconLabel: '⟐T' },
+    spacesConfig,
+    { id: 'governance',      navLabel: '⟐Governance',      title: '⟐Governance',      prefix: 'Governance',     iconLabel: '⟐G' },
+    { id: 'intelligence',    navLabel: '⟐Intelligence',    title: '⟐Intelligence',    prefix: 'Intelligence',   iconLabel: '⟐I' },
+    { id: 'infrastructures', navLabel: '⟐Infrastructures', title: '⟐Infrastructures', prefix: 'Infrastructure', iconLabel: '⟐N' },
+    { id: 'objects',         navLabel: '⟐Objects',         title: '⟐Objects',         prefix: 'Object',         iconLabel: '⟐O' },
+  ]
+  indexedPanelConfigs.forEach(cfg => {
+    const instance = new IndexedPanel(base.context, cfg)
+    base.addModule(instance)
+    if (cfg.id === 'spaces') spacesPanelRef = instance
+  })
+
+  // ── Right-drawer (NavMenu) leaf panels ───────────────────
+  // Rule: if a node has no subpage beneath it, it gets its own panel.
+  // A parent WITH children (Account, About, Portfolio, SocialNetworks,
+  // OmniChannels) does not get one itself — only its leaf children do.
+  // 8 slots each, per explicit request (vs. 20 on the left). Wider
+  // than the standard IndexedPanel width, since these may eventually
+  // hold mini-webpage-like content — see NAV_PANELS_DESIGN.md for what
+  // that evolution actually looks like; this pass is the panels
+  // themselves, not that.
+  const NAV_PANEL_WIDTH = '440px'
+  const navPanelConfigs = [
+    // Top-level leaves
+    { id: 'nav-home',     navLabel: '⟐Home',     title: 'Home',     prefix: 'Home' },
+    { id: 'nav-work',     navLabel: '⟐Work',     title: 'Work',     prefix: 'Work' },
+    { id: 'nav-products', navLabel: '⟐Products', title: 'Products', prefix: 'Product' },
+    { id: 'nav-services', navLabel: '⟐Services', title: 'Services', prefix: 'Service' },
+    { id: 'nav-resources',navLabel: '⟐Resources',title: 'Resources',prefix: 'Resource' },
+    { id: 'nav-contact',  navLabel: '⟐Contact',  title: 'Contact',  prefix: 'Contact' },
+    // Account children
+    { id: 'nav-login',     navLabel: 'Login',     title: 'Login',     prefix: 'Login' },
+    { id: 'nav-profile',   navLabel: 'Profile',   title: 'Profile',   prefix: 'Profile' },
+    { id: 'nav-dashboard', navLabel: 'Dashboard', title: 'Dashboard', prefix: 'Dashboard' },
+    // About children
+    { id: 'nav-about-me',           navLabel: 'About-Me',           title: 'About-Me',           prefix: 'AboutMe' },
+    { id: 'nav-about-thevision',    navLabel: 'About-TheVision',    title: 'About-TheVision',    prefix: 'Vision' },
+    { id: 'nav-about-thesupporters',navLabel: 'About-TheSupporters',title: 'About-TheSupporters',prefix: 'Supporter' },
+    // Portfolio children
+    { id: 'nav-2d-projects', navLabel: '2D-Projects', title: '2D-Projects', prefix: '2DProject' },
+    { id: 'nav-3d-projects', navLabel: '3D-Projects', title: '3D-Projects', prefix: '3DProject' },
+    { id: 'nav-xd-projects', navLabel: 'XD-Projects', title: 'XD-Projects', prefix: 'XDProject' },
+    // SocialNetworks children
+    { id: 'nav-linktree',     navLabel: 'LinkTree',     title: 'LinkTree',     prefix: 'Link' },
+    { id: 'nav-communities',  navLabel: 'Communities',  title: 'Communities', prefix: 'Community' },
+    { id: 'nav-collaborators',navLabel: 'Collaborators',title: 'Collaborators',prefix: 'Collaborator' },
+    // OmniChannels children
+    { id: 'nav-omnifeeds-updates',      navLabel: 'OmniFeeds: Updates',      title: 'OmniFeeds: Updates',      prefix: 'Update' },
+    { id: 'nav-omnifeeds-logs',         navLabel: 'OmniFeeds: Logs',         title: 'OmniFeeds: Logs',         prefix: 'Log' },
+    { id: 'nav-omnifeeds-drops',        navLabel: 'OmniFeeds: Drops',        title: 'OmniFeeds: Drops',        prefix: 'Drop' },
+    { id: 'nav-omnifeeds-perspectives', navLabel: 'OmniFeeds: Perspectives', title: 'OmniFeeds: Perspectives', prefix: 'Perspective' },
+    { id: 'nav-omnifeeds-experiments',  navLabel: 'OmniFeeds: Experiments',  title: 'OmniFeeds: Experiments',  prefix: 'Experiment' },
+    { id: 'nav-omnifeeds-media',        navLabel: 'OmniFeeds: Media',        title: 'OmniFeeds: Media',        prefix: 'Media' },
+  ]
+  navPanelConfigs.forEach(cfg => {
+    base.addModule(new IndexedPanel(base.context, { ...cfg, count: 8, width: NAV_PANEL_WIDTH }))
+  })
 
   const omniStartHUD = new OmniStartHUD(base.context)
   base.addModule(omniStartHUD)
@@ -233,19 +368,9 @@ import * as ThemeManager from './ui/ThemeManager.js'
     destroy () {}
   })
 
-  // ── Sound ─────────────────────────────────────────────────
-  const Sound = new SoundManager(
-    {
-      sounds: {
-        click: './assets/sounds/click.wav',
-        open:  './assets/sounds/open.wav',
-        close: './assets/sounds/close.wav',
-      }
-    }
-  )
-  await Sound.load()
+  // ── Sound is created earlier now, before BaseScene, so it can be
+  // included in the frozen context object — see above.
 
-  
 
   // Single delegated listener on the UI shell — fires on every click
   // except drawer items, EXCEPT when something more specific (a
