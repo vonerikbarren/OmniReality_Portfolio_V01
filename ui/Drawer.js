@@ -70,6 +70,8 @@ const LEFT_ITEMS = [
   { label: '⟐OmniSelect'      },
   { label: '⟐PanelControl'    },
   { label: '⟐OmniVisor'       },
+  { label: '⟐OmniBrowser'     },
+  { label: '⟐OmniBrowserProperties' },
   { divider: true },
   { divider: true },
   { label: '⟐Admin'           },

@@ -119,6 +119,21 @@ rings pulsing *into* that grid. Connects back to the original
 center-ring visual from early in this project. Purely aesthetic —
 buildable now or later, no functional dependency either way.
 
+## A detailed timeline view, revealed under OmniVisor
+
+Raised while discussing CoordinateNode timelines (see
+`COORDINATE_NODES_TIMELINE_DESIGN.md`): when OmniVisor/OmniInspection
+is active, a more detailed timeline-editing workflow could be part of
+what the lens reveals — glance-level info by default (already true of
+`OmniInspection`'s HUD), a richer editing view under the lens.
+
+Originally floated as Adobe-Premiere-style (multi-track, draggable
+keyframes). Resolved simpler on reflection: closer to **YouTube's
+video timeline** — a scrubbable bar with a playhead, not a full
+multi-track NLE. Matches the project's own instinct so far: start from
+the simplest version that's genuinely useful, not the most powerful
+version imaginable.
+
 ## Status
 
 - **Built**: `ui/OmniInspection.js` — the 3D wireframe ground-grid

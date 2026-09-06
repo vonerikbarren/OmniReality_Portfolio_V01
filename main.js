@@ -65,6 +65,8 @@ import OmniInspectionHUD from './ui/OmniInspectionHUD.js'
 import IndexedPanel from './ui/IndexedPanel.js'
 import ParticleSettingsPanel from './ui/ParticleSettingsPanel.js'
 import WallpaperSettingsPanel from './ui/WallpaperSettingsPanel.js'
+import OmniBrowser from './ui/OmniBrowser.js'
+import OmniBrowserProperties from './ui/OmniBrowserProperties.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -180,6 +182,12 @@ import * as ThemeManager from './ui/ThemeManager.js'
 
   const wallpaperSettingsPanel = new WallpaperSettingsPanel(base.context)
   base.addModule(wallpaperSettingsPanel)
+
+  const omniBrowser = new OmniBrowser(base.context)
+  base.addModule(omniBrowser)
+
+  const omniBrowserProperties = new OmniBrowserProperties(base.context)
+  base.addModule(omniBrowserProperties)
 
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)

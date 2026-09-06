@@ -22,7 +22,7 @@
 
 import * as THREE from 'three'
 
-const DEFAULT_COUNT  = 1800
+const DEFAULT_COUNT  = 2200   // "a little more" — bumped from 1800, staying clearly below Spread's 3000
 const SPREAD_COUNT    = 3000   // "slightly increase the number... to fit the space"
 const CONDENSED_COUNT = 1800
 
@@ -30,8 +30,15 @@ const DEFAULT_INNER_RADIUS = 20     // original — stays within the inner wiref
 const SPREAD_INNER_RADIUS  = 850    // reaches out toward the wallpaper sphere's own scale
 const CONDENSED_RADIUS     = 45     // a small, distinct sphere near the origin
 
-const MIN_Y          = -98   // floor of particle volume (default/spread modes)
-const MAX_Y          = 155   // top of particle volume (default/spread modes)
+// Raised so the floor sits right at the user's actual starting camera
+// height (y=2 — see main.js's returnToLanding()), not the old -98,
+// which was centered on the world's abstract vertical midpoint (28,
+// shared with WallpaperSphere/VoidBoundary) rather than where anyone
+// actually begins. Most of that old range sat below where a user
+// would ever naturally be at the start of the experience — this puts
+// particles immediately present from the first moment instead.
+const MIN_Y          = 0     // floor of particle volume (default/spread modes)
+const MAX_Y          = 250   // top of particle volume (default/spread modes)
 const SPREAD_MIN_Y   = -900
 const SPREAD_MAX_Y   = 900
 
