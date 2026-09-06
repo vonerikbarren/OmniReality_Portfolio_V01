@@ -144,6 +144,7 @@ const STYLES = /* css */`
 }
 .bp-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.11); color: var(--bp-text); }
 .bp-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.bp-nav-btn.is-active { background: rgba(140, 196, 255, 0.18); border-color: rgba(140, 196, 255, 0.45); color: var(--bp-accent); }
 
 .bp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .bp-row-label { font-size: 10px; color: var(--bp-text-dim); }
@@ -214,8 +215,15 @@ export default class OmniBrowserProperties {
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
     this._state = loadSettings()
-    this._history = []
-    this._historyIndex = -1
+    // Per-window history — up to 3 simultaneous windows, each with its
+    // own back/forward stack. The Index (bookmarks) stays shared
+    // across all three; only navigation history is per-window.
+    this._windows = {
+      1: { history: [], historyIndex: -1, opened: true },
+      2: { history: [], historyIndex: -1, opened: false },
+      3: { history: [], historyIndex: -1, opened: false },
+    }
+    this._activeWindow = 1
     this._onNavSelect = null
   }
 
@@ -247,6 +255,25 @@ export default class OmniBrowserProperties {
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), scale: 1, duration: 0.28, ease: 'back.out(1.4)' })
     this._isOpen = true
     this._playSound('open')
+  }
+
+  /** Boot-time entrance only — slides in from the right edge (opposite
+   *  side from OmniBrowser's own left-edge slide), so both land
+   *  together at the moment the user arrives, not just OmniBrowser
+   *  alone with this panel appearing separately. */
+  openFromSide () {
+    if (!this._el) this._el = this._buildDOM()
+    const shell = document.getElementById('omni-ui') ?? document.body
+    shell.appendChild(this._el)
+    this._el.style.visibility = 'visible'
+    this._isOpen = true
+    this._playSound('open')
+
+    const targetLeft = parseFloat(this._el.style.left) || 920
+    gsap.fromTo(this._el,
+      { opacity: 0, scale: 1, left: targetLeft + 260 },
+      { opacity: WindowManager.getPanelOpacity(), left: targetLeft, duration: 0.65, ease: 'power3.out' }
+    )
   }
 
   close () {
@@ -306,6 +333,14 @@ export default class OmniBrowserProperties {
         </div>
       </div>
       <div class="bp-body">
+        <div class="bp-section-title">Window</div>
+        <div class="bp-nav-row" id="bp-window-tabs">
+          <button class="bp-nav-btn is-active" data-window="1">Window 1</button>
+          <button class="bp-nav-btn" data-window="2">+ Window 2</button>
+          <button class="bp-nav-btn" data-window="3">+ Window 3</button>
+        </div>
+        <div class="bp-note">Up to 3 windows — each keeps its own history. The Index below is shared across all of them.</div>
+
         <div class="bp-section-title">Address</div>
         <div class="bp-url-row">
           <input type="text" class="bp-url-input" id="bp-url-input" placeholder="https://…" value="${s.homeUrl}">
@@ -362,6 +397,21 @@ export default class OmniBrowserProperties {
   }
 
   _bindControls (el) {
+    el.querySelectorAll('[data-window]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const windowId = Number(btn.dataset.window)
+        this._activeWindow = windowId
+        el.querySelectorAll('[data-window]').forEach(b => b.classList.toggle('is-active', Number(b.dataset.window) === windowId))
+
+        if (!this._windows[windowId].opened) {
+          this._windows[windowId].opened = true
+          btn.textContent = `Window ${windowId}`
+          window.dispatchEvent(new CustomEvent('omni:browser-open-window', { detail: { windowId } }))
+        }
+        this._syncActiveWindowUI()
+      })
+    })
+
     const urlInput = el.querySelector('#bp-url-input')
     const go = () => this._go(urlInput.value.trim())
     el.querySelector('#bp-go').addEventListener('click', go)
@@ -391,7 +441,7 @@ export default class OmniBrowserProperties {
       if (saved) {
         this._go(saved)
       } else {
-        const current = this._history[this._historyIndex]
+        const current = this._windows[this._activeWindow].history[this._windows[this._activeWindow].historyIndex]
         if (!current) return
         this._state.index[slot] = current
         saveSettings(this._state)
@@ -413,54 +463,72 @@ export default class OmniBrowserProperties {
   _go (rawUrl) {
     const url = this._normalizeUrl(rawUrl)
     if (!url) return
+    const win = this._windows[this._activeWindow]
     // Navigating to something new truncates any "forward" history,
     // same convention every real browser uses.
-    this._history = this._history.slice(0, this._historyIndex + 1)
-    this._history.push(url)
-    this._historyIndex = this._history.length - 1
+    win.history = win.history.slice(0, win.historyIndex + 1)
+    win.history.push(url)
+    win.historyIndex = win.history.length - 1
     this._updateNavButtons()
     this._el.querySelector('#bp-url-input').value = url
-    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url } }))
+    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url, windowId: this._activeWindow } }))
   }
 
   _back () {
-    if (this._historyIndex <= 0) return
-    this._historyIndex -= 1
+    const win = this._windows[this._activeWindow]
+    if (win.historyIndex <= 0) return
+    win.historyIndex -= 1
     this._applyHistoryEntry()
   }
 
   _forward () {
-    if (this._historyIndex >= this._history.length - 1) return
-    this._historyIndex += 1
+    const win = this._windows[this._activeWindow]
+    if (win.historyIndex >= win.history.length - 1) return
+    win.historyIndex += 1
     this._applyHistoryEntry()
   }
 
   _refresh () {
-    const current = this._history[this._historyIndex]
+    const win = this._windows[this._activeWindow]
+    const current = win.history[win.historyIndex]
     if (!current) return
     // Re-dispatching the same URL wouldn't necessarily reload (some
     // consumers might no-op on an unchanged value) — force it by
     // going through a null first.
-    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url: '' } }))
-    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url: current } }))
+    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url: '', windowId: this._activeWindow } }))
+    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url: current, windowId: this._activeWindow } }))
   }
 
   _applyHistoryEntry () {
-    const url = this._history[this._historyIndex]
+    const win = this._windows[this._activeWindow]
+    const url = win.history[win.historyIndex]
     this._updateNavButtons()
     if (this._el) this._el.querySelector('#bp-url-input').value = url
-    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url } }))
+    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url, windowId: this._activeWindow } }))
   }
 
   _updateNavButtons () {
     if (!this._el) return
-    this._el.querySelector('#bp-back').disabled = this._historyIndex <= 0
-    this._el.querySelector('#bp-forward').disabled = this._historyIndex >= this._history.length - 1
+    const win = this._windows[this._activeWindow]
+    this._el.querySelector('#bp-back').disabled = win.historyIndex <= 0
+    this._el.querySelector('#bp-forward').disabled = win.historyIndex >= win.history.length - 1
+  }
+
+  /** Refreshes the URL bar and nav-button state to reflect whichever
+   *  window just became active — each window's history is independent,
+   *  so switching tabs needs to show that window's own current address,
+   *  not leave the previous window's address sitting in the bar. */
+  _syncActiveWindowUI () {
+    if (!this._el) return
+    const win = this._windows[this._activeWindow]
+    const current = win.history[win.historyIndex] ?? ''
+    this._el.querySelector('#bp-url-input').value = current
+    this._updateNavButtons()
   }
 
   _broadcastSandbox () {
     const active = Object.entries(this._state.sandboxFlags).filter(([, v]) => v).map(([k]) => k)
-    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { sandbox: active.join(' ') } }))
+    window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { sandbox: active.join(' '), windowId: this._activeWindow } }))
   }
 
   // ── Header drag / resize — same pattern as every other panel ─────────────

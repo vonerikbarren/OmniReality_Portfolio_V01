@@ -67,6 +67,9 @@ import ParticleSettingsPanel from './ui/ParticleSettingsPanel.js'
 import WallpaperSettingsPanel from './ui/WallpaperSettingsPanel.js'
 import OmniBrowser from './ui/OmniBrowser.js'
 import OmniBrowserProperties from './ui/OmniBrowserProperties.js'
+import OmniBrowserSpace from './modules/OmniBrowserSpace.js'
+import OmniBrowserSpacePanel from './ui/OmniBrowserSpacePanel.js'
+import OmniMixerPanel from './ui/OmniMixerPanel.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -183,11 +186,28 @@ import * as ThemeManager from './ui/ThemeManager.js'
   const wallpaperSettingsPanel = new WallpaperSettingsPanel(base.context)
   base.addModule(wallpaperSettingsPanel)
 
-  const omniBrowser = new OmniBrowser(base.context)
-  base.addModule(omniBrowser)
+  const omniBrowserWindows = [1, 2, 3].map(windowId => {
+    const instance = new OmniBrowser(base.context, { windowId })
+    base.addModule(instance)
+    return instance
+  })
+  const omniBrowserWindow1 = omniBrowserWindows[0]
 
   const omniBrowserProperties = new OmniBrowserProperties(base.context)
   base.addModule(omniBrowserProperties)
+
+  // Phase 2 of OmniBrowser — see OMNIBROWSER.md. A performance test
+  // cube, active from boot like WallpaperSphere/ParticleField, with
+  // its own always-visible on-screen controls (iframe toggles + scale
+  // slider) rather than a drawer-triggered panel.
+  const omniBrowserSpace = new OmniBrowserSpace(base.context)
+  base.addModule(omniBrowserSpace)
+
+  const omniBrowserSpacePanel = new OmniBrowserSpacePanel(base.context)
+  base.addModule(omniBrowserSpacePanel)
+
+  const omniMixerPanel = new OmniMixerPanel(base.context)
+  base.addModule(omniMixerPanel)
 
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)
@@ -275,6 +295,14 @@ import * as ThemeManager from './ui/ThemeManager.js'
     { id: 'intelligence',    navLabel: '⟐Intelligence',    title: '⟐Intelligence',    prefix: 'Intelligence',   iconLabel: '⟐I' },
     { id: 'infrastructures', navLabel: '⟐Infrastructures', title: '⟐Infrastructures', prefix: 'Infrastructure', iconLabel: '⟐N' },
     { id: 'objects',         navLabel: '⟐Objects',         title: '⟐Objects',         prefix: 'Object',         iconLabel: '⟐O' },
+    {
+      id: 'omnibrowser-wrapper', navLabel: '⟐OmniBrowser', title: '⟐OmniBrowser', prefix: 'Browser', iconLabel: '⟐B',
+      specialSlots: {
+        1: { label: 'Browser Window', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserWindow' } })) },
+        2: { label: 'Browser Properties', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserProperties' } })) },
+        3: { label: 'OmniBrowserSpace Settings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserSpaceSettings' } })) },
+      }
+    },
   ]
   indexedPanelConfigs.forEach(cfg => {
     const instance = new IndexedPanel(base.context, cfg)
@@ -579,6 +607,13 @@ import * as ThemeManager from './ui/ThemeManager.js'
     const tl = gsap.timeline({
       onComplete: () => {
         orbitMod.enable()
+        // OmniBrowser is meant to be the user's first, most familiar
+        // interaction with the reality — opens automatically the
+        // moment landing completes, sliding in from opposite edges
+        // together with its Properties panel, rather than requiring
+        // the drawer.
+        omniBrowserWindow1.openFromSide()
+        omniBrowserProperties.openFromSide()
       }
     })
 

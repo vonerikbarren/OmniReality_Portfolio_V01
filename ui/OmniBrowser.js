@@ -146,8 +146,18 @@ function injectStyles () {
 }
 
 export default class OmniBrowser {
-  constructor (context) {
+  /**
+   * @param {object} context
+   * @param {object} [config]
+   * @param {number} [config.windowId=1] — which of up to 3 simultaneous
+   *   browser windows this instance is. Included in this panel's own
+   *   WindowManager id/title so multiple instances don't collide, and
+   *   used to filter `omni:browser-set` patches to the matching window
+   *   only (a patch with no windowId, or windowId 1, applies to window 1).
+   */
+  constructor (context, config = {}) {
     this.ctx = context
+    this.windowId = config.windowId ?? 1
     this._el = null
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
@@ -160,20 +170,32 @@ export default class OmniBrowser {
 
   init () {
     injectStyles()
+    // Window 1 opens directly from the drawer's own OmniBrowser item
+    // for backward compatibility with anyone already relying on that;
+    // windows 2/3 only ever open via ui/OmniBrowserProperties.js's own
+    // "+ New Window" control, not the drawer.
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniBrowser') return
+      if (this.windowId !== 1) return
+      if (e.detail?.item !== '⟐OmniBrowserWindow') return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
 
     // From ui/OmniBrowserProperties.js — this panel owns the iframe
     // and reveal effect, nothing about URL/nav/sandbox state itself.
+    // Ignores patches meant for a different window.
     this._onBrowserSet = (e) => {
       const patch = e.detail ?? {}
+      if ((patch.windowId ?? 1) !== this.windowId) return
       if (patch.url !== undefined) this._navigate(patch.url)
       if (patch.sandbox !== undefined) this._setSandbox(patch.sandbox)
     }
     window.addEventListener('omni:browser-set', this._onBrowserSet)
+
+    this._onOpenWindow = (e) => {
+      if (e.detail?.windowId === this.windowId) this.open()
+    }
+    window.addEventListener('omni:browser-open-window', this._onOpenWindow)
   }
 
   update () {}
@@ -182,9 +204,10 @@ export default class OmniBrowser {
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:browser-set', this._onBrowserSet)
+    window.removeEventListener('omni:browser-open-window', this._onOpenWindow)
     clearTimeout(this._loadWatchdog)
     this._el?.parentNode?.removeChild(this._el)
-    WindowManager.unregister('omnibrowser')
+    WindowManager.unregister(`omnibrowser-${this.windowId}`)
   }
 
   open () {
@@ -198,6 +221,24 @@ export default class OmniBrowser {
 
     if (firstOpen) this._playMaterialize()
     else gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), duration: 0.28, ease: 'power2.out' })
+  }
+
+  /** Boot-time entrance only — slides in from the left edge rather
+   *  than the regular fade, since this is meant to be the very first
+   *  thing a landing user sees, not just another panel being opened. */
+  openFromSide () {
+    if (!this._el) this._el = this._buildDOM()
+    const shell = document.getElementById('omni-ui') ?? document.body
+    shell.appendChild(this._el)
+    this._el.style.visibility = 'visible'
+    this._isOpen = true
+    this._playSound('open')
+
+    const targetLeft = parseFloat(this._el.style.left) || 120
+    gsap.fromTo(this._el,
+      { opacity: 0, left: targetLeft - 260 },
+      { opacity: WindowManager.getPanelOpacity(), left: targetLeft, duration: 0.65, ease: 'power3.out' }
+    )
   }
 
   close () {
@@ -221,7 +262,7 @@ export default class OmniBrowser {
     this._playSound('close')
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
-        id: 'omnibrowser', label: '⟐OmniBrowser', iconLabel: '⟐B',
+        id: `omnibrowser-${this.windowId}`, label: `⟐OmniBrowser ${this.windowId}`, iconLabel: '⟐B',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
         variant: 'orb',
       }
@@ -274,8 +315,13 @@ export default class OmniBrowser {
       if (this._currentUrl) window.open(this._currentUrl, '_blank', 'noopener,noreferrer')
     })
 
-    el.dataset.winId = 'omnibrowser'
-    WindowManager.register('omnibrowser', el, '⟐OmniBrowser')
+    el.dataset.winId = `omnibrowser-${this.windowId}`
+    if (this.windowId > 1) {
+      // Stagger windows 2/3 so they don't land exactly on top of window 1.
+      el.style.left = `${120 + (this.windowId - 1) * 50}px`
+      el.style.top = `${90 + (this.windowId - 1) * 50}px`
+    }
+    WindowManager.register(`omnibrowser-${this.windowId}`, el, `⟐OmniBrowser ${this.windowId}`)
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
 
     return el
