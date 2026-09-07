@@ -67,6 +67,10 @@ import ParticleSettingsPanel from './ui/ParticleSettingsPanel.js'
 import WallpaperSettingsPanel from './ui/WallpaperSettingsPanel.js'
 import OmniBrowser from './ui/OmniBrowser.js'
 import OmniBrowserProperties from './ui/OmniBrowserProperties.js'
+import OmniBrowserSpace from './modules/OmniBrowserSpace.js'
+import OmniBrowserSpacePanel from './ui/OmniBrowserSpacePanel.js'
+import OmniMixerPanel from './ui/OmniMixerPanel.js'
+import OrbiterVisual from './ui/OrbiterVisual.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -193,6 +197,22 @@ import * as ThemeManager from './ui/ThemeManager.js'
   const omniBrowserProperties = new OmniBrowserProperties(base.context)
   base.addModule(omniBrowserProperties)
 
+  // Phase 2 of OmniBrowser — see OMNIBROWSER.md. A performance test
+  // cube, active from boot like WallpaperSphere/ParticleField, with
+  // its own always-visible on-screen controls (iframe toggles + scale
+  // slider) rather than a drawer-triggered panel.
+  const omniBrowserSpace = new OmniBrowserSpace(base.context)
+  base.addModule(omniBrowserSpace)
+
+  const omniBrowserSpacePanel = new OmniBrowserSpacePanel(base.context)
+  base.addModule(omniBrowserSpacePanel)
+
+  const omniMixerPanel = new OmniMixerPanel(base.context)
+  base.addModule(omniMixerPanel)
+
+  const orbiterVisual = new OrbiterVisual(base.context)
+  base.addModule(orbiterVisual)
+
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)
 
@@ -284,6 +304,7 @@ import * as ThemeManager from './ui/ThemeManager.js'
       specialSlots: {
         1: { label: 'Browser Window', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserWindow' } })) },
         2: { label: 'Browser Properties', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserProperties' } })) },
+        3: { label: 'OmniBrowserSpace Settings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserSpaceSettings' } })) },
       }
     },
   ]
@@ -483,6 +504,49 @@ import * as ThemeManager from './ui/ThemeManager.js'
     )
     if (isTyping) return
     window.dispatchEvent(new CustomEvent('omni:domaingrid-toggle-visible'))
+  })
+
+  // ── 'b' — toggle OmniBrowser (window 1) ───────────────────
+  // Opens sliding in from the left, same entrance as the boot sequence.
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'b' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    if (omniBrowserWindow1._isOpen) omniBrowserWindow1.close()
+    else omniBrowserWindow1.openFromSide()
+  })
+
+  // ── 'n' — toggle OmniDraw ──────────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'n' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    if (omniDraw._isOpen) omniDraw.close()
+    else omniDraw.open()
+  })
+
+  // ── 'm' — toggle OmniMixer ─────────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'm' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    if (omniMixerPanel._isOpen) omniMixerPanel.close()
+    else omniMixerPanel.open()
   })
 
   // ── '(' / ')' — wallpaper sphere spin direction ───────────

@@ -35,6 +35,16 @@ the same brainstorm, inspired by Metroid Prime/Zelda discovery logic)
 would presumably be denominated in OmniValue terms too, once this
 exists - not designed here.
 
+## OmniStore — a paired future project, noted per explicit request
+
+Raised while sequencing upcoming builds (OmniPocket, then Omnicel,
+then this): **OmniStore** will be a commerce/store system built with
+OmniValue as its core aspect — the two are expected to be worked on
+at the same time, OmniValue providing the actual multi-type value
+mechanics and OmniStore being the storefront/interaction layer on top
+of it. Not designed further than that yet — noted here specifically
+so the pairing isn't lost before either gets built.
+
 ## Open questions, unresolved
 
 - Is there a "default" or common value type objects/services get

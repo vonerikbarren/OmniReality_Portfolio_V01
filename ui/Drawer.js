@@ -71,6 +71,7 @@ const LEFT_ITEMS = [
   { label: '⟐PanelControl'    },
   { label: '⟐OmniVisor'       },
   { label: '⟐OmniBrowser'     },
+  { label: '⟐OmniMixer'       },
   { divider: true },
   { divider: true },
   { label: '⟐Admin'           },

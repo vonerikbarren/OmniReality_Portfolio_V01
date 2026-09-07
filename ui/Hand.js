@@ -276,6 +276,12 @@ const STYLES = /* css */`
   transition       : color 0.15s ease, text-shadow 0.15s ease;
 }
 
+.hand-glyph--orbiter {
+  display          : inline-flex;
+  align-items      : center;
+  justify-content  : center;
+}
+
 .hand-label {
   font-size        : 7px;
   color            : var(--hand-text-dim);
@@ -534,10 +540,26 @@ export default class Hand {
       btn.setAttribute('aria-label', this._tooltipFor(key))
     }
 
-    btn.innerHTML = /* html */`
-      <span class="hand-glyph">${sym.glyph}</span>
-      <span class="hand-label">${sym.label}</span>
-    `
+    btn.innerHTML = key === 'orbiter'
+      ? /* html */`
+        <span class="hand-glyph hand-glyph--orbiter">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="7" stroke="#fff" stroke-width="1" opacity="0.9"/>
+            <ellipse cx="12" cy="12" rx="7" ry="2.6" stroke="#fff" stroke-width="0.75" opacity="0.55"/>
+            <ellipse cx="12" cy="12" rx="7" ry="2.6" stroke="#fff" stroke-width="0.75" opacity="0.55" transform="rotate(60 12 12)"/>
+            <ellipse cx="12" cy="12" rx="7" ry="2.6" stroke="#fff" stroke-width="0.75" opacity="0.55" transform="rotate(120 12 12)"/>
+            <circle r="1.1" fill="#fff">
+              <animateMotion dur="3.5s" repeatCount="indefinite"
+                path="M 12,3 A 9,9 0 1,1 11.99,3" />
+            </circle>
+          </svg>
+        </span>
+        <span class="hand-label">${sym.label}</span>
+      `
+      : /* html */`
+        <span class="hand-glyph">${sym.glyph}</span>
+        <span class="hand-label">${sym.label}</span>
+      `
 
     this._cells[key] = btn
     return btn
