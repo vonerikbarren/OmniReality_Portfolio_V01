@@ -730,6 +730,10 @@ export default class MovementPad {
       case 'KeyD': return { handId: 'lh', dir: 'right' }
       case 'KeyR': return { handId: 'rh', dir: 'up'    }
       case 'KeyF': return { handId: 'rh', dir: 'down'  }
+      case 'ArrowUp':    return { handId: 'rh', dir: 'up'    }
+      case 'ArrowDown':  return { handId: 'rh', dir: 'down'  }
+      case 'ArrowLeft':  return { handId: 'rh', dir: 'left'  }
+      case 'ArrowRight': return { handId: 'rh', dir: 'right' }
       default:     return null
     }
   }

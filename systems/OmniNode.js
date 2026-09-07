@@ -94,6 +94,7 @@
 
 import * as THREE from 'three'
 import gsap       from 'gsap'
+import OmniAimReticle from '../ui/OmniAimReticle.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -919,6 +920,12 @@ export default class OmniNode {
     this._load()
     this._updateNodeList()
     this._updateEdgeList()
+
+    // "A circle in the middle to aim, plus seeing where it's landing"
+    // — reusable component (ui/OmniAimReticle.js), activated/deactivated
+    // alongside place mode below.
+    this._aimReticle = new OmniAimReticle(this.ctx)
+    this._aimReticle.init()
   }
 
   /**
@@ -957,6 +964,7 @@ export default class OmniNode {
     // Remove panel DOM
     this._el?.parentNode?.removeChild(this._el)
     this._geoPick?.parentNode?.removeChild(this._geoPick)
+    this._aimReticle?.destroy()
 
     // Remove Three.js objects
     this._nodes.forEach(({ mesh }) => {
@@ -1279,6 +1287,14 @@ export default class OmniNode {
     // Deactivate mode buttons while in place mode
     this._el.querySelectorAll('.on-mode-btn').forEach(b => b.classList.remove('is-active'))
     this._updateFooter()
+
+    // Same floor-plane raycast _onPlaceClick itself uses — the ring
+    // shows exactly where a click right now would actually land, not
+    // an approximation of it.
+    this._aimReticle?.activate((raycaster) => {
+      const target = new THREE.Vector3()
+      return raycaster.ray.intersectPlane(FLOOR_PLANE, target) ? target : null
+    })
   }
 
   _cancelPlace () {
@@ -1291,6 +1307,7 @@ export default class OmniNode {
       btn.classList.toggle('is-active', btn.dataset.mode === 'select')
     })
     this._updateFooter()
+    this._aimReticle?.deactivate()
   }
 
   // ── Raycast system ────────────────────────────────────────────────────────
