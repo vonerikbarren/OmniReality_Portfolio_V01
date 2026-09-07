@@ -659,8 +659,20 @@ import * as ThemeManager from './ui/ThemeManager.js'
         // moment landing completes, sliding in from opposite edges
         // together with its Properties panel, rather than requiring
         // the drawer.
-        omniBrowserWindow1.openFromSide()
-        omniBrowserProperties.openFromSide()
+        //
+        // Skipped when this instance is itself running inside an
+        // iframe (window.self !== window.top — the standard check for
+        // "am I embedded right now"). OmniBrowser's own default
+        // homepage is this same site, loaded recursively — if an
+        // embedded instance ALSO auto-opened its own OmniBrowser, that
+        // inner one would default to loading itself too, and so on:
+        // genuine infinite nesting, not a hypothetical one. An
+        // embedded instance simply doesn't auto-open its own browser.
+        const isEmbedded = window.self !== window.top
+        if (!isEmbedded) {
+          omniBrowserWindow1.openFromSide()
+          omniBrowserProperties.openFromSide()
+        }
       }
     })
 

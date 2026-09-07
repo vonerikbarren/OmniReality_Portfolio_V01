@@ -191,13 +191,57 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
-const DEFAULT_URL = 'https://example.com'
+// "The first thing to show is the site itself" — window.location.href
+// is the correct, portable way to do this: it always points back at
+// wherever THIS instance is actually running (local dev server,
+// GitHub Pages, anywhere else), rather than a hardcoded URL that
+// would only be correct in one specific deployment.
+//
+// This is genuinely recursive — the loaded page shares this exact
+// browser's localStorage/IndexedDB (same-origin iframes share
+// storage), so the "inner" OmniReality sees the same saved nodes and
+// settings as the "outer" one, live. The actual infinite-recursion
+// hazard this creates (an embedded instance auto-opening its own
+// OmniBrowser, defaulting to loading itself, forever) is guarded in
+// main.js via window.self !== window.top — an embedded instance skips
+// its own auto-open entirely, so nesting stops at one level instead
+// of compounding.
+function selfUrl () {
+  try { return window.location.href } catch (_) { return 'https://example.com' }
+}
+
+// Pre-populated for new users — 6 ready-to-use bookmarks instead of an
+// empty index. Slot 7's title (alt-codes.net) wasn't specified when
+// this was requested — "Symbols" is a reasonable guess matching the
+// page's actual content (a diamond-symbols reference), not a given.
+const DEFAULT_BOOKMARKS = {
+  1: { url: '', title: '⟐mni' },   // resolved to selfUrl() at load time — see loadSettings()
+  2: { url: 'https://wikipedia.org', title: 'Wikipedia' },
+  3: { url: 'https://calculator.net', title: 'Calculator' },
+  4: { url: 'https://html-css-js.com', title: 'Code' },
+  5: { url: 'https://www.alt-codes.net/diamond-symbols', title: 'Symbols' },
+  6: { url: 'https://lunapic.com', title: 'Lunapic' },
+  7: { url: 'https://patorjk.com/software/taag/#p=display&f=Slant&t=ToDoList&x=none&v=4&h=4&w=80&we=false', title: 'ASCII' },
+}
+
+/** Normalizes an index entry to {url, title} regardless of whether it
+ *  was saved before this change (a plain URL string) or after (an
+ *  object) — existing bookmarks a user already saved keep working
+ *  rather than breaking on this data-shape change. */
+function normalizeIndexEntry (entry) {
+  if (!entry) return null
+  if (typeof entry === 'string') return { url: entry, title: null }
+  return { url: entry.url, title: entry.title ?? null }
+}
 
 function loadSettings () {
   const defaults = {
-    homeUrl: DEFAULT_URL,
+    homeUrl: selfUrl(),
     sandboxFlags: { 'allow-scripts': true, 'allow-same-origin': true, 'allow-forms': true, 'allow-popups': true },
-    index: {},   // { [slot]: url }
+    index: {
+      ...DEFAULT_BOOKMARKS,
+      1: { url: selfUrl(), title: '⟐mni' },
+    },
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -236,6 +280,18 @@ export default class OmniBrowserProperties {
     window.addEventListener('omni:nav-select', this._onNavSelect)
 
     this._broadcastSandbox()
+
+    // "The first thing to show is the site itself" — actually navigate
+    // window 1 there on boot, not just pre-fill the URL input's value.
+    // Recorded into window 1's own history too, so Back/Forward and the
+    // URL bar stay consistent with what's actually already displayed,
+    // rather than the iframe showing content the panel doesn't know about.
+    const home = this._state.homeUrl
+    if (home) {
+      this._windows[1].history = [home]
+      this._windows[1].historyIndex = 0
+      window.dispatchEvent(new CustomEvent('omni:browser-set', { detail: { url: home, windowId: 1 } }))
+    }
   }
 
   update () {}
@@ -320,8 +376,9 @@ export default class OmniBrowserProperties {
 
     let indexButtons = ''
     for (let i = 1; i <= INDEX_SLOTS; i++) {
-      const url = s.index[i]
-      indexButtons += `<button class="bp-index-btn ${url ? 'is-filled' : ''}" data-index-slot="${i}" title="${url ?? 'Empty'}">${url ? this._shortLabel(url) : i}</button>`
+      const entry = normalizeIndexEntry(s.index[i])
+      const label = entry ? (entry.title ?? this._shortLabel(entry.url)) : i
+      indexButtons += `<button class="bp-index-btn ${entry ? 'is-filled' : ''}" data-index-slot="${i}" title="${entry?.url ?? 'Empty'}">${label}</button>`
     }
 
     el.innerHTML = /* html */`
@@ -437,13 +494,13 @@ export default class OmniBrowserProperties {
       const btn = e.target.closest('[data-index-slot]')
       if (!btn) return
       const slot = Number(btn.dataset.indexSlot)
-      const saved = this._state.index[slot]
+      const saved = normalizeIndexEntry(this._state.index[slot])
       if (saved) {
-        this._go(saved)
+        this._go(saved.url)
       } else {
         const current = this._windows[this._activeWindow].history[this._windows[this._activeWindow].historyIndex]
         if (!current) return
-        this._state.index[slot] = current
+        this._state.index[slot] = { url: current, title: null }
         saveSettings(this._state)
         btn.classList.add('is-filled')
         btn.textContent = this._shortLabel(current)
@@ -456,7 +513,7 @@ export default class OmniBrowserProperties {
    *  before navigating — a small usability nicety, not required. */
   _normalizeUrl (raw) {
     if (!raw) return ''
-    if (/^https?:\/\//i.test(raw)) return raw
+    if (/^(https?|file|blob|data):/i.test(raw)) return raw
     return `https://${raw}`
   }
 

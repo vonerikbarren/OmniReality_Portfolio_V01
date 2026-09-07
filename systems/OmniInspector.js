@@ -3832,9 +3832,19 @@ export default class OmniInspector {
     const standoff = 2.5 + Math.max(scale.x, scale.y, scale.z)
     const target = objectPos.clone().add(away.multiplyScalar(standoff))
 
+    // The actual bug: OrbitControls runs a real per-frame camera loop
+    // and was never told to stand down here — every other fly-to tween
+    // in this app (OmniPocket, OmniPresenter, OmniExpression) disables
+    // it first for exactly this reason. Without this, OrbitControls
+    // fights this tween's direct camera.position writes every frame,
+    // producing an unpredictable final position unrelated to the
+    // actual target — "taking me to some random location in space."
+    window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
+
     gsap.to(camera.position, {
       x: target.x, y: target.y, z: target.z, duration: 0.6, ease: 'power2.inOut',
       onUpdate: () => camera.lookAt(objectPos),
+      onComplete: () => window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} })),
     })
   }
 

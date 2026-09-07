@@ -452,6 +452,7 @@ export default class MovementPad {
 
     this._onPadToggle  = this._handlePadToggle.bind(this)
     this._onPadsGlobal = this._handlePadsGlobal.bind(this)
+    this._onRadialToggle = this._handleRadialToggle.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
     this._onKeyUp      = this._handleKeyUp.bind(this)
   }
@@ -475,6 +476,7 @@ export default class MovementPad {
     Object.values(this._els).forEach(el => el?.parentNode?.removeChild(el))
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
+    window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
   }
@@ -737,6 +739,26 @@ export default class MovementPad {
   _bindGlobalEvents () {
     window.addEventListener('omni:pad-toggle',  this._onPadToggle)
     window.addEventListener('omni:pads-global', this._onPadsGlobal)
+    window.addEventListener('omni:radial-toggle', this._onRadialToggle)
+  }
+
+  /** Fixes a real bug: RadialMenu shifts 200px toward screen-center
+   *  (+250px up) when it opens — see its own _positionMenu — which
+   *  lands directly in the path of each pad's "toward center" button
+   *  (left hand's Right, right hand's Left). RadialMenu's container
+   *  itself is pointer-events:none, but its individual .radial-item
+   *  buttons are pointer-events:auto and sit at z-index 55, above this
+   *  pad's default 41 — whichever one lands on the same pixel wins the
+   *  click, silently swallowing it before the pad button ever sees it.
+   *  Temporarily raising this hand's own pad above that z-index while
+   *  its radial menu is open guarantees the pad stays clickable,
+   *  without needing to chase exact pixel geometry that could shift
+   *  again with any future style tweak. */
+  _handleRadialToggle (e) {
+    const { hand, visible } = e.detail ?? {}
+    const el = this._els[hand]
+    if (!el) return
+    el.style.zIndex = visible ? '60' : ''
   }
 
   _handlePadToggle (e) {
