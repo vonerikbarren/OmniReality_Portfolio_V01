@@ -93,6 +93,11 @@ function loadState () {
       { id: 'time',   label: 'Circle of Time',   mediaUrl: '', mediaType: 'image', radiusScale: 1.6 },
       { id: 'choice', label: 'Circle of Choice', mediaUrl: '', mediaType: 'image', radiusScale: 1.9 },
     ],
+    // Circle 0 spins clockwise, circle 1 counter-clockwise, circle 2
+    // clockwise again, alternating with depth — direction is computed
+    // from index (see update()), not stored per-circle, so it stays
+    // correct automatically as circles are added or removed.
+    circleRotation: { enabled: true, speed: 0.3 },
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -434,7 +439,7 @@ export default class OmniExpression {
     this._buildAvatar()
 
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniExpression') return
+      if (e.detail?.item !== '⟐OmniExpressionPresenter') return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
@@ -446,10 +451,26 @@ export default class OmniExpression {
       Object.assign(this._state, patch)
       saveState(this._state)
       this._applyStateToAvatar()
+      // _applyStateToAvatar only handles radius/color/position — media
+      // (video/image) loading is a separate concern it doesn't cover,
+      // so a patch containing mediaUrl needs to explicitly trigger it.
+      if ('mediaUrl' in patch) this._loadMedia(this._state.mediaUrl, this._state.mediaType)
       this._staged = this._extractStaged(this._state)   // Inspector edits apply immediately — keep the main panel's form in sync, no stale "unsaved" banner for a change that's already live
       this._syncPanelUI()
     }
     window.addEventListener('omni:expression-state-set', this._onInspectorUpdate)
+
+    // From ui/OmniExpressionVideoPlayer.js — direct playback control,
+    // not a state patch (transient actions, not persisted state).
+    this._onVideoControl = (e) => {
+      const { action, time } = e.detail ?? {}
+      const video = this._mediaVideoEl
+      if (!video) return
+      if (action === 'play') video.play().catch(() => {})
+      else if (action === 'pause') video.pause()
+      else if (action === 'seek' && typeof time === 'number') video.currentTime = time
+    }
+    window.addEventListener('omni:expression-video-control', this._onVideoControl)
 
     this._onBackingCircleRequest = (e) => {
       const { action, id, patch } = e.detail ?? {}
@@ -467,7 +488,7 @@ export default class OmniExpression {
     window.addEventListener('omni:expression-backing-circle-request', this._onBackingCircleRequest)
   }
 
-  update () {
+  update (delta) {
     if (!this._avatarGroup) return
     if (this._state.mode === 'panel') this._updatePanelPosition()
     // Always billboard toward the camera — a flat circle not facing
@@ -475,6 +496,15 @@ export default class OmniExpression {
     // GROUP (not just the avatar mesh) keeps every backing circle
     // facing the camera together with it.
     this._avatarGroup.quaternion.copy(this.ctx.camera.quaternion)
+
+    if (this._state.circleRotation.enabled) {
+      const speed = this._state.circleRotation.speed
+      this._backingMeshes.forEach(({ mesh }, i) => {
+        if (!mesh) return
+        const direction = i % 2 === 0 ? 1 : -1   // 0=CW, 1=CCW, 2=CW, alternating
+        mesh.rotation.z += direction * speed * delta
+      })
+    }
   }
 
   onResize () {}
@@ -482,6 +512,7 @@ export default class OmniExpression {
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:expression-state-set', this._onInspectorUpdate)
+    window.removeEventListener('omni:expression-video-control', this._onVideoControl)
     window.removeEventListener('omni:expression-backing-circle-request', this._onBackingCircleRequest)
     this._disposeMediaTexture()
     this._backingMeshes.forEach((_, i) => this._disposeBackingMedia(i))
@@ -583,32 +614,25 @@ export default class OmniExpression {
     }
   }
 
+  /** Backing circles are image-only, always — even though the
+   *  underlying mechanism (mirroring the main avatar's own
+   *  _loadMedia) technically supports video, circles exist only to
+   *  give the avatar resonance and meaning, never a second video
+   *  layer. Enforced here at the data level, not just by removing the
+   *  Inspector's old toggle — so this holds regardless of what patch
+   *  a future caller sends. */
   _loadBackingMedia (index, url, type) {
     const entry = this._backingMeshes[index]
     if (!url || !entry?.mesh) return
     this._disposeBackingMedia(index)
 
-    if (type === 'video') {
-      const video = document.createElement('video')
-      video.src = url
-      video.loop = true
-      video.muted = true
-      video.playsInline = true
-      video.crossOrigin = 'anonymous'
-      video.play().catch(() => {})
-      entry.videoEl = video
-      const texture = new THREE.VideoTexture(video)
-      entry.mesh.material.map = texture
-      entry.mesh.material.needsUpdate = true
-    } else {
-      const loader = new THREE.TextureLoader()
-      loader.load(url, (texture) => {
-        if (entry.mesh) {
-          entry.mesh.material.map = texture
-          entry.mesh.material.needsUpdate = true
-        }
-      })
-    }
+    const loader = new THREE.TextureLoader()
+    loader.load(url, (texture) => {
+      if (entry.mesh) {
+        entry.mesh.material.map = texture
+        entry.mesh.material.needsUpdate = true
+      }
+    })
   }
 
   _disposeBackingMedia (index) {
@@ -684,6 +708,11 @@ export default class OmniExpression {
       video.playsInline = true
       video.crossOrigin = 'anonymous'
       video.play().catch(() => {})   // ignore autoplay-blocked errors — still loads, just paused
+      video.addEventListener('timeupdate', () => {
+        window.dispatchEvent(new CustomEvent('omni:expression-video-timeupdate', {
+          detail: { currentTime: video.currentTime, duration: video.duration || 0, paused: video.paused }
+        }))
+      })
       this._mediaVideoEl = video
       const texture = new THREE.VideoTexture(video)
       this._avatarMesh.material.map = texture

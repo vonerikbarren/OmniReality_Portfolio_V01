@@ -555,7 +555,9 @@ export default class OmniDraw {
       const label = row.querySelector('.od-row-label')?.textContent
       if (label === undefined || !(label in fields)) return
       const range = row.querySelector('input[type="range"]')
+      const num = row.querySelector('input[type="number"]')
       if (range && fields[label] !== undefined) range.step = fields[label]
+      if (num && fields[label] !== undefined) num.step = fields[label]
     })
   }
 
@@ -818,18 +820,33 @@ export default class OmniDraw {
     input.step  = field.step
     input.value = this._data[field.key]
 
-    const val = document.createElement('span')
-    val.className = 'od-range-val'
-    val.textContent = Number(this._data[field.key]).toFixed(field.step < 1 ? 2 : 0)
+    // A typeable number field, not just a read-only display span — the
+    // actual fix. A slider's step size is nearly impossible to feel
+    // while dragging on a wide range; a number field's step is
+    // directly felt through arrow-key increments and spinner clicks,
+    // which is how this is actually meant to be used.
+    const numInput = document.createElement('input')
+    numInput.type = 'number'
+    numInput.className = 'od-num'
+    numInput.min  = field.min
+    numInput.max  = field.max
+    numInput.step = field.step
+    numInput.value = Number(this._data[field.key]).toFixed(field.step < 1 ? 2 : 0)
 
     input.addEventListener('input', () => {
       this._data[field.key] = Number(input.value)
-      val.textContent = Number(input.value).toFixed(field.step < 1 ? 2 : 0)
+      numInput.value = Number(input.value).toFixed(field.step < 1 ? 2 : 0)
+      this._onFieldChange(field)
+    })
+    numInput.addEventListener('input', () => {
+      const clamped = Math.min(field.max, Math.max(field.min, Number(numInput.value) || 0))
+      this._data[field.key] = clamped
+      input.value = clamped
       this._onFieldChange(field)
     })
 
     wrap.appendChild(input)
-    wrap.appendChild(val)
+    wrap.appendChild(numInput)
     return wrap
   }
 

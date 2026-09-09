@@ -99,6 +99,8 @@ linger.
 ## Designed But Not Built
 
 Real design docs exist for each of these; none has working code yet.
+All documentation, including this file, now lives under `docs/` — see
+`docs/README.md` for the full organized index.
 
 - `BACKEND_ARCHITECTURE_DESIGN.md` - why frontend-only hits a wall,
   and the GitHub Pages hybrid-hosting question.
@@ -106,7 +108,17 @@ Real design docs exist for each of these; none has working code yet.
   timeline authoring, generalizing OmniExpression's own waypoint
   mechanism.
 - `OMNIFEED_DESIGN.md` - blog interface + live WebSocket comments.
-- `OMNIVALUE_DESIGN.md` - dimensionalized, multi-type value/bartering.
+- `OMNIVALUE_DESIGN.md` - dimensionalized, multi-type value/bartering,
+  and the paired future OmniStore project.
+- `OMNITRUTHS_DESIGN.md` - merging realities for comparison/analysis,
+  the realityOf(params) framing, still-open destructive/non-destructive
+  merge question. One of the deepest, most-developed design threads in
+  the project so far.
+- `OMNI_EXPRESSION_PRESENTER_DESIGN.md`'s later sections - the planned
+  OmniExpressionVideoPlayer (agreed, scoped, not built), and a much
+  larger thread (Timeline, Time Tunnel, Master Tunnel, OmniTime,
+  OmniLayer) that's almost entirely conceptual still - the least-built,
+  most-designed material in the project right now.
 - `MUSIC_REACTIVE_PANELS_DESIGN.md` - panel-border music reactivity,
   the Timestone reality-activation idea, music-as-moving-nodes.
 - `OMNIVISOR_DESIGN.md`'s deeper timeline-view section - a YouTube-bar-

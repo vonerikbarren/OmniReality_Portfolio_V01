@@ -1562,6 +1562,20 @@ export default class OmniInspector {
     this._buildPanel()
     this._bindEvents()
     this._showEmpty()
+
+    this._onAdminStepsSaved = (e) => {
+      const steps = e.detail?.steps
+      if (!steps || !this._el) return
+      const ids = { px: 'oi-px', py: 'oi-py', pz: 'oi-pz' }
+      for (const [axis, id] of Object.entries(ids)) {
+        if (steps[axis] === undefined) continue
+        const input = this._el.querySelector(`#${id}`)
+        const slider = this._el.querySelector(`#${id}-slider`)
+        if (input) input.step = steps[axis]
+        if (slider) slider.step = steps[axis]
+      }
+    }
+    window.addEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
   }
 
   update (delta) {
@@ -1602,6 +1616,7 @@ export default class OmniInspector {
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+    window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('wheel', this._onWheel)
     window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
@@ -2382,12 +2397,32 @@ export default class OmniInspector {
 
   // ── APPEARANCE section HTML ───────────────────────────────────────────────
 
+  /** Mirrors OmniDraw's own _readAdminSteps — falls back to 0.1 per
+   *  axis (the value this field used to have hardcoded) if the Admin
+   *  setting doesn't exist yet or only partially specifies an axis. */
+  _readAdminSteps () {
+    const fallback = { px: 0.1, py: 0.1, pz: 0.1 }
+    try {
+      const raw = localStorage.getItem('omni:admin:settings')
+      const saved = raw ? JSON.parse(raw)?.steps : null
+      return saved ? { ...fallback, ...saved } : fallback
+    } catch (_) { return fallback }
+  }
+
   _appearanceHTML (data, ext) {
     const isSprite = data.geometry === 'DimensionalText'
     const { r, g, b, a } = this._color
     const hex = rgbToHex(r, g, b)
     const apc = Math.round(a * 100)
     const swatchBg = `rgba(${r},${g},${b},${a})`
+    // The actual root fix: this used to be a hardcoded 0.1, completely
+    // disconnected from Admin's px/py/pz step setting — that setting
+    // only ever reached OmniDraw's create-flow fields, never here,
+    // where editing an already-placed object's position actually
+    // happens. Falls back to 0.1 (the previous hardcoded value) if
+    // the admin setting was never touched, so existing behavior is
+    // unchanged for anyone who hasn't configured it.
+    const posStep = this._readAdminSteps()
 
     // Material options
     const matOptions = Object.keys(MATERIALS).map(m => /* html */`
@@ -2486,20 +2521,20 @@ export default class OmniInspector {
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">X</span>
             <input class="oi-xyz-input" id="oi-px" type="number"
-                   value="${pos.x}" step="0.1">
-            <input class="oi-mat-prop-range" id="oi-px-slider" type="range" min="-50" max="50" step="0.1" value="${pos.x}">
+                   value="${pos.x}" step="${posStep.px}">
+            <input class="oi-mat-prop-range" id="oi-px-slider" type="range" min="-50" max="50" step="${posStep.px}" value="${pos.x}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Y</span>
             <input class="oi-xyz-input" id="oi-py" type="number"
-                   value="${pos.y}" step="0.1">
-            <input class="oi-mat-prop-range" id="oi-py-slider" type="range" min="-50" max="50" step="0.1" value="${pos.y}">
+                   value="${pos.y}" step="${posStep.py}">
+            <input class="oi-mat-prop-range" id="oi-py-slider" type="range" min="-50" max="50" step="${posStep.py}" value="${pos.y}">
           </div>
           <div class="oi-xyz-field">
             <span class="oi-xyz-label">Z</span>
             <input class="oi-xyz-input" id="oi-pz" type="number"
-                   value="${pos.z}" step="0.1">
-            <input class="oi-mat-prop-range" id="oi-pz-slider" type="range" min="-50" max="50" step="0.1" value="${pos.z}">
+                   value="${pos.z}" step="${posStep.pz}">
+            <input class="oi-mat-prop-range" id="oi-pz-slider" type="range" min="-50" max="50" step="${posStep.pz}" value="${pos.z}">
           </div>
         </div>
       </div>

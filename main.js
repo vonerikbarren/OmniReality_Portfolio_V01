@@ -71,6 +71,7 @@ import OmniBrowserSpace from './modules/OmniBrowserSpace.js'
 import OmniBrowserSpacePanel from './ui/OmniBrowserSpacePanel.js'
 import OmniMixerPanel from './ui/OmniMixerPanel.js'
 import OrbiterVisual from './ui/OrbiterVisual.js'
+import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 
@@ -216,6 +217,9 @@ import * as ThemeManager from './ui/ThemeManager.js'
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)
 
+  const omniExpressionVideoPlayer = new OmniExpressionVideoPlayer(base.context)
+  base.addModule(omniExpressionVideoPlayer)
+
   const omniExpressionInspector = new OmniExpressionInspector(base.context)
   base.addModule(omniExpressionInspector)
 
@@ -305,6 +309,13 @@ import * as ThemeManager from './ui/ThemeManager.js'
         1: { label: 'Browser Window', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserWindow' } })) },
         2: { label: 'Browser Properties', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserProperties' } })) },
         3: { label: 'OmniBrowserSpace Settings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniBrowserSpaceSettings' } })) },
+      }
+    },
+    {
+      id: 'omniexpression-wrapper', navLabel: '⟐OmniExpression', title: '⟐OmniExpression', prefix: 'Expression', iconLabel: '⟐X',
+      specialSlots: {
+        1: { label: 'Presenter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniExpressionPresenter' } })) },
+        2: { label: 'UserPresenterVideoSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserPresenterVideoSettings' } })) },
       }
     },
   ]
