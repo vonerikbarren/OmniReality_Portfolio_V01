@@ -109,3 +109,22 @@ export const saveWallpaper = defaultStore.saveWallpaper
 export const loadWallpaper = defaultStore.loadWallpaper
 export const listWallpapers = defaultStore.listWallpapers
 export const deleteWallpaper = defaultStore.deleteWallpaper
+
+/**
+ * Every known IndexedDB namespace created via createWallpaperStore,
+ * across the whole app. Unlike localStorage (which the export/import
+ * system can just loop over generically), IndexedDB has no reliable,
+ * universal "list every database" call — so this is a small, explicit
+ * registry instead. Whoever adds a new createWallpaperStore(...) call
+ * anywhere in the app should add its namespace here too, or that
+ * namespace's assets will silently be skipped by export/import.
+ */
+export const KNOWN_NAMESPACES = [
+  'sphere',                 // WallpaperSphere — utils/WallpaperStorage.js default store
+  'browserspace-cube',      // OmniBrowserSpace's cube face texture
+  'omnimixer-audio',        // OmniMixerPanel's shared audio library
+  'omnimixer-video',        // OmniMixerPanel's video slots
+  'omnimixer-skin',         // OmniMixerPanel's background skin image
+  'omniexpression-video',   // OmniExpressionVideoPlayer's main video
+  'omniexpression-circles', // OmniExpressionVideoPlayer's backing circle images
+]

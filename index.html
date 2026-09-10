@@ -15,6 +15,11 @@
   }
   </script>
 
+  <!-- JSZip's own dist build is UMD, not an ES module, so it can't go
+       in the importmap above like three/gsap — this sets a plain
+       global window.JSZip instead, used by AdminPanel's export/import. -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
   <style>
     *, *::before, *::after {
       box-sizing: border-box;

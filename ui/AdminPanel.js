@@ -41,6 +41,9 @@ import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import * as GridWidgets   from './GridWidgets.js'
 import * as ThemeManager  from './ThemeManager.js'
+import { createWallpaperStore, KNOWN_NAMESPACES } from '../utils/WallpaperStorage.js'
+
+const SCHEMA_VERSION = 1
 
 const STORE_KEY = 'omni:admin:settings'
 
@@ -544,14 +547,14 @@ export default class AdminPanel {
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
-         <button class="ap-action-btn" id="ap-export-data">⬇ Export Data</button>
-         <label class="ap-action-btn" for="ap-import-input" style="display:block;text-align:center;box-sizing:border-box">⬆ Import Data</label>
-         <input type="file" accept="application/json,.json" class="ap-import-input" id="ap-import-input">
-         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4;margin-top:4px">
+         <button class="ap-action-btn" id="ap-export-data">⬇ Export Reality</button>
+         <label class="ap-action-btn" for="ap-import-input" style="display:block;text-align:center;box-sizing:border-box">⬆ Import Reality</label>
+         <input type="file" accept="application/zip,.zip" class="ap-import-input" id="ap-import-input">
+         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4;margin-top:4px" id="ap-data-status">
            Clear Scene removes every created object — cannot be undone.
-           Export downloads everything currently in local storage as one
-           JSON file. Import replaces local storage with a previously
-           exported file and reloads the page to apply it.
+           Export downloads a .zip with everything: all settings, plus
+           every saved image/audio/video across the app. Import restores
+           from a previously exported .zip and reloads the page.
          </div>`
       )
 
@@ -574,33 +577,95 @@ export default class AdminPanel {
 
   /** Clear Scene dispatches an event rather than reaching into
    *  OmniNode's storage keys directly — this panel doesn't (and
-   *  shouldn't need to) know that system's internal key names. Export
-   *  /Import work directly against localStorage since "whatever is in
-   *  local storage" is explicitly the whole point of those two. */
+   *  shouldn't need to) know that system's internal key names.
+   *
+   *  Export/Import now cover the whole reality, not just localStorage:
+   *  a real .zip containing manifest.json (every localStorage key,
+   *  a schemaVersion stamp, and a map of which asset file belongs to
+   *  which IndexedDB namespace/slot) plus an assets/ folder with the
+   *  actual saved images/audio/video. localStorage itself is still
+   *  swept generically (loop every key — no hardcoded list needed),
+   *  but IndexedDB has no reliable "list every database" call, so
+   *  KNOWN_NAMESPACES (utils/WallpaperStorage.js) is the explicit
+   *  registry of which namespaces to check. */
   _bindDataManagement (body) {
+    const statusEl = () => body.querySelector('#ap-data-status')
+    const defaultStatusHTML = statusEl()?.innerHTML
+
     body.querySelector('#ap-clear-scene')?.addEventListener('click', () => {
       const ok = window.confirm('Clear every object in the scene? This cannot be undone.')
       if (!ok) return
       window.dispatchEvent(new CustomEvent('omni:scene-clear-request'))
     })
 
-    body.querySelector('#ap-export-data')?.addEventListener('click', () => {
-      const dump = {}
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        dump[key] = localStorage.getItem(key)
+    body.querySelector('#ap-export-data')?.addEventListener('click', async () => {
+      const btn = body.querySelector('#ap-export-data')
+      const status = statusEl()
+      btn.disabled = true
+      const originalLabel = btn.textContent
+
+      try {
+        if (typeof window.JSZip === 'undefined') {
+          throw new Error('JSZip failed to load — check your network connection and try again.')
+        }
+        const zip = new window.JSZip()
+
+        // 1. localStorage — swept generically, no key list needed.
+        const localStorageDump = {}
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          localStorageDump[key] = localStorage.getItem(key)
+        }
+
+        // 2. IndexedDB assets — one explicit namespace at a time.
+        const assetEntries = []
+        let assetCount = 0
+        for (const namespace of KNOWN_NAMESPACES) {
+          btn.textContent = `⬇ Exporting (${namespace})…`
+          const store = createWallpaperStore(namespace)
+          const slots = await store.listWallpapers()
+          for (const meta of slots) {
+            const record = await store.loadWallpaper(meta.slot)
+            if (!record?.blob) continue
+            const ext = (record.blob.type.split('/')[1] || 'bin').split('+')[0]
+            const path = `assets/${namespace}/slot-${meta.slot}.${ext}`
+            zip.file(path, record.blob)
+            assetEntries.push({ namespace, slot: meta.slot, name: record.name, path })
+            assetCount++
+          }
+        }
+
+        // 3. Manifest — the whole point of the schemaVersion field is
+        // catching a real mismatch on import later, not enforced here.
+        const manifest = {
+          schemaVersion: SCHEMA_VERSION,
+          exportedAt: new Date().toISOString(),
+          localStorage: localStorageDump,
+          assets: assetEntries,
+        }
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2))
+
+        btn.textContent = '⬇ Zipping…'
+        const blob = await zip.generateAsync({ type: 'blob' })
+
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+        a.download = `omnireality-export-${stamp}.zip`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+
+        if (status) status.innerHTML = `Exported ${assetCount} asset${assetCount === 1 ? '' : 's'} plus all settings. ✓`
+      } catch (err) {
+        window.alert(`Export failed: ${err?.message ?? err}`)
+      } finally {
+        btn.disabled = false
+        btn.textContent = originalLabel
+        if (status) setTimeout(() => { status.innerHTML = defaultStatusHTML }, 4000)
       }
-      const json = JSON.stringify(dump, null, 2)
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-      a.download = `omnireality-export-${stamp}.json`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
     })
 
     body.querySelector('#ap-import-input')?.addEventListener('change', async (e) => {
@@ -608,24 +673,61 @@ export default class AdminPanel {
       if (!file) return
 
       const ok = window.confirm(
-        'Importing replaces everything currently in local storage with ' +
-        'the contents of this file, then reloads the page. Continue?'
+        'Importing replaces everything currently saved — settings, ' +
+        'placed objects, and every saved image/audio/video — with the ' +
+        'contents of this file, then reloads the page. Continue?'
       )
       if (!ok) { e.target.value = ''; return }
 
+      const status = statusEl()
       try {
-        const text = await file.text()
-        const data = JSON.parse(text)
-        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-          throw new Error('Expected a JSON object of key/value pairs, like an exported file.')
+        if (typeof window.JSZip === 'undefined') {
+          throw new Error('JSZip failed to load — check your network connection and try again.')
         }
+        if (status) status.innerHTML = 'Reading file…'
+        const zip = await window.JSZip.loadAsync(file)
+
+        const manifestFile = zip.file('manifest.json')
+        if (!manifestFile) {
+          throw new Error('Not a valid export — missing manifest.json. Expected a .zip from Export Reality.')
+        }
+        const manifest = JSON.parse(await manifestFile.async('string'))
+
+        // Version handling: a NEWER file than this build understands
+        // is the one case worth stopping for — everything else
+        // (same or older) is imported as-is per the minor/major
+        // distinction from the original export/import design.
+        if (typeof manifest.schemaVersion !== 'number' || manifest.schemaVersion > SCHEMA_VERSION) {
+          throw new Error(
+            `This export (schema v${manifest.schemaVersion}) is newer than what this build understands ` +
+            `(v${SCHEMA_VERSION}). Importing it here could misrepresent the data — use a matching or newer build instead.`
+          )
+        }
+
+        // Restore localStorage first — cheap, and if this fails
+        // nothing has touched IndexedDB yet.
         localStorage.clear()
-        for (const [key, value] of Object.entries(data)) {
+        for (const [key, value] of Object.entries(manifest.localStorage ?? {})) {
           localStorage.setItem(key, value)
         }
+
+        // Restore each asset into its correct namespace/slot.
+        const assets = manifest.assets ?? []
+        for (let i = 0; i < assets.length; i++) {
+          const { namespace, slot, name, path } = assets[i]
+          if (status) status.innerHTML = `Restoring assets… (${i + 1}/${assets.length})`
+          const entry = zip.file(path)
+          if (!entry) continue   // asset referenced in manifest but missing from the zip — skip, don't fail the whole import
+          const blob = await entry.async('blob')
+          const store = createWallpaperStore(namespace)
+          await store.saveWallpaper(slot, blob, name)
+        }
+
+        if (status) status.innerHTML = 'Import complete — reloading…'
         window.location.reload()
       } catch (err) {
         window.alert(`Import failed: ${err?.message ?? err}`)
+        if (status) status.innerHTML = defaultStatusHTML
         e.target.value = ''
       }
     })

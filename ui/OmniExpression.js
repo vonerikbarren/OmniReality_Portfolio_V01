@@ -81,8 +81,8 @@ function loadState () {
     radius: 0.5,
     color: { r: 255, g: 255, b: 255, a: 1 },
     cameraLocked: false,
-    mediaUrl: '',
-    mediaType: 'image',
+    mediaUrl: './assets/video/RealityExplanation02.mp4',
+    mediaType: 'video',
     waypoints: [],   // { id, mode, panelX, panelY, scenePos, holdMs }
     // Simple circles layered behind the main avatar — transparent
     // looping media, not separate interactive objects. The three

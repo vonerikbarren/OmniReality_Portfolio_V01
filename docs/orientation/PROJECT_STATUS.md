@@ -74,6 +74,16 @@ against the actual files - not just described.
   round-trip tests). Attached to OmniMixer, tied to Channel 1's actual
   confirmed playback.
 
+**Export/Import** - see `docs/core-systems/EXPORT_IMPORT_DESIGN.md`.
+Admin Panel's Export/Import evolved from a localStorage-only JSON dump
+into a real .zip with a manifest, every localStorage key, and every
+saved image/audio/video across all 7 IndexedDB namespaces
+(`utils/WallpaperStorage.js`'s new `KNOWN_NAMESPACES` registry) - plus
+schemaVersion-based compatibility checking. Verified end-to-end with
+20 checks: real zip generation, real binary asset content preserved
+through a full destructive wipe and reimport, and confirmed a rejected
+(too-new) version import leaves existing data completely untouched.
+
 ## Legacy / Superseded
 
 Not deleted-and-forgotten - these are real prior states that got
@@ -86,6 +96,14 @@ linger.
   load, to migrate an existing setup into the new
   `omni:wallpaper:settings` key - so nobody who had a wallpaper
   configured before this split loses it.
+- **AdminPanel's localStorage-only Export/Import** -> replaced by the
+  full .zip system (see `docs/core-systems/EXPORT_IMPORT_DESIGN.md`).
+  The old version silently dropped every saved image/audio/video on
+  export, since it only ever touched localStorage. Verified directly
+  that an old exported `.json` file is correctly *rejected* by the new
+  importer now, with a clear error message, rather than silently
+  accepted as plain localStorage - failing loudly here is the safer
+  behavior, so this wasn't treated as something to special-case.
 - **OmniBrowserSpace's always-on-from-boot behavior** -> replaced by
   click-to-activate + Put Away, specifically because the always-on
   version was confirmed too taxing in real testing. The shape/

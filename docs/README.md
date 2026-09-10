@@ -33,6 +33,10 @@ specific named OmniProduct.
   — the 24 right-drawer (NavMenu) leaf panels.
 - [`core-systems/DIMENSIONAL_TEXT_DESIGN.md`](core-systems/DIMENSIONAL_TEXT_DESIGN.md)
 - [`core-systems/OMNIKEYBOARD_DESIGN.md`](core-systems/OMNIKEYBOARD_DESIGN.md)
+- [`core-systems/EXPORT_IMPORT_DESIGN.md`](core-systems/EXPORT_IMPORT_DESIGN.md) —
+  built and tested: exports/imports a real .zip of every setting plus
+  every saved image/audio/video across the whole app, with version
+  checking.
 
 ## OmniProducts
 
