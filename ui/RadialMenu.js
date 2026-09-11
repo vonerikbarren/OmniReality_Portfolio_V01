@@ -934,8 +934,20 @@ export default class RadialMenu {
     if (!el) return
     const corner     = HAND_CORNER[handId]
     const { x, y }   = this._computeCenter(corner)
-    const extraLift  = (corner === 'bl' || corner === 'br') ? 250 : 0
-    const extraShift = corner === 'bl' ? 200 : corner === 'br' ? -200 : 0
+
+    // The 200/250px "shift toward center" is a fixed pixel value that
+    // was never scaled for viewport width — harmless on a wide desktop
+    // screen where it's a small fraction of the width, but on a narrow
+    // mobile viewport (this menu's own container is 420px wide) it
+    // pushes the menu proportionally much further across the screen,
+    // landing directly on top of the movement pad instead of staying
+    // near its own corner. Tapers linearly to 0 below 500px width,
+    // fully off below 380px, rather than a hard cutoff.
+    const w = window.innerWidth
+    const shiftScale = w >= 500 ? 1 : w <= 380 ? 0 : (w - 380) / 120
+
+    const extraLift  = ((corner === 'bl' || corner === 'br') ? 250 : 0) * shiftScale
+    const extraShift = (corner === 'bl' ? 200 : corner === 'br' ? -200 : 0) * shiftScale
     el.style.left = `${x - HALF + extraShift}px`
     el.style.top  = `${y - HALF - extraLift}px`
   }
