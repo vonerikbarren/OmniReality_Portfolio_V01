@@ -74,7 +74,7 @@ import OrbiterVisual from './ui/OrbiterVisual.js'
 import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
-import MobileDebugOverlay from './ui/MobileDebugOverlay.js'   // TEMPORARY — remove once the mobile movement bug is found
+import InputMonitorPanel from './ui/InputMonitorPanel.js'
 
 
 
@@ -149,8 +149,9 @@ import MobileDebugOverlay from './ui/MobileDebugOverlay.js'   // TEMPORARY — r
   movementPad.setVisible('rh', true)
   base.addModule(movementPad)
 
-  // TEMPORARY — remove once the mobile movement bug is found
-  base.addModule(new MobileDebugOverlay(base.context, orbitMod, movementPad))
+  // Input Monitor — real panel now, accessible from Admin Settings
+  const inputMonitorPanel = new InputMonitorPanel(base.context, orbitMod, movementPad)
+  base.addModule(inputMonitorPanel)
 
   // ── Orbit ↔ WASD handoff ─────────────────────────────────
   // Tracks every held direction key — only re-enables orbit
@@ -310,6 +311,7 @@ import MobileDebugOverlay from './ui/MobileDebugOverlay.js'   // TEMPORARY — r
         1: { label: 'OmniAdminSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐mniAdminSettings' } })) },
         2: { label: 'OmniParticleSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniParticleSettings' } })) },
         3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
+        4: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
