@@ -138,7 +138,11 @@ export default class BaseScene {
 
       // Notify modules so they can react to viewport changes if needed
       for (const mod of this._modules) {
-        mod.onResize?.(this.sizes)
+        try {
+          mod.onResize?.(this.sizes)
+        } catch (err) {
+          console.error('⟐ Module onResize() threw — isolated, other modules continue:', mod.constructor?.name ?? mod, err)
+        }
       }
     })
   }
@@ -158,7 +162,14 @@ export default class BaseScene {
 
   _update(delta) {
     for (const mod of this._modules) {
-      mod.update?.(delta)
+      try {
+        mod.update?.(delta)
+      } catch (err) {
+        // One module's bug must never be able to silently freeze every
+        // module registered after it — surface it and keep going,
+        // rather than the whole update loop quietly dying mid-frame.
+        console.error('⟐ Module update() threw — isolated, other modules continue:', mod.constructor?.name ?? mod, err)
+      }
     }
   }
 
