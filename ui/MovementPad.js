@@ -521,6 +521,7 @@ export default class MovementPad {
   _buildAllPads () {
     const shell = document.getElementById('omni-ui') ?? document.body
     Object.keys(PAD_CONFIGS).forEach(handId => {
+      if (this._els[handId]) return   // already built — init() can run twice (base.addModule calls it again after the manual call in main.js), this must not create a duplicate, invisible pad with a duplicate DOM id every time
       const el = this._buildPad(handId)
       this._els[handId] = el
       shell.appendChild(el)
@@ -832,12 +833,28 @@ export default class MovementPad {
   }
 
   /** Mirrors the exact pattern already used in OmniDraw.js / OmniInspector.js. */
+  /** A step of 0, null, an empty string, or anything non-numeric
+   *  doesn't make sense for either this field's original UI-increment
+   *  purpose or its use here as a speed multiplier — falls back to 1
+   *  rather than silently producing a multiplier of 0 (and therefore
+   *  zero movement speed) if a stale or blanked value is sitting in
+   *  storage from earlier testing. */
+  _sanitizeStep (value) {
+    const n = Number(value)
+    return Number.isFinite(n) && n > 0 ? n : 1
+  }
+
   _readAdminSteps () {
     const fallback = { px: 1, py: 1, pz: 1 }
     try {
       const raw = localStorage.getItem('omni:admin:settings')
       const saved = raw ? JSON.parse(raw)?.steps : null
-      return saved ? { ...fallback, ...saved } : fallback
+      const merged = saved ? { ...fallback, ...saved } : fallback
+      return {
+        px: this._sanitizeStep(merged.px),
+        py: this._sanitizeStep(merged.py),
+        pz: this._sanitizeStep(merged.pz),
+      }
     } catch (_) { return fallback }
   }
 
@@ -857,7 +874,11 @@ export default class MovementPad {
     const steps = e.detail?.steps
     if (!steps) return
     const merged = { ...this._readAdminSteps(), ...steps }
-    this._moveSpeedMultiplier = this._computeMoveSpeedMultiplier(merged)
+    this._moveSpeedMultiplier = this._computeMoveSpeedMultiplier({
+      px: this._sanitizeStep(merged.px),
+      py: this._sanitizeStep(merged.py),
+      pz: this._sanitizeStep(merged.pz),
+    })
   }
 
   /** Fixes a real bug: RadialMenu shifts 200px toward screen-center
