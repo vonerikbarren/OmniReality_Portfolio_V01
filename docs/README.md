@@ -80,6 +80,15 @@ still purely conceptual. Check each doc's own Status section.
 - [`omniproducts/OMNISTORE_DESIGN.md`](omniproducts/OMNISTORE_DESIGN.md)
   — multi-store marketplaces within a user's reality, tied to the
   naming-tier system as the thing actually being sold.
+- [`omniproducts/OMNIIDENTITY_DESIGN.md`](omniproducts/OMNIIDENTITY_DESIGN.md)
+  — identity-mode switching (a whole space's CSS/objects/modules/inventory
+  transforming together) plus OmniIllumination as its reveal layer;
+  a Copilot-sourced spec, connecting directly to OmniVisor, OmniConfig,
+  and OmniTruths.
+- [`omniproducts/OMNICOMPLEXITY_DESIGN.md`](omniproducts/OMNICOMPLEXITY_DESIGN.md)
+  — dynamic, multi-axis (hierarchical/categorical/spectral) navigation
+  and overview tool for structural complexity, meant to be reused
+  across most other tools; includes a full SWOT.
 
 ## Planning
 

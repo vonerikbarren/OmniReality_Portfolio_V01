@@ -697,8 +697,25 @@ export default class MovementPad {
     const speed = MOVE_SPEED * this._moveSpeedMultiplier * delta
     cam.getWorldDirection(this._v3fwd)
     this._v3fwd.y = 0
-    if (this._v3fwd.lengthSq() < 0.0001) return
-    this._v3fwd.normalize()
+
+    // The actual bug: looking near-straight up/down makes the
+    // horizontal component of "forward" collapse toward zero — this
+    // used to just return here, doing nothing at all, silently
+    // freezing WASD. Right hand's movement never depended on camera
+    // facing in the first place, which is exactly why only left hand
+    // was ever vulnerable to this. Falls back to the last known-good
+    // horizontal direction instead of stopping — movement keeps
+    // working, just doesn't re-derive a direction from a currently
+    // degenerate one.
+    if (this._v3fwd.lengthSq() < 0.0001) {
+      if (!this._lastValidFwd) return   // truly no prior direction exists yet (e.g. very first frame) — nothing sensible to fall back to
+      this._v3fwd.copy(this._lastValidFwd)
+    } else {
+      this._v3fwd.normalize()
+      if (!this._lastValidFwd) this._lastValidFwd = new THREE.Vector3()
+      this._lastValidFwd.copy(this._v3fwd)
+    }
+
     this._v3right.crossVectors(this._v3fwd, this._worldUp).normalize()
     if (p.up)    cam.position.addScaledVector(this._v3fwd,    speed)
     if (p.down)  cam.position.addScaledVector(this._v3fwd,   -speed)
