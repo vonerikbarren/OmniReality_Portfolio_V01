@@ -31,7 +31,7 @@ const STYLES = `
   width            : 260px;
   min-width        : 200px;
   max-width        : 90vw;
-  height           : 160px;
+  height           : 200px;
   min-height       : 120px;
   max-height       : 80vh;
 
@@ -141,7 +141,9 @@ export default class InputMonitorPanel {
       `cam: ${p ? `${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}` : 'NO CAMERA'}\n` +
       `orbit enabled: ${this.orbitMod?.controls?.enabled}\n` +
       `pressed: ${activeDirs.length ? activeDirs.join(', ') : '(none)'}\n` +
-      `speed x: ${this.movementPad?._moveSpeedMultiplier}`
+      `speed x: ${this.movementPad?._moveSpeedMultiplier}\n` +
+      `LH update() calls: ${this.movementPad?._lhCallCount ?? 0}\n` +
+      (this.movementPad?._lastLHError ? `LH ERROR: ${this.movementPad._lastLHError}` : 'LH ERROR: (none)')
   }
 
   onResize () {}

@@ -489,7 +489,16 @@ export default class MovementPad {
   update (delta) {
     const cam = this.ctx?.camera
     if (!cam) return
-    this._applyLHMovement(cam, delta)
+    this._lhCallCount = (this._lhCallCount || 0) + 1
+    try {
+      this._applyLHMovement(cam, delta)
+      this._lastLHError = null
+    } catch (err) {
+      // Surfaced on the Input Monitor panel — the goal is making an
+      // otherwise console-only, invisible-on-mobile failure directly
+      // readable on the phone screen itself.
+      this._lastLHError = err.message
+    }
     this._applyRHMovement(cam, delta)
   }
 
