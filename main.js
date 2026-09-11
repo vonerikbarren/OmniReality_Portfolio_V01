@@ -153,7 +153,20 @@ import * as ThemeManager from './ui/ThemeManager.js'
   // when ALL directions (including R/F) are fully released.
   const _heldDirections = new Set()
 
+  // Whether a node-selected rotation pivot is currently active — while
+  // true, _syncOrbitTarget below skips its own "4 units in front of
+  // camera" reset, so releasing WASD after selecting something doesn't
+  // silently snap the orbit target away from what was just selected.
+  let _hasSelectedPivot = false
+  window.addEventListener('omni:orbit-target-set', (e) => {
+    _hasSelectedPivot = true
+    orbitMod.controls.target.set(e.detail.x, e.detail.y, e.detail.z)
+    orbitMod.controls.update()
+  })
+  window.addEventListener('omni:node-deselected', () => { _hasSelectedPivot = false })
+
   const _syncOrbitTarget = () => {
+    if (_hasSelectedPivot) return
     const cam = base.camera
     const forward = new THREE.Vector3()
     cam.getWorldDirection(forward)
@@ -558,6 +571,35 @@ import * as ThemeManager from './ui/ThemeManager.js'
     if (isTyping) return
     if (omniMixerPanel._isOpen) omniMixerPanel.close()
     else omniMixerPanel.open()
+  })
+
+  // ── 'F4' — toggle fullscreen ───────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'F4' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen().catch(() => {})
+    }
+  })
+
+  // ── 'Escape' — exit fullscreen ─────────────────────────────
+  // Browsers auto-exit fullscreen on a genuine, trusted Escape
+  // keypress already — this call is what actually makes it work when
+  // Escape is pressed via OmniKeys' Command mode instead, since a
+  // synthetic KeyboardEvent doesn't trigger that native browser
+  // behavior. Harmless no-op for a real physical Escape, which the
+  // browser was already going to handle on its own.
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return
+    if (document.fullscreenElement) document.exitFullscreen()
   })
 
   // ── '(' / ')' — wallpaper sphere spin direction ───────────

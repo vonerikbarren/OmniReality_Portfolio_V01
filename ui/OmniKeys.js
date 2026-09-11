@@ -1036,7 +1036,24 @@ export default class OmniKeys {
     note.textContent = notes[this._mode] ?? ''
   }
 
+  /** The middle (center) 8-directional pad's four cardinal arrows are
+   *  a dedicated camera-rotation control — mode-independent, unlike
+   *  every other key, since rotating the camera isn't something that
+   *  makes sense to "edit," "deliver as text," or "inspect for a
+   *  sequence." The left/right pads keep their normal, multi-mode
+   *  behavior since they aren't assigned a specific purpose yet. */
   _onKeyClick (descriptor) {
+    const DIR_ROWS = ['dirTop', 'dirMid', 'dirBottom']
+    if (descriptor.kind === 'static' && DIR_ROWS.includes(descriptor.row)) {
+      const key = this._keyDataFor(descriptor)
+      const base = key?.string?.split('-').pop()
+      const rotateMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
+      if (key?.string?.startsWith('M-') && rotateMap[base]) {
+        window.dispatchEvent(new CustomEvent('omni:omnikeys-rotate', { detail: { direction: rotateMap[base] } }))
+        return
+      }
+    }
+
     if (this._mode === 'Command') {
       this._onCommandKeyClick(descriptor)
       return

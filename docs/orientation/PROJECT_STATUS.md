@@ -84,6 +84,22 @@ schemaVersion-based compatibility checking. Verified end-to-end with
 through a full destructive wipe and reimport, and confirmed a rejected
 (too-new) version import leaves existing data completely untouched.
 
+**Camera rotation, orbiting a switchable pivot** - OmniKeys' center
+8-directional pad's four cardinal arrows now rotate the camera around
+a pivot (`ui/MovementPad.js`'s `_rotateAroundPivot`) - left/right
+yaw, up/down pitch, clamped so pitch can't flip past ±85°. The pivot
+defaults to the same point `OrbitControls` itself defaults to, and
+switches to whatever node was just selected (`omni:node-selected`,
+using the mesh's real world position) - "so they can orbit the
+reality they're working on." Keeps mouse-drag orbit in sync via a new
+`omni:orbit-target-set` bridge event, with a guard in `main.js` so
+releasing WASD right after selecting something doesn't silently reset
+the pivot back to the camera's own facing direction. Verified with 13
+checks total, including catching two real bugs before shipping: the
+middle pad's four arrows turned out to be split across three
+different rows (dirTop/dirMid/dirBottom), not one, and the transformed
+key data uses `.string`, not `.char`.
+
 ## Legacy / Superseded
 
 Not deleted-and-forgotten - these are real prior states that got

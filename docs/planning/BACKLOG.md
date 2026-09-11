@@ -112,3 +112,12 @@ floating External-data plane (`systems/OmniInspector.js` —
 the ask itself — no specific animation types, triggers, or timing were
 specified. Whoever picks this up should treat it as open design space,
 not a spec to follow.
+
+## Vertical rotation on OmniKeys' center directional pads
+
+Raised while finishing WASD speed scaling: vertical rotation controls
+should live on OmniKeys' center 8-directional pad (Rows 8-10 — three
+full directional pads side by side), not as a separate system.
+Explicitly deferred - "for now just do the speed for the wasd." WASD
+speed scaling (by Admin's px/py/pz setting) is done; this is the next
+piece once picked back up.

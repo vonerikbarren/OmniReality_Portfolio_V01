@@ -450,9 +450,29 @@ export default class MovementPad {
     this._v3right = new THREE.Vector3()
     this._worldUp = new THREE.Vector3(0, 1, 0)
 
+    // WASD speed multiplier, driven by Admin's px/py/pz step setting —
+    // "when the number is smaller I move more slowly on all axis, when
+    // larger I move greater distances." Defaults to 1 (the average of
+    // the default px/py/pz = 1/1/1) so existing behavior is completely
+    // unchanged until the admin setting actually says otherwise.
+    this._moveSpeedMultiplier = 1
+
+    // Rotation pivot for OmniKeys' center-pad camera rotation —
+    // defaults to the same point OrbitControls itself defaults to
+    // (0, 2, 0), so keyboard rotation and mouse-drag orbit agree on
+    // "the center of the scene" until a node is selected, at which
+    // point both switch to orbiting that node instead.
+    this._rotationPivot = new THREE.Vector3(0, 2, 0)
+    const ROTATE_STEP = Math.PI / 24   // 7.5° per press — deliberately not a module-level const, kept local to where it's used
+    this._rotateStep = ROTATE_STEP
+    this._pitchLimit = (85 * Math.PI) / 180   // stop just short of straight up/down — avoids the gimbal flip where left/right suddenly invert
+
     this._onPadToggle  = this._handlePadToggle.bind(this)
     this._onPadsGlobal = this._handlePadsGlobal.bind(this)
     this._onRadialToggle = this._handleRadialToggle.bind(this)
+    this._onAdminSteps = this._handleAdminSteps.bind(this)
+    this._onNodeSelected = this._handleNodeSelected.bind(this)
+    this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
     this._onKeyUp      = this._handleKeyUp.bind(this)
   }
@@ -462,6 +482,7 @@ export default class MovementPad {
     this._buildAllPads()
     this._bindGlobalEvents()
     this._bindKeyboard()
+    this._moveSpeedMultiplier = this._computeMoveSpeedMultiplier(this._readAdminSteps())
     console.log('⟐ MovementPad: initialized.')
   }
 
@@ -477,6 +498,9 @@ export default class MovementPad {
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
     window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
+    window.removeEventListener('omni:admin-settings-saved', this._onAdminSteps)
+    window.removeEventListener('omni:node-selected', this._onNodeSelected)
+    window.removeEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
   }
@@ -665,7 +689,7 @@ export default class MovementPad {
   _applyLHMovement (cam, delta) {
     const p = this._pressed.lh
     if (!p.up && !p.down && !p.left && !p.right) return
-    const speed = MOVE_SPEED * delta
+    const speed = MOVE_SPEED * this._moveSpeedMultiplier * delta
     cam.getWorldDirection(this._v3fwd)
     this._v3fwd.y = 0
     if (this._v3fwd.lengthSq() < 0.0001) return
@@ -744,6 +768,96 @@ export default class MovementPad {
     window.addEventListener('omni:pad-toggle',  this._onPadToggle)
     window.addEventListener('omni:pads-global', this._onPadsGlobal)
     window.addEventListener('omni:radial-toggle', this._onRadialToggle)
+    window.addEventListener('omni:admin-settings-saved', this._onAdminSteps)
+    window.addEventListener('omni:node-selected', this._onNodeSelected)
+    window.addEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
+  }
+
+  /** Switches the rotation pivot to whatever was just selected — "so
+   *  they can orbit the reality they're working on" instead of always
+   *  orbiting the world's center. getWorldPosition (not the raw saved
+   *  data.position) matches the same lesson already learned fixing
+   *  GoTo/TravelTo earlier — a mesh's actual current position, not its
+   *  possibly-stale saved coordinates. Also keeps OrbitControls' own
+   *  mouse-drag target in sync via the same event-bridge pattern
+   *  already used for omni:orbit-disable/enable, so keyboard rotation
+   *  and mouse orbit never disagree about what they're circling. */
+  _handleNodeSelected (e) {
+    const mesh = e.detail?.mesh
+    if (!mesh) return
+    mesh.getWorldPosition(this._rotationPivot)
+    window.dispatchEvent(new CustomEvent('omni:orbit-target-set', {
+      detail: { x: this._rotationPivot.x, y: this._rotationPivot.y, z: this._rotationPivot.z }
+    }))
+  }
+
+  _handleOmniKeysRotate (e) {
+    const direction = e.detail?.direction
+    if (!direction || !this.ctx?.camera) return
+    this._rotateAroundPivot(this.ctx.camera, direction)
+  }
+
+  /** The actual rotation: rotate the camera's offset from the pivot,
+   *  then re-aim at the pivot — the same "rotate position, then
+   *  lookAt" shape _applyRHMovement's existing yaw already uses, now
+   *  generalized to (a) orbit a switchable pivot instead of a
+   *  hardcoded origin, and (b) support vertical (pitch) rotation too,
+   *  not just horizontal (yaw). */
+  _rotateAroundPivot (cam, direction) {
+    const offset = cam.position.clone().sub(this._rotationPivot)
+    const radius = offset.length()
+    if (radius < 0.0001) return   // camera is essentially AT the pivot — nothing meaningful to rotate around
+
+    if (direction === 'left' || direction === 'right') {
+      const angle = (direction === 'right' ? -1 : 1) * this._rotateStep
+      offset.applyAxisAngle(this._worldUp, angle)
+    } else {
+      // Pitch — rotate around the camera's own "right" axis relative
+      // to the pivot, clamped so it can't flip past straight up/down.
+      const currentPitch = Math.asin(THREE.MathUtils.clamp(offset.y / radius, -1, 1))
+      const delta = (direction === 'up' ? 1 : -1) * this._rotateStep
+      const nextPitch = THREE.MathUtils.clamp(currentPitch + delta, -this._pitchLimit, this._pitchLimit)
+      const actualDelta = nextPitch - currentPitch
+      if (Math.abs(actualDelta) < 0.0001) return   // already at the limit
+
+      const horizontal = new THREE.Vector3(offset.x, 0, offset.z)
+      const pitchAxis = horizontal.lengthSq() > 0.0001
+        ? this._v3right.crossVectors(this._worldUp, horizontal).normalize()
+        : new THREE.Vector3(1, 0, 0)   // degenerate case: already looking straight down/up
+      offset.applyAxisAngle(pitchAxis, actualDelta)
+    }
+
+    cam.position.copy(this._rotationPivot).add(offset)
+    cam.lookAt(this._rotationPivot)
+  }
+
+  /** Mirrors the exact pattern already used in OmniDraw.js / OmniInspector.js. */
+  _readAdminSteps () {
+    const fallback = { px: 1, py: 1, pz: 1 }
+    try {
+      const raw = localStorage.getItem('omni:admin:settings')
+      const saved = raw ? JSON.parse(raw)?.steps : null
+      return saved ? { ...fallback, ...saved } : fallback
+    } catch (_) { return fallback }
+  }
+
+  /** "When the number is smaller I move more slowly on all axis, when
+   *  larger I move greater distances" — one combined multiplier
+   *  across all three axes, not a separate per-axis speed, matching
+   *  how WASD itself moves (forward/right are already blends of
+   *  world X/Z depending on camera facing, not distinct per-axis
+   *  motions). Average of px/py/pz; at the default 1/1/1 this is
+   *  exactly 1, so existing speed is unchanged until the setting
+   *  actually moves. */
+  _computeMoveSpeedMultiplier (steps) {
+    return (steps.px + steps.py + steps.pz) / 3
+  }
+
+  _handleAdminSteps (e) {
+    const steps = e.detail?.steps
+    if (!steps) return
+    const merged = { ...this._readAdminSteps(), ...steps }
+    this._moveSpeedMultiplier = this._computeMoveSpeedMultiplier(merged)
   }
 
   /** Fixes a real bug: RadialMenu shifts 200px toward screen-center

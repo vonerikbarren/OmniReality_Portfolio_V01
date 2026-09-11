@@ -42,8 +42,7 @@ then this): **OmniStore** will be a commerce/store system built with
 OmniValue as its core aspect — the two are expected to be worked on
 at the same time, OmniValue providing the actual multi-type value
 mechanics and OmniStore being the storefront/interaction layer on top
-of it. Not designed further than that yet — noted here specifically
-so the pairing isn't lost before either gets built.
+of it. Now has its own, fuller design doc — see `OMNISTORE_DESIGN.md`.
 
 ## Open questions, unresolved
 

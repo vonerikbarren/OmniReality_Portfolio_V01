@@ -21,6 +21,10 @@ filename, and renaming would have silently broken those links.
   hybrid-hosting question.
 - [`architecture/OmniDimensionalApps.md`](architecture/OmniDimensionalApps.md)
   — the broader dimensional-apps concept underlying the project.
+- [`architecture/NAMING_TIER_SYSTEM_DESIGN.md`](architecture/NAMING_TIER_SYSTEM_DESIGN.md)
+  — the Kingdom Hearts-inspired progressive naming/monetization
+  convention, and how it retroactively resolves the OmniVision/OmniVisor
+  naming collision.
 
 ## Core systems
 
@@ -37,6 +41,9 @@ specific named OmniProduct.
   built and tested: exports/imports a real .zip of every setting plus
   every saved image/audio/video across the whole app, with version
   checking.
+- [`core-systems/OMNICONFIG_DESIGN.md`](core-systems/OMNICONFIG_DESIGN.md) —
+  a named, reusable text-style/animation library, applying to both
+  DimensionalText content and panel chrome, design-token style.
 
 ## OmniProducts
 
@@ -64,6 +71,15 @@ still purely conceptual. Check each doc's own Status section.
   destructive/non-destructive merge question.
 - [`omniproducts/MUSIC_REACTIVE_PANELS_DESIGN.md`](omniproducts/MUSIC_REACTIVE_PANELS_DESIGN.md)
   — music-reactive panel borders, the Timestone reality-activation idea.
+- [`omniproducts/OMNISYSTEM_DESIGN.md`](omniproducts/OMNISYSTEM_DESIGN.md)
+  — periodic-table-style formation morphing (grid/sphere/helix/double-helix),
+  an indexed collection of individually-editable OmniNode-like objects.
+- [`omniproducts/OMNIACTION_DESIGN.md`](omniproducts/OMNIACTION_DESIGN.md)
+  — connecting nodes to functions and animations, GSAP's full power
+  exposed. Name undecided; deliberately saved for last.
+- [`omniproducts/OMNISTORE_DESIGN.md`](omniproducts/OMNISTORE_DESIGN.md)
+  — multi-store marketplaces within a user's reality, tied to the
+  naming-tier system as the thing actually being sold.
 
 ## Planning
 
