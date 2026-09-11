@@ -597,8 +597,12 @@ export default class MovementPad {
       btn.addEventListener('contextmenu', (e) => e.preventDefault())
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault()
-        btn.setPointerCapture(e.pointerId)
         this._setPressed(handId, dir, true)
+        // Pointer capture is a nice-to-have (keeps drag-release working
+        // if the pointer moves off the button) — it must never be able
+        // to block the actual movement command above if it fails for
+        // any reason.
+        try { btn.setPointerCapture(e.pointerId) } catch (_) {}
       })
       btn.addEventListener('pointerup',     () => this._setPressed(handId, dir, false))
       btn.addEventListener('pointercancel', () => this._setPressed(handId, dir, false))
