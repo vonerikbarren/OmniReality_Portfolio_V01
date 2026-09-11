@@ -74,6 +74,7 @@ import OrbiterVisual from './ui/OrbiterVisual.js'
 import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
+import MobileDebugOverlay from './ui/MobileDebugOverlay.js'   // TEMPORARY — remove once the mobile movement bug is found
 
 
 
@@ -147,6 +148,9 @@ import * as ThemeManager from './ui/ThemeManager.js'
   movementPad.setVisible('lh', true)
   movementPad.setVisible('rh', true)
   base.addModule(movementPad)
+
+  // TEMPORARY — remove once the mobile movement bug is found
+  base.addModule(new MobileDebugOverlay(base.context, orbitMod, movementPad))
 
   // ── Orbit ↔ WASD handoff ─────────────────────────────────
   // Tracks every held direction key — only re-enables orbit

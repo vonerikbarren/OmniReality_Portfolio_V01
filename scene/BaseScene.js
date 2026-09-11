@@ -152,7 +152,11 @@ export default class BaseScene {
 
     this._tickerId = this.ticker.add((delta) => {
       this._update(delta)
-      this._render()
+      try {
+        this._render()
+      } catch (err) {
+        console.error('⟐ _render() threw — isolated so the ticker keeps running next frame:', err)
+      }
     })
   }
 
@@ -190,7 +194,11 @@ export default class BaseScene {
    * @returns {object} the module — for chaining or external reference
    */
   addModule(module) {
-    module.init?.()
+    try {
+      module.init?.()
+    } catch (err) {
+      console.error('⟐ Module init() threw — isolated, boot continues:', module.constructor?.name ?? module, err)
+    }
     this._modules.push(module)
     return module
   }
