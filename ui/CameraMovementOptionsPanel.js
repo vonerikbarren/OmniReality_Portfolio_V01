@@ -56,7 +56,6 @@ const STYLES = `
   font-family      : var(--mono);
   z-index          : 60;
   overflow         : hidden;
-  resize           : both;
   opacity          : 0;
   visibility       : hidden;
 }

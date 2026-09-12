@@ -49,7 +49,6 @@ const STYLES = `
   z-index          : 60;
   overflow         : hidden;
   pointer-events   : auto;
-  resize           : both;
 
   opacity          : 0;
 }
@@ -116,6 +115,7 @@ export default class InputMonitorPanel {
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
     this._onNavSelect = null
+    this._lastClickInfo = '(none yet — click anywhere, including a stuck panel)'
   }
 
   init () {
@@ -125,6 +125,21 @@ export default class InputMonitorPanel {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+
+    // Capture phase — runs before any other click handler on the page,
+    // including one that might stopPropagation(). Reports exactly which
+    // real DOM element received a given click, so a "stuck, unclickable
+    // panel" report can be diagnosed directly instead of guessed at.
+    this._onGlobalClick = (e) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY)
+      if (!el) { this._lastClickInfo = '(elementFromPoint returned nothing)'; return }
+      const tag = el.tagName.toLowerCase()
+      const id = el.id ? `#${el.id}` : ''
+      const cls = el.className && typeof el.className === 'string' ? `.${el.className.trim().split(/\s+/).join('.')}` : ''
+      const winId = el.closest?.('[data-win-id]')?.dataset.winId
+      this._lastClickInfo = `${tag}${id}${cls}` + (winId ? ` (panel: ${winId})` : ' (no panel ancestor)')
+    }
+    window.addEventListener('pointerdown', this._onGlobalClick, true)   // capture phase, deliberately
   }
 
   update () {
@@ -143,13 +158,15 @@ export default class InputMonitorPanel {
       `pressed: ${activeDirs.length ? activeDirs.join(', ') : '(none)'}\n` +
       `speed x: ${this.movementPad?._moveSpeedMultiplier}\n` +
       `LH update() calls: ${this.movementPad?._lhCallCount ?? 0}\n` +
-      (this.movementPad?._lastLHError ? `LH ERROR: ${this.movementPad._lastLHError}` : 'LH ERROR: (none)')
+      (this.movementPad?._lastLHError ? `LH ERROR: ${this.movementPad._lastLHError}` : 'LH ERROR: (none)') +
+      `\nlast click hit: ${this._lastClickInfo}`
   }
 
   onResize () {}
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('pointerdown', this._onGlobalClick, true)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('inputmonitor')
   }

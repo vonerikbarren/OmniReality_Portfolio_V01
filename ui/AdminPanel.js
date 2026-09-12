@@ -530,19 +530,19 @@ export default class AdminPanel {
       // splitting wallpaper options across two panels.
       group('Domain Grid', 'domain',
         colorRow('Grid color', 'domainGridColor', s.domainGridColor) +
-        numRow('Opacity (0–1)', 'domainGridOpacity', s.domainGridOpacity, 0.05) +
+        numRow('Opacity (0–1)', 'domainGridOpacity', s.domainGridOpacity, 0.05, 0, 1) +
         toggleRow('Wireframe', 'domainGridWireframe', s.domainGridWireframe) +
         toggleRow('Visible', 'domainGridVisible', s.domainGridVisible)
       ) +
       group('User Space', 'userspace',
         colorRow('Color', 'userSpace.color', s.userSpace.color) +
-        numRow('Size multiplier', 'userSpace.sizeMultiplier', s.userSpace.sizeMultiplier, 0.1) +
+        numRow('Size multiplier', 'userSpace.sizeMultiplier', s.userSpace.sizeMultiplier, 0.1, 0.1, 10) +
         toggleRow('Visible', 'userSpace.visible', s.userSpace.visible) +
         toggleRow('Spinning', 'userSpace.spinning', s.userSpace.spinning) +
         fileRow('Texture (default: wireframe)', 'userSpace.textureUrl', s.userSpace.textureUrl, 'image/*')
       ) +
       group('UI Settings', 'uisettings',
-        numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02)
+        numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02, 0.3, 1)
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>

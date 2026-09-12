@@ -245,7 +245,13 @@ export function getPanelOpacity () {
   try {
     const raw = localStorage.getItem('omni:admin:settings')
     const v = raw ? JSON.parse(raw)?.uiSettings?.panelOpacity : undefined
-    return v ?? DEFAULT_PANEL_OPACITY
+    if (v === undefined || v === null) return DEFAULT_PANEL_OPACITY
+    const n = Number(v)
+    // A stored 0 (or anything too close to it) would make every panel
+    // open fully invisible while still occupying space and still
+    // blocking clicks to whatever's underneath — indistinguishable
+    // from a "stuck, unresponsive" panel to the person using it.
+    return Number.isFinite(n) && n >= 0.1 && n <= 1 ? n : DEFAULT_PANEL_OPACITY
   } catch (_) {
     return DEFAULT_PANEL_OPACITY
   }
@@ -259,8 +265,10 @@ export function getPanelOpacity () {
  */
 export function watchPanelOpacity (el, isOpenFn) {
   window.addEventListener('omni:admin-settings-saved', (e) => {
-    const v = e.detail?.uiSettings?.panelOpacity
-    if (v === undefined || !isOpenFn()) return
+    const raw = e.detail?.uiSettings?.panelOpacity
+    if (raw === undefined || !isOpenFn()) return
+    const v = Number(raw)
+    if (!Number.isFinite(v) || v < 0.1 || v > 1) return   // same guard as getPanelOpacity — a bad live value should be ignored, not applied
     gsap.to(el, { opacity: v, duration: 0.25 })
   })
 }
