@@ -72,8 +72,13 @@ still purely conceptual. Check each doc's own Status section.
 - [`omniproducts/MUSIC_REACTIVE_PANELS_DESIGN.md`](omniproducts/MUSIC_REACTIVE_PANELS_DESIGN.md)
   — music-reactive panel borders, the Timestone reality-activation idea.
 - [`omniproducts/OMNISYSTEM_DESIGN.md`](omniproducts/OMNISYSTEM_DESIGN.md)
-  — periodic-table-style formation morphing (grid/sphere/helix/double-helix),
-  an indexed collection of individually-editable OmniNode-like objects.
+  — periodic-table-style formation morphing; three real, built
+  formations (Cross, Ring, Sphere) sharing one Inspector, plus a
+  proposed fourth (Grid) awaiting confirmation.
+- [`omniproducts/OMNI_NODE_IDENTIFICATION_DESIGN.md`](omniproducts/OMNI_NODE_IDENTIFICATION_DESIGN.md)
+  — the Excel-style node naming scheme shared across every OmniSystem
+  formation, plus the fast-travel node selector design built on the
+  existing "Take Me There" travel mechanic.
 - [`omniproducts/OMNIACTION_DESIGN.md`](omniproducts/OMNIACTION_DESIGN.md)
   — connecting nodes to functions and animations, GSAP's full power
   exposed. Name undecided; deliberately saved for last.

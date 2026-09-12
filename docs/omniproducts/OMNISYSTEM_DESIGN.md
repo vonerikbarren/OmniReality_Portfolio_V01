@@ -97,7 +97,92 @@ built inside OmniSystem itself.
   extension shows real interest in path character, a straight-line
   default may not be the final answer. Not decided yet.
 
+## Node identification & fast travel
+
+Every node across every formation gets a generated, human-readable id
+following a shared Excel-style outline scheme — full reasoning and
+the per-system mapping in
+`OMNI_NODE_IDENTIFICATION_DESIGN.md`. A fast-travel node selector
+(toggleable grid overlay, type-to-filter) is designed there too,
+built on top of the existing "Take Me There" travel mechanic in
+`systems/OmniInspector.js`, which already works generically for any
+node regardless of which system created it.
+
+## Fourth formation, proposed: Grid (columns, rows, drawers)
+
+Not built. Proposed understanding, written out for confirmation
+before any of it becomes code:
+
+A genuine 3D lattice, structurally different from the first three —
+Cross/Ring/Sphere each have one shared distance/radius; Grid instead
+needs **three independent counts** (columns × rows × drawers) plus
+**one shared spacing value** between adjacent nodes on any axis, with
+OmniCore sitting at the lattice's geometric center the same way it
+does in every other formation.
+
+"Drawers" read as genuine depth layers — columns along X, rows along
+Y, drawers stacked along Z, like a filing cabinet where each drawer,
+pulled open, reveals one flat column/row grid behind the last.
+
+Naming extends the same Excel-style pairing used everywhere else, but
+here it's structural rather than arbitrary: real column letters, real
+row numbers, per drawer — e.g. `gridD1-A1_01` for drawer 1, column A,
+row 1. This is the one formation where the letter/number pairing
+means exactly what it means in a spreadsheet.
+
+Open questions before this becomes real:
+- Does Group Lock (the shared-vs-individual mechanic from the other
+  three systems) apply per-axis here — one lock for column spacing,
+  a separate one for row spacing, another for drawer spacing — or one
+  single lock for all three at once?
+- Is OmniCore's center position always a real node itself (as in
+  Cross/Ring/Sphere), or can it also be an empty lattice point when
+  column/row/drawer counts are even and there's no true center cell?
+
 ## Status
 
-Purely conceptual. No layouts, no node collection/indexing system, and
-no panels exist yet.
+Three formations now live in one Inspector — `ui/OmniSystemCreatorPanel.js`,
+accessible from the Left Menu (`⟐OmniSystem → ⟐OmniSystemCreator`) —
+sharing one field language (shape-icon preview, id/label, primitive
+"truth" dropdown, RGBA channels, range fields pairing a slider with a
+typeable number, all matching OmniDraw's own established pattern).
+
+**Skeletal Cross** — fixed 7 nodes: 1 center (future OmniCore) + 6
+arms, one per axis direction, all boxes by default.
+
+**Radial Ring** (Stonehenge-style) — 1 center + N outer nodes, N a
+free input. One formula covers every case: node *i* sits at angle
+`i × (360°/N)`, clockwise from 12 o'clock, always. Verified against
+every worked example directly (N=2,3,4,6) and generalizes identically
+to any N.
+
+**Sphere (Fibonacci)** — 1 center + N outer nodes distributed evenly
+across a sphere's surface using the canonical spherical Fibonacci
+lattice: the same golden-ratio spiral pattern found in sunflower seed
+heads and pinecones. One formula, works identically for any N — no
+special-casing by count, no restriction to specific "nice" numbers.
+Default is 64 (matching the practical default requested), verified
+directly against an independently-computed reference implementation
+of the formula, confirmed to span the full sphere top-to-bottom
+rather than clustering, and confirmed every node sits at exactly the
+configured radius from center.
+
+All three formations share the same **Group Lock** mechanic: locked
+(the default), one shared distance/radius value moves every outer
+node at once, symmetrically; unlocked, each gets its own independent
+value. This is the concrete stand-in for what OmniCore will
+eventually own and propagate, before OmniCore itself exists as real
+code.
+
+"Create System" builds every node through NodeLoader's own real,
+validated `loadNode(data)` path. Alpha is applied directly to each
+created node's real mesh material right after creation — an honest
+limitation, not a hidden one: NodeLoader's saved schema has no opacity
+field, so alpha is visible immediately but won't survive a reload.
+
+Three sibling menu entries — `⟐OmniSystemAnimator`,
+`⟐OmniSystemDimensionalizer`, `⟐OmniSystemSettings` — remain real,
+correctly wired, honest "not built yet" placeholders.
+
+Still not built: OmniCore itself as real code, any formation beyond
+these three, and any per-node animation logic.

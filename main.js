@@ -76,6 +76,8 @@ import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 import InputMonitorPanel from './ui/InputMonitorPanel.js'
 import CameraMovementOptionsPanel from './ui/CameraMovementOptionsPanel.js'
+import OmniSystemCreatorPanel from './ui/OmniSystemCreatorPanel.js'
+import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
 
 
@@ -157,6 +159,26 @@ import CameraMovementOptionsPanel from './ui/CameraMovementOptionsPanel.js'
   // Camera Movement Options — real panel, accessible from Admin Settings
   const cameraMovementOptionsPanel = new CameraMovementOptionsPanel(base.context)
   base.addModule(cameraMovementOptionsPanel)
+
+  // ── OmniSystem ────────────────────────────────────────────
+  const omniSystemCreatorPanel = new OmniSystemCreatorPanel(base.context, nodeLoader)
+  base.addModule(omniSystemCreatorPanel)
+
+  const omniSystemAnimatorPanel = new ComingSoonPanel(base.context, {
+    navItem: '⟐OmniSystemAnimator', title: '⟐OmniSystem Animator', winId: 'sysanimator',
+    note: 'Whole-system animation — separate from any one node\'s own animate toggle in OmniSystemCreator. Designed, not built yet.',
+  })
+  base.addModule(omniSystemAnimatorPanel)
+
+  const omniSystemDimensionalizerPanel = new ComingSoonPanel(base.context, {
+    navItem: '⟐OmniSystemDimensionalizer', title: '⟐OmniSystem Dimensionalizer', winId: 'sysdimensionalizer',
+  })
+  base.addModule(omniSystemDimensionalizerPanel)
+
+  const omniSystemSettingsPanel = new ComingSoonPanel(base.context, {
+    navItem: '⟐OmniSystemSettings', title: '⟐OmniSystem Settings', winId: 'syssettings',
+  })
+  base.addModule(omniSystemSettingsPanel)
 
   // ── Orbit ↔ WASD handoff ─────────────────────────────────
   // Tracks every held direction key — only re-enables orbit
