@@ -49,7 +49,7 @@ import gsap from 'gsap'
 const HAND_CONFIGS = {
   omnihand: {
     id           : 'omnihand',
-    name         : '⟐mniHand',
+    name         : '⟐mni-Hand',
     abbr         : '⟐H',
     corner       : 'tl',
     role         : 'App Launcher',
@@ -63,7 +63,7 @@ const HAND_CONFIGS = {
   },
   conscious: {
     id           : 'conscious',
-    name         : '⟐ConsciousHand',
+    name         : '⟐Conscious-Hand',
     abbr         : 'CH',
     corner       : 'tr',
     role         : 'Perspectives',
@@ -77,7 +77,7 @@ const HAND_CONFIGS = {
   },
   lh: {
     id             : 'lh',
-    name           : '⟐LH',
+    name           : '⟐Left-Hand',
     abbr           : 'LH',
     corner         : 'bl',
     role           : 'Analytical',
@@ -92,7 +92,7 @@ const HAND_CONFIGS = {
   },
   rh: {
     id           : 'rh',
-    name         : '⟐RH',
+    name         : '⟐Right-Hand',
     abbr         : 'RH',
     corner       : 'br',
     role         : 'Creative',

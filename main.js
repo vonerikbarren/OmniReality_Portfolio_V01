@@ -75,6 +75,7 @@ import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 import InputMonitorPanel from './ui/InputMonitorPanel.js'
+import CameraMovementOptionsPanel from './ui/CameraMovementOptionsPanel.js'
 
 
 
@@ -145,13 +146,17 @@ import InputMonitorPanel from './ui/InputMonitorPanel.js'
   // ── Movement pad ─────────────────────────────────────────
   const movementPad = new MovementPad(base.context)
   movementPad.init()
-  movementPad.setVisible('lh', true)
-  movementPad.setVisible('rh', true)
+  movementPad.setVisible('lh', false)
+  movementPad.setVisible('rh', false)
   base.addModule(movementPad)
 
   // Input Monitor — real panel now, accessible from Admin Settings
   const inputMonitorPanel = new InputMonitorPanel(base.context, orbitMod, movementPad)
   base.addModule(inputMonitorPanel)
+
+  // Camera Movement Options — real panel, accessible from Admin Settings
+  const cameraMovementOptionsPanel = new CameraMovementOptionsPanel(base.context)
+  base.addModule(cameraMovementOptionsPanel)
 
   // ── Orbit ↔ WASD handoff ─────────────────────────────────
   // Tracks every held direction key — only re-enables orbit
@@ -312,6 +317,7 @@ import InputMonitorPanel from './ui/InputMonitorPanel.js'
         2: { label: 'OmniParticleSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniParticleSettings' } })) },
         3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
         4: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
+        5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -577,6 +583,38 @@ import InputMonitorPanel from './ui/InputMonitorPanel.js'
     if (isTyping) return
     if (omniMixerPanel._isOpen) omniMixerPanel.close()
     else omniMixerPanel.open()
+  })
+
+  // ── Default-to-fullscreen ────────────────────────────────────
+  // Browsers block requestFullscreen() from ever firing without a
+  // genuine, trusted user gesture (a real click/tap/keypress) — this
+  // cannot be bypassed from code, including on page load itself. This
+  // is the closest real equivalent: the very first genuine interaction
+  // anywhere on the page requests fullscreen, once, then gets out of
+  // the way. If the browser or user declines, it fails silently and
+  // never asks again for the rest of the session.
+  const _requestFullscreenOnce = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    }
+    window.removeEventListener('pointerdown', _requestFullscreenOnce)
+    window.removeEventListener('keydown', _requestFullscreenOnce)
+  }
+  window.addEventListener('pointerdown', _requestFullscreenOnce)
+  window.addEventListener('keydown', _requestFullscreenOnce)
+
+  // ── 'F2' — refresh the page ─────────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'F2' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    e.preventDefault()
+    location.reload()
   })
 
   // ── 'F4' — toggle fullscreen ───────────────────────────────

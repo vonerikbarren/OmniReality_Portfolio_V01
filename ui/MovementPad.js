@@ -765,7 +765,6 @@ export default class MovementPad {
     const mapped = this._mapKey(e.code)
     if (!mapped) return
     const { handId, dir } = mapped
-    if (!this._visible[handId]) return
     e.preventDefault()
     if (this._pressed[handId]?.[dir]) return
     this._setPressed(handId, dir, true)

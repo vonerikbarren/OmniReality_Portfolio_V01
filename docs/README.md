@@ -89,6 +89,9 @@ still purely conceptual. Check each doc's own Status section.
   — dynamic, multi-axis (hierarchical/categorical/spectral) navigation
   and overview tool for structural complexity, meant to be reused
   across most other tools; includes a full SWOT.
+- [`omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md`](omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md)
+  — real panel built (WASD speed steps); orbit/altitude speeds and
+  decoupled automatic rotation designed but not yet implemented.
 
 ## Planning
 

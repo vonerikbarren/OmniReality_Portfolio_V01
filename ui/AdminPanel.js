@@ -516,13 +516,12 @@ export default class AdminPanel {
     `
 
     body.innerHTML =
-      group('Navigation Steps', 'steps',
-        numRow('px step', 'steps.px', s.steps.px, 0.01) +
-        numRow('py step', 'steps.py', s.steps.py, 0.01) +
-        numRow('pz step', 'steps.pz', s.steps.pz, 0.01)
-      ) +
       group('Theme', 'theme',
-        `<div class="ap-row"><span class="ap-row-label">Panel theme</span><select class="ap-select" id="ap-theme-select" data-key="theme"></select></div>`
+        `<div class="ap-row"><span class="ap-row-label">Panel theme</span><select class="ap-select" id="ap-theme-select" data-key="theme"></select></div>
+         <div class="ap-row"><span class="ap-row-label">Background (rgba)</span><input class="ap-input ap-text" id="ap-custom-bg" placeholder="rgba(8,8,12,0.92)"></div>
+         <div class="ap-row"><span class="ap-row-label">Border (rgba)</span><input class="ap-input ap-text" id="ap-custom-border" placeholder="rgba(255,255,255,0.09)"></div>
+         <div class="ap-row"><span class="ap-row-label">Accent (rgba)</span><input class="ap-input ap-text" id="ap-custom-accent" placeholder="rgba(255,178,127,0.9)"></div>
+         <div class="ap-row"><button class="ap-file-btn" id="ap-custom-apply">Apply Custom Colors</button></div>`
       ) +
       // Space Wallpaper settings moved to their own dedicated panel
       // (Admin03 -> ui/WallpaperSettingsPanel.js) — shape, position/
@@ -559,8 +558,39 @@ export default class AdminPanel {
       )
 
     this._populateThemeSelect(body)
+    this._bindCustomTheme(body)
     this._bindFields(body)
     this._bindDataManagement(body)
+  }
+
+  _bindCustomTheme (body) {
+    const bgEl = body.querySelector('#ap-custom-bg')
+    const borderEl = body.querySelector('#ap-custom-border')
+    const accentEl = body.querySelector('#ap-custom-accent')
+    const applyBtn = body.querySelector('#ap-custom-apply')
+    if (!bgEl || !applyBtn) return
+
+    const saved = ThemeManager.getSavedCustomTheme()
+    if (saved) {
+      bgEl.value = saved.bg ?? ''
+      borderEl.value = saved.border ?? ''
+      accentEl.value = saved.accent ?? ''
+    }
+
+    applyBtn.addEventListener('click', () => {
+      // Applies immediately (not staged/saved-on-close) since seeing
+      // the actual color live is the whole point of typing an rgba
+      // value by hand — waiting for a separate save step to see the
+      // result would make this much harder to tune by eye.
+      const colors = {}
+      if (bgEl.value.trim()) colors.bg = bgEl.value.trim()
+      if (borderEl.value.trim()) colors.border = borderEl.value.trim()
+      if (accentEl.value.trim()) colors.accent = accentEl.value.trim()
+      ThemeManager.setCustomTheme(colors)
+      this._setStaged('theme', 'custom')
+      const select = body.querySelector('#ap-theme-select')
+      if (select) select.value = 'custom'
+    })
   }
 
   async _populateThemeSelect (body) {
@@ -569,7 +599,7 @@ export default class AdminPanel {
     const themes = await ThemeManager.getThemes()
     select.innerHTML = Object.entries(themes)
       .map(([key, t]) => `<option value="${key}" ${key === this._staged.theme ? 'selected' : ''}>${t.label ?? key}</option>`)
-      .join('')
+      .join('') + `<option value="custom" ${this._staged.theme === 'custom' ? 'selected' : ''}>Custom</option>`
     select.addEventListener('change', () => {
       this._setStaged('theme', select.value)
     })

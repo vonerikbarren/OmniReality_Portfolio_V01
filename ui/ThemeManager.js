@@ -14,6 +14,7 @@
  */
 
 const STORE_KEY = 'omni:admin:theme'
+const CUSTOM_KEY = 'omni:admin:customTheme'
 let themes = null
 
 async function loadThemes () {
@@ -50,6 +51,10 @@ export async function getThemes () {
 
 /** Applies a theme by name, loading themes.json first if needed. */
 export async function setTheme (name) {
+  if (name === 'custom') {
+    const custom = getSavedCustomTheme()
+    if (custom) { applyTheme('custom', custom); return }
+  }
   const all = await loadThemes()
   const theme = all[name]
   if (!theme) {
@@ -57,6 +62,23 @@ export async function setTheme (name) {
     return
   }
   applyTheme(name, theme)
+}
+
+/** Applies and persists a fully custom RGBA color set (bg/border/accent
+ *  at minimum — any of applyTheme's keys are accepted). Stored
+ *  separately from the named-theme choice so switching back to a
+ *  preset later doesn't lose the custom values entered here. */
+export function setCustomTheme (colors) {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(colors)) } catch (_) {}
+  applyTheme('custom', colors)
+}
+
+/** Reads the persisted custom RGBA color set, if one has been saved. */
+export function getSavedCustomTheme () {
+  try {
+    const raw = localStorage.getItem(CUSTOM_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (_) { return null }
 }
 
 /** Reads the persisted theme choice, defaulting to 'dark'. */
