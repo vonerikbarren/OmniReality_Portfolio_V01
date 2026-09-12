@@ -30,7 +30,7 @@
 
 import gsap from 'gsap'
 
-const MAX_WINDOWS  = 10
+const MAX_WINDOWS  = 50   // was 10 — far too low now that 24+ distinct panels exist and register here; raised with real headroom for continued growth (more OmniSystem formations, more OmniHUDs, multiple OmniBrowser windows at once)
 const BASE_Z       = 200
 const STORE_PREFIX = 'omni:panel-lastsaved:'
 
@@ -63,6 +63,14 @@ export function register (id, el, label) {
   if (registry.has(id)) { bringToFront(id); return true }
   if (registry.size >= MAX_WINDOWS) {
     console.warn(`⟐ WindowManager — window cap (${MAX_WINDOWS}) reached, refusing to register "${id}".`)
+    // Still give it a real z-index directly, even though it won't be
+    // tracked for future bring-to-front stacking — the actual bug this
+    // is guarding against was a panel silently stranded with no
+    // z-index at all, rendered but completely unclickable underneath
+    // something else. A panel outside the registry should degrade to
+    // "can't be brought to front later," never to "can't be used at all."
+    topZ += 1
+    el.style.zIndex = String(topZ)
     return false
   }
   registry.set(id, { el, label: label ?? id })
