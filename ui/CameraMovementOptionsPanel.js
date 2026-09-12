@@ -34,8 +34,8 @@ const STYLES = `
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 110px;
-  left             : 140px;
+  top              : 100px;
+  left             : 640px;
   width            : 320px;
   min-width        : 260px;
   max-width        : 90vw;

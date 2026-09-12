@@ -103,6 +103,8 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
+let _comingSoonOpenCount = 0
+
 export default class ComingSoonPanel {
   constructor (context, { navItem, title, winId, note }) {
     this.ctx = context
@@ -113,6 +115,13 @@ export default class ComingSoonPanel {
     this._el = null
     this._isOpen = false
     this._drag = { active: false }
+    // The actual bug: all instances previously shared one hardcoded
+    // CSS position, so opening more than one stacked them pixel-for-
+    // pixel on top of each other — the top one completely burying and
+    // blocking the one underneath, which looked exactly like a
+    // panel becoming stuck/unresponsive. Each instance now gets its
+    // own real, cascaded offset instead.
+    this._openIndex = _comingSoonOpenCount++
   }
 
   init () {
@@ -165,6 +174,12 @@ export default class ComingSoonPanel {
   _buildDOM () {
     const el = document.createElement('div')
     el.className = 'omni-comingsoon-panel'
+    // Cascade each instance diagonally so multiple panels of this
+    // type never land on the exact same spot — 32px steps, wrapping
+    // after 6 so it never cascades off-screen indefinitely.
+    const step = (this._openIndex % 6) * 32
+    el.style.top = `${130 + step}px`
+    el.style.left = `${200 + step}px`
     el.innerHTML = `
       <div class="csn-header">
         <span class="csn-title">${this.title}</span>
