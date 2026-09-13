@@ -188,6 +188,18 @@ Open questions before this becomes real:
   Cross/Ring/Sphere), or can it also be an empty lattice point when
   column/row/drawer counts are even and there's no true center cell?
 
+## Node size
+
+Every OmniSystem-created node is half the size of its OmniDraw/hand-
+placed equivalent (1 → 0.5) — easier on the OS as a whole, since a
+single system can hold dozens of nodes at once, unlike a single hand-
+placed one. This is a real, persistent property, not a one-time visual
+tweak: `NodeLoader`'s entry animation now reads an optional
+`data.scale` field (defaulting to 1 for every existing node, so
+nothing else changed) rather than always tweening to a hardcoded 1 —
+meaning the smaller size survives dehydration/re-hydration correctly,
+not just the initial creation moment.
+
 ## Status
 
 Three formations now live in one Inspector — `ui/OmniSystemCreatorPanel.js`,

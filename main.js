@@ -74,6 +74,7 @@ import OrbiterVisual from './ui/OrbiterVisual.js'
 import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniExpressionator from './modules/OmniExpressionator.js'
 import OmniExpressionatorPanel from './ui/OmniExpressionatorPanel.js'
+import UserTimePanel from './ui/UserTimePanel.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 import InputMonitorPanel from './ui/InputMonitorPanel.js'
@@ -273,6 +274,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniExpressionatorPanel = new OmniExpressionatorPanel(base.context, omniExpressionator)
   base.addModule(omniExpressionatorPanel)
 
+  const userTimePanel = new UserTimePanel(base.context)
+  base.addModule(userTimePanel)
+
   const omniExpressionInspector = new OmniExpressionInspector(base.context)
   base.addModule(omniExpressionInspector)
 
@@ -348,6 +352,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
         4: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
         5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
+        6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -622,24 +627,6 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     else omniMixerPanel.open()
   })
 
-  // ── Default-to-fullscreen ────────────────────────────────────
-  // Browsers block requestFullscreen() from ever firing without a
-  // genuine, trusted user gesture (a real click/tap/keypress) — this
-  // cannot be bypassed from code, including on page load itself. This
-  // is the closest real equivalent: the very first genuine interaction
-  // anywhere on the page requests fullscreen, once, then gets out of
-  // the way. If the browser or user declines, it fails silently and
-  // never asks again for the rest of the session.
-  const _requestFullscreenOnce = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
-    }
-    window.removeEventListener('pointerdown', _requestFullscreenOnce)
-    window.removeEventListener('keydown', _requestFullscreenOnce)
-  }
-  window.addEventListener('pointerdown', _requestFullscreenOnce)
-  window.addEventListener('keydown', _requestFullscreenOnce)
-
   // ── 'F2' — refresh the page ─────────────────────────────────
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'F2' || e.repeat) return
@@ -792,6 +779,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     const tl = gsap.timeline({
       onComplete: () => {
         orbitMod.enable()
+        // The actual "landed" moment — for anything that needs to know
+        // exactly when arrival completes (UserTimePanel's session timer).
+        window.dispatchEvent(new CustomEvent('omni:user-landed', { detail: { at: Date.now() } }))
         // OmniBrowser is meant to be the user's first, most familiar
         // interaction with the reality — opens automatically the
         // moment landing completes, sliding in from opposite edges
@@ -853,6 +843,27 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   // ── Start ─────────────────────────────────────────────────
   base.start()
-  playEntryAnimation()
+
+  // Previously playEntryAnimation() fired automatically the instant
+  // this script finished loading — meaning the entrance sequence
+  // (including the light-speed particle effect) had no guarantee of
+  // running inside fullscreen at all, since fullscreen can only ever
+  // be triggered by a genuine, direct user gesture. A visible Enter
+  // button both satisfies that requirement reliably and makes the
+  // fullscreen transition expected rather than a silent side effect
+  // of wherever the user happened to click first.
+  const bootBar = document.getElementById('boot-progress-bar')
+  const enterBtn = document.getElementById('boot-enter-btn')
+  if (bootBar) { bootBar.classList.add('is-complete'); bootBar.style.width = '100%' }
+  if (enterBtn) {
+    enterBtn.classList.add('is-ready')
+    enterBtn.addEventListener('click', () => {
+      document.documentElement.requestFullscreen().catch(() => {})
+      playEntryAnimation()
+    }, { once: true })
+  } else {
+    // No button in the DOM for some reason — still let the app start
+    playEntryAnimation()
+  }
 
 })()

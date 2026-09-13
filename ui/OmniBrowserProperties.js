@@ -191,6 +191,12 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
+// The default landing page — this site is the first public-facing
+// deliverable, so it's what a first-time visitor should actually see.
+// Kept separate from selfUrl() below: the "⟐mni" bookmark still
+// correctly points at the app itself, only the default homeUrl changes.
+const DEFAULT_LANDING_URL = 'https://vonerikbarren.github.io/Portfolio--V3/'
+
 // "The first thing to show is the site itself" — window.location.href
 // is the correct, portable way to do this: it always points back at
 // wherever THIS instance is actually running (local dev server,
@@ -236,7 +242,7 @@ function normalizeIndexEntry (entry) {
 
 function loadSettings () {
   const defaults = {
-    homeUrl: selfUrl(),
+    homeUrl: DEFAULT_LANDING_URL,
     sandboxFlags: { 'allow-scripts': true, 'allow-same-origin': true, 'allow-forms': true, 'allow-popups': true },
     index: {
       ...DEFAULT_BOOKMARKS,

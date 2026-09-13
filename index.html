@@ -104,6 +104,33 @@
       transition: width 0.25s ease;
     }
 
+    .boot-enter-btn {
+      margin-top: 36px;
+      padding: 12px 32px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 999px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.9rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .boot-enter-btn.is-ready {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .boot-enter-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.9);
+    }
+
     @keyframes bootPulse {
       0%   { opacity: 0; transform: scale(0.92); }
       50%  { opacity: 1; transform: scale(1);    }
@@ -119,6 +146,7 @@
     <div class="boot-progress-track">
       <div class="boot-progress-bar" id="boot-progress-bar"></div>
     </div>
+    <button class="boot-enter-btn" id="boot-enter-btn">Enter</button>
   </div>
 
   <!-- Plain (non-module) script — runs immediately as the HTML parses,

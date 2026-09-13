@@ -552,10 +552,15 @@ export default class NodeLoader {
       detail: { node: data, mesh }
     }))
 
-    // GSAP entry — materialise from nothing, same as OmniNode._createNode
+    // GSAP entry — materialise from nothing, same as OmniNode._createNode.
+    // Reads an optional data.scale (defaults to 1, unchanged for every
+    // existing node) so a node's actual size is a real, persistent
+    // property — survives dehydration/re-hydration, not just a one-time
+    // mesh tweak applied right after creation.
+    const targetScale = Number.isFinite(data.scale) && data.scale > 0 ? data.scale : 1
     mesh.scale.set(0, 0, 0)
     gsap.to(mesh.scale, {
-      x: 1, y: 1, z: 1,
+      x: targetScale, y: targetScale, z: targetScale,
       duration : ENTRY_DURATION,
       ease     : ENTRY_EASE,
     })

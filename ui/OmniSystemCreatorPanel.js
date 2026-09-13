@@ -525,6 +525,10 @@ export default class OmniSystemCreatorPanel {
         createdAt: new Date().toISOString(),
         systemInstanceId,
         isOmniCore: row.isCenter,
+        // Half the size of an OmniDraw/hand-placed node's default (1
+        // -> 0.5) — easier on the OS as a whole, since a single system
+        // can hold dozens of nodes at once, unlike a single hand-placed one.
+        scale: 0.5,
       }
       try {
         const { mesh } = this.nodeLoader.loadNode(data)
