@@ -79,6 +79,10 @@ still purely conceptual. Check each doc's own Status section.
   — the Excel-style node naming scheme shared across every OmniSystem
   formation, plus the fast-travel node selector design built on the
   existing "Take Me There" travel mechanic.
+- [`omniproducts/OMNIEXPRESSIONATOR_DESIGN.md`](omniproducts/OMNIEXPRESSIONATOR_DESIGN.md)
+  — shared particle engine for emotional/experiential context; one
+  real preset built (camera-relative light-speed entrance), wired into
+  the actual scene-entry moment.
 - [`omniproducts/OMNIACTION_DESIGN.md`](omniproducts/OMNIACTION_DESIGN.md)
   — connecting nodes to functions and animations, GSAP's full power
   exposed. Name undecided; deliberately saved for last.

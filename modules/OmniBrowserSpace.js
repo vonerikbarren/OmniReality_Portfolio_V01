@@ -77,10 +77,10 @@ const SHAPE_BUILDERS = {
 // The 4 face objects — varied geometry + OmniDraw's own PRIMITIVE_COLORS
 // (systems/OmniNode.js), for visual consistency with real OmniDraw objects.
 const FACE_OBJECTS = [
-  { axis: 'z', sign:  1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4),      color: 0xffffff }, // objective
-  { axis: 'z', sign: -1, geometry: () => new THREE.SphereGeometry(0.9, 20, 20),     color: 0x88aaff }, // subjective
-  { axis: 'x', sign:  1, geometry: () => new THREE.ConeGeometry(0.9, 1.6, 20),      color: 0x888888 }, // undefined
-  { axis: 'x', sign: -1, geometry: () => new THREE.OctahedronGeometry(1.0),         color: 0x88aaff }, // subjective
+  { axis: 'z', sign:  1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0xffffff }, // objective
+  { axis: 'z', sign: -1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x88aaff }, // subjective
+  { axis: 'x', sign:  1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x888888 }, // undefined
+  { axis: 'x', sign: -1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x88aaff }, // subjective
 ]
 
 const CUBE_TEXTURE_SLOTS = 5
@@ -91,6 +91,8 @@ function loadSettings () {
   const defaults = {
     shape: DEFAULT_SHAPE,
     rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
     color: '#8cc4ff', alpha: 0.6,
     activeSlot: null,
   }
@@ -113,6 +115,8 @@ export default class OmniBrowserSpace {
     this._texture = null
     this._shape = DEFAULT_SHAPE
     this._rotation = { x: 0, y: 0, z: 0 }
+    this._position = { x: 0, y: 0, z: 0 }
+    this._scale = { x: 1, y: 1, z: 1 }
     this._color = '#8cc4ff'
     this._alpha = 0.6
     this._activeSlot = null
@@ -123,6 +127,8 @@ export default class OmniBrowserSpace {
     const saved = loadSettings()
     this._shape = saved.shape
     this._rotation = { ...saved.rotation }
+    this._position = { ...(saved.position ?? { x: 0, y: 0, z: 0 }) }
+    this._scale = { ...(saved.scale ?? { x: 1, y: 1, z: 1 }) }
     this._color = saved.color
     this._alpha = saved.alpha
     this._activeSlot = saved.activeSlot
@@ -134,6 +140,8 @@ export default class OmniBrowserSpace {
     this._buildShapeMesh()
     this._buildFaceObjects()
     this._applyRotation()
+    this._applyPosition()
+    this._applyScale()
 
     if (this._activeSlot) this._applySlotTexture(this._activeSlot)
 
@@ -143,6 +151,8 @@ export default class OmniBrowserSpace {
       const patch = e.detail ?? {}
       if (patch.shape !== undefined && patch.shape !== this._shape) this._changeShape(patch.shape)
       if (patch.rotation) { this._rotation = { ...this._rotation, ...patch.rotation }; this._applyRotation() }
+      if (patch.position) { this._position = { ...this._position, ...patch.position }; this._applyPosition() }
+      if (patch.scale) { this._scale = { ...this._scale, ...patch.scale }; this._applyScale() }
       if (patch.color !== undefined) { this._color = patch.color; this._applyColor() }
       if (patch.alpha !== undefined) { this._alpha = patch.alpha; this._applyColor() }
       if (patch.activeSlot !== undefined) {
@@ -219,13 +229,35 @@ export default class OmniBrowserSpace {
     if (this._activeSlot) { this._solidMesh.visible = true; this._wireframe.visible = false }
     if (this._texture) { this._solidMesh.material.map = this._texture; this._solidMesh.material.color.set(0xffffff); this._solidMesh.material.needsUpdate = true }
 
-    saveSettings({ shape: this._shape, rotation: this._rotation, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot })
+    this._saveAll()
   }
 
   _applyRotation () {
     if (!this._glGroup) return
     this._glGroup.rotation.set(this._rotation.x, this._rotation.y, this._rotation.z)
-    saveSettings({ shape: this._shape, rotation: this._rotation, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot })
+    this._saveAll()
+  }
+
+  _applyPosition () {
+    if (!this._glGroup) return
+    // Offsets from the base ROOM_Y height rather than replacing it —
+    // the default (0,0,0) keeps the existing room-scale placement
+    // completely unchanged.
+    this._glGroup.position.set(this._position.x, ROOM_Y + this._position.y, this._position.z)
+    this._saveAll()
+  }
+
+  _applyScale () {
+    if (!this._glGroup) return
+    this._glGroup.scale.set(this._scale.x, this._scale.y, this._scale.z)
+    this._saveAll()
+  }
+
+  _saveAll () {
+    saveSettings({
+      shape: this._shape, rotation: this._rotation, position: this._position,
+      scale: this._scale, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot,
+    })
   }
 
   _applyColor () {
@@ -234,7 +266,7 @@ export default class OmniBrowserSpace {
     this._wireframe.material.opacity = this._alpha
     if (!this._texture) this._solidMesh.material.color.set(this._color)
     this._solidMesh.material.opacity = this._alpha
-    saveSettings({ shape: this._shape, rotation: this._rotation, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot })
+    this._saveAll()
   }
 
   async _applySlotTexture (slot) {
@@ -252,7 +284,8 @@ export default class OmniBrowserSpace {
         this._solidMesh.visible = true
         this._wireframe.visible = false
       })
-      saveSettings({ shape: this._shape, rotation: this._rotation, color: this._color, alpha: this._alpha, activeSlot: slot })
+      this._activeSlot = slot
+      this._saveAll()
     } catch (err) {
       console.warn('⟐OmniBrowserSpace — failed to load cube texture slot', slot, err)
     }
@@ -263,6 +296,7 @@ export default class OmniBrowserSpace {
     this._texture = null
     this._solidMesh.visible = false
     this._wireframe.visible = true
-    saveSettings({ shape: this._shape, rotation: this._rotation, color: this._color, alpha: this._alpha, activeSlot: null })
+    this._activeSlot = null
+    this._saveAll()
   }
 }

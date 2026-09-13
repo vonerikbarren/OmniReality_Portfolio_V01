@@ -1624,6 +1624,7 @@ export default class OmniInspector {
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
     window.removeEventListener('omni:node-selected', this._onSelected)
+    window.removeEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
     window.removeEventListener('wheel', this._onWheel)
     window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
     window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
@@ -2788,7 +2789,7 @@ export default class OmniInspector {
   }
 
   _wireData (body, data, ext) {
-    body.querySelector('#oi-goto-object')?.addEventListener('click', () => this._goToObject(data))
+    body.querySelector('#oi-goto-object')?.addEventListener('click', () => this._goToObject())
 
     if (data?.isOmniCore && data?.systemInstanceId) {
       const row = body.querySelector('#oi-delete-system-row')
@@ -3881,16 +3882,16 @@ export default class OmniInspector {
    *  object), then faces the object. Standoff distance scales with the
    *  object's own size so large objects aren't approached too closely
    *  and tiny ones aren't viewed from oddly far away. */
-  _goToObject (data) {
-    if (!this._currentMesh) return
-    const objectPos = this._currentMesh.getWorldPosition(new THREE.Vector3())
+  _goToObject (mesh = this._currentMesh) {
+    if (!mesh) return
+    const objectPos = mesh.getWorldPosition(new THREE.Vector3())
     const camera = this.ctx.camera
 
     const away = camera.position.clone().sub(objectPos)
     if (away.lengthSq() < 0.0001) away.set(0, 0, 1)   // camera essentially AT the object — pick an arbitrary side
     away.normalize()
 
-    const scale = this._currentMesh.scale
+    const scale = mesh.scale
     const standoff = 2.5 + Math.max(scale.x, scale.y, scale.z)
     const target = objectPos.clone().add(away.multiplyScalar(standoff))
 
@@ -4532,6 +4533,12 @@ export default class OmniInspector {
     window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
 
     window.addEventListener('omni:node-selected', this._onSelected)
+
+    // Lets any caller (OmniSystemCreatorPanel's per-node "Take Me
+    // There" buttons) trigger a real travel directly, without first
+    // needing this node selected/loaded as this._currentMesh.
+    this._onGotoMeshRequest = (e) => { if (e.detail?.mesh) this._goToObject(e.detail.mesh) }
+    window.addEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
 
     // Scroll interaction for Scrollable info-planes — raycasts on
     // wheel so scrolling only affects a plane the mouse is actually

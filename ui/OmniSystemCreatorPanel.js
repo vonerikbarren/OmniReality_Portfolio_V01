@@ -236,6 +236,12 @@ const STYLES = `
 .sc-node-main { flex: 1; min-width: 0; }
 .sc-node-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .sc-node-index { font-size: 9.5px; color: var(--sc-accent); white-space: nowrap; }
+.sc-goto-btn {
+  margin-left: auto; background: var(--sc-input-bg); border: 1px solid var(--sc-input-border);
+  border-radius: 4px; font-size: 11px; padding: 2px 6px; cursor: pointer; color: var(--sc-text);
+}
+.sc-goto-btn:hover:not(:disabled) { background: rgba(255, 178, 127, 0.16); }
+.sc-goto-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .sc-node-label-input {
   flex: 1; background: var(--sc-input-bg);
   border: 1px solid var(--sc-input-border); border-radius: 4px;
@@ -404,7 +410,10 @@ export default class OmniSystemCreatorPanel {
       row.innerHTML = `
         <div class="sc-preview" data-role="preview">${GEO_ICONS[meta.geometry] ?? '◈'}</div>
         <div class="sc-node-main">
-          <div class="sc-node-head"><span class="sc-node-index">${def.label}</span></div>
+          <div class="sc-node-head">
+            <span class="sc-node-index">${def.label}</span>
+            <button class="sc-goto-btn" data-goto="${def.key}" disabled title="Create the system first">🎯</button>
+          </div>
           <input class="sc-node-label-input" data-field="label" value="${meta.label}">
           <div class="sc-node-grid">
             <div class="sc-field">
@@ -438,6 +447,10 @@ export default class OmniSystemCreatorPanel {
       })
       row.querySelector('[data-field="label"]')?.addEventListener('change', (e) => { meta.label = e.target.value })
       row.querySelector('[data-field="primitive"]')?.addEventListener('change', (e) => { meta.primitive = e.target.value })
+      row.querySelector('[data-goto]')?.addEventListener('click', () => {
+        const mesh = this._createdMeshes?.[def.key]
+        if (mesh) window.dispatchEvent(new CustomEvent('omni:goto-mesh-request', { detail: { mesh } }))
+      })
       ;['r', 'g', 'b', 'a'].forEach(ch => {
         row.querySelector(`[data-field="${ch}"]`)?.addEventListener('change', (e) => { meta[ch] = Number(e.target.value) })
       })
@@ -487,7 +500,7 @@ export default class OmniSystemCreatorPanel {
       const distance = def.isCenter ? 0 : (this._locked ? this._sharedDistance : this._distances[def.key])
       const localPos = def.pos(distance)
       const [x, y, z] = this._applyOrigin(localPos)
-      return { ...meta, x, y, z, isCenter: !!def.isCenter }
+      return { ...meta, x, y, z, isCenter: !!def.isCenter, key: def.key }
     })
   }
 
@@ -519,6 +532,10 @@ export default class OmniSystemCreatorPanel {
           mesh.material.transparent = true
           mesh.material.opacity = row.a
         }
+        this._createdMeshes = this._createdMeshes || {}
+        this._createdMeshes[row.key] = mesh
+        const btn = this._el.querySelector(`[data-goto="${row.key}"]`)
+        if (btn) { btn.disabled = false; btn.title = 'Take me there' }
         created++
       } catch (err) {
         errors.push(`${row.label}: ${err.message}`)

@@ -72,6 +72,8 @@ import OmniBrowserSpacePanel from './ui/OmniBrowserSpacePanel.js'
 import OmniMixerPanel from './ui/OmniMixerPanel.js'
 import OrbiterVisual from './ui/OrbiterVisual.js'
 import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
+import OmniExpressionator from './modules/OmniExpressionator.js'
+import OmniExpressionatorPanel from './ui/OmniExpressionatorPanel.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 import InputMonitorPanel from './ui/InputMonitorPanel.js'
@@ -265,6 +267,12 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniExpressionVideoPlayer = new OmniExpressionVideoPlayer(base.context)
   base.addModule(omniExpressionVideoPlayer)
 
+  const omniExpressionator = new OmniExpressionator(base.context)
+  base.addModule(omniExpressionator)
+
+  const omniExpressionatorPanel = new OmniExpressionatorPanel(base.context, omniExpressionator)
+  base.addModule(omniExpressionatorPanel)
+
   const omniExpressionInspector = new OmniExpressionInspector(base.context)
   base.addModule(omniExpressionInspector)
 
@@ -363,6 +371,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
       specialSlots: {
         1: { label: 'Presenter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniExpressionPresenter' } })) },
         2: { label: 'UserPresenterVideoSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserPresenterVideoSettings' } })) },
+        3: { label: 'OmniExpressionator', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniExpressionator' } })) },
       }
     },
   ]
@@ -513,7 +522,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
       onUpdate: () => cam.lookAt(0, 2, -1),
       onComplete: () => {
         cam.lookAt(0, 2, -1)
-        _syncOrbitTarget()
+        // Explicit reset, not left to _syncOrbitTarget() — that either
+        // skips entirely once a node has ever been selected, or
+        // otherwise just recomputes a point in front of wherever the
+        // camera ends up facing, never actually the literal origin.
+        _hasSelectedPivot = false
+        orbitMod.controls.target.set(0, 0, 0)
+        orbitMod.controls.update()
         orbitMod.enable()
       }
     })
@@ -765,6 +780,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
     cam.position.set(0, 1000, 0.001)
     cam.lookAt(0, 0, 0)
+
+    // The actual "user first descends into the scene" moment —
+    // matches CAM_ENTRY phase 1's own duration below by default.
+    omniExpressionator.play('entrance', {})
 
     // Dismiss boot screen immediately — reveal the scene
     // so the user actually sees the fall happen

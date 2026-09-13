@@ -177,6 +177,7 @@ const STORE_KEY = 'omni:browserspace:settings'
 function loadSettings () {
   const defaults = {
     shape: 'BoxGeometry', rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
     color: '#8cc4ff', alpha: 0.6, activeSlot: null,
   }
   try {
@@ -313,6 +314,17 @@ export default class OmniBrowserSpacePanel {
         ${rotRow('y')}
         ${rotRow('z')}
 
+        <div class="bs-section-title">Position</div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">X</span><input type="number" class="bs-num-input" step="0.5" data-pos-axis="x" value="${s.position.x}"></div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">Y</span><input type="number" class="bs-num-input" step="0.5" data-pos-axis="y" value="${s.position.y}"></div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">Z</span><input type="number" class="bs-num-input" step="0.5" data-pos-axis="z" value="${s.position.z}"></div>
+        <div class="bs-note">Offset from the space's default resting height — (0,0,0) is the original position.</div>
+
+        <div class="bs-section-title">Scale</div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">X</span><input type="number" class="bs-num-input" step="0.1" min="0.01" data-scale-axis="x" value="${s.scale.x}"></div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">Y</span><input type="number" class="bs-num-input" step="0.1" min="0.01" data-scale-axis="y" value="${s.scale.y}"></div>
+        <div class="bs-xyz-row"><span class="bs-xyz-axis">Z</span><input type="number" class="bs-num-input" step="0.1" min="0.01" data-scale-axis="z" value="${s.scale.z}"></div>
+
         <div class="bs-section-title">Color &amp; Alpha</div>
         <div class="bs-row">
           <span class="bs-row-label">Color</span>
@@ -359,6 +371,24 @@ export default class OmniBrowserSpacePanel {
         this._state.rotation[axis] = value
         el.querySelector(`[data-rot-val="${axis}"]`).textContent = value.toFixed(2)
         this._commit({ rotation: { ...this._state.rotation } })
+      })
+    })
+
+    el.querySelectorAll('[data-pos-axis]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const axis = input.dataset.posAxis
+        const value = Number(e.target.value) || 0
+        this._state.position[axis] = value
+        this._commit({ position: { ...this._state.position } })
+      })
+    })
+
+    el.querySelectorAll('[data-scale-axis]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const axis = input.dataset.scaleAxis
+        const value = Math.max(0.01, Number(e.target.value) || 1)
+        this._state.scale[axis] = value
+        this._commit({ scale: { ...this._state.scale } })
       })
     })
 

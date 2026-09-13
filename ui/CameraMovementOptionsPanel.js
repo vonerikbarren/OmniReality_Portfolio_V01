@@ -40,7 +40,7 @@ const STYLES = `
   width            : 320px;
   min-width        : 260px;
   max-width        : 90vw;
-  height           : 360px;
+  height           : 480px;
   min-height       : 220px;
   max-height       : 80vh;
 
@@ -206,19 +206,37 @@ export default class CameraMovementOptionsPanel {
 
   _refreshFromStorage () {
     const s = readSettings()
-    const steps = { px: 1, py: 1, pz: 1, ...(s.steps ?? {}) }
+    const steps = { px: 1, py: 1, pz: 1, vertical: 1, rotation: 1, globalSpeed: false, globalValue: 1, ...(s.steps ?? {}) }
     this._el.querySelector('[data-field="px"]').value = steps.px
     this._el.querySelector('[data-field="py"]').value = steps.py
     this._el.querySelector('[data-field="pz"]').value = steps.pz
+    this._el.querySelector('[data-field="vertical"]').value = steps.vertical
+    this._el.querySelector('[data-field="rotation"]').value = steps.rotation
+    this._el.querySelector('[data-field="globalSpeed"]').checked = !!steps.globalSpeed
+    this._el.querySelector('[data-field="globalValue"]').value = steps.globalValue
+    this._applyGlobalDisabledState(!!steps.globalSpeed)
+  }
+
+  _applyGlobalDisabledState (isGlobal) {
+    ;['px', 'py', 'pz', 'vertical', 'rotation'].forEach(key => {
+      const input = this._el.querySelector(`[data-field="${key}"]`)
+      if (input) input.disabled = isGlobal
+    })
+    const globalValueInput = this._el.querySelector('[data-field="globalValue"]')
+    if (globalValueInput) globalValueInput.disabled = !isGlobal
   }
 
   _save () {
     const px = parseFloat(this._el.querySelector('[data-field="px"]').value)
     const py = parseFloat(this._el.querySelector('[data-field="py"]').value)
     const pz = parseFloat(this._el.querySelector('[data-field="pz"]').value)
+    const vertical = parseFloat(this._el.querySelector('[data-field="vertical"]').value)
+    const rotation = parseFloat(this._el.querySelector('[data-field="rotation"]').value)
+    const globalSpeed = this._el.querySelector('[data-field="globalSpeed"]').checked
+    const globalValue = parseFloat(this._el.querySelector('[data-field="globalValue"]').value)
 
     const current = readSettings()
-    const merged = { ...current, steps: { ...(current.steps ?? {}), px, py, pz } }
+    const merged = { ...current, steps: { ...(current.steps ?? {}), px, py, pz, vertical, rotation, globalSpeed, globalValue } }
 
     try { localStorage.setItem(STORE_KEY, JSON.stringify(merged)) } catch (_) {}
     window.dispatchEvent(new CustomEvent('omni:admin-settings-saved', { detail: merged }))
@@ -244,10 +262,18 @@ export default class CameraMovementOptionsPanel {
         <div class="cm-row"><span class="cm-row-label">px step</span><input class="cm-num" type="number" step="0.01" data-field="px"></div>
         <div class="cm-row"><span class="cm-row-label">py step</span><input class="cm-num" type="number" step="0.01" data-field="py"></div>
         <div class="cm-row"><span class="cm-row-label">pz step</span><input class="cm-num" type="number" step="0.01" data-field="pz"></div>
-        <div class="cm-note">More camera movement settings — orbit speed,
-        altitude speed, automatic rotation — are designed and documented
-        for this panel, not yet built. See
-        CAMERA_MOVEMENT_OPTIONS_DESIGN.md.</div>
+
+        <div class="cm-group-title">Rotation &amp; Vertical Speed</div>
+        <div class="cm-row"><span class="cm-row-label">Vertical (R/F) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="vertical"></div>
+        <div class="cm-row"><span class="cm-row-label">Rotation speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="rotation"></div>
+
+        <div class="cm-group-title">Global</div>
+        <div class="cm-row">
+          <span class="cm-row-label">One universal speed for all of the above</span>
+          <input type="checkbox" id="cm-global-speed" data-field="globalSpeed">
+        </div>
+        <div class="cm-row"><span class="cm-row-label">Global value</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="globalValue"></div>
+        <div class="cm-note">When Global is checked, this one value drives WASD, vertical, and rotation speed together — the fields above are overridden, not combined with it.</div>
       </div>
       <div class="cm-save-row">
         <button class="cm-save-btn" data-action="save">Save</button>
@@ -261,6 +287,7 @@ export default class CameraMovementOptionsPanel {
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('[data-action="save"]').addEventListener('click', () => this._save())
+    el.querySelector('[data-field="globalSpeed"]').addEventListener('change', (e) => this._applyGlobalDisabledState(e.target.checked))
 
     el.dataset.winId = 'cammovement'
     WindowManager.register('cammovement', el, 'Camera Movement Options')
