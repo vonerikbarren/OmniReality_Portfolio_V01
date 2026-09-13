@@ -252,6 +252,7 @@ export default class NodeLoader {
 
     // ── Bound event handlers ───────────────────────────────────────────
     this._onNavigate = null
+    this._onSceneClear = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -278,10 +279,12 @@ export default class NodeLoader {
 
   destroy () {
     window.removeEventListener('omni:navigate', this._onNavigate)
+    window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
 
     // Dispose all loaded meshes
     for (const [id, entry] of this._registry) {
       if (entry.mesh) {
+        this.ctx.scene.remove(entry.mesh)
         this._disposeMesh(entry)
         this._nodeManager?.unregisterMesh(id)
       }
@@ -924,8 +927,28 @@ export default class NodeLoader {
       const { to } = e.detail ?? {}
       if (to) this._evaluateDepthWindow(to)
     }
-
     window.addEventListener('omni:navigate', this._onNavigate)
+
+    // Clear Scene (Admin panel) previously only reached OmniNode's own
+    // node storage — NodeLoader's separate registry, which is exactly
+    // what OmniSystemCreator's Cross/Ring/Sphere nodes are created
+    // through, was never touched at all. Reuses the same disposal path
+    // already proven correct in destroy(), rather than duplicating it.
+    this._onSceneClear = () => {
+      for (const [id, entry] of this._registry) {
+        if (entry.mesh) {
+          this.ctx.scene.remove(entry.mesh)
+          this._disposeMesh(entry)
+          this._nodeManager?.unregisterMesh(id)
+        }
+      }
+      this._registry.clear()
+      this._loadQueue = []
+      try { localStorage.removeItem(STORE_LOADER) } catch (_) {}
+      this._broadcastUpdate()
+      console.log('⟐ NodeLoader — scene cleared.')
+    }
+    window.addEventListener('omni:scene-clear-request', this._onSceneClear)
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────
