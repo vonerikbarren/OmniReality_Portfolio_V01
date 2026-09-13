@@ -116,6 +116,7 @@ function sphereDefs (n) {
 const STYLES = `
 
 .omni-syscreator-panel {
+  pointer-events   : auto;
   --sc-bg          : var(--omni-theme-bg, rgba(8, 8, 12, 0.92));
   --sc-border      : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
   --sc-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));

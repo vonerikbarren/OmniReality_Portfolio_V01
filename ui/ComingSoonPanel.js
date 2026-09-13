@@ -18,6 +18,7 @@ import * as WindowManager from './WindowManager.js'
 const STYLES = `
 
 .omni-comingsoon-panel {
+  pointer-events    : auto;
   --csn-bg          : var(--omni-theme-bg, rgba(8, 8, 12, 0.92));
   --csn-border      : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
   --csn-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
