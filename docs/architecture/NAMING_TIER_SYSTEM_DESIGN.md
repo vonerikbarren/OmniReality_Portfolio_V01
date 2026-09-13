@@ -64,6 +64,14 @@ the structural fix, not a one-off patch.
   around it (OmniVision/OmniVisor being the concrete, named example)
   is a candidate to be reconsidered as tiers of one line rather than
   competing names, once this system is actually designed further.
+- **OmniExpression** (`OMNI_EXPRESSION_PRESENTER_DESIGN.md`) is a
+  second, concrete candidate — its current, built form is explicitly a
+  SingularNode (one presenter avatar), with a higher tier proposed to
+  evolve it into a genuine SystemNode (multiple avatars operating at
+  once). Not the same collision as OmniVision/OmniVisor (nothing's
+  actually named wrong here yet), but the same underlying shape: one
+  product line, meant to grow through real, named tiers rather than a
+  single fixed form.
 
 ## Status
 

@@ -229,6 +229,35 @@ yet answered.
   hood, or is this a genuinely separate math system that GSAP simply
   animates the result of? Also not yet answered.
 
+## A real tier candidate — OmniExpression as SingularNode, evolving toward SystemNode
+
+Raised directly: the current, built OmniExpression is genuinely a
+**SingularNode** system — one presenter avatar, not a multi-instance
+system the way OmniSystem's Cross/Ring/Sphere formations are. That's
+not a limitation to patch quietly; it's proposed as the natural
+**Tier 1** of this product line under the existing
+`NAMING_TIER_SYSTEM_DESIGN.md` convention (Fire → Fira → Firaga —
+each name change backed by a real capability change, not a rebrand).
+
+A future, higher tier — floated as landing somewhere around a
+"Firaga-level" form — would evolve OmniExpression from one avatar into
+a genuine **SystemNode**: multiple presenter avatars existing and
+operating at once, each with its own mode/position/waypoint sequence,
+rather than being limited to just one. Called out specifically as more
+efficient for the user — someone presenting a complex space may
+genuinely want more than one guide active simultaneously, not a
+sequential handoff through a single avatar.
+
+Not scoped or named beyond this. What tier number this lands at,
+what the actual intermediate/final names are, and whether it
+reuses OmniSystem's own Cross/Ring/Sphere formation math (an avatar
+"system" could very plausibly sit on the same Group-Lock-driven
+formation engine already built) or needs its own, separate mechanism
+— all genuinely open. Recorded here specifically so the SingularNode
+vs SystemNode distinction is a stated, deliberate design fact about
+this product line going forward, not something to accidentally lose
+track of.
+
 ### Status
 
 Video player phase: agreed and scoped, not yet built. Everything from
