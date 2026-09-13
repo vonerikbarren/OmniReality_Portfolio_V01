@@ -79,6 +79,22 @@ export default class BaseScene {
     // Shadows — enabled at base; modules opt in per mesh
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type    = THREE.PCFSoftShadowMap
+
+    // WebGL context loss is a distinct, GPU-driver-level event — separate
+    // from a normal JS exception — that produces exactly this symptom:
+    // the canvas goes blank/black while the rest of the page (anything
+    // not touching the lost context) keeps working completely normally.
+    // Can be triggered by genuine memory pressure, but just as often by
+    // a single bad value (NaN in a position/geometry) the driver can't
+    // handle. Logging this directly settles which one it actually is,
+    // instead of inferring it from the symptom alone.
+    this._canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault()   // without this, the browser won't even attempt to restore the context
+      console.error('⟐ WebGL context LOST — the GPU driver terminated the rendering context itself (not a JS error). Common causes: GPU memory pressure, or an invalid value (NaN/Infinity) in a geometry or material somewhere in the scene.')
+    })
+    this._canvas.addEventListener('webglcontextrestored', () => {
+      console.warn('⟐ WebGL context RESTORED — the renderer will need a full re-initialization to recover; a page reload is the reliable fix for now.')
+    })
   }
 
   _initCamera() {

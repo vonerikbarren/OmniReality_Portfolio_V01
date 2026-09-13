@@ -97,6 +97,55 @@ built inside OmniSystem itself.
   extension shows real interest in path character, a straight-line
   default may not be the final answer. Not decided yet.
 
+## OmniCore Origin — px/py/pz, rx/ry/rz, sx/sy/sz
+
+Every formation's center was previously hardcoded to the local
+origin `[0,0,0]`, with no way to place a system anywhere else. Fixed
+directly in `OmniSystemCreatorPanel.js`: a real 9-field transform —
+position, rotation (degrees), non-uniform scale — applied to every
+node (scale, then rotate, then translate, in that order) before
+creation. OmniCore's own local offset is always `[0,0,0]`, so scaling
+or rotating it does nothing on its own — it always lands exactly at
+the specified `(px,py,pz)`, with every other node correctly
+positioned relative to that same anchor. Defaults to identity
+(0 position, 0 rotation, scale 1), so nothing changes unless
+explicitly set.
+
+Verified directly: confirmed the defaults reproduce the exact
+pre-existing positions with zero regression, confirmed moving the
+origin moves the whole system together, confirmed a 90° rotation
+genuinely swaps which world axis an arm sits on, confirmed
+non-uniform scale stretches only the intended axis and leaves the
+others alone, and confirmed OmniCore itself stays exactly anchored
+even with rotation and scale both applied everywhere else at once.
+
+## Delete an entire system, through OmniCore
+
+Every node created by one "Create System" click now shares a
+`systemInstanceId`, and the center node alone is tagged `isOmniCore`.
+This is what makes "delete this whole system" possible at all —
+previously nothing tied a batch of created nodes back together as one
+unit, so the only real option was Clear Scene, which deletes
+everything, everywhere.
+
+Selecting a system's OmniCore node and opening its Inspector now
+shows a "Delete Entire System" option, specifically because it's an
+OmniCore — not available on any other node. Confirms before acting,
+same as Clear Scene. Verified directly with two independent systems
+coexisting at once: deleting one leaves the other's nodes, and its
+real meshes in the scene, completely untouched.
+
+## WebGL context-loss diagnostics
+
+A real `webglcontextlost` listener now logs directly and explicitly
+when the GPU driver itself terminates the rendering context — a
+distinct, lower-level event from a normal JS exception, and one that
+produces exactly "canvas goes blank, rest of the page keeps working
+fine." Common causes: genuine GPU memory pressure, or a single
+invalid value (NaN/Infinity) in a geometry or material anywhere in
+the scene. Added specifically so this can be confirmed directly next
+time, rather than inferred from the symptom alone.
+
 ## Node identification & fast travel
 
 Every node across every formation gets a generated, human-readable id

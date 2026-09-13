@@ -253,6 +253,7 @@ export default class NodeLoader {
     // ── Bound event handlers ───────────────────────────────────────────
     this._onNavigate = null
     this._onSceneClear = null
+    this._onDeleteSystemRequest = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -280,6 +281,7 @@ export default class NodeLoader {
   destroy () {
     window.removeEventListener('omni:navigate', this._onNavigate)
     window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
+    window.removeEventListener('omni:delete-system-request', this._onDeleteSystemRequest)
 
     // Dispose all loaded meshes
     for (const [id, entry] of this._registry) {
@@ -949,6 +951,45 @@ export default class NodeLoader {
       console.log('⟐ NodeLoader — scene cleared.')
     }
     window.addEventListener('omni:scene-clear-request', this._onSceneClear)
+
+    this._onDeleteSystemRequest = (e) => {
+      this.deleteSystemInstance(e.detail?.systemInstanceId)
+    }
+    window.addEventListener('omni:delete-system-request', this._onDeleteSystemRequest)
+  }
+
+  /**
+   * Deletes every node sharing the given systemInstanceId — the whole
+   * OmniSystem batch created together in one "Create System" click,
+   * not just the single node that happened to trigger this. Reuses
+   * the same disposal pattern already proven correct in destroy()
+   * and the scene-clear handler.
+   * @param {string} systemInstanceId
+   * @returns {number} how many nodes were actually deleted
+   */
+  deleteSystemInstance (systemInstanceId) {
+    if (!systemInstanceId) return 0
+    let count = 0
+    for (const [id, entry] of [...this._registry]) {
+      if (entry.data?.systemInstanceId !== systemInstanceId) continue
+      if (entry.mesh) {
+        this.ctx.scene.remove(entry.mesh)
+        this._disposeMesh(entry)
+        this._nodeManager?.unregisterMesh(id)
+      }
+      this._registry.delete(id)
+      count++
+    }
+    if (count > 0) {
+      try {
+        const raw = localStorage.getItem(STORE_LOADER)
+        const remaining = raw ? JSON.parse(raw).filter(n => n.systemInstanceId !== systemInstanceId) : []
+        localStorage.setItem(STORE_LOADER, JSON.stringify(remaining))
+      } catch (_) {}
+      this._broadcastUpdate()
+      console.log(`⟐ NodeLoader — deleted ${count} node(s) from system instance ${systemInstanceId}.`)
+    }
+    return count
   }
 
   // ── Utilities ─────────────────────────────────────────────────────────────

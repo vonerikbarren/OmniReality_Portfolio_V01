@@ -896,6 +896,12 @@ const STYLES = /* css */`
   cursor           : pointer;
 }
 .oi-btn-small:hover { background: rgba(140, 255, 180, 0.18); }
+.oi-btn-small--danger {
+  background       : rgba(255, 90, 90, 0.1);
+  border-color     : rgba(255, 90, 90, 0.35);
+  color            : rgba(255, 140, 140, 0.95);
+}
+.oi-btn-small--danger:hover { background: rgba(255, 90, 90, 0.2); }
 
 .oi-data-field {
   display           : flex;
@@ -2693,6 +2699,15 @@ export default class OmniInspector {
         Moves the camera to a spot right in front of this object,
         facing it — from wherever you currently are.
       </div>
+      <div class="oi-row" id="oi-delete-system-row" style="display:none">
+        <span class="oi-label" style="width:auto">This is an OmniCore</span>
+        <button class="oi-btn-small oi-btn-small--danger" id="oi-delete-system">🗑 Delete Entire System</button>
+      </div>
+      <div class="oi-data-note" id="oi-delete-system-note" style="display:none">
+        Removes every node created together with this one in the same
+        "Create System" click — not just this single node. Cannot be
+        undone.
+      </div>
       <div class="oi-row">
         <span class="oi-label" style="width:auto">Internal Data</span>
         <button class="oi-btn-small" id="oi-internal-panel-open">Open Panel ⟐</button>
@@ -2774,6 +2789,18 @@ export default class OmniInspector {
 
   _wireData (body, data, ext) {
     body.querySelector('#oi-goto-object')?.addEventListener('click', () => this._goToObject(data))
+
+    if (data?.isOmniCore && data?.systemInstanceId) {
+      const row = body.querySelector('#oi-delete-system-row')
+      const note = body.querySelector('#oi-delete-system-note')
+      if (row) row.style.display = ''
+      if (note) note.style.display = ''
+      body.querySelector('#oi-delete-system')?.addEventListener('click', () => {
+        const ok = window.confirm('Delete this entire system? Every node created together with this OmniCore will be removed. This cannot be undone.')
+        if (!ok) return
+        window.dispatchEvent(new CustomEvent('omni:delete-system-request', { detail: { systemInstanceId: data.systemInstanceId } }))
+      })
+    }
 
     body.querySelectorAll('[data-data-key]').forEach(textarea => {
       let timer = null

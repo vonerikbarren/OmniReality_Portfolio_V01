@@ -32,6 +32,7 @@
  * Follows the standard module contract (constructor / init / update / destroy).
  */
 
+import * as THREE from 'three'
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 
@@ -206,6 +207,18 @@ const STYLES = `
 }
 .sc-gen-btn:hover { background: rgba(255, 178, 127, 0.16); }
 
+.sc-origin-row {
+  padding: 8px 14px 10px; border-bottom: 1px solid var(--sc-border); flex-shrink: 0;
+}
+.sc-origin-title { font-size: 9px; color: var(--sc-text-dim); margin-bottom: 6px; }
+.sc-origin-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.sc-origin-group { display: flex; align-items: center; gap: 4px; }
+.sc-origin-group span { font-size: 9px; color: var(--sc-accent); min-width: 46px; }
+.sc-origin-group input {
+  width: 48px; background: var(--sc-input-bg); border: 1px solid var(--sc-input-border);
+  border-radius: 4px; color: var(--sc-text); font-family: var(--mono); font-size: 10px; padding: 3px 4px;
+}
+
 .sc-body { flex: 1 1 auto; overflow-y: auto; padding: 10px 14px; }
 .sc-body::-webkit-scrollbar { width: 6px; }
 .sc-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
@@ -282,6 +295,10 @@ export default class OmniSystemCreatorPanel {
     this._generated = false
     this._locked = true
     this._formation = 'cross'
+    // System-level transform — where OmniCore (and therefore the whole
+    // system, anchored to it) actually lives in the world. Defaults to
+    // identity so nothing changes unless explicitly set.
+    this._origin = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1 }
     this._drag = { active: false }
   }
 
@@ -450,12 +467,27 @@ export default class OmniSystemCreatorPanel {
     })
   }
 
+  _applyOrigin (localPos) {
+    const { px, py, pz, rx, ry, rz, sx, sy, sz } = this._origin
+    const v = new THREE.Vector3(localPos[0] * sx, localPos[1] * sy, localPos[2] * sz)
+    const euler = new THREE.Euler(
+      THREE.MathUtils.degToRad(rx),
+      THREE.MathUtils.degToRad(ry),
+      THREE.MathUtils.degToRad(rz),
+      'XYZ'
+    )
+    v.applyEuler(euler)
+    v.add(new THREE.Vector3(px, py, pz))
+    return [v.x, v.y, v.z]
+  }
+
   _readRows () {
     return this._defs.map(def => {
       const meta = this._nodeMeta[def.key]
       const distance = def.isCenter ? 0 : (this._locked ? this._sharedDistance : this._distances[def.key])
-      const [x, y, z] = def.pos(distance)
-      return { ...meta, x, y, z }
+      const localPos = def.pos(distance)
+      const [x, y, z] = this._applyOrigin(localPos)
+      return { ...meta, x, y, z, isCenter: !!def.isCenter }
     })
   }
 
@@ -464,6 +496,10 @@ export default class OmniSystemCreatorPanel {
     const rows = this._readRows()
     let created = 0
     const errors = []
+    // Shared by every node from this one click — the thing that lets
+    // "delete this whole system" mean something at all, since nothing
+    // previously tied a batch of created nodes back together as one unit.
+    const systemInstanceId = `sysinstance-${Date.now()}-${Math.floor(Math.random() * 10000)}`
 
     for (const row of rows) {
       const data = {
@@ -474,6 +510,8 @@ export default class OmniSystemCreatorPanel {
         color: rgbToHex(row.r, row.g, row.b),
         position: [row.x, row.y, row.z],
         createdAt: new Date().toISOString(),
+        systemInstanceId,
+        isOmniCore: row.isCenter,
       }
       try {
         const { mesh } = this.nodeLoader.loadNode(data)
@@ -517,6 +555,23 @@ export default class OmniSystemCreatorPanel {
         <button class="sc-lock-btn" data-action="toggle-lock">Locked (shared)</button>
         <button class="sc-gen-btn" data-action="generate">Generate</button>
       </div>
+      <div class="sc-origin-row">
+        <div class="sc-origin-title">OmniCore Origin — where the whole system lives, as a unit</div>
+        <div class="sc-origin-grid">
+          <div class="sc-origin-group">
+            <span>Position</span>
+            <input type="number" step="0.5" data-origin="px" value="0" title="X"><input type="number" step="0.5" data-origin="py" value="0" title="Y"><input type="number" step="0.5" data-origin="pz" value="0" title="Z">
+          </div>
+          <div class="sc-origin-group">
+            <span>Rotation °</span>
+            <input type="number" step="5" data-origin="rx" value="0" title="X"><input type="number" step="5" data-origin="ry" value="0" title="Y"><input type="number" step="5" data-origin="rz" value="0" title="Z">
+          </div>
+          <div class="sc-origin-group">
+            <span>Scale</span>
+            <input type="number" step="0.1" min="0.01" data-origin="sx" value="1" title="X"><input type="number" step="0.1" min="0.01" data-origin="sy" value="1" title="Y"><input type="number" step="0.1" min="0.01" data-origin="sz" value="1" title="Z">
+          </div>
+        </div>
+      </div>
       <div class="sc-body"><div class="sc-empty">Choose a formation and click "Generate" to begin.</div></div>
       <div class="sc-save-row">
         <button class="sc-save-btn" data-action="create">Create System</button>
@@ -544,6 +599,14 @@ export default class OmniSystemCreatorPanel {
       const countInput = el.querySelector('.sc-count-input')
       if (this._formation === 'ring') { countInput.value = '6'; countInput.max = String(MAX_RING_NODES) }
       if (this._formation === 'sphere') { countInput.value = '64'; countInput.max = String(MAX_SPHERE_NODES) }
+    })
+
+    el.querySelectorAll('[data-origin]').forEach(input => {
+      input.addEventListener('input', () => {
+        const key = input.dataset.origin
+        const val = parseFloat(input.value)
+        this._origin[key] = Number.isFinite(val) ? val : (key.startsWith('s') ? 1 : 0)
+      })
     })
 
     el.dataset.winId = 'syscreator'
