@@ -40,7 +40,7 @@ const STYLES = `
   width            : 320px;
   min-width        : 260px;
   max-width        : 90vw;
-  height           : 480px;
+  height           : 560px;
   min-height       : 220px;
   max-height       : 80vh;
 
@@ -149,8 +149,9 @@ function readSettings () {
 }
 
 export default class CameraMovementOptionsPanel {
-  constructor (context) {
+  constructor (context, orbitModule) {
     this.ctx = context
+    this.orbitModule = orbitModule
     this._el = null
     this._isOpen = false
     this._drag = { active: false }
@@ -163,15 +164,43 @@ export default class CameraMovementOptionsPanel {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+
+    this._onF3 = (e) => {
+      if (e.key !== 'F3' || e.repeat) return
+      const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)
+      if (isTyping) return
+      this._toggleAutoRotateQuick()
+    }
+    window.addEventListener('keydown', this._onF3)
+
+    // Apply whatever was last saved immediately on boot — this is a
+    // real, persistent camera behavior, not panel-UI-only state, so it
+    // shouldn't require the panel itself to ever be opened to take effect.
+    const s = readSettings()
+    this.orbitModule?.toggleAutoRotate(!!s.autoRotate)
+    this.orbitModule?.setAutoRotateSpeed(s.autoRotateSpeed ?? 2)
   }
 
-  update () {}
+  update () {
+    if (!this._isOpen || !this._el) return
+    const checkbox = this._el.querySelector('[data-field="autoRotate"]')
+    if (checkbox) checkbox.checked = !!this.orbitModule?.isAutoRotating()
+  }
   onResize () {}
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('keydown', this._onF3)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('cammovement')
+  }
+
+  _toggleAutoRotateQuick () {
+    const nowOn = !this.orbitModule?.isAutoRotating()
+    this.orbitModule?.toggleAutoRotate(nowOn)
+    const current = readSettings()
+    const merged = { ...current, autoRotate: nowOn }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(merged)) } catch (_) {}
   }
 
   open () {
@@ -206,19 +235,24 @@ export default class CameraMovementOptionsPanel {
 
   _refreshFromStorage () {
     const s = readSettings()
-    const steps = { px: 1, py: 1, pz: 1, vertical: 1, rotation: 1, globalSpeed: false, globalValue: 1, ...(s.steps ?? {}) }
+    const steps = { px: 1, py: 1, pz: 1, altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1, globalSpeed: false, globalValue: 1, ...(s.steps ?? {}) }
     this._el.querySelector('[data-field="px"]').value = steps.px
     this._el.querySelector('[data-field="py"]').value = steps.py
     this._el.querySelector('[data-field="pz"]').value = steps.pz
-    this._el.querySelector('[data-field="vertical"]').value = steps.vertical
-    this._el.querySelector('[data-field="rotation"]').value = steps.rotation
+    this._el.querySelector('[data-field="altitudeUp"]').value = steps.altitudeUp
+    this._el.querySelector('[data-field="altitudeDown"]').value = steps.altitudeDown
+    this._el.querySelector('[data-field="orbitVertical"]').value = steps.orbitVertical
+    this._el.querySelector('[data-field="orbitHorizontal"]').value = steps.orbitHorizontal
     this._el.querySelector('[data-field="globalSpeed"]').checked = !!steps.globalSpeed
     this._el.querySelector('[data-field="globalValue"]').value = steps.globalValue
     this._applyGlobalDisabledState(!!steps.globalSpeed)
+
+    this._el.querySelector('[data-field="autoRotate"]').checked = !!this.orbitModule?.isAutoRotating()
+    this._el.querySelector('[data-field="autoRotateSpeed"]').value = s.autoRotateSpeed ?? 2
   }
 
   _applyGlobalDisabledState (isGlobal) {
-    ;['px', 'py', 'pz', 'vertical', 'rotation'].forEach(key => {
+    ;['px', 'py', 'pz', 'altitudeUp', 'altitudeDown', 'orbitVertical', 'orbitHorizontal'].forEach(key => {
       const input = this._el.querySelector(`[data-field="${key}"]`)
       if (input) input.disabled = isGlobal
     })
@@ -230,16 +264,26 @@ export default class CameraMovementOptionsPanel {
     const px = parseFloat(this._el.querySelector('[data-field="px"]').value)
     const py = parseFloat(this._el.querySelector('[data-field="py"]').value)
     const pz = parseFloat(this._el.querySelector('[data-field="pz"]').value)
-    const vertical = parseFloat(this._el.querySelector('[data-field="vertical"]').value)
-    const rotation = parseFloat(this._el.querySelector('[data-field="rotation"]').value)
+    const altitudeUp = parseFloat(this._el.querySelector('[data-field="altitudeUp"]').value)
+    const altitudeDown = parseFloat(this._el.querySelector('[data-field="altitudeDown"]').value)
+    const orbitVertical = parseFloat(this._el.querySelector('[data-field="orbitVertical"]').value)
+    const orbitHorizontal = parseFloat(this._el.querySelector('[data-field="orbitHorizontal"]').value)
     const globalSpeed = this._el.querySelector('[data-field="globalSpeed"]').checked
     const globalValue = parseFloat(this._el.querySelector('[data-field="globalValue"]').value)
+    const autoRotate = this._el.querySelector('[data-field="autoRotate"]').checked
+    const autoRotateSpeed = parseFloat(this._el.querySelector('[data-field="autoRotateSpeed"]').value) || 2
 
     const current = readSettings()
-    const merged = { ...current, steps: { ...(current.steps ?? {}), px, py, pz, vertical, rotation, globalSpeed, globalValue } }
+    const merged = {
+      ...current,
+      steps: { ...(current.steps ?? {}), px, py, pz, altitudeUp, altitudeDown, orbitVertical, orbitHorizontal, globalSpeed, globalValue },
+      autoRotate, autoRotateSpeed,
+    }
 
     try { localStorage.setItem(STORE_KEY, JSON.stringify(merged)) } catch (_) {}
     window.dispatchEvent(new CustomEvent('omni:admin-settings-saved', { detail: merged }))
+    this.orbitModule?.toggleAutoRotate(autoRotate)
+    this.orbitModule?.setAutoRotateSpeed(autoRotateSpeed)
 
     const status = this._el.querySelector('.cm-save-status')
     status.textContent = 'Saved'
@@ -263,9 +307,19 @@ export default class CameraMovementOptionsPanel {
         <div class="cm-row"><span class="cm-row-label">py step</span><input class="cm-num" type="number" step="0.01" data-field="py"></div>
         <div class="cm-row"><span class="cm-row-label">pz step</span><input class="cm-num" type="number" step="0.01" data-field="pz"></div>
 
-        <div class="cm-group-title">Rotation &amp; Vertical Speed</div>
-        <div class="cm-row"><span class="cm-row-label">Vertical (R/F) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="vertical"></div>
-        <div class="cm-row"><span class="cm-row-label">Rotation speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="rotation"></div>
+        <div class="cm-group-title">Orbit &amp; Altitude Speed</div>
+        <div class="cm-row"><span class="cm-row-label">Altitude-up (R) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="altitudeUp"></div>
+        <div class="cm-row"><span class="cm-row-label">Altitude-down (F) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="altitudeDown"></div>
+        <div class="cm-row"><span class="cm-row-label">Vertical orbit speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="orbitVertical"></div>
+        <div class="cm-row"><span class="cm-row-label">Horizontal orbit speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="orbitHorizontal"></div>
+
+        <div class="cm-group-title">Automatic Rotation</div>
+        <div class="cm-row">
+          <span class="cm-row-label">Enable (or press F3 anytime)</span>
+          <input type="checkbox" data-field="autoRotate">
+        </div>
+        <div class="cm-row"><span class="cm-row-label">Speed</span><input class="cm-num" type="range" min="0.2" max="10" step="0.1" data-field="autoRotateSpeed"></div>
+        <div class="cm-note">A quick, automatic tour of the scene — you can still freely look around while it plays; the two run independently, so nothing you do interrupts it.</div>
 
         <div class="cm-group-title">Global</div>
         <div class="cm-row">
@@ -273,7 +327,7 @@ export default class CameraMovementOptionsPanel {
           <input type="checkbox" id="cm-global-speed" data-field="globalSpeed">
         </div>
         <div class="cm-row"><span class="cm-row-label">Global value</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="globalValue"></div>
-        <div class="cm-note">When Global is checked, this one value drives WASD, vertical, and rotation speed together — the fields above are overridden, not combined with it.</div>
+        <div class="cm-note">When Global is checked, this one value drives WASD, altitude, and orbit speed together — the fields above are overridden, not combined with it. Does not affect automatic rotation speed.</div>
       </div>
       <div class="cm-save-row">
         <button class="cm-save-btn" data-action="save">Save</button>
@@ -288,6 +342,12 @@ export default class CameraMovementOptionsPanel {
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('[data-action="save"]').addEventListener('click', () => this._save())
     el.querySelector('[data-field="globalSpeed"]').addEventListener('change', (e) => this._applyGlobalDisabledState(e.target.checked))
+    el.querySelector('[data-field="autoRotate"]').addEventListener('change', (e) => {
+      this.orbitModule?.toggleAutoRotate(e.target.checked)
+    })
+    el.querySelector('[data-field="autoRotateSpeed"]').addEventListener('input', (e) => {
+      this.orbitModule?.setAutoRotateSpeed(parseFloat(e.target.value) || 2)
+    })
 
     el.dataset.winId = 'cammovement'
     WindowManager.register('cammovement', el, 'Camera Movement Options')

@@ -456,8 +456,10 @@ export default class MovementPad {
     // the default px/py/pz = 1/1/1) so existing behavior is completely
     // unchanged until the admin setting actually says otherwise.
     this._moveSpeedMultiplier = 1
-    this._verticalSpeedMultiplier = 1
-    this._rotationSpeedMultiplier = 1
+    this._altitudeUpMultiplier = 1
+    this._altitudeDownMultiplier = 1
+    this._orbitVerticalMultiplier = 1
+    this._orbitHorizontalMultiplier = 1
 
     // Rotation pivot for OmniKeys' center-pad camera rotation —
     // defaults to the same point OrbitControls itself defaults to
@@ -486,8 +488,10 @@ export default class MovementPad {
     this._bindKeyboard()
     const initialAll = this._computeAllMultipliers(this._readAdminSteps())
     this._moveSpeedMultiplier = initialAll.move
-    this._verticalSpeedMultiplier = initialAll.vertical
-    this._rotationSpeedMultiplier = initialAll.rotation
+    this._altitudeUpMultiplier = initialAll.altitudeUp
+    this._altitudeDownMultiplier = initialAll.altitudeDown
+    this._orbitVerticalMultiplier = initialAll.orbitVertical
+    this._orbitHorizontalMultiplier = initialAll.orbitHorizontal
     console.log('⟐ MovementPad: initialized.')
   }
 
@@ -741,12 +745,11 @@ export default class MovementPad {
     const p = this._pressed.rh
     if (!p.up && !p.down && !p.left && !p.right) return
 
-    const vSpeed = MOVE_SPEED * this._verticalSpeedMultiplier * delta
-    if (p.up)   cam.position.y += vSpeed
-    if (p.down) cam.position.y -= vSpeed
+    if (p.up)   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier * delta
+    if (p.down) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * delta
 
     if (p.left || p.right) {
-      const angle = (p.right ? -1 : 1) * YAW_SPEED * this._rotationSpeedMultiplier * delta
+      const angle = (p.right ? -1 : 1) * YAW_SPEED * this._orbitHorizontalMultiplier * delta
       const cos   = Math.cos(angle)
       const sin   = Math.sin(angle)
       const x     = cam.position.x
@@ -844,13 +847,13 @@ export default class MovementPad {
     if (radius < 0.0001) return   // camera is essentially AT the pivot — nothing meaningful to rotate around
 
     if (direction === 'left' || direction === 'right') {
-      const angle = (direction === 'right' ? -1 : 1) * this._rotateStep * this._rotationSpeedMultiplier
+      const angle = (direction === 'right' ? -1 : 1) * this._rotateStep * this._orbitHorizontalMultiplier
       offset.applyAxisAngle(this._worldUp, angle)
     } else {
       // Pitch — rotate around the camera's own "right" axis relative
       // to the pivot, clamped so it can't flip past straight up/down.
       const currentPitch = Math.asin(THREE.MathUtils.clamp(offset.y / radius, -1, 1))
-      const delta = (direction === 'up' ? 1 : -1) * this._rotateStep * this._rotationSpeedMultiplier
+      const delta = (direction === 'up' ? 1 : -1) * this._rotateStep * this._orbitVerticalMultiplier
       const nextPitch = THREE.MathUtils.clamp(currentPitch + delta, -this._pitchLimit, this._pitchLimit)
       const actualDelta = nextPitch - currentPitch
       if (Math.abs(actualDelta) < 0.0001) return   // already at the limit
@@ -879,17 +882,31 @@ export default class MovementPad {
   }
 
   _readAdminSteps () {
-    const fallback = { px: 1, py: 1, pz: 1, vertical: 1, rotation: 1, globalSpeed: false, globalValue: 1 }
+    const fallback = { px: 1, py: 1, pz: 1, altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1, globalSpeed: false, globalValue: 1 }
     try {
       const raw = localStorage.getItem('omni:admin:settings')
       const saved = raw ? JSON.parse(raw)?.steps : null
-      const merged = saved ? { ...fallback, ...saved } : fallback
+      // Migration: the old, combined "vertical"/"rotation" fields (pre-split)
+      // become the starting point for their new, more granular replacements,
+      // so anyone who already tuned those doesn't silently lose that tuning.
+      const migrated = saved
+        ? {
+            altitudeUp: saved.altitudeUp ?? saved.vertical,
+            altitudeDown: saved.altitudeDown ?? saved.vertical,
+            orbitVertical: saved.orbitVertical ?? saved.rotation,
+            orbitHorizontal: saved.orbitHorizontal ?? saved.rotation,
+            ...saved,
+          }
+        : null
+      const merged = migrated ? { ...fallback, ...migrated } : fallback
       return {
         px: this._sanitizeStep(merged.px),
         py: this._sanitizeStep(merged.py),
         pz: this._sanitizeStep(merged.pz),
-        vertical: this._sanitizeStep(merged.vertical),
-        rotation: this._sanitizeStep(merged.rotation),
+        altitudeUp: this._sanitizeStep(merged.altitudeUp),
+        altitudeDown: this._sanitizeStep(merged.altitudeDown),
+        orbitVertical: this._sanitizeStep(merged.orbitVertical),
+        orbitHorizontal: this._sanitizeStep(merged.orbitHorizontal),
         globalSpeed: !!merged.globalSpeed,
         globalValue: this._sanitizeStep(merged.globalValue),
       }
@@ -905,17 +922,32 @@ export default class MovementPad {
    *  exactly 1, so existing speed is unchanged until the setting
    *  actually moves.
    *
-   *  When globalSpeed is on, one shared value overrides all three
-   *  (move/vertical/rotation) at once — a universal speed — rather
+   *  Altitude and orbit speed are kept as four separate values
+   *  (altitude-up, altitude-down, orbit-vertical, orbit-horizontal)
+   *  per CAMERA_MOVEMENT_OPTIONS_DESIGN.md, rather than the two
+   *  combined values used earlier — up/down and left/right may want
+   *  to feel different from each other, same reasoning as WASD's own
+   *  independent px/py/pz. Independent by default, same as those.
+   *
+   *  When globalSpeed is on, one shared value overrides all five
+   *  (move + the four above) at once — a universal speed — rather
    *  than needing to change each independently. */
   _computeAllMultipliers (steps) {
     if (steps.globalSpeed) {
-      return { move: steps.globalValue, vertical: steps.globalValue, rotation: steps.globalValue }
+      return {
+        move: steps.globalValue,
+        altitudeUp: steps.globalValue,
+        altitudeDown: steps.globalValue,
+        orbitVertical: steps.globalValue,
+        orbitHorizontal: steps.globalValue,
+      }
     }
     return {
       move: (steps.px + steps.py + steps.pz) / 3,
-      vertical: steps.vertical,
-      rotation: steps.rotation,
+      altitudeUp: steps.altitudeUp,
+      altitudeDown: steps.altitudeDown,
+      orbitVertical: steps.orbitVertical,
+      orbitHorizontal: steps.orbitHorizontal,
     }
   }
 
@@ -927,15 +959,19 @@ export default class MovementPad {
       px: this._sanitizeStep(merged.px),
       py: this._sanitizeStep(merged.py),
       pz: this._sanitizeStep(merged.pz),
-      vertical: this._sanitizeStep(merged.vertical),
-      rotation: this._sanitizeStep(merged.rotation),
+      altitudeUp: this._sanitizeStep(merged.altitudeUp),
+      altitudeDown: this._sanitizeStep(merged.altitudeDown),
+      orbitVertical: this._sanitizeStep(merged.orbitVertical),
+      orbitHorizontal: this._sanitizeStep(merged.orbitHorizontal),
       globalSpeed: !!merged.globalSpeed,
       globalValue: this._sanitizeStep(merged.globalValue),
     }
     const all = this._computeAllMultipliers(sanitized)
     this._moveSpeedMultiplier = all.move
-    this._verticalSpeedMultiplier = all.vertical
-    this._rotationSpeedMultiplier = all.rotation
+    this._altitudeUpMultiplier = all.altitudeUp
+    this._altitudeDownMultiplier = all.altitudeDown
+    this._orbitVerticalMultiplier = all.orbitVertical
+    this._orbitHorizontalMultiplier = all.orbitHorizontal
   }
 
   /** Fixes a real bug: RadialMenu shifts 200px toward screen-center

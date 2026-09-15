@@ -75,6 +75,7 @@ import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniExpressionator from './modules/OmniExpressionator.js'
 import OmniExpressionatorPanel from './ui/OmniExpressionatorPanel.js'
 import UserTimePanel from './ui/UserTimePanel.js'
+import WindowInspectorTool from './ui/WindowInspectorTool.js'
 import OmniStartHUD      from './ui/OmniStartHUD.js'
 import * as ThemeManager from './ui/ThemeManager.js'
 import InputMonitorPanel from './ui/InputMonitorPanel.js'
@@ -160,7 +161,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(inputMonitorPanel)
 
   // Camera Movement Options — real panel, accessible from Admin Settings
-  const cameraMovementOptionsPanel = new CameraMovementOptionsPanel(base.context)
+  const cameraMovementOptionsPanel = new CameraMovementOptionsPanel(base.context, orbitMod)
   base.addModule(cameraMovementOptionsPanel)
 
   // ── OmniSystem ────────────────────────────────────────────
@@ -277,6 +278,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const userTimePanel = new UserTimePanel(base.context)
   base.addModule(userTimePanel)
 
+  const windowInspectorTool = new WindowInspectorTool(base.context)
+  base.addModule(windowInspectorTool)
+
   const omniExpressionInspector = new OmniExpressionInspector(base.context)
   base.addModule(omniExpressionInspector)
 
@@ -353,6 +357,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         4: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
         5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
         6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
+        7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },

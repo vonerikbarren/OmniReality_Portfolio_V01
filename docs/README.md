@@ -57,6 +57,10 @@ still purely conceptual. Check each doc's own Status section.
   — OmniExpression's presenter avatar, waypoint timeline, the planned
   OmniExpressionVideoPlayer, and the much larger Timeline / Time Tunnel
   / Master Tunnel / OmniTime / OmniLayer design thread.
+- [`omniproducts/DIMENSIONAL_ALBUMS_DESIGN.md`](omniproducts/DIMENSIONAL_ALBUMS_DESIGN.md)
+  — music released as guided, spatial OS tours; builds on OmniExpression's
+  waypoint system, names the fixed-duration-vs-audio-timestamp sync gap
+  that has to be solved first.
 - [`omniproducts/COORDINATE_NODES_TIMELINE_DESIGN.md`](omniproducts/COORDINATE_NODES_TIMELINE_DESIGN.md)
   — generalizing OmniExpression's waypoint mechanism to any object.
 - [`omniproducts/OMNIVISOR_DESIGN.md`](omniproducts/OMNIVISOR_DESIGN.md)
@@ -66,6 +70,10 @@ still purely conceptual. Check each doc's own Status section.
   OmniStore project.
 - [`omniproducts/OMNIFEED_DESIGN.md`](omniproducts/OMNIFEED_DESIGN.md)
   — blog interface plus live WebSocket comments.
+- [`omniproducts/OMNICOMMUNICATION_SUITE_DESIGN.md`](omniproducts/OMNICOMMUNICATION_SUITE_DESIGN.md)
+  — OmniLog, OmniFeed, OmniCommunication (rhythm-game-style receiving,
+  OmniReceiver), and OmniConnect as one family; dimensions-vs-tiers
+  left open, plus a full SWOT.
 - [`omniproducts/OMNITRUTHS_DESIGN.md`](omniproducts/OMNITRUTHS_DESIGN.md)
   — merging realities, the realityOf(params) framing, and the still-open
   destructive/non-destructive merge question.

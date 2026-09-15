@@ -70,7 +70,102 @@ Claude - no assumptions made about its needs here) all point at the
 same missing piece: a backend + database + light auth. Worth treating
 as one infrastructure decision rather than three separate side quests.
 
+## What actually has to change, concretely
+
+Worth separating clearly: "full-stack" means adding a real backend.
+It does **not** inherently mean rewriting the existing frontend. Those
+are two independent decisions, addressed separately below.
+
+**Backend side — new work, not a rewrite of anything existing:**
+- A backend framework choice (a traditional server like Node/Express
+  or Python/FastAPI, vs. a batteries-included BaaS like Supabase or
+  Firebase that bundles auth + database + realtime together and
+  meaningfully reduces how much custom backend code needs writing).
+- A hosting decision — see the GitHub Pages section above; hybrid
+  (keep GitHub Pages for the static frontend, small separate service
+  for the backend) vs. full migration to one platform.
+- A real database, though the existing data shape is already
+  compatible (see above) — this is closer to "put a database under
+  what already exists" than "redesign the data model."
+- Identity/auth, even lightweight — OmniFeed comments need an author,
+  OmniConnect needs to identify who it's connecting to. Doesn't need
+  to be full accounts on day one.
+- WebSocket infrastructure for OmniFeed's live comments,
+  OmniCommunication's live delivery, and OmniConnect's presence/
+  targeting — three features, one piece of infrastructure.
+- A decision on existing local data: does each user's current
+  `localStorage` state (nodes, admin settings, spaces) get migrated
+  to the new backend, or does the proof-of-concept phase treat that as
+  disposable and start fresh server-side? Worth deciding on purpose
+  rather than discovering the answer mid-migration.
+- Security surface increases the moment other users' data or actions
+  matter to each other: server-side input validation (the client can
+  no longer be trusted the way a single-user tool could trust it),
+  rate limiting, and — non-optional the moment OmniConnect/
+  OmniCommunication allow open, cross-user delivery — spam/abuse
+  moderation from day one, not as a later add-on.
+- Recurring cost: real hosting + database + WebSocket infrastructure
+  is genuine ongoing spend, distinct from and in addition to any AI
+  tooling subscription decision being made separately.
+
+**Frontend side — genuinely does not need to change for the backend
+work to happen.** The existing panels already talk to `localStorage`
+through small, isolated read/write functions in each module — swapping
+those for `fetch()`/WebSocket calls to a real backend is a data-layer
+change, not a rewrite of the ~25+ existing UI panels or the Three.js
+scene itself. The 3D layer (NodeLoader, OmniSystem formations,
+MovementPad, the particle engine) is plain, imperative Three.js and
+has no reason to change at all, regardless of what happens on the
+backend.
+
+## The React question — separate decision, not required by the backend work
+
+Genuinely two different questions that are easy to accidentally
+conflate: "do we need a backend" (yes, decided) and "do we need a
+frontend framework" (open, and not forced by the first answer).
+
+**Building a custom React-equivalent framework is not recommended.**
+This would mean spending real time re-solving problems (component
+state, re-rendering, event delegation) that already have a mature,
+battle-tested, widely-documented solution — time that would come
+directly out of building the actual products (OmniLog, OmniCommunication,
+etc.), which is the stated goal. The only real justifications for a
+custom framework would be a specific performance ceiling React can't
+meet (unlikely for UI panels — the 3D scene wouldn't be
+framework-managed either way) or a deliberate choice to own every
+line of the stack, which is a legitimate but expensive preference to
+hold, not a technical requirement.
+
+**A full, immediate rewrite of everything into React is also not
+recommended.** It would mean rebuilding every one of the 25+ existing
+panels from scratch, all of which currently work and are already
+tested — high effort, high regression risk, for a phase explicitly
+described as proof-of-concept/testing rather than final delivery.
+
+**What's actually worth considering: React for new work only, left
+to coexist with the existing vanilla panels.** React can mount into a
+specific DOM element without needing to own the whole page — new
+panels (OmniLog, OmniFeed, OmniCommunication, OmniConnect) could be
+built as real React components, gaining actual state management and
+JSX instead of hand-written `innerHTML` string templates, while every
+existing panel keeps working completely untouched. The repeated
+drag/resize/minimize boilerplate that's been hand-written fresh in
+every single panel this session so far is exactly the kind of
+duplication a component model removes going forward, without forcing
+a rewrite of anything already built. Nothing would be forced to
+migrate later either — this is a genuine "adopt gradually, only where
+it helps" path, not a two-phase plan with a forced second phase.
+
+Not recommended either way: touching the 3D Three.js layer itself.
+Libraries like react-three-fiber exist for declarative Three.js inside
+React, but the existing imperative Three.js code (formations, node
+loading, camera movement, the particle engine) is working and
+battle-tested — there's no real reason to move it into a React-managed
+paradigm even if React gets adopted for the 2D UI panel layer.
+
 ## Status
 
 Purely conceptual. No backend framework, database, or hosting decision
-has been made. No code exists for this yet.
+has been made, and no frontend-framework decision (React or otherwise)
+has been made either — recommended above as an "adopt for new work
+only" path, not decided or acted on. No code exists for any of this yet.

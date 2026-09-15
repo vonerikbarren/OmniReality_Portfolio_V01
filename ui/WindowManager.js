@@ -73,6 +73,18 @@ export function register (id, el, label) {
     el.style.zIndex = String(topZ)
     return false
   }
+  // Cascade positioning — every panel that registers gets this
+  // automatically now, current and future, with zero per-panel code
+  // needed. Computed here, before this window joins the registry
+  // below, so it doesn't count itself in its own cascade math. Only
+  // applies when nothing has already set an inline position — a
+  // panel with deliberate positioning logic of its own (built before
+  // this existed, or with a real reason to opt out) is left alone.
+  if (!el.style.left && !el.style.top) {
+    const cascade = getCascadePosition()
+    el.style.left = `${cascade.left}px`
+    el.style.top = `${cascade.top}px`
+  }
   registry.set(id, { el, label: label ?? id })
   bringToFront(id, false)   // z-index only — not a real user focus event
   el.addEventListener('mousedown', () => bringToFront(id))
@@ -89,9 +101,43 @@ export function unregister (id) {
  *  track each panel's open/closed state itself. */
 export function getRegisteredWindows () {
   return [...registry.entries()].map(([id, { el, label }]) => ({
-    id, label,
+    id, label, el,
     isOpen: el.style.visibility !== 'hidden',
   }))
+}
+
+// ── Cascade positioning — "windows within windows," offset in the same
+// direction consecutive opens always come out in, so each new one stays
+// reachable without fully hiding whatever's behind it ────────────────
+const CASCADE_LEFT_MARGIN = 24
+const CASCADE_TOP_GAP     = 20   // below the header, not flush against it
+const CASCADE_STEP        = 32   // px right + down per additional open window
+const CASCADE_MAX_STEPS   = 8    // wraps back to the base position after this many
+
+function _headerHeight () {
+  // Measures the real header rather than hardcoding its height, so this
+  // keeps working correctly even if the header's own height ever changes.
+  const header = document.getElementById('omni-global-bar')
+  return header ? header.getBoundingClientRect().height : 48
+}
+
+/**
+ * Computes where a newly-opened panel should land: just under the
+ * header (not centered), with a left margin, cascading diagonally
+ * offset from however many other windows are already open — the same
+ * placement order consecutive window opens are meant to come out in.
+ * Call once, on a panel's first open, and apply the result as its
+ * inline left/top — never call on every open, or a panel the user
+ * already dragged would jump back into the cascade instead of staying
+ * where they put it.
+ */
+export function getCascadePosition () {
+  const openCount = [...registry.values()].filter(({ el }) => el.style.visibility !== 'hidden').length
+  const step = openCount % CASCADE_MAX_STEPS
+  return {
+    left: CASCADE_LEFT_MARGIN + step * CASCADE_STEP,
+    top: _headerHeight() + CASCADE_TOP_GAP + step * CASCADE_STEP,
+  }
 }
 
 export function getLabel (id) {

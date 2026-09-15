@@ -44,6 +44,28 @@ export default class OrbitModule {
   }
 
   /**
+   * Toggle automatic orbit around the same target the user's own
+   * free-look already orbits — OrbitControls' own native autoRotate,
+   * not a hand-built system. This is the correct mechanism
+   * specifically because it's designed to coexist with live user drag
+   * input on the same controls instance: the user can still freely
+   * look around while the automatic orbit continues, since both
+   * operate on the same underlying spherical state rather than two
+   * separate systems fighting over camera.position each frame.
+   */
+  toggleAutoRotate (enabled) {
+    if (this.controls) this.controls.autoRotate = !!enabled
+  }
+
+  isAutoRotating () {
+    return !!this.controls?.autoRotate
+  }
+
+  setAutoRotateSpeed (speed) {
+    if (this.controls) this.controls.autoRotateSpeed = Number.isFinite(speed) ? speed : 2
+  }
+
+  /**
    * Enable controls. Called by main.js after the entry animation completes.
    */
   enable() {
