@@ -284,11 +284,19 @@ const STYLES = /* css */`
 
 .hand-label {
   font-size        : 7px;
-  color            : var(--hand-text-dim);
+  color            : #fff;
   text-transform   : uppercase;
   letter-spacing   : 0.08em;
   line-height      : 1;
   pointer-events   : none;
+  /* Dynamic legibility over the translucent panel — the 3D scene
+     genuinely shows through behind it, so a fixed color reads fine
+     on some backgrounds and vanishes on others. difference inverts
+     white against whatever's actually behind it, live, every frame:
+     black text (with a black shadow) on light backgrounds, white
+     text (with a white shadow) on dark ones — no JS, no sampling. */
+  mix-blend-mode   : difference;
+  text-shadow      : 0 0 3px #fff, 0 0 1px #fff;
 }
 
 /* ── Inner border lines between cells (simulated via pseudo-elements) ──────── */

@@ -77,11 +77,18 @@ const SHAPE_BUILDERS = {
 // The 4 face objects — varied geometry + OmniDraw's own PRIMITIVE_COLORS
 // (systems/OmniNode.js), for visual consistency with real OmniDraw objects.
 const FACE_OBJECTS = [
-  { axis: 'z', sign:  1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0xffffff }, // objective
-  { axis: 'z', sign: -1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x88aaff }, // subjective
-  { axis: 'x', sign:  1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x888888 }, // undefined
-  { axis: 'x', sign: -1, geometry: () => new THREE.BoxGeometry(1.4, 1.4, 1.4), color: 0x88aaff }, // subjective
+  { axis: 'z', sign:  1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0xffffff }, // objective
+  { axis: 'z', sign: -1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x88aaff }, // subjective
+  { axis: 'x', sign:  1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x888888 }, // undefined
+  { axis: 'x', sign: -1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x88aaff }, // subjective
 ]
+
+// Deliberately separate from REFERENCE_RADIUS (which shapes the main
+// object itself) — this is only how far the 4 face cubes sit from
+// center. Keeping them independent means toggling room scale spreads
+// the cubes out without also resizing the central shape.
+const FACE_DISTANCE_NORMAL = REFERENCE_RADIUS   // 5 — tight, close around the shape
+const FACE_DISTANCE_ROOM = 25                     // spans a genuinely large room
 
 const CUBE_TEXTURE_SLOTS = 5
 const cubeTextureStore = createWallpaperStore('browserspace-cube', CUBE_TEXTURE_SLOTS)
@@ -95,6 +102,7 @@ function loadSettings () {
     scale: { x: 1, y: 1, z: 1 },
     color: '#8cc4ff', alpha: 0.6,
     activeSlot: null,
+    roomScale: false,
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -120,6 +128,7 @@ export default class OmniBrowserSpace {
     this._color = '#8cc4ff'
     this._alpha = 0.6
     this._activeSlot = null
+    this._roomScale = false
     this._onSettingsSet = null
   }
 
@@ -132,6 +141,7 @@ export default class OmniBrowserSpace {
     this._color = saved.color
     this._alpha = saved.alpha
     this._activeSlot = saved.activeSlot
+    this._roomScale = !!saved.roomScale
 
     this._glGroup = new THREE.Group()
     this._glGroup.position.set(0, ROOM_Y, 0)
@@ -160,6 +170,7 @@ export default class OmniBrowserSpace {
         if (this._activeSlot) this._applySlotTexture(this._activeSlot)
         else this._clearTexture()
       }
+      if (patch.roomScale !== undefined) { this._roomScale = !!patch.roomScale; this._applyFaceDistance() }
     }
     window.addEventListener('omni:browserspace-set', this._onSettingsSet)
   }
@@ -207,9 +218,20 @@ export default class OmniBrowserSpace {
       const geo = face.geometry()
       const mat = new THREE.MeshStandardMaterial({ color: face.color, roughness: 0.4, metalness: 0.1 })
       const mesh = new THREE.Mesh(geo, mat)
-      mesh.position[face.axis] = REFERENCE_RADIUS * face.sign
       this._glGroup.add(mesh)
       this._faceMeshes.push(mesh)
+    })
+    this._applyFaceDistance()
+  }
+
+  /** Single source of truth for how far the 4 face cubes sit from
+   *  center — used both at initial build and whenever the room-scale
+   *  toggle changes, so there's exactly one place this math lives. */
+  _applyFaceDistance () {
+    const distance = this._roomScale ? FACE_DISTANCE_ROOM : FACE_DISTANCE_NORMAL
+    FACE_OBJECTS.forEach((face, i) => {
+      const mesh = this._faceMeshes[i]
+      if (mesh) mesh.position[face.axis] = distance * face.sign
     })
   }
 

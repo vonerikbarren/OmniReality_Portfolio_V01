@@ -156,6 +156,13 @@ const STYLES = /* css */`
 }
 
 .bs-note { font-size: 9px; color: var(--bs-text-muted); line-height: 1.5; margin-top: 6px; }
+.bs-toggle-btn {
+  width: 100%; padding: 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--bs-accent); background: rgba(140, 196, 255, 0.08);
+  color: var(--bs-accent); font-family: inherit; font-size: 10.5px; letter-spacing: 0.02em;
+}
+.bs-toggle-btn:hover { background: rgba(140, 196, 255, 0.16); }
+.bs-toggle-btn[data-active="true"] { background: var(--bs-accent); color: #05070a; }
 
 .bs-resize-handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
 .bs-resize-handle::before {
@@ -178,7 +185,7 @@ function loadSettings () {
   const defaults = {
     shape: 'BoxGeometry', rotation: { x: 0, y: 0, z: 0 },
     position: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
-    color: '#8cc4ff', alpha: 0.6, activeSlot: null,
+    color: '#8cc4ff', alpha: 0.6, activeSlot: null, roomScale: false,
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -325,6 +332,12 @@ export default class OmniBrowserSpacePanel {
         <div class="bs-xyz-row"><span class="bs-xyz-axis">Y</span><input type="number" class="bs-num-input" step="0.1" min="0.01" data-scale-axis="y" value="${s.scale.y}"></div>
         <div class="bs-xyz-row"><span class="bs-xyz-axis">Z</span><input type="number" class="bs-num-input" step="0.1" min="0.01" data-scale-axis="z" value="${s.scale.z}"></div>
 
+        <div class="bs-section-title">Face Cubes</div>
+        <button class="bs-toggle-btn" id="bs-room-scale-toggle" data-active="${s.roomScale ? 'true' : 'false'}">
+          ${s.roomScale ? '◆ Room Scale — spread across a large room' : '◇ Expand to Room Scale'}
+        </button>
+        <div class="bs-note">Toggles how far apart the 4 face cubes sit — tight around the shape by default, or spread to span a genuinely large room.</div>
+
         <div class="bs-section-title">Color &amp; Alpha</div>
         <div class="bs-row">
           <span class="bs-row-label">Color</span>
@@ -394,6 +407,13 @@ export default class OmniBrowserSpacePanel {
 
     el.querySelector('#bs-color').addEventListener('input', (e) => this._commit({ color: e.target.value }))
     el.querySelector('#bs-alpha').addEventListener('input', (e) => this._commit({ alpha: Number(e.target.value) }))
+    el.querySelector('#bs-room-scale-toggle').addEventListener('click', () => {
+      const next = !this._state.roomScale
+      this._commit({ roomScale: next })
+      const btn = el.querySelector('#bs-room-scale-toggle')
+      btn.dataset.active = String(next)
+      btn.textContent = next ? '◆ Room Scale — spread across a large room' : '◇ Expand to Room Scale'
+    })
 
     const fileInput = el.querySelector('#bs-file-input')
     fileInput.addEventListener('change', async (e) => {
