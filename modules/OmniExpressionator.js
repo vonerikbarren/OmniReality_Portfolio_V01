@@ -111,14 +111,72 @@ function startEntrancePreset (ctx, opts = {}, onComplete) {
   return { update, dispose }
 }
 
+// ── Preset: galaxy — persistent, world-space, slowly rotating particle field ─
+// Unlike entrance (camera-relative, one-shot, auto-disposing), this is a
+// lasting decorative part of a Galaxy system: positioned at a fixed world
+// point (the system's own OmniCore), never auto-stops on its own, and
+// keeps existing until its owning system is explicitly deleted.
+function startGalaxyPreset (ctx, opts = {}) {
+  const count       = opts.count ?? 1200
+  const color       = opts.color ?? 0x8cc4ff
+  const radius      = opts.radius ?? 40         // overall spread of the particle field
+  const arms        = opts.arms ?? 3            // matches galaxyDefs' own arm count, for visual consistency
+  const spiralTurns = opts.spiralTurns ?? 2.2    // how many full winds each arm makes out to full radius
+  const flatness    = opts.flatness ?? 0.12      // vertical spread as a fraction of radius — galaxies are thin discs
+  const rotateSpeed = opts.rotateSpeed ?? 0.03    // radians/sec, slow and ambient
+  const center      = opts.center ?? [0, 0, 0]
+
+  const positions = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    // Deterministic scatter (not Math.random) so the same count always
+    // produces the same field — matches every other formation in this
+    // project being a pure function of its inputs, not randomized per click.
+    const armIndex = i % arms
+    const t = (Math.floor(i / arms) / Math.ceil(count / arms))
+    const jitter = Math.sin(i * 12.9898) * 0.5 + 0.5   // deterministic pseudo-random 0..1
+    const r = t * radius * (0.85 + jitter * 0.3)
+    const angle = armIndex * (2 * Math.PI / arms) + t * spiralTurns * 2 * Math.PI
+    const y = (Math.sin(i * 78.233) * 0.5) * radius * flatness
+
+    positions[i * 3]     = center[0] + r * Math.cos(angle)
+    positions[i * 3 + 1] = center[1] + y
+    positions[i * 3 + 2] = center[2] + r * Math.sin(angle)
+  }
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+  const mat = new THREE.PointsMaterial({
+    color, size: 0.6, map: opts.dotTexture,
+    transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  })
+  const points = new THREE.Points(geo, mat)
+  points.frustumCulled = false
+  ctx.scene.add(points)   // world-space, not camera-relative — this stays where the galaxy actually is
+
+  function update (delta) {
+    points.rotation.y += rotateSpeed * delta   // slow ambient rotation, never stops on its own
+  }
+
+  function dispose () {
+    ctx.scene.remove(points)
+    geo.dispose()
+    mat.dispose()
+  }
+
+  return { update, dispose }
+}
+
 const PRESETS = {
   entrance: startEntrancePreset,
+  galaxy: startGalaxyPreset,
 }
 
 export default class OmniExpressionator {
   constructor (context) {
     this.ctx = context
-    this._active = null
+    this._instances = new Map()   // instanceId -> { update, dispose }
     this._sharedDotTexture = null
   }
 
@@ -127,33 +185,47 @@ export default class OmniExpressionator {
   }
 
   update (delta) {
-    this._active?.update(delta)
+    for (const instance of this._instances.values()) instance.update(delta)
   }
 
   onResize () {}
 
   destroy () {
-    this.stop()
+    this.stopAll()
     this._sharedDotTexture?.dispose()
   }
 
-  /** Starts a named preset, replacing whatever's currently playing. */
-  play (presetName, opts) {
-    this.stop()
+  /**
+   * Starts a named preset under the given instance id, replacing
+   * whatever was previously running under that SAME id only — a
+   * second, different id keeps running untouched. Defaults to a
+   * shared 'default' id, which is exactly the old single-slot
+   * behavior the entrance effect already relies on; multi-instance
+   * use (Galaxy's per-system particle fields) passes its own unique
+   * id explicitly.
+   */
+  play (presetName, opts, instanceId = 'default') {
+    this.stop(instanceId)
     const starter = PRESETS[presetName]
     if (!starter) {
       console.warn(`⟐ OmniExpressionator — unknown preset "${presetName}"`)
       return
     }
-    this._active = starter(this.ctx, opts, () => { this._active = null })
+    const fullOpts = { ...opts, dotTexture: this._sharedDotTexture }
+    const instance = starter(this.ctx, fullOpts, () => { this._instances.delete(instanceId) })
+    this._instances.set(instanceId, instance)
   }
 
-  stop () {
-    this._active?.dispose()
-    this._active = null
+  stop (instanceId = 'default') {
+    this._instances.get(instanceId)?.dispose()
+    this._instances.delete(instanceId)
   }
 
-  isPlaying () {
-    return !!this._active
+  stopAll () {
+    for (const id of [...this._instances.keys()]) this.stop(id)
+  }
+
+  isPlaying (instanceId = 'default') {
+    return this._instances.has(instanceId)
   }
 }

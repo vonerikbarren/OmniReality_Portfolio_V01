@@ -165,7 +165,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(cameraMovementOptionsPanel)
 
   // ── OmniSystem ────────────────────────────────────────────
-  const omniSystemCreatorPanel = new OmniSystemCreatorPanel(base.context, nodeLoader)
+  const omniExpressionator = new OmniExpressionator(base.context)
+  base.addModule(omniExpressionator)
+
+  const omniSystemCreatorPanel = new OmniSystemCreatorPanel(base.context, nodeLoader, omniExpressionator)
   base.addModule(omniSystemCreatorPanel)
 
   const omniSystemAnimatorPanel = new ComingSoonPanel(base.context, {
@@ -268,9 +271,6 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniExpressionVideoPlayer = new OmniExpressionVideoPlayer(base.context)
   base.addModule(omniExpressionVideoPlayer)
-
-  const omniExpressionator = new OmniExpressionator(base.context)
-  base.addModule(omniExpressionator)
 
   const omniExpressionatorPanel = new OmniExpressionatorPanel(base.context, omniExpressionator)
   base.addModule(omniExpressionatorPanel)

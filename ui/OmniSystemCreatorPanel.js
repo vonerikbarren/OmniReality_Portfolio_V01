@@ -53,6 +53,13 @@ const DEFAULT_DISTANCE = 18
 const MAX_DISTANCE = 60
 const MAX_RING_NODES = 24
 const MAX_SPHERE_NODES = 256
+const MAX_GALAXY_NODES = 200   // main nodes only — the particle field carries the rest, uncapped in the same way
+const MAX_SPIRAL_NODES = 150
+const MAX_HELIX_NODES = 150
+const MAX_STAR_NODES = 100   // lower than the others — each spike carries its own continuous per-frame animation cost, not just a static mesh
+const MAX_GRID_AXIS = 12       // per-axis cap (columns, rows, or drawers individually)
+const MAX_GRID_TOTAL = 512     // hard cap on the product — keeps the worst case in the same
+                                // performance ballpark as Sphere's own 256-node ceiling
 const GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2
 
 function rgbToHex (r, g, b) {
@@ -109,6 +116,132 @@ function sphereDefs (n) {
       key: `sphere-${i}`,
       label: `Sphere Node ${i + 1}`,
       pos: d => [ux * d, y * d, uz * d],
+    })
+  }
+  return defs
+}
+
+// Spreadsheet-style column letters (0-indexed in, 'A'/'B'/.../'Z'/'AA'/... out) —
+// the naming scheme is structural here, not arbitrary, per OMNISYSTEM_DESIGN.md.
+function columnLetter (index) {
+  let n = index, s = ''
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1 } while (n >= 0)
+  return s
+}
+
+// Genuine 3D lattice — columns along X, rows along Y, drawers along Z,
+// like a filing cabinet. OmniCore is a separate, additional center
+// node (never one of the grid cells themselves), positioned at the
+// lattice's true geometric center — sidesteps the even/odd "is there
+// a real center cell" question entirely, the same way Cross/Ring/
+// Sphere already keep OmniCore distinct from their own outer nodes.
+// One shared spacing value (d) applies to all three axes at once.
+function gridDefs (cols, rows, drawers) {
+  const defs = [{ key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] }]
+  const colOffset = (cols - 1) / 2
+  const rowOffset = (rows - 1) / 2
+  const drawerOffset = (drawers - 1) / 2
+  for (let dr = 0; dr < drawers; dr++) {
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        const letter = columnLetter(c)
+        defs.push({
+          key: `grid-d${dr + 1}-${letter}${r + 1}`,
+          label: `Grid — Drawer ${dr + 1}, Column ${letter}, Row ${r + 1}`,
+          pos: d => [(c - colOffset) * d, (rowOffset - r) * d, (dr - drawerOffset) * d],
+        })
+      }
+    }
+  }
+  return defs
+}
+
+const Y_AXIS = new THREE.Vector3(0, 1, 0)   // hoisted — reused every frame in Star's rotation, never recreated
+const GALAXY_ARMS = 3            // fixed — only main node count is user-selected, per the spec
+const GALAXY_SPIRAL_TURNS = 2.2   // matches the particle field preset's own default exactly
+
+// Main nodes only — the bulk "galaxy" visual is a separate particle
+// field (modules/OmniExpressionator.js's "galaxy" preset), not more
+// individual meshes. Same logarithmic-spiral arm placement language as
+// that preset, so the two visually agree with each other. OmniCore
+// sits at the galaxy's true center, same pattern as every other
+// formation — never one of the main nodes itself.
+function galaxyDefs (n) {
+  const defs = [{ key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] }]
+  for (let i = 0; i < n; i++) {
+    const armIndex = i % GALAXY_ARMS
+    const t = Math.floor(i / GALAXY_ARMS) / Math.max(1, Math.ceil(n / GALAXY_ARMS))
+    const angle = armIndex * (2 * Math.PI / GALAXY_ARMS) + t * GALAXY_SPIRAL_TURNS * 2 * Math.PI
+    defs.push({
+      key: `galaxy-${i}`,
+      label: `Galaxy Main Node ${i + 1}`,
+      pos: d => [t * d * Math.cos(angle), 0, t * d * Math.sin(angle)],
+    })
+  }
+  return defs
+}
+
+const SPIRAL_ANGLE_STEP = (40 * Math.PI) / 180   // 40° per node — enough turns to read as a spiral over a reasonable N
+const SPIRAL_RADIUS_GROWTH = 0.35   // radius grows per node, scaled by d — the thing that distinguishes this from Ring, which holds radius constant
+const SPIRAL_HEIGHT_STEP = 0.25     // vertical drift per node, scaled by d
+
+// One core spiral formula, shared by both formations below — a single
+// strand at phaseOffset=0 is Single Spiral; Helix is exactly this same
+// formula called twice with a second strand at phaseOffset=π, per
+// OMNISYSTEM_DESIGN.md's own framing of Helix as "not a new mechanic."
+function spiralPoint (i, d, phaseOffset = 0) {
+  const angle = i * SPIRAL_ANGLE_STEP + phaseOffset
+  const radius = i * d * SPIRAL_RADIUS_GROWTH
+  const y = i * d * SPIRAL_HEIGHT_STEP
+  return [radius * Math.cos(angle), y, radius * Math.sin(angle)]
+}
+
+function spiralDefs (n) {
+  const defs = [{ key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] }]
+  for (let i = 1; i <= n; i++) {
+    defs.push({ key: `spiral-${i}`, label: `Spiral Node ${i}`, pos: d => spiralPoint(i, d) })
+  }
+  return defs
+}
+
+function helixDefs (n) {
+  const defs = [{ key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] }]
+  const perStrand = Math.ceil(n / 2)
+  for (let i = 1; i <= n; i++) {
+    const strand = (i - 1) % 2          // 0 or 1 — which of the two strands this node belongs to
+    const step = Math.floor((i - 1) / 2) + 1   // this node's position along its own strand
+    const phaseOffset = strand === 0 ? 0 : Math.PI
+    defs.push({
+      key: `helix-s${strand + 1}-${step}`,
+      label: `Helix Strand ${strand + 1} — Node ${step}`,
+      pos: d => spiralPoint(step, d, phaseOffset),
+    })
+  }
+  return defs
+}
+
+// Deliberately NOT deterministic like every other formation's defs —
+// "shoot out at random" is the actual aesthetic here, not an
+// implementation detail to hide; re-generating a Star is meant to
+// give a genuinely different spike arrangement each time, the same
+// way clicking Generate again for other formations just re-runs the
+// same fixed formula. Count = number of spikes, one node per spike
+// tip, exactly as specified. This only sets each spike's STARTING
+// direction — the live, continuous random drift happens after
+// creation, in the panel's own update() loop below, since a fixed
+// pos(d) formula can't express "keeps moving over time" at all.
+function starDefs (n) {
+  const defs = [{ key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] }]
+  for (let i = 1; i <= n; i++) {
+    // Random point on a unit sphere — uniform, not clustered at the poles
+    const u = Math.random(), v = Math.random()
+    const theta = 2 * Math.PI * u
+    const phi = Math.acos(2 * v - 1)
+    const dir = [Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta)]
+    defs.push({
+      key: `star-${i}`,
+      label: `Star Spike ${i}`,
+      pos: d => [dir[0] * d, dir[1] * d, dir[2] * d],
     })
   }
   return defs
@@ -192,6 +325,9 @@ const STYLES = `
   font-size: 10.5px; padding: 4px 6px;
 }
 .sc-count-input { width: 55px; }
+.sc-grid-only { display: inline-flex; align-items: center; gap: 4px; }
+.sc-grid-only label { font-size: 10.5px; color: var(--sc-text-dim); }
+.sc-grid-only input { width: 42px; }
 .sc-lock-btn {
   padding: 5px 12px; border-radius: 5px; cursor: pointer;
   border: 1px solid rgba(255, 178, 127, 0.3);
@@ -293,9 +429,17 @@ let _idCounter = 0
 function makeId () { return `omnisystem-${Date.now()}-${_idCounter++}` }
 
 export default class OmniSystemCreatorPanel {
-  constructor (context, nodeLoader) {
+  constructor (context, nodeLoader, expressionator) {
     this.ctx = context
     this.nodeLoader = nodeLoader
+    this.expressionator = expressionator
+    // Star systems need a genuine, continuous per-frame animation —
+    // unlike every other formation, which just places nodes once.
+    // Keyed by systemInstanceId so multiple Star systems can each
+    // animate independently, same reasoning as Galaxy's own
+    // multi-instance particle fields.
+    this._activeStars = new Map()
+    this._starScratchVec3 = new THREE.Vector3()   // reused every frame in update(), never recreated
     this._el = null
     this._isOpen = false
     this._generated = false
@@ -315,13 +459,59 @@ export default class OmniSystemCreatorPanel {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+
+    // A deleted system's particle field (if it had one — only Galaxy
+    // systems do) has to go with it, or it's orphaned in the scene
+    // forever with nothing left pointing back to it.
+    this._onSystemDeleted = (e) => {
+      const id = e.detail?.systemInstanceId
+      if (!id) return
+      this.expressionator?.stop(id)
+      this._activeStars.delete(id)
+    }
+    window.addEventListener('omni:delete-system-request', this._onSystemDeleted)
   }
 
-  update () {}
+  update (delta = 0.016) {
+    if (this._activeStars.size === 0) return
+    const DRIFT_STRENGTH = 0.4      // how much each spike's direction wanders per second — organic, not chaotic
+    const ROTATE_SPEED = 0.25       // radians/sec for rotating stars
+
+    for (const star of this._activeStars.values()) {
+      if (star.rotating) {
+        star.rotationAngle += ROTATE_SPEED * delta
+      }
+      // OmniCore may have been dragged since creation — spikes must
+      // follow its real, current position, not the position it had
+      // at the moment the system was created.
+      const livePos = star.centerMesh ? star.centerMesh.position : star.centerPos
+
+      for (const spike of star.spikes) {
+        // Small random walk on the unit sphere: nudge, then
+        // renormalize — direction wanders continuously but never
+        // grows or shrinks, so spike length stays constant.
+        spike.dir.x += (Math.random() - 0.5) * DRIFT_STRENGTH * delta
+        spike.dir.y += (Math.random() - 0.5) * DRIFT_STRENGTH * delta
+        spike.dir.z += (Math.random() - 0.5) * DRIFT_STRENGTH * delta
+        spike.dir.normalize()
+
+        let dir = spike.dir
+        if (star.rotating) {
+          dir = this._starScratchVec3.copy(spike.dir).applyAxisAngle(Y_AXIS, star.rotationAngle)
+        }
+        spike.mesh.position.set(
+          livePos.x + dir.x * spike.length,
+          livePos.y + dir.y * spike.length,
+          livePos.z + dir.z * spike.length,
+        )
+      }
+    }
+  }
   onResize () {}
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:delete-system-request', this._onSystemDeleted)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('syscreator')
   }
@@ -366,6 +556,35 @@ export default class OmniSystemCreatorPanel {
       const n = Math.max(2, Math.min(MAX_SPHERE_NODES, parseInt(this._el.querySelector('.sc-count-input')?.value, 10) || 64))
       return sphereDefs(n)
     }
+    if (this._formation === 'galaxy') {
+      const n = Math.max(1, Math.min(MAX_GALAXY_NODES, parseInt(this._el.querySelector('.sc-count-input')?.value, 10) || 30))
+      return galaxyDefs(n)
+    }
+    if (this._formation === 'spiral') {
+      const n = Math.max(2, Math.min(MAX_SPIRAL_NODES, parseInt(this._el.querySelector('.sc-count-input')?.value, 10) || 40))
+      return spiralDefs(n)
+    }
+    if (this._formation === 'helix') {
+      const n = Math.max(2, Math.min(MAX_HELIX_NODES, parseInt(this._el.querySelector('.sc-count-input')?.value, 10) || 40))
+      return helixDefs(n)
+    }
+    if (this._formation === 'star') {
+      const n = Math.max(2, Math.min(MAX_STAR_NODES, parseInt(this._el.querySelector('.sc-count-input')?.value, 10) || 20))
+      return starDefs(n)
+    }
+    if (this._formation === 'grid') {
+      let cols = Math.max(1, Math.min(MAX_GRID_AXIS, parseInt(this._el.querySelector('.sc-grid-cols')?.value, 10) || 3))
+      let rows = Math.max(1, Math.min(MAX_GRID_AXIS, parseInt(this._el.querySelector('.sc-grid-rows')?.value, 10) || 3))
+      let drawers = Math.max(1, Math.min(MAX_GRID_AXIS, parseInt(this._el.querySelector('.sc-grid-drawers')?.value, 10) || 3))
+      // Enforce the total cap by scaling back drawers first, then rows,
+      // then columns — keeps the visible column×row grid intact for as
+      // long as possible, since drawers are depth layers the user is
+      // least likely to be looking directly at.
+      while (cols * rows * drawers > MAX_GRID_TOTAL && drawers > 1) drawers--
+      while (cols * rows * drawers > MAX_GRID_TOTAL && rows > 1) rows--
+      while (cols * rows * drawers > MAX_GRID_TOTAL && cols > 1) cols--
+      return gridDefs(cols, rows, drawers)
+    }
     return crossDefs()
   }
 
@@ -397,7 +616,11 @@ export default class OmniSystemCreatorPanel {
       row.className = 'sc-node-row'
       row.dataset.key = def.key
 
-      const distanceLabel = (this._formation === 'ring' || this._formation === 'sphere') ? 'Radius' : 'Distance'
+      const distanceLabel = this._formation === 'grid' ? 'Spacing'
+        : this._formation === 'galaxy' ? 'Arm reach'
+        : this._formation === 'star' ? 'Spike length'
+        : (this._formation === 'spiral' || this._formation === 'helix') ? 'Scale'
+        : (this._formation === 'ring' || this._formation === 'sphere') ? 'Radius' : 'Distance'
       const rangeFieldHTML = def.isCenter ? '' : `
         <div class="sc-range-row">
           <label style="min-width:70px">${distanceLabel}${this._locked ? ' (shared)' : ''}</label>
@@ -551,6 +774,37 @@ export default class OmniSystemCreatorPanel {
       ? `Created ${created}/${rows.length} — ${errors.length} failed (see console)`
       : `Created ${created} node${created === 1 ? '' : 's'}`
     if (errors.length) console.error('⟐ OmniSystemCreator — some nodes failed:', errors)
+
+    if (this._formation === 'galaxy' && created > 0) {
+      const centerRow = rows.find(r => r.isCenter)
+      const reach = this._locked ? this._sharedDistance : Math.max(...rows.filter(r => !r.isCenter).map(r => this._distances[r.key] ?? DEFAULT_DISTANCE))
+      this.expressionator?.play('galaxy', {
+        center: centerRow ? [centerRow.x, centerRow.y, centerRow.z] : [0, 0, 0],
+        radius: reach * 1.4,   // particle field reaches a bit past the main nodes, not stopping exactly at them
+      }, systemInstanceId)
+    }
+
+    if (this._formation === 'star' && created > 0) {
+      const centerRow = rows.find(r => r.isCenter)
+      const centerMesh = this._createdMeshes[centerRow?.key]
+      const spikes = []
+      for (const row of rows) {
+        if (row.isCenter) continue
+        const mesh = this._createdMeshes[row.key]
+        if (!mesh || !centerRow) continue
+        const offset = new THREE.Vector3(row.x - centerRow.x, row.y - centerRow.y, row.z - centerRow.z)
+        const length = offset.length()
+        if (length < 0.0001) continue   // degenerate spike, nothing meaningful to animate
+        spikes.push({ mesh, dir: offset.normalize(), length })
+      }
+      this._activeStars.set(systemInstanceId, {
+        centerMesh,
+        centerPos: new THREE.Vector3(centerRow.x, centerRow.y, centerRow.z),
+        spikes,
+        rotating: this._el.querySelector('.sc-star-rotating')?.checked ?? false,
+        rotationAngle: 0,
+      })
+    }
   }
 
   _buildDOM () {
@@ -570,9 +824,22 @@ export default class OmniSystemCreatorPanel {
           <option value="cross">Skeletal Cross (fixed 7)</option>
           <option value="ring">Radial Ring (Stonehenge)</option>
           <option value="sphere">Sphere (Fibonacci)</option>
+          <option value="grid">Grid (columns × rows × drawers)</option>
+          <option value="galaxy">Galaxy (spiral arms + particle field)</option>
+          <option value="spiral">Single Spiral</option>
+          <option value="helix">Helix (Double Spiral)</option>
+          <option value="star">Star (random spikes)</option>
         </select>
+        <label class="sc-star-only" style="display:none">
+          <input type="checkbox" class="sc-star-rotating"> Rotating
+        </label>
         <label class="sc-count-only" style="display:none">Outer nodes</label>
         <input class="sc-count-input sc-count-only" type="number" min="2" max="${MAX_SPHERE_NODES}" value="6" style="display:none">
+        <span class="sc-grid-only" style="display:none">
+          <label>Cols</label><input class="sc-grid-cols" type="number" min="1" max="${MAX_GRID_AXIS}" value="3">
+          <label>Rows</label><input class="sc-grid-rows" type="number" min="1" max="${MAX_GRID_AXIS}" value="3">
+          <label>Drawers</label><input class="sc-grid-drawers" type="number" min="1" max="${MAX_GRID_AXIS}" value="3">
+        </span>
         <button class="sc-lock-btn" data-action="toggle-lock">Locked (shared)</button>
         <button class="sc-gen-btn" data-action="generate">Generate</button>
       </div>
@@ -615,11 +882,19 @@ export default class OmniSystemCreatorPanel {
     })
     el.querySelector('[data-field="formation"]').addEventListener('change', (e) => {
       this._formation = e.target.value
-      const showCount = this._formation === 'ring' || this._formation === 'sphere'
+      const showCount = this._formation === 'ring' || this._formation === 'sphere' || this._formation === 'galaxy' || this._formation === 'spiral' || this._formation === 'helix' || this._formation === 'star'
       el.querySelectorAll('.sc-count-only').forEach(node => { node.style.display = showCount ? '' : 'none' })
       const countInput = el.querySelector('.sc-count-input')
       if (this._formation === 'ring') { countInput.value = '6'; countInput.max = String(MAX_RING_NODES) }
       if (this._formation === 'sphere') { countInput.value = '64'; countInput.max = String(MAX_SPHERE_NODES) }
+      if (this._formation === 'galaxy') { countInput.value = '30'; countInput.max = String(MAX_GALAXY_NODES) }
+      if (this._formation === 'spiral') { countInput.value = '40'; countInput.max = String(MAX_SPIRAL_NODES) }
+      if (this._formation === 'helix') { countInput.value = '40'; countInput.max = String(MAX_HELIX_NODES) }
+      if (this._formation === 'star') { countInput.value = '20'; countInput.max = String(MAX_STAR_NODES) }
+      const starGroup = el.querySelector('.sc-star-only')
+      if (starGroup) starGroup.style.display = this._formation === 'star' ? '' : 'none'
+      const gridGroup = el.querySelector('.sc-grid-only')
+      if (gridGroup) gridGroup.style.display = this._formation === 'grid' ? '' : 'none'
     })
 
     el.querySelectorAll('[data-origin]').forEach(input => {

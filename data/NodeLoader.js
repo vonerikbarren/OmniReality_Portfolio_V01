@@ -164,6 +164,42 @@ const PRIMITIVE_COLORS = {
   false      : 0x111111,   // black — negated, null
 }
 
+// Shared geometry cache, keyed by geometry type — every node using the
+// same shape (BoxGeometry, SphereGeometry, etc.) now references ONE
+// real geometry instance rather than each allocating its own duplicate
+// copy of identical vertex data. This matters most for OmniSystem: a
+// maxed-out 256-node Sphere previously meant 256 separate copies of
+// the exact same ~14KB geometry — now it's one, referenced 256 times.
+// Reference-counted rather than a permanent cache, since a geometry no
+// longer used by anything should still be freed, not held forever
+// "just in case" — acquireGeometry increments on every use,
+// releaseGeometry decrements and only actually disposes once nothing
+// else references it, so deleting one node sharing a shape can never
+// invalidate another node still using that same shared geometry.
+const sharedGeometryCache = new Map()   // geoType -> { geometry, refCount }
+
+function acquireGeometry (geoType) {
+  const key = GEOMETRY_DEFS[geoType] ? geoType : 'SphereGeometry'
+  let cached = sharedGeometryCache.get(key)
+  if (!cached) {
+    cached = { geometry: GEOMETRY_DEFS[key](), refCount: 0 }
+    sharedGeometryCache.set(key, cached)
+  }
+  cached.refCount++
+  return cached.geometry
+}
+
+function releaseGeometry (geoType) {
+  const key = GEOMETRY_DEFS[geoType] ? geoType : 'SphereGeometry'
+  const cached = sharedGeometryCache.get(key)
+  if (!cached) return
+  cached.refCount--
+  if (cached.refCount <= 0) {
+    cached.geometry.dispose()
+    sharedGeometryCache.delete(key)
+  }
+}
+
 // ── Which geometry types render as LineSegments instead of Mesh ───────────────
 
 const LINE_GEO_TYPES = new Set(['EdgesGeometry', 'WireframeGeometry'])
@@ -619,7 +655,7 @@ export default class NodeLoader {
   _disposeMesh (entry) {
     const mesh = entry.mesh
     if (!mesh) return
-    mesh.geometry?.dispose()
+    releaseGeometry(entry.data?.geometry)
     if (Array.isArray(mesh.material)) {
       mesh.material.forEach(m => m.dispose())
     } else {
@@ -640,8 +676,7 @@ export default class NodeLoader {
    * @returns {THREE.Mesh | THREE.LineSegments}
    */
   _buildMesh (geoType, colorHex) {
-    const factory = GEOMETRY_DEFS[geoType] ?? GEOMETRY_DEFS.SphereGeometry
-    const geo     = factory()
+    const geo = acquireGeometry(geoType)
 
     if (LINE_GEO_TYPES.has(geoType)) {
       const mat = new THREE.LineBasicMaterial({
