@@ -657,6 +657,96 @@ const STYLES = /* css */`
 }
 .ok-resize-handle:hover::before { border-color: rgba(255, 255, 255, 0.6); }
 
+/* ── OmniKryptx view — linearized cryptex: a vertical header strip, ──────
+   sections extending rightward, each one a small cluster of vertical
+   sliders ─────────────────────────────────────────────────────────────── */
+
+.ok-kryptx-mode .ok-header { flex-shrink: 0; }
+
+.ok-kryptx-body {
+  flex           : 1 1 auto;
+  display        : flex;
+  overflow       : hidden;
+}
+
+.ok-kryptx-vheader {
+  flex-shrink    : 0;
+  width          : 56px;
+  display        : flex;
+  flex-direction : column;
+  gap            : 8px;
+  padding        : 12px 8px;
+  border-right   : 1px solid var(--ok-border);
+  background     : rgba(255, 255, 255, 0.02);
+  overflow-y     : auto;
+}
+
+.ok-kryptx-vkey {
+  height         : 64px;
+  border-radius  : 6px;
+  border         : 1px solid var(--ok-border);
+  background     : rgba(255, 255, 255, 0.03);
+  cursor         : pointer;
+  /* Deliberately blank — "you can make them blank," per the request,
+     the same honest not-yet-filled-in pattern already used for the
+     QWERTY view's own blank letter/symbol pages. */
+}
+.ok-kryptx-vkey:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--ok-accent); }
+
+.ok-kryptx-sections-wrap {
+  flex           : 1 1 auto;
+  overflow-x     : auto;
+  overflow-y     : hidden;
+}
+
+.ok-kryptx-sections {
+  display        : flex;
+  align-items    : stretch;
+  height         : 100%;
+  padding        : 14px;
+  gap            : 16px;
+}
+
+.ok-kryptx-section {
+  flex-shrink    : 0;
+  display        : flex;
+  gap            : 10px;
+  padding        : 12px;
+  border-radius  : 10px;
+  border         : 1px solid var(--ok-border);
+  background     : rgba(255, 255, 255, 0.02);
+}
+
+.ok-kryptx-slider-wrap {
+  width          : 32px;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+}
+
+/* The reliable, cross-browser way to get a vertical range slider —
+   a plain horizontal <input type="range">, fixed to a known width,
+   rotated -90deg. Works consistently everywhere, unlike the
+   non-standard orient="vertical" attribute (Firefox-only) or
+   -webkit-appearance:slider-vertical (WebKit-only). */
+.ok-kryptx-slider {
+  width          : 140px;
+  transform      : rotate(-90deg);
+  accent-color   : var(--ok-accent);
+}
+
+.ok-kryptx-add-section {
+  flex-shrink    : 0;
+  width          : 44px;
+  border-radius  : 10px;
+  border         : 1px dashed var(--ok-border);
+  background     : transparent;
+  color          : var(--ok-text-dim);
+  font-size      : 20px;
+  cursor         : pointer;
+}
+.ok-kryptx-add-section:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--ok-accent); color: var(--ok-accent); }
+
 `
 
 function injectStyles () {
@@ -674,6 +764,17 @@ export default class OmniKeys {
     this._isOpen = false
     this._drag = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
     this._mode = 'Edit'
+    // Two views: the normal flat QWERTY grid, and OmniKryptx — a
+    // linearized take on the OmniCryptexLab idea (nested rings, laid
+    // out flat left-to-right instead of radially, since a keyboard is
+    // inherently flat rather than orbital). Defaults to kryptx per
+    // the request that this become the keyboard's default view.
+    this._view = (() => {
+      try { return localStorage.getItem('omni:omnikeys:view') ?? 'kryptx' } catch (_) { return 'kryptx' }
+    })()
+    this._kryptxSectionCount = (() => {
+      try { return Number(localStorage.getItem('omni:omnikeys:kryptx-sections')) || 3 } catch (_) { return 3 }
+    })()
 
     this._staticKeys = loadStatic()
     this._letterPages = loadPages(STORE_LETTERS, letterPageDefault)
@@ -822,6 +923,10 @@ export default class OmniKeys {
   // ── DOM ──────────────────────────────────────────────────────────────────
 
   _buildDOM () {
+    return this._view === 'kryptx' ? this._buildKryptxDOM() : this._buildQwertyDOM()
+  }
+
+  _buildQwertyDOM () {
     const el = document.createElement('div')
     el.className = 'omni-keys-panel'
     el.innerHTML = /* html */`
@@ -868,6 +973,110 @@ export default class OmniKeys {
     })
 
     return el
+  }
+
+  /** OmniKryptx — the linearized cryptex view. A vertical strip of
+   *  blank key options (the "header," oriented vertically per the
+   *  request) on the left; sections of vertical sliders extending
+   *  rightward, each new one appended further right — flattening the
+   *  OmniCryptexLab idea (nested rings, each revealing more depth)
+   *  into something that actually works as a keyboard: rings laid
+   *  out left-to-right instead of radially. */
+  _buildKryptxDOM () {
+    const el = document.createElement('div')
+    el.className = 'omni-keys-panel ok-kryptx-mode'
+    el.innerHTML = /* html */`
+      <div class="ok-header">
+        <span class="ok-title">⟐OmniKryptx Keyboard</span>
+        <div class="ok-controls">
+          <button class="ok-ctrl" data-action="toggle-view" title="Switch to normal QWERTY view">⌨</button>
+          <button class="ok-ctrl" data-action="minimize" title="Minimize">–</button>
+          <button class="ok-ctrl" data-action="close" title="Close">×</button>
+        </div>
+      </div>
+      <div class="ok-kryptx-body">
+        <div class="ok-kryptx-vheader" id="ok-kryptx-vheader"></div>
+        <div class="ok-kryptx-sections-wrap">
+          <div class="ok-kryptx-sections" id="ok-kryptx-sections"></div>
+        </div>
+      </div>
+      <div class="ok-resize-handle" aria-hidden="true"></div>
+    `
+
+    this._renderKryptxVHeader(el.querySelector('#ok-kryptx-vheader'))
+    this._renderKryptxSections(el.querySelector('#ok-kryptx-sections'))
+    this._bindHeader(el)
+    this._bindResize(el)
+
+    el.querySelector('[data-action="toggle-view"]').addEventListener('click', () => this._toggleView(el))
+    el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
+    el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
+
+    el.dataset.winId = 'omnikeys'
+    WindowManager.register('omnikeys', el, 'OmniKeys')
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
+
+    return el
+  }
+
+  /** Six blank vertical key options — deliberately blank, per the
+   *  request, the same "not filled in yet, honestly" pattern already
+   *  used for the QWERTY view's own blank pages. */
+  _renderKryptxVHeader (container) {
+    if (!container) return
+    let html = ''
+    for (let i = 0; i < 6; i++) {
+      html += `<button class="ok-kryptx-vkey" data-vkey-index="${i}" title="Blank — not assigned yet"></button>`
+    }
+    container.innerHTML = html
+  }
+
+  /** Renders however many sections currently exist, plus the Add
+   *  Section control at the end — each section is 4 vertical sliders
+   *  side by side, like a small EQ. Sliders are plain <input
+   *  type="range">, rotated via CSS rather than relying on the
+   *  non-standard, Firefox-only orient="vertical" attribute — the
+   *  rotate approach works consistently across real browsers. */
+  _renderKryptxSections (container) {
+    if (!container) return
+    let html = ''
+    for (let s = 0; s < this._kryptxSectionCount; s++) {
+      html += `<div class="ok-kryptx-section" data-section-index="${s}">`
+      for (let k = 0; k < 4; k++) {
+        html += `
+          <div class="ok-kryptx-slider-wrap">
+            <input type="range" class="ok-kryptx-slider" min="0" max="100" value="50" data-section="${s}" data-slot="${k}">
+          </div>
+        `
+      }
+      html += `</div>`
+    }
+    html += `<button class="ok-kryptx-add-section" data-action="add-section" title="Add a section to the right">+</button>`
+    container.innerHTML = html
+
+    container.querySelector('[data-action="add-section"]')?.addEventListener('click', () => {
+      this._kryptxSectionCount += 1
+      try { localStorage.setItem('omni:omnikeys:kryptx-sections', String(this._kryptxSectionCount)) } catch (_) {}
+      this._renderKryptxSections(container)
+    })
+  }
+
+  /** Swaps views in place — rebuilds the panel's own DOM rather than
+   *  requiring a full close/reopen, and persists the choice so it's
+   *  remembered next time OmniKeys opens. */
+  _toggleView (oldEl) {
+    this._view = this._view === 'kryptx' ? 'qwerty' : 'kryptx'
+    try { localStorage.setItem('omni:omnikeys:view', this._view) } catch (_) {}
+    const wasOpen = this._isOpen
+    WindowManager.unregister('omnikeys')
+    oldEl?.parentNode?.removeChild(oldEl)
+    this._el = this._buildDOM()
+    if (wasOpen) {
+      const shell = document.getElementById('omni-ui') ?? document.body
+      shell.appendChild(this._el)
+      this._el.style.visibility = 'visible'
+      gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), duration: 0.2 })
+    }
   }
 
   // ── Grid building — static rows + paginated blocks ───────────────────────
@@ -1050,6 +1259,17 @@ export default class OmniKeys {
       const rotateMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
       if (key?.string?.startsWith('M-') && rotateMap[base]) {
         window.dispatchEvent(new CustomEvent('omni:omnikeys-rotate', { detail: { direction: rotateMap[base] } }))
+        return
+      }
+    }
+
+    // The "View" special key — switches to OmniKryptx. Previously
+    // defined in the layout with no handler at all; this is that
+    // handler.
+    if (descriptor.kind === 'static' && descriptor.row === 'special') {
+      const key = this._keyDataFor(descriptor)
+      if (key?.string === 'View') {
+        this._toggleView(this._el)
         return
       }
     }

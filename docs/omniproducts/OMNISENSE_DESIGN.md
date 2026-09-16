@@ -45,6 +45,15 @@ exists now:
   being able to resolve what a given reality's symbol/address
   actually means and where it should go.
 
+## The deeper mechanism — OmniGlyph, OmniGlyphics, and the legend fork
+
+This doc states the definition. `OMNISENSE_GLYPH_SYSTEM_DESIGN.md` is
+where that definition actually gets a mechanism — OmniGlyph and
+OmniGlyphics themselves, the internal-vs-external resolution for how
+OmniSense's meta-metric legend should work, Stationary Realities, the
+floor-becomes-wall map, and OmniScroll. Read that doc for the real
+depth; this one stays the short, standing definition.
+
 ## Status
 
 Still no code, no data model for the symbol-to-meaning mapping itself.

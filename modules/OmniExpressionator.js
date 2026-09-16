@@ -45,6 +45,9 @@ function makeSoftDotTexture () {
 }
 
 // ── Preset: entrance — camera-relative streaking lines ─────────────────────
+// reverse: true mirrors the same effect for OmniSense's zoom-out —
+// particles recede away from the camera instead of approaching it,
+// rather than a second, separate preset duplicating this one.
 function startEntrancePreset (ctx, opts = {}, onComplete) {
   const count      = opts.count ?? 500
   const color      = opts.color ?? 0xffffff
@@ -53,11 +56,14 @@ function startEntrancePreset (ctx, opts = {}, onComplete) {
   const trailLen   = opts.trailLen ?? 6        // length of each streak, in local units
   const baseSpeed  = opts.baseSpeed ?? 220     // local units/sec toward the camera at full speed
   const duration   = opts.duration ?? 4.6      // matches CAM_ENTRY phase 1's own duration in main.js
+  const reverse    = opts.reverse ?? false
 
   const positions = new Float32Array(count) // per-particle current local Z only — X/Y are fixed per particle
   const lateral   = new Float32Array(count * 2) // x, y per particle, fixed for its lifetime
   for (let i = 0; i < count; i++) {
-    positions[i] = -Math.random() * spawnAhead
+    // Forward: spawn far away, travel toward the camera. Reverse:
+    // spawn close, travel away — the literal opposite motion.
+    positions[i] = reverse ? -Math.random() * trailLen : -Math.random() * spawnAhead
     lateral[i * 2]     = (Math.random() - 0.5) * spread
     lateral[i * 2 + 1] = (Math.random() - 0.5) * spread
   }
@@ -67,7 +73,7 @@ function startEntrancePreset (ctx, opts = {}, onComplete) {
   geo.setAttribute('position', new THREE.BufferAttribute(verts, 3))
 
   const mat = new THREE.LineBasicMaterial({
-    color, transparent: true, opacity: 1,
+    color, transparent: true, opacity: reverse ? 0 : 1,
     blending: THREE.AdditiveBlending, depthWrite: false,
   })
   const lines = new THREE.LineSegments(geo, mat)
@@ -79,18 +85,35 @@ function startEntrancePreset (ctx, opts = {}, onComplete) {
   function update (delta) {
     elapsed += delta
     const t = Math.min(1, elapsed / duration)
-    // Decelerate across the preset's duration — fast at first, easing
-    // toward a stop as "arrival" approaches, fading out at the same time.
-    const speedFactor = 1 - t * t
+
+    let speedFactor, dir
+    if (reverse) {
+      // Accelerate outward, mirroring the reverse camera rise's own
+      // slow-then-fast profile — and fade IN as particles depart,
+      // rather than fading out as they arrive.
+      speedFactor = t * t
+      dir = -1
+      mat.opacity = t
+    } else {
+      // Decelerate across the preset's duration — fast at first, easing
+      // toward a stop as "arrival" approaches, fading out at the same time.
+      speedFactor = 1 - t * t
+      dir = 1
+      mat.opacity = 1 - t
+    }
     const speed = baseSpeed * speedFactor
-    mat.opacity = 1 - t
 
     const posAttr = geo.attributes.position
     for (let i = 0; i < count; i++) {
-      positions[i] += speed * delta
-      if (positions[i] > 2) positions[i] = -spawnAhead   // recycle once it passes the camera
+      positions[i] += dir * speed * delta
+      if (reverse) {
+        if (positions[i] < -spawnAhead) positions[i] = -Math.random() * trailLen   // recycle once far behind
+      } else if (positions[i] > 2) {
+        positions[i] = -spawnAhead   // recycle once it passes the camera
+      }
       const z0 = positions[i]
-      const z1 = positions[i] - trailLen * Math.max(0.15, speedFactor)   // shorter trail as it decelerates
+      const trailDir = reverse ? 1 : -1   // trail points back toward where it came from, either direction
+      const z1 = positions[i] + trailDir * trailLen * Math.max(0.15, reverse ? Math.max(speedFactor, 0.15) : speedFactor)
       const x = lateral[i * 2]
       const y = lateral[i * 2 + 1]
       const idx = i * 6

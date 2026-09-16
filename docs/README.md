@@ -121,6 +121,10 @@ still purely conceptual. Check each doc's own Status section.
 - [`omniproducts/OMNISENSE_DESIGN.md`](omniproducts/OMNISENSE_DESIGN.md)
   — now has a real, concrete definition: controls symbols and what
   they grant access to — the meta-metric behind OmniAddressCryptex.
+- [`omniproducts/OMNISENSE_GLYPH_SYSTEM_DESIGN.md`](omniproducts/OMNISENSE_GLYPH_SYSTEM_DESIGN.md)
+  — the real mechanism: OmniGlyph/OmniGlyphics, the internal-vs-
+  external legend fork, Stationary Realities, tunnels-as-realities,
+  the floor-becomes-wall map, OmniScroll, and the founding lore.
 - [`architecture/OMNICRYPTEXLAB_DESIGN.md`](architecture/OMNICRYPTEXLAB_DESIGN.md)
   — the general nested-orbit tool (OmniCryptexLab), its address form
   (OmniAddressCryptex), and the addressing concept itself

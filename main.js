@@ -399,6 +399,17 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         1: { label: 'OmniTargetingSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniTargetingSettings' } })) },
       }
     },
+    {
+      id: 'omnisense-wrapper', navLabel: '⟐OmniSense', title: '⟐OmniSense', prefix: 'Sense', iconLabel: '⟐S',
+      specialSlots: {
+        // Category/sub panel for now, per the request — OmniSense's
+        // own real interface (the voxel/Excel-scale authoring tool)
+        // is designed separately. This slot is the zoom-out experience
+        // itself: the floor becoming the wall-map, reversing the
+        // original entry.
+        1: { label: 'Zoom Out — View Reality Map', onClick: () => window.dispatchEvent(new CustomEvent('omni:omnisense-zoom-out-request')) },
+      }
+    },
   ]
   indexedPanelConfigs.forEach(cfg => {
     const instance = new IndexedPanel(base.context, cfg)
@@ -847,6 +858,54 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
       }
     })
   }
+
+  // ── OmniSense zoom-out — the reverse of playEntryAnimation, exactly ──────
+  // Rises from wherever the camera currently is back to the exact
+  // original entry state (y=1000, looking straight down at the origin) —
+  // the floor becoming the wall-map as the user retreats. Same two-phase
+  // structure as entry, mirrored: slow rise first, fast rise after,
+  // rather than fast-fall-then-slow-approach.
+  function playOmniSenseZoomOut () {
+    const cam = base.camera
+    orbitMod.disable()   // matches entry's own control state during the transition
+
+    omniExpressionator.play('entrance', { reverse: true, duration: 6.8 })   // matches this function's own total duration below
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        cam.lookAt(0, 0, 0)   // exact original entry starting look — the reverse is genuinely complete, not just close
+        window.dispatchEvent(new CustomEvent('omni:omnisense-zoom-out-complete'))
+      }
+    })
+
+    // Phase 1 — mirrors entry's Phase 2 (slow final approach), reversed:
+    // slow initial rise, straightening away from the close-up look.
+    tl.to(cam.position, {
+      y:        22,
+      x:        0,
+      z:        0,
+      duration: 2.2,
+      ease:     'power3.in',
+      onUpdate: () => {
+        const t     = (cam.position.y - 2) / 20
+        const lookY = gsap.utils.interpolate(2, -18, Math.min(1, Math.max(0, t)))
+        cam.lookAt(0, lookY, -1)
+      }
+    })
+
+    // Phase 2 — mirrors entry's Phase 1 (fast fall), reversed: fast rise,
+    // ending exactly at entry's own starting position.
+    tl.to(cam.position, {
+      y:        1000,
+      duration: 4.6,
+      ease:     'power2.out',
+      onUpdate: () => {
+        const lookY = cam.position.y - 40
+        cam.lookAt(0, lookY, 0)
+      }
+    })
+  }
+  window.addEventListener('omni:omnisense-zoom-out-request', playOmniSenseZoomOut)
 
   // ── Boot screen dismissal ─────────────────────────────────
   function dismissBoot() {

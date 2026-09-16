@@ -1,4 +1,4 @@
-# OmniKeyboard — Design Doc (not built yet)
+# OmniKeyboard — Design Doc (OmniKryptx view built; the rest not built yet)
 
 Captured from design discussion — nothing in this doc is implemented.
 This exists so the full spec isn't lost before we get to building it.
@@ -18,6 +18,40 @@ Two complementary pieces:
    OmniKeyboard. One implementation, multiple entry points (same pattern
    as e.g. macOS Spotlight being reachable from the menu bar, a
    shortcut, and the Dock).
+
+## OmniKryptx — built, and now the default view
+
+A second view for the same real, working `ui/OmniKeys.js` panel — a
+linearized take on the OmniCryptexLab idea (`architecture/OMNICRYPTEXLAB_DESIGN.md`):
+nested rings, laid out flat left-to-right instead of radially, since
+a keyboard is inherently flat rather than orbital.
+
+A vertical strip of six blank key options (the panel's own "header,"
+oriented vertically per the request) sits on the left; sections
+extend rightward from there, each one four vertical sliders side by
+side, like a small EQ. An "Add Section" control keeps extending the
+keyboard further right — confirmed directly, clicking it genuinely
+grows the section count and persists it, rather than resetting on
+reload.
+
+Sliders are real `<input type="range">` elements, rotated via CSS
+rather than the non-standard, Firefox-only `orient="vertical"`
+attribute — the rotate approach is the reliable, cross-browser way to
+get a vertical slider from a normal horizontal one.
+
+The six vertical key options are deliberately blank — "you can make
+them blank," per the request, the same honest not-yet-filled-in
+pattern the QWERTY view's own blank letter/symbol pages already use.
+
+**The "View" special key, previously a dead end, is now real.** It
+existed in the layout from early on with no handler at all — this is
+the first thing that's ever actually used it, wiring it to toggle
+between OmniKryptx and the normal QWERTY view. Confirmed directly:
+clicking it in either view correctly switches to the other, and the
+choice persists.
+
+OmniKryptx is now the keyboard's default view — opening OmniKeys for
+the first time lands here, not on QWERTY, per the request.
 
 ## Two-stage design: flat panel → dimensional inspector
 
