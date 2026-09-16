@@ -22,17 +22,37 @@
 
 import * as THREE from 'three'
 
-const RING_CONFIG = [
-  { outerR: 20,   innerR: 19.5,  yOffset: 0    },
-  { outerR: 10,   innerR: 9.6,   yOffset: -0.6 },
-  { outerR: 5,    innerR: 4.7,   yOffset: -1.1 },
-  { outerR: 2.5,  innerR: 2.25,  yOffset: -1.5 },
-  { outerR: 1.25, innerR: 1.05,  yOffset: -1.8 },
-]
-
 const RING_SEGMENTS  = 64
 const OCTAHEDRON_R   = 0.6
-const OCT_Y_OFFSET   = -1.8    // same Y as innermost ring
+
+const STORE_KEY = 'omni:platform:settings'
+function loadSettings () {
+  const defaults = { ringCount: 5, rippleDistance: 20 }
+  try {
+    const raw = localStorage.getItem(STORE_KEY)
+    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+  } catch (_) { return defaults }
+}
+function saveSettings (s) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch (_) {}
+}
+
+// Generates N rings following the exact same halving pattern the
+// original fixed 5-entry RING_CONFIG used — outermost ring's radius
+// is rippleDistance itself, so the ripple effect and the outermost
+// ring always agree with each other, not two separately-tuned numbers.
+function buildRingConfig (ringCount, rippleDistance) {
+  const config = []
+  for (let i = 0; i < ringCount; i++) {
+    const outerR = rippleDistance / Math.pow(2, i)
+    config.push({
+      outerR,
+      innerR: outerR * 0.96,
+      yOffset: i === 0 ? 0 : -(0.6 * i * (5 / Math.max(1, ringCount))),
+    })
+  }
+  return config
+}
 
 export default class OmniPlatform {
   /**
@@ -44,19 +64,57 @@ export default class OmniPlatform {
     this.position = position
     this.group    = new THREE.Group()
     this._octahedron = null
+    this._ringMeshes = []
+    this._ringCount = 5
+    this._rippleDistance = 20
+    this._octYOffset = 0
+    this._onSettingsSet = null
   }
 
   init() {
+    const saved = loadSettings()
+    this._ringCount = saved.ringCount
+    this._rippleDistance = saved.rippleDistance
     this._buildRings()
     this._buildOctahedron()
     this._buildPulseRings()
 
     this.group.position.copy(this.position)
     this.ctx.scene.add(this.group)
+
+    this._onSettingsSet = (e) => {
+      const patch = e.detail ?? {}
+      let changed = false
+      if (patch.ringCount !== undefined && patch.ringCount !== this._ringCount) {
+        this._ringCount = Math.max(1, Math.min(20, Math.round(patch.ringCount)))
+        changed = true
+      }
+      if (patch.rippleDistance !== undefined && patch.rippleDistance !== this._rippleDistance) {
+        this._rippleDistance = Math.max(1, patch.rippleDistance)
+        changed = true
+      }
+      if (changed) {
+        this._disposeRings()
+        this._buildRings()
+        // Octahedron + glow position depends on _octYOffset, which
+        // _buildRings() just recomputed — reposition rather than
+        // fully rebuild, since the octahedron's own geometry hasn't changed.
+        if (this._octahedron) {
+          this._octahedron.position.y = this._octYOffset - 0.3
+          this._glow.position.set(0, this._octYOffset - 0.3, 0)
+        }
+        this._pulseRings.forEach(ring => { ring.position.y = this._octYOffset })
+        saveSettings({ ringCount: this._ringCount, rippleDistance: this._rippleDistance })
+      }
+    }
+    window.addEventListener('omni:platform-set', this._onSettingsSet)
   }
 
   _buildRings() {
-    RING_CONFIG.forEach((cfg, i) => {
+    const config = buildRingConfig(this._ringCount, this._rippleDistance)
+    this._octYOffset = config.length ? config[config.length - 1].yOffset : 0
+
+    config.forEach((cfg, i) => {
       const geo = new THREE.RingGeometry(
         cfg.innerR,
         cfg.outerR,
@@ -67,7 +125,7 @@ export default class OmniPlatform {
         color:       0xffffff,
         side:        THREE.DoubleSide,
         transparent: true,
-        opacity:     0.55 - i * 0.06,   // outer rings slightly more visible
+        opacity:     Math.max(0.15, 0.55 - i * 0.06),   // outer rings slightly more visible
         depthWrite:  false,
       })
 
@@ -77,7 +135,17 @@ export default class OmniPlatform {
       ring.name = `omni-platform-ring-${i + 1}`
 
       this.group.add(ring)
+      this._ringMeshes.push(ring)
     })
+  }
+
+  _disposeRings () {
+    this._ringMeshes.forEach(ring => {
+      this.group.remove(ring)
+      ring.geometry.dispose()
+      ring.material.dispose()
+    })
+    this._ringMeshes = []
   }
 
   _buildOctahedron() {
@@ -90,13 +158,13 @@ export default class OmniPlatform {
     })
 
     this._octahedron = new THREE.Mesh(geo, mat)
-    this._octahedron.position.y = OCT_Y_OFFSET - 0.3
+    this._octahedron.position.y = this._octYOffset - 0.3
     this._octahedron.name = 'omni-platform-octahedron'
 
     // Emissive-style: a point light at the octahedron to make it glow
-    const glow = new THREE.PointLight(0xffffff, 1.2, 6, 2)
-    glow.position.set(0, OCT_Y_OFFSET - 0.3, 0)
-    this.group.add(glow)
+    this._glow = new THREE.PointLight(0xffffff, 1.2, 6, 2)
+    this._glow.position.set(0, this._octYOffset - 0.3, 0)
+    this.group.add(this._glow)
 
     this.group.add(this._octahedron)
   }
@@ -120,7 +188,7 @@ export default class OmniPlatform {
 
       const ring = new THREE.Mesh(geo, mat)
       ring.rotation.x = -Math.PI / 2
-      ring.position.y = OCT_Y_OFFSET
+      ring.position.y = this._octYOffset
       ring.name = `omni-pulse-ring-${i}`
 
       // Phase offset so rings stagger across a 3s cycle
@@ -148,8 +216,9 @@ export default class OmniPlatform {
       const cycle = this._pulseTime / ring._cycleTime
       const t     = (cycle + ring._phase / (Math.PI * 2)) % 1.0
 
-      // Scale expands 1 → 22 (outermost ring radius)
-      const scale = 1 + t * 21
+      // Scale expands 1 -> rippleDistance + 1, so the ripple's actual
+      // reach always matches the configured setting, not a hardcoded number
+      const scale = 1 + t * this._rippleDistance
       ring.scale.set(scale, scale, scale)
 
       // Opacity peaks at t=0.1, fades to 0 at t=1
@@ -162,6 +231,7 @@ export default class OmniPlatform {
   }
 
   destroy() {
+    window.removeEventListener('omni:platform-set', this._onSettingsSet)
     this.group.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose()
       if (obj.material) obj.material.dispose()

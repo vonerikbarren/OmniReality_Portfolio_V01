@@ -25,6 +25,11 @@ filename, and renaming would have silently broken those links.
   — the Kingdom Hearts-inspired progressive naming/monetization
   convention, and how it retroactively resolves the OmniVision/OmniVisor
   naming collision.
+- [`architecture/HAND_TOGGLE_CONTROL_DESIGN.md`](architecture/HAND_TOGGLE_CONTROL_DESIGN.md)
+  — the four hands (two already active, two rendering but unwired) as
+  intended toggle control surfaces for the layer system; Conscious
+  Hand as "ToggleMaster," OmniHand mapped to the OmniProducts
+  themselves.
 
 ## Core systems
 
@@ -70,6 +75,9 @@ still purely conceptual. Check each doc's own Status section.
   OmniStore project.
 - [`omniproducts/OMNIFEED_DESIGN.md`](omniproducts/OMNIFEED_DESIGN.md)
   — blog interface plus live WebSocket comments.
+- [`omniproducts/OMNIBROWSERSPACE_LAYERS_DESIGN.md`](omniproducts/OMNIBROWSERSPACE_LAYERS_DESIGN.md)
+  — the 5-layer Object/Class/Domain/Realm/Reality system, reusing the
+  existing Room Scale toggle; flagged as a possible future OmniProduct.
 - [`omniproducts/OMNICOMMUNICATION_SUITE_DESIGN.md`](omniproducts/OMNICOMMUNICATION_SUITE_DESIGN.md)
   — OmniLog, OmniFeed, OmniCommunication (rhythm-game-style receiving,
   OmniReceiver), and OmniConnect as one family; dimensions-vs-tiers
@@ -106,6 +114,29 @@ still purely conceptual. Check each doc's own Status section.
   — dynamic, multi-axis (hierarchical/categorical/spectral) navigation
   and overview tool for structural complexity, meant to be reused
   across most other tools; includes a full SWOT.
+- [`omniproducts/SYSTEM_ACCESS_OVERVIEW_DESIGN.md`](omniproducts/SYSTEM_ACCESS_OVERVIEW_DESIGN.md)
+  — a distinct, unnamed concept: table-of-contents-style overview by
+  permission/access level, explicitly not the same axis as
+  OmniComplexity.
+- [`omniproducts/OMNISENSE_DESIGN.md`](omniproducts/OMNISENSE_DESIGN.md)
+  — now has a real, concrete definition: controls symbols and what
+  they grant access to — the meta-metric behind OmniAddressCryptex.
+- [`architecture/OMNICRYPTEXLAB_DESIGN.md`](architecture/OMNICRYPTEXLAB_DESIGN.md)
+  — the general nested-orbit tool (OmniCryptexLab), its address form
+  (OmniAddressCryptex), and the addressing concept itself
+  (OmniAddress) — also the root of the OS's security system.
+- [`omniproducts/OMNIBRAND_DESIGN.md`](omniproducts/OMNIBRAND_DESIGN.md)
+  — root-object-equivalent brand identity as a Tree Building System,
+  serving as both a map for simple users and navigation for complex
+  ones.
+- [`omniproducts/OMNITARGETING_DESIGN.md`](omniproducts/OMNITARGETING_DESIGN.md)
+  — Zelda-style Z-Targeting, built and verified: a real 4-marker
+  inward-pointing reticle on the existing selection system, full
+  shape/color/texture customization, a CSS2D-style tooltip.
+- [`omniproducts/OMNIPLAYER_BADGES_DESIGN.md`](omniproducts/OMNIPLAYER_BADGES_DESIGN.md)
+  — a game-like identification/access badge system for OmniPlayer,
+  likely converging with the tier system and the access overview;
+  also records the Logic-style complexity-level interface pattern.
 - [`omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md`](omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md)
   — real panel built (WASD speed steps); orbit/altitude speeds and
   decoupled automatic rotation designed but not yet implemented.

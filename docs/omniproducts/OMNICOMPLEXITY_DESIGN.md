@@ -125,6 +125,15 @@ Two stated use cases, not one:
 - Which concrete tool gets this first, as the real proving ground,
   rather than building it in the abstract.
 
+## Not to be confused with the system-level access/permission overview
+
+A related idea was raised and explicitly distinguished from this one:
+a table-of-contents-style overview of what systems are available, the
+data around each, and permission/access levels — organized by
+availability, not by structural shape. See
+`SYSTEM_ACCESS_OVERVIEW_DESIGN.md`. The two are independent axes, not
+the same thing described twice.
+
 ## Status
 
 Purely conceptual. No interface, no data model, and no first

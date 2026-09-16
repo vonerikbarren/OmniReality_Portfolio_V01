@@ -21,7 +21,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { BROWSERSPACE_SHAPES } from '../modules/OmniBrowserSpace.js'
+import { BROWSERSPACE_SHAPES, OTHER_LAYER_NAMES, DEFAULT_LAYER_ALPHAS } from '../modules/OmniBrowserSpace.js'
 import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
 const CUBE_TEXTURE_SLOTS = 5
@@ -146,6 +146,10 @@ const STYLES = /* css */`
 .bs-rot-val { width: 32px; text-align: right; font-size: 8.5px; color: var(--bs-text-muted); }
 
 .bs-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.bs-layer-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.bs-layer-name { flex: 1; font-size: 10px; color: var(--bs-text-dim, rgba(255,255,255,0.7)); }
+.bs-layer-row .bs-color-input { width: 28px; height: 22px; padding: 1px; }
+.bs-layer-row .bs-num-input { width: 44px; }
 .bs-row-label { font-size: 10px; color: var(--bs-text-dim); }
 .bs-color-input { width: 44px; height: 24px; border: 1px solid var(--bs-border); border-radius: 4px; background: none; cursor: pointer; }
 .bs-num-input {
@@ -186,6 +190,8 @@ function loadSettings () {
     shape: 'BoxGeometry', rotation: { x: 0, y: 0, z: 0 },
     position: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
     color: '#8cc4ff', alpha: 0.6, activeSlot: null, roomScale: false,
+    objectVisible: true,
+    layers: OTHER_LAYER_NAMES.map(name => ({ color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false })),
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -338,7 +344,11 @@ export default class OmniBrowserSpacePanel {
         </button>
         <div class="bs-note">Toggles how far apart the 4 face cubes sit — tight around the shape by default, or spread to span a genuinely large room.</div>
 
-        <div class="bs-section-title">Color &amp; Alpha</div>
+        <div class="bs-section-title">Layer — Object</div>
+        <div class="bs-row">
+          <span class="bs-row-label">Visible</span>
+          <input type="checkbox" id="bs-object-visible" ${s.objectVisible !== false ? 'checked' : ''}>
+        </div>
         <div class="bs-row">
           <span class="bs-row-label">Color</span>
           <input type="color" class="bs-color-input" id="bs-color" value="${s.color}">
@@ -347,6 +357,19 @@ export default class OmniBrowserSpacePanel {
           <span class="bs-row-label">Alpha</span>
           <input type="number" class="bs-num-input" id="bs-alpha" min="0" max="1" step="0.05" value="${s.alpha}">
         </div>
+
+        <div class="bs-section-title">Layers — Point / Core / Class / Domain / Realm / Reality / InfiniteReality / OmniReality</div>
+        <div class="bs-note">Same geometry as Object (Point is a small marker instead), progressively larger, moving outward. Each toggles independently — real design-software-style layers, not one master switch.</div>
+        ${OTHER_LAYER_NAMES.map((name, i) => {
+          const layer = s.layers?.[i] ?? { color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }
+          return `
+          <div class="bs-layer-row">
+            <input type="checkbox" class="bs-layer-visible" data-layer-index="${i}" ${layer.visible ? 'checked' : ''}>
+            <span class="bs-layer-name">${name}</span>
+            <input type="color" class="bs-color-input bs-layer-color" data-layer-index="${i}" value="${layer.color}">
+            <input type="number" class="bs-num-input bs-layer-alpha" data-layer-index="${i}" min="0" max="1" step="0.05" value="${layer.alpha}">
+          </div>
+        `}).join('')}
 
         <div class="bs-section-title">Wallpaper (Default + ${CUBE_TEXTURE_SLOTS})</div>
         <div class="bs-slot-grid" id="bs-slot-grid">${slotButtons}</div>
@@ -407,6 +430,33 @@ export default class OmniBrowserSpacePanel {
 
     el.querySelector('#bs-color').addEventListener('input', (e) => this._commit({ color: e.target.value }))
     el.querySelector('#bs-alpha').addEventListener('input', (e) => this._commit({ alpha: Number(e.target.value) }))
+    el.querySelector('#bs-object-visible').addEventListener('change', (e) => this._commit({ objectVisible: e.target.checked }))
+
+    const defaultLayersFallback = () => OTHER_LAYER_NAMES.map(name => ({ color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }))
+    el.querySelectorAll('.bs-layer-color').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const i = Number(input.dataset.layerIndex)
+        const layers = [...(this._state.layers ?? defaultLayersFallback())]
+        layers[i] = { ...layers[i], color: e.target.value }
+        this._commit({ layers })
+      })
+    })
+    el.querySelectorAll('.bs-layer-alpha').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const i = Number(input.dataset.layerIndex)
+        const layers = [...(this._state.layers ?? defaultLayersFallback())]
+        layers[i] = { ...layers[i], alpha: Number(e.target.value) }
+        this._commit({ layers })
+      })
+    })
+    el.querySelectorAll('.bs-layer-visible').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const i = Number(input.dataset.layerIndex)
+        const layers = [...(this._state.layers ?? defaultLayersFallback())]
+        layers[i] = { ...layers[i], visible: e.target.checked }
+        this._commit({ layers })
+      })
+    })
     el.querySelector('#bs-room-scale-toggle').addEventListener('click', () => {
       const next = !this._state.roomScale
       this._commit({ roomScale: next })

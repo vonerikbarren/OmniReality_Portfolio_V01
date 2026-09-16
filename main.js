@@ -15,6 +15,10 @@ import RootSpace         from './modules/RootSpace.js'
 import ParticleField     from './modules/ParticleField.js'
 import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
+import OmniFloor         from './modules/OmniFloor.js'
+import OmniTargeting     from './modules/OmniTargeting.js'
+import OmniTargetingSettingsPanel from './ui/OmniTargetingSettingsPanel.js'
+import FloorSettingsPanel from './ui/FloorSettingsPanel.js'
 import TerminalTunnel    from './modules/TerminalTunnel.js'
 import VoidBoundary      from './modules/VoidBoundary.js'
 import WallpaperSphere   from './modules/WallpaperSphere.js'
@@ -116,6 +120,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
                    base.addModule(new ParticleField(base.context))
                    base.addModule(new PortalSpheres(base.context))
                    base.addModule(new OmniPlatform(base.context))
+                   base.addModule(new OmniFloor(base.context))
+                   base.addModule(new OmniTargeting(base.context))
+                   base.addModule(new OmniTargetingSettingsPanel(base.context))
+                   base.addModule(new FloorSettingsPanel(base.context))
                    base.addModule(new TerminalTunnel(base.context))
                    base.addModule(new VoidBoundary(base.context))
                    base.addModule(new WallpaperSphere(base.context))
@@ -358,6 +366,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
         6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
         7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },
+        8: { label: 'FloorSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -382,6 +391,12 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         1: { label: 'Presenter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniExpressionPresenter' } })) },
         2: { label: 'UserPresenterVideoSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserPresenterVideoSettings' } })) },
         3: { label: 'OmniExpressionator', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniExpressionator' } })) },
+      }
+    },
+    {
+      id: 'omnitargeting-wrapper', navLabel: '⟐OmniTargeting', title: '⟐OmniTargeting', prefix: 'Targeting', iconLabel: '⟐Z',
+      specialSlots: {
+        1: { label: 'OmniTargetingSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniTargetingSettings' } })) },
       }
     },
   ]

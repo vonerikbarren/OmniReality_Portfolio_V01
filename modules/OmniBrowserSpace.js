@@ -40,7 +40,16 @@ import * as THREE from 'three'
 import { WALLPAPER_SHAPES } from './WallpaperSphere.js'
 import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
-export { WALLPAPER_SHAPES as BROWSERSPACE_SHAPES }
+// A local list, not a direct re-export — Grid is exclusive to
+// OmniBrowserSpace's own dropdown, inserted right after Box. The
+// shared WALLPAPER_SHAPES itself stays completely untouched, so
+// WallpaperSphere and its own settings panel never see Grid at all.
+const boxIndex = WALLPAPER_SHAPES.indexOf('BoxGeometry')
+export const BROWSERSPACE_SHAPES = [
+  ...WALLPAPER_SHAPES.slice(0, boxIndex + 1),
+  'Grid',
+  ...WALLPAPER_SHAPES.slice(boxIndex + 1),
+]
 
 const ROOM_Y = 15               // lifted above the platform, not sitting inside it
 const DEFAULT_EDGE = 10         // world units — see sizing-reference note below
@@ -62,6 +71,12 @@ const DEFAULT_SHAPE = 'BoxGeometry'
  */
 const SHAPE_BUILDERS = {
   BoxGeometry:          (r) => new THREE.BoxGeometry(r * 2, r * 2, r * 2),
+  // A subdivided Box, not a new geometry family — same cube, just a
+  // fine lattice of internal vertices for judging measurements across
+  // its faces, the way graph paper does. 10 segments per axis, a
+  // dense-enough grid to actually be useful without turning into
+  // visual noise.
+  Grid:                 (r) => new THREE.BoxGeometry(r * 2, r * 2, r * 2, 10, 10, 10),
   SphereGeometry:       (r) => new THREE.SphereGeometry(r, 32, 32),
   CylinderGeometry:     (r) => new THREE.CylinderGeometry(r, r, r * 2, 32),
   ConeGeometry:         (r) => new THREE.ConeGeometry(r, r * 2, 32),
@@ -90,6 +105,37 @@ const FACE_OBJECTS = [
 const FACE_DISTANCE_NORMAL = REFERENCE_RADIUS   // 5 — tight, close around the shape
 const FACE_DISTANCE_ROOM = 25                     // spans a genuinely large room
 
+// The layer system — Object (the existing single shape, unchanged) is
+// layer 0; four more layers of the SAME geometry, progressively
+// larger, step evenly from Object's own size up to the existing room
+// scale distance. Reality intentionally lands exactly where Room
+// Scale already puts things — one shared number, not a second one
+// that could drift out of sync with it.
+// The full 9-layer system: Point -> Core -> Object -> Class -> Domain
+// -> Realm -> Reality -> InfiniteReality -> OmniReality. Object is the
+// original, pre-existing single shape (still driven by this._color/
+// this._alpha, unchanged) — every other layer is genuinely new.
+// Point gets its own distinct visual treatment (a literal small dot,
+// not a wireframe — "the point of the whole reality" reads as a
+// marker, not a container) than every other layer, which is the SAME
+// geometry as Object, just a different size — Core smaller, the rest
+// progressively larger, moving outward "like the atmosphere."
+// Radii are explicit, not a formula, since Point/Core sit inside
+// Object's own size rather than continuing its ladder outward.
+// Reality intentionally still lands on the pre-existing room-scale
+// distance (25) — the same number Room Scale already used for the
+// face cubes, not a second, different number to keep in sync.
+export const OTHER_LAYER_NAMES = ['Point', 'Core', 'Class', 'Domain', 'Realm', 'Reality', 'InfiniteReality', 'OmniReality']
+const LAYER_RADII = { Point: 0.5, Core: 2, Class: 10, Domain: 15, Realm: 20, Reality: FACE_DISTANCE_ROOM, InfiniteReality: 30, OmniReality: 35 }
+export const DEFAULT_LAYER_ALPHAS = { Point: 0.9, Core: 0.5, Class: 0.42, Domain: 0.34, Realm: 0.26, Reality: 0.20, InfiniteReality: 0.14, OmniReality: 0.10 }
+
+function defaultLayers () {
+  // Every layer starts hidden, including Object's siblings — the
+  // point of a real toggle system is the user turning things on
+  // deliberately, not everything appearing automatically.
+  return OTHER_LAYER_NAMES.map(name => ({ color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }))
+}
+
 const CUBE_TEXTURE_SLOTS = 5
 const cubeTextureStore = createWallpaperStore('browserspace-cube', CUBE_TEXTURE_SLOTS)
 
@@ -103,6 +149,8 @@ function loadSettings () {
     color: '#8cc4ff', alpha: 0.6,
     activeSlot: null,
     roomScale: false,
+    objectVisible: true,
+    layers: defaultLayers(),
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -120,6 +168,7 @@ export default class OmniBrowserSpace {
     this._wireframe = null
     this._solidMesh = null
     this._faceMeshes = []
+    this._extraLayerMeshes = []   // Class/Domain/Realm/Reality — Object itself is this._wireframe, above
     this._texture = null
     this._shape = DEFAULT_SHAPE
     this._rotation = { x: 0, y: 0, z: 0 }
@@ -129,6 +178,8 @@ export default class OmniBrowserSpace {
     this._alpha = 0.6
     this._activeSlot = null
     this._roomScale = false
+    this._objectVisible = true
+    this._layers = defaultLayers()
     this._onSettingsSet = null
   }
 
@@ -142,13 +193,17 @@ export default class OmniBrowserSpace {
     this._alpha = saved.alpha
     this._activeSlot = saved.activeSlot
     this._roomScale = !!saved.roomScale
+    this._objectVisible = saved.objectVisible ?? true
+    this._layers = saved.layers ?? defaultLayers()
 
     this._glGroup = new THREE.Group()
     this._glGroup.position.set(0, ROOM_Y, 0)
     this.ctx.scene.add(this._glGroup)
 
     this._buildShapeMesh()
+    this._applyObjectVisibility()
     this._buildFaceObjects()
+    this._buildExtraLayers()
     this._applyRotation()
     this._applyPosition()
     this._applyScale()
@@ -170,7 +225,12 @@ export default class OmniBrowserSpace {
         if (this._activeSlot) this._applySlotTexture(this._activeSlot)
         else this._clearTexture()
       }
-      if (patch.roomScale !== undefined) { this._roomScale = !!patch.roomScale; this._applyFaceDistance() }
+      if (patch.roomScale !== undefined) {
+        this._roomScale = !!patch.roomScale
+        this._applyFaceDistance()
+      }
+      if (patch.objectVisible !== undefined) { this._objectVisible = !!patch.objectVisible; this._applyObjectVisibility() }
+      if (patch.layers) { this._layers = patch.layers; this._applyLayerColors(); this._applyLayerVisibility() }
     }
     window.addEventListener('omni:browserspace-set', this._onSettingsSet)
   }
@@ -193,7 +253,15 @@ export default class OmniBrowserSpace {
     const builder = SHAPE_BUILDERS[this._shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE]
     const geo = builder(REFERENCE_RADIUS)
 
-    const edges = new THREE.EdgesGeometry(geo)
+    // Grid's whole point is showing its internal subdivision lines —
+    // EdgesGeometry would collapse every one of them (adjacent segments
+    // on a flat face share the same normal, well under its default
+    // threshold), leaving only the outer cube silhouette and defeating
+    // the purpose entirely. WireframeGeometry keeps every edge,
+    // internal grid lines included. Every other shape keeps
+    // EdgesGeometry exactly as before — that silhouette-only look is
+    // correct and intentional for them.
+    const edges = this._shape === 'Grid' ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo)
     const lineMat = new THREE.LineBasicMaterial({ color: this._color, transparent: true, opacity: this._alpha })
     this._wireframe = new THREE.LineSegments(edges, lineMat)
     this._glGroup.add(this._wireframe)
@@ -235,6 +303,72 @@ export default class OmniBrowserSpace {
     })
   }
 
+  /** Class/Domain/Realm/Reality — the same geometry as Object, just
+   *  progressively larger, per LAYER_RADII. Wireframe-only by
+   *  design: a room-sized SOLID, textured shape would visually
+   *  swallow everything inside it, which defeats the point of a
+   *  boundary you're meant to see through. Hidden by default —
+   *  visibility is tied to the existing Room Scale toggle, not a
+   *  second switch. */
+  _buildExtraLayers () {
+    this._disposeExtraLayers()
+    const builder = SHAPE_BUILDERS[this._shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE]
+    OTHER_LAYER_NAMES.forEach((name, i) => {
+      const settings = this._layers[i] ?? { color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }
+      let mesh
+      if (name === 'Point') {
+        // "The point of the whole reality" reads as a literal marker,
+        // not a container — a small solid dot, not a wireframe shape
+        // like every other layer (including Core, its own immediate
+        // neighbor) uses.
+        const dotGeo = new THREE.SphereGeometry(LAYER_RADII.Point, 8, 8)
+        const dotMat = new THREE.MeshBasicMaterial({ color: settings.color, transparent: true, opacity: settings.alpha })
+        mesh = new THREE.Mesh(dotGeo, dotMat)
+      } else {
+        const geo = builder(LAYER_RADII[name])
+        const lineGeo = this._shape === 'Grid' ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo)
+        const mat = new THREE.LineBasicMaterial({ color: settings.color, transparent: true, opacity: settings.alpha })
+        mesh = new THREE.LineSegments(lineGeo, mat)
+        geo.dispose()
+      }
+      mesh.visible = !!settings.visible
+      this._glGroup.add(mesh)
+      this._extraLayerMeshes.push(mesh)
+    })
+  }
+
+  _disposeExtraLayers () {
+    this._extraLayerMeshes.forEach(mesh => {
+      this._glGroup?.remove(mesh)
+      mesh.geometry.dispose()
+      mesh.material.dispose()
+    })
+    this._extraLayerMeshes = []
+  }
+
+  _applyObjectVisibility () {
+    if (this._wireframe) this._wireframe.visible = this._objectVisible && !this._activeSlot
+    if (this._solidMesh) this._solidMesh.visible = this._objectVisible && !!this._activeSlot
+  }
+
+  /** Independent per-layer visibility — real design-software-style
+   *  toggles, not one master switch gating all of them together. */
+  _applyLayerVisibility () {
+    this._extraLayerMeshes.forEach((mesh, i) => {
+      const settings = this._layers[i]
+      if (settings) mesh.visible = !!settings.visible
+    })
+  }
+
+  _applyLayerColors () {
+    this._extraLayerMeshes.forEach((mesh, i) => {
+      const settings = this._layers[i]
+      if (!settings) return
+      mesh.material.color.set(settings.color)
+      mesh.material.opacity = settings.alpha
+    })
+  }
+
   _changeShape (shape) {
     if (!SHAPE_BUILDERS[shape]) return
     this._glGroup.remove(this._wireframe)
@@ -244,12 +378,14 @@ export default class OmniBrowserSpace {
 
     this._shape = shape
     this._buildShapeMesh()
+    this._buildExtraLayers()   // same geometry, all five layers — these update together, not just Object
     // Re-add the (unaffected) face objects on top, since removing the
     // shape mesh doesn't touch them, but a fresh _buildShapeMesh call
     // inserts the new shape at the end of _glGroup's children — order
     // doesn't matter for rendering here, so no reordering needed.
     if (this._activeSlot) { this._solidMesh.visible = true; this._wireframe.visible = false }
     if (this._texture) { this._solidMesh.material.map = this._texture; this._solidMesh.material.color.set(0xffffff); this._solidMesh.material.needsUpdate = true }
+    this._applyObjectVisibility()   // final authority — must run after the activeSlot-based visibility above, or it would be silently overridden
 
     this._saveAll()
   }
@@ -276,9 +412,12 @@ export default class OmniBrowserSpace {
   }
 
   _saveAll () {
+    const current = loadSettings()
     saveSettings({
+      ...current,
       shape: this._shape, rotation: this._rotation, position: this._position,
       scale: this._scale, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot,
+      roomScale: this._roomScale, objectVisible: this._objectVisible, layers: this._layers,
     })
   }
 
@@ -307,6 +446,7 @@ export default class OmniBrowserSpace {
         this._wireframe.visible = false
       })
       this._activeSlot = slot
+      this._applyObjectVisibility()   // final authority — must run after the visibility set above
       this._saveAll()
     } catch (err) {
       console.warn('⟐OmniBrowserSpace — failed to load cube texture slot', slot, err)
@@ -319,6 +459,7 @@ export default class OmniBrowserSpace {
     this._solidMesh.visible = false
     this._wireframe.visible = true
     this._activeSlot = null
+    this._applyObjectVisibility()   // final authority — must run after the visibility set above
     this._saveAll()
   }
 }
