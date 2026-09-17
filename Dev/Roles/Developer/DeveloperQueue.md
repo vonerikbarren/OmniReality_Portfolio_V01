@@ -8,6 +8,9 @@ this role's, not the only one.
 Ordered roughly as raised, not strictly by priority — items near the
 top are nearer-term, items at the bottom are explicitly "after that."
 
+Forward-looking only — see `BuildLog.md`, in this same folder, for the
+chronological record of what's actually already been built.
+
 ---
 
 ## 1. OmniLayer — new OmniProduct entry
@@ -236,3 +239,26 @@ A live queue, not a finished plan — expect reordering and additions
 as work actually happens. Items above are captured at the depth they
 were actually specified; several need a real design pass before
 becoming buildable work (see item 4 and 5 especially).
+
+## 17. OmniCryptx — confirmed ahead of the dashboard
+
+The parent security system (OmniCryptexLab, OmniAddressCryptex,
+OmniAddress underneath it) is confirmed to be built **before** item
+18 below, not after — the dashboard's own passcryptx panel depends on
+this existing first. Includes its own panel (vertical scrolls per
+ring, reusing OmniKryptx's slider widget directly), the 9-type
+per-ring default list (Symbol/Time/Letter/Number/State/px/py/pz/typed
+password), and the marble-maze idea (documented, explicitly deferred,
+not part of this build). See `architecture/OMNICRYPTEXLAB_DESIGN.md`.
+
+## 18. OmniSense Dashboard + OmniCell creation flow
+
+Builds on the existing, real `OmniStartHUD.js` quadrant shell rather
+than a new system. Now confirmed to come after item 17 — its
+passcryptx panel needs OmniCryptx to exist first, even in a simple
+typed-code form. Real open questions before this is buildable: exact
+drag-boundary behavior at a quadrant's edge (free movement confirmed
+for mobile's own per-tab panels), and OmniReality Primitives'
+classification (not yet done) for default-password-by-default
+personal realities. See `omniproducts/OMNISENSE_DASHBOARD_DESIGN.md`.
+

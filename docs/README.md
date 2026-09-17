@@ -126,9 +126,10 @@ still purely conceptual. Check each doc's own Status section.
   external legend fork, Stationary Realities, tunnels-as-realities,
   the floor-becomes-wall map, OmniScroll, and the founding lore.
 - [`architecture/OMNICRYPTEXLAB_DESIGN.md`](architecture/OMNICRYPTEXLAB_DESIGN.md)
-  — the general nested-orbit tool (OmniCryptexLab), its address form
-  (OmniAddressCryptex), and the addressing concept itself
-  (OmniAddress) — also the root of the OS's security system.
+  — OmniCryptx (the parent security system, confirmed to be built
+  ahead of the OmniSense dashboard), OmniCryptexLab (the general
+  nested-orbit tool), OmniAddressCryptex, OmniAddress, per-ring
+  security types, and the marble-maze idea (documented, deferred).
 - [`omniproducts/OMNIBRAND_DESIGN.md`](omniproducts/OMNIBRAND_DESIGN.md)
   — root-object-equivalent brand identity as a Tree Building System,
   serving as both a map for simple users and navigation for complex
@@ -137,6 +138,9 @@ still purely conceptual. Check each doc's own Status section.
   — Zelda-style Z-Targeting, built and verified: a real 4-marker
   inward-pointing reticle on the existing selection system, full
   shape/color/texture customization, a CSS2D-style tooltip.
+- [`omniproducts/OMNISENSE_DASHBOARD_DESIGN.md`](omniproducts/OMNISENSE_DASHBOARD_DESIGN.md)
+  — the dashboard (built on the existing OmniStartHUD quadrant shell),
+  the OmniCell creation flow, and the Rubik's-cube radial option menu.
 - [`omniproducts/OMNIPLAYER_BADGES_DESIGN.md`](omniproducts/OMNIPLAYER_BADGES_DESIGN.md)
   — a game-like identification/access badge system for OmniPlayer,
   likely converging with the tier system and the access overview;
