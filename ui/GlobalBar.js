@@ -34,6 +34,7 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { flashHeaderLine } from './Panel.js'
+import OmniAddressBar from './OmniAddressBar.js'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -548,7 +549,22 @@ export default class GlobalBar {
     injectStyles()
     this._buildDOM()
     this._bindEvents()
+    this._mountNotifyAddressBar()
     this._clockInterval = setInterval(() => this._tickClock(), 1000)
+  }
+
+  _mountNotifyAddressBar () {
+    const slot = document.getElementById('ob-notify-address-bar-slot')
+    if (!slot) return
+    this._notifyAddressBar = new OmniAddressBar({ size: 'main' })
+    const barEl = this._notifyAddressBar.mount()
+    slot.appendChild(barEl)
+
+    const col = document.getElementById('ob-col-notify')
+    col?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:notify-panel-toggle'))
+    })
+    col.style.cursor = 'pointer'
   }
 
   update (delta) {
@@ -573,6 +589,7 @@ export default class GlobalBar {
 
   destroy () {
     clearInterval(this._clockInterval)
+    this._notifyAddressBar?.destroy()
     window.removeEventListener('omni:frontmost-changed', this._onFrontmostChanged)
     document.removeEventListener('click', this._onDocumentClick)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
@@ -644,6 +661,17 @@ export default class GlobalBar {
             <span class="ob-kv-val live" id="ob-current-time">--:--:--</span>
           </div>
         </div>
+      </div>
+
+      <!-- Col04 — Notifications: OmniAddressBar + drop-down trigger.
+           Deliberately living in GlobalBar's own, already-reserved
+           space rather than a new floating top-right element, which
+           would otherwise collide with ConsciousHand directly below. -->
+      <div class="ob-col" id="ob-col-notify">
+        <div class="ob-label-row">
+          <span class="ob-label">⟐Notify</span>
+        </div>
+        <div id="ob-notify-address-bar-slot"></div>
       </div>
 
       <!-- Global Context Menu — App title + 8 fixed categories, contents

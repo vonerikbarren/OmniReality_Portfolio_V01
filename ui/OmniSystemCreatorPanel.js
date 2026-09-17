@@ -70,7 +70,7 @@ function rgbToHex (r, g, b) {
 // ── Formation definitions ─────────────────────────────────────────────────
 // Each returns an array of node defs: { key, label, isCenter, pos(distance) }
 
-function crossDefs () {
+export function crossDefs () {
   return [
     { key: 'center', label: 'OmniCore (future) — center', isCenter: true, pos: () => [0, 0, 0] },
     { key: 'up',      label: 'Arm — Up',      pos: d => [0, d, 0] },

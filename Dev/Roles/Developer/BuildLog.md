@@ -112,6 +112,61 @@ matching copies), and each of a section's slots now uses the right
 widget for its real type (a range slider for Number, a text field
 for a typed password, never a slider wearing a mismatched label).
 
+### V23
+OmniNotify's first real code — previously discussed in depth but
+entirely undocumented-as-code until now. `ui/OmniAddressBar.js` built
+as a genuinely reusable breadcrumb component (10 slots, ⟐ placeholder,
+any panel can mount one). Integrated into `GlobalBar.js`'s own,
+already-reserved top space for the main notification trigger —
+deliberately not a new floating top-right element, since that would
+have collided with ConsciousHand's existing corner. `ui/OmniNotifyPanel.js`
+built as the real drop-down mechanic (open/close/outside-click), still
+an honest empty shell with no real notification content yet. Each of
+the four hands (`ui/Hand.js`) now mounts its own small address bar,
+sliding in from whichever side that specific hand actually occupies —
+confirmed directly, all four are distinct instances, not one shared
+bar. 18 checks, all passing.
+
+### V24
+Tier 1 of the Reality-grab ladder made real:
+`systems/OmniGrab.js` — grab any real node mesh (reusing OmniNode's
+own registry via a new public `getAllMeshes()`, not a second,
+parallel list), jitter continuously while held, drag toward any of
+the four hands, and only a genuinely OPEN hand (its own hamburger
+menu active, exposed via a new `dataset.handOpen` attribute on
+`ui/Hand.js`) is a valid drop target — closed hands are excluded
+entirely, not just declined. Dropping into an open hand condenses the
+reality down and dispatches a real event carrying which hand and
+which mesh; "structural aspects of that hand manifest on the reality"
+is explicitly left for later, per the request — this system only
+provides the real hook. Dropping outside any open hand triggers a
+genuine snap-back release. One real bug caught and fixed in the same
+pass: jitter originally used wall-clock `performance.now()` instead
+of accumulating the passed `delta`, meaning frames landing in the
+same millisecond — a real, common occurrence, not a rare edge case —
+would have jittered identically; fixed to accumulate its own internal
+clock like every other module in this project. 20 checks, all
+passing.
+
+### V25
+The hardcoded Cross-formation landing room made real:
+`modules/OmniLandingRoom.js` reuses the actual, existing Cross
+positions (`crossDefs()`, now exported from
+`ui/OmniSystemCreatorPanel.js` rather than duplicated) for its 7
+nodes, each with a distinct, specified or randomly-assigned geometry
+(Down=Box/"gridbox", Center=Sphere, Up=Octahedron, Back=Torus, the
+rest random from a real, safe geometry pool) and a genuinely semi-
+transparent panel. `ui/NavMapPanel.js` built as a real, reusable
+fast-travel panel — "every Navbar will have one" — snapping the
+camera to any node on click. This is also OmniNotify's first real
+content: clicking a node now pushes an actual, correctly-worded
+travel notice through the real `OmniNotifyPanel` (rebuilt from its
+prior empty-shell state to genuinely hold and render a notification
+history), confirmed end-to-end, not just dispatched into the void.
+Also added `⟐NavMap` to `Drawer.js`'s real item list immediately —
+directly applying the lesson from the OmniTargeting bug caught two
+versions ago. 19 checks, all passing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

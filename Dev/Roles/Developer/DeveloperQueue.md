@@ -110,11 +110,14 @@ investigation, not assumed:
   menu above (is grabbing an option *inside* that menu, or a
   separate gesture?) are all open.
 
-## 6. OmniNotify — new OmniProduct
+## 6. OmniNotify — new OmniProduct, now partially real
 
-Every OS needs a way to notify the user of updates — named directly
-as a requirement, not optional. Not designed yet beyond the name and
-the reason it exists.
+Every OS needs a way to notify the user of updates. The real
+open/close mechanic exists now (`ui/OmniAddressBar.js`,
+`ui/OmniNotifyPanel.js`, and per-hand mini address bars in
+`ui/Hand.js` — see `Dev/Roles/Developer/BuildLog.md` V23), but there
+is still no real notification content or data source — it's a
+genuine, honest shell.
 
 ## 7. OmniAction / OmniActionPanel — new OmniProduct
 

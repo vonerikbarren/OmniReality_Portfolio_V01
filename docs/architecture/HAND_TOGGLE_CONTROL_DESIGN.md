@@ -57,6 +57,14 @@ than something that needed reconciling.
 
 ## Grabbing a Reality — a real 4-tier ladder, not one mechanic
 
+**Tier 1 is now real code**: `systems/OmniGrab.js` — grab, jitter,
+drag toward a hand, condense into it only if that hand is genuinely
+open, dispatch a real placement event. See
+`Dev/Roles/Developer/BuildLog.md` V24 for the exact details and the
+one real bug caught along the way. "Quick options without
+navigating in" and the expand-vs-link branching described below are
+not yet built — this is the grab-and-place mechanic specifically.
+
 Confirmed directly as tiered, matching the same real-capability-jump
 convention as `NAMING_TIER_SYSTEM_DESIGN.md` — each tier is a
 genuine escalation, not a bigger number on the same thing.

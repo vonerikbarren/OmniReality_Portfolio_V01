@@ -66,6 +66,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniSense'       },
   { label: '⟐OmniExpression'  },
   { label: '⟐OmniTargeting'   },
+  { label: '⟐NavMap'          },
   { label: '⟐OmniDraw'        },
   { label: '⟐OmniKeys'        },
   { label: '⟐OmniSelect'      },

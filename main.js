@@ -15,6 +15,9 @@ import RootSpace         from './modules/RootSpace.js'
 import ParticleField     from './modules/ParticleField.js'
 import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
+import OmniLandingRoom   from './modules/OmniLandingRoom.js'
+import NavMapPanel       from './ui/NavMapPanel.js'
+import OmniNotifyPanel   from './ui/OmniNotifyPanel.js'
 import OmniFloor         from './modules/OmniFloor.js'
 import OmniTargeting     from './modules/OmniTargeting.js'
 import OmniTargetingSettingsPanel from './ui/OmniTargetingSettingsPanel.js'
@@ -30,6 +33,7 @@ import MovementPad       from './ui/MovementPad.js'
 
 // ── Phase 4 — Core Systems ────────────────────────────────
 import OmniNode          from './systems/OmniNode.js'
+import OmniGrab          from './systems/OmniGrab.js'
 import OmniInspector     from './systems/OmniInspector.js'
 import OmniPresenter     from './systems/OmniPresenter.js'
 import OmniPocket        from './systems/OmniPocket.js'
@@ -120,6 +124,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
                    base.addModule(new ParticleField(base.context))
                    base.addModule(new PortalSpheres(base.context))
                    base.addModule(new OmniPlatform(base.context))
+                   const omniLandingRoom = base.addModule(new OmniLandingRoom(base.context))
+                   base.addModule(new NavMapPanel(base.context, omniLandingRoom, '⟐NavMap'))
+                   base.addModule(new OmniNotifyPanel(base.context))
                    base.addModule(new OmniFloor(base.context))
                    base.addModule(new OmniTargeting(base.context))
                    base.addModule(new OmniTargetingSettingsPanel(base.context))
@@ -141,6 +148,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   base.addModule(nodeManager)
   base.addModule(omniNode)
+  base.addModule(new OmniGrab(base.context, omniNode))
   base.addModule(omniInspector)
   base.addModule(omniPresenter)
   base.addModule(omniPocket)

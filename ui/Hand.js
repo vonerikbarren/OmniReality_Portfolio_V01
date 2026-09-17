@@ -43,6 +43,7 @@
  */
 
 import gsap from 'gsap'
+import OmniAddressBar from './OmniAddressBar.js'
 
 // ── Hand configuration table ──────────────────────────────────────────────────
 
@@ -464,12 +465,41 @@ export default class Hand {
     this._buildDOM()
     this._bindEvents()
     this._bindGlobalListeners()
+    this._mountSideAddressBar()
+    this._el.dataset.handOpen = 'false'   // explicit from the start, not left undefined until the first toggle
+  }
+
+  /** A small OmniAddressBar for this specific hand, sliding in from
+   *  whichever side this hand actually occupies — left for tl/bl,
+   *  right for tr/br — showing this hand's own navigation context,
+   *  not one bar shared across all four. */
+  _mountSideAddressBar () {
+    const fromLeft = this.cfg.corner === 'tl' || this.cfg.corner === 'bl'
+    const wrap = document.createElement('div')
+    wrap.className = 'omni-hand-address-bar-wrap'
+    wrap.style.cssText = `
+      position: absolute; top: 50%;
+      ${fromLeft ? 'right: 100%; margin-right: 6px;' : 'left: 100%; margin-left: 6px;'}
+      pointer-events: none;
+    `
+    this._addressBar = new OmniAddressBar({ size: 'small' })
+    wrap.appendChild(this._addressBar.mount())
+    this._el.appendChild(wrap)
+    this._addressBarWrap = wrap
+
+    // GSAP owns the full transform here — yPercent for centering,
+    // x for the slide-in — set together so neither overwrites the
+    // other, rather than mixing a manual CSS transform with GSAP's
+    // own x animation.
+    gsap.set(wrap, { yPercent: -50, x: fromLeft ? -16 : 16, opacity: 0 })
+    gsap.to(wrap, { x: 0, opacity: 1, duration: 0.35, delay: 0.15, ease: 'power2.out' })
   }
 
   /** No per-frame work — reserved for future animated indicators. */
   update (_delta) {}
 
   destroy () {
+    this._addressBar?.destroy()
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
     // Inline listeners were added to window — clean up
     window.removeEventListener('omni:hamburger',      this._onHamburgerExternal)
@@ -484,6 +514,12 @@ export default class Hand {
   setHamburgerActive (active) {
     this._hamburgerActive = active
     this._setCellActive('hamburger', active)
+    // The hamburger menu is this hand's own main panel — its open
+    // state is what "the hand is open" means for OmniGrab's
+    // reality-placement mechanic. A data attribute, not a private
+    // field, so other systems can query it via a plain DOM lookup
+    // without needing a direct reference to this Hand instance.
+    if (this._el) this._el.dataset.handOpen = String(active)
   }
 
   /** Mark the ⚇ cell active (pad is visible). */

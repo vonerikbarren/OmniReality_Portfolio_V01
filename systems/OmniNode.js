@@ -960,6 +960,14 @@ export default class OmniNode {
     this._detectHover()
   }
 
+  /** Every currently-registered node's real mesh — a public accessor
+   *  so other systems (OmniGrab, for grabbing/dragging a reality) can
+   *  raycast against the same real registry, rather than keeping a
+   *  second, separate list of the same meshes. */
+  getAllMeshes () {
+    return [...this._nodes.values()].map(n => n.mesh).filter(Boolean)
+  }
+
   destroy () {
     // Remove panel DOM
     this._el?.parentNode?.removeChild(this._el)
