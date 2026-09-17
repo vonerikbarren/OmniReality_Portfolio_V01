@@ -16,6 +16,10 @@ import ParticleField     from './modules/ParticleField.js'
 import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
 import OmniLandingRoom   from './modules/OmniLandingRoom.js'
+import OmniPlayerGame    from './systems/OmniPlayerGame.js'
+import OmniPlayerDashboard from './ui/OmniPlayerDashboard.js'
+import OmniUserProfile   from './systems/OmniUserProfile.js'
+import OmniUserPanel     from './ui/OmniUserPanel.js'
 import NavMapPanel       from './ui/NavMapPanel.js'
 import OmniNotifyPanel   from './ui/OmniNotifyPanel.js'
 import OmniFloor         from './modules/OmniFloor.js'
@@ -186,6 +190,15 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniSystemCreatorPanel = new OmniSystemCreatorPanel(base.context, nodeLoader, omniExpressionator)
   base.addModule(omniSystemCreatorPanel)
+
+  // ── OmniPlayer ────────────────────────────────────────────
+  const omniPlayerGame = base.addModule(new OmniPlayerGame())
+  base.addModule(new OmniPlayerDashboard(base.context, omniPlayerGame))
+  omniPocket.setPlayerGame(omniPlayerGame)   // real inventory wiring, per "OmniPocket will be simply inventory for this"
+  omniExpressionator.play('playerAura', { color: omniPlayerGame.getCurrentVisorColor() })   // small, always-in-front, reacts live to emotional-state events
+
+  const omniUserProfile = base.addModule(new OmniUserProfile())
+  base.addModule(new OmniUserPanel(base.context, omniUserProfile))
 
   const omniSystemAnimatorPanel = new ComingSoonPanel(base.context, {
     navItem: '⟐OmniSystemAnimator', title: '⟐OmniSystem Animator', winId: 'sysanimator',

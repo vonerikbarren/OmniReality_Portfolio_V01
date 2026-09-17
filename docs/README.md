@@ -145,6 +145,10 @@ still purely conceptual. Check each doc's own Status section.
   — a game-like identification/access badge system for OmniPlayer,
   likely converging with the tier system and the access overview;
   also records the Logic-style complexity-level interface pattern.
+- [`omniproducts/OMNIPLAYER_GAME_DESIGN.md`](omniproducts/OMNIPLAYER_GAME_DESIGN.md)
+  — the real gaming interface, built and verified: 30 Core Realities,
+  OmniPocket as real inventory, the reactive particle aura, and the
+  tabbed Dashboard.
 - [`omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md`](omniproducts/CAMERA_MOVEMENT_OPTIONS_DESIGN.md)
   — real panel built (WASD speed steps); orbit/altitude speeds and
   decoupled automatic rotation designed but not yet implemented.

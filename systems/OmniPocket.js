@@ -168,7 +168,7 @@ const STORE_KEY = 'omni:pocket'
 
 // ── Tab IDs ───────────────────────────────────────────────────────────────────
 
-const TABS = ['extract', 'shortcuts', 'attached']
+const TABS = ['extract', 'shortcuts', 'attached', 'aspects']
 
 // ── Stylesheet ────────────────────────────────────────────────────────────────
 
@@ -682,6 +682,12 @@ export default class OmniPocket {
     // ── Shared node map (shadow of OmniNode storage) ───────────────────
     this._nodeMap      = new Map()
 
+    // ── OmniPlayer's game state — injected via setPlayerGame(), since
+    //    OmniPocket is constructed before OmniPlayerGame in main.js's
+    //    existing order; real inventory for collected Aspects, per
+    //    "OmniPocket will be simply inventory for this." ─────────────
+    this._playerGame   = null
+
     // ── Camera fly state ───────────────────────────────────────────────
     this._flying       = false
     this._flyTween     = null
@@ -772,6 +778,20 @@ export default class OmniPocket {
 
   toggle () { this._isOpen ? this.close() : this.open() }
 
+  /** Real wiring for OmniPlayerGame — injected rather than
+   *  constructor-ordered, since OmniPocket already exists earlier in
+   *  main.js's own instantiation order. */
+  setPlayerGame (game) {
+    this._playerGame = game
+    this._refreshAspectsBadge()
+    if (this._activeTab === 'aspects') this._renderAspectsTab()
+  }
+
+  _refreshAspectsBadge () {
+    const badge = this._el?.querySelector('#opk-badge-aspects')
+    if (badge && this._playerGame) badge.textContent = String(this._playerGame.getTotalAspectsCollected())
+  }
+
   // ── Panel DOM ────────────────────────────────────────────────────────────
 
   _buildPanel () {
@@ -806,12 +826,17 @@ export default class OmniPocket {
           ⌂ Attached
           <span class="opk-tab-badge" id="opk-badge-attached">0</span>
         </button>
+        <button class="opk-tab"          data-tab="aspects"    role="tab" title="Collected Reality Aspects (OmniPlayer)">
+          ⟐ Aspects
+          <span class="opk-tab-badge" id="opk-badge-aspects">0</span>
+        </button>
       </div>
 
       <!-- Tab panes — one per tab, only active pane is visible -->
       <div class="opk-pane is-active" id="opk-pane-extract"   role="tabpanel"></div>
       <div class="opk-pane"           id="opk-pane-shortcuts"  role="tabpanel"></div>
       <div class="opk-pane"           id="opk-pane-attached"   role="tabpanel"></div>
+      <div class="opk-pane"           id="opk-pane-aspects"    role="tabpanel"></div>
 
       <!-- Action strip — selected node context -->
       <div class="opk-action-strip">
@@ -913,6 +938,7 @@ export default class OmniPocket {
       case 'extract':   this._renderExtractTab();   break
       case 'shortcuts': this._renderShortcutsTab(); break
       case 'attached':  this._renderAttachedTab();  break
+      case 'aspects':   this._renderAspectsTab();   break
     }
   }
 
@@ -1046,6 +1072,39 @@ export default class OmniPocket {
     }).join('')
 
     this._bindItemActions(pane)
+  }
+
+  // ── ASPECTS tab (OmniPlayer inventory) ─────────────────────────────────────
+
+  _renderAspectsTab () {
+    const pane = this._el?.querySelector('#opk-pane-aspects')
+    if (!pane) return
+
+    if (!this._playerGame) {
+      pane.innerHTML = /* html */`
+        <div class="opk-pane-empty">
+          <span class="opk-pane-empty-glyph">⟐</span>
+          <span>OmniPlayer isn't connected yet.</span>
+        </div>
+      `
+      return
+    }
+
+    const realities = this._playerGame.getRealities()
+    pane.innerHTML = realities.map(r => {
+      const collected = r.aspects.filter(a => a.collected).length
+      const total = r.aspects.length
+      const dotColor = r.exposed ? 'rgba(255,215,0,0.85)' : 'rgba(140,196,255,0.55)'
+      return /* html */`
+        <div class="opk-item" data-item-id="${r.id}">
+          <span class="opk-item-dot" style="background:${dotColor};border-color:${dotColor}"></span>
+          <div class="opk-item-info">
+            <div class="opk-item-name">${r.glyph} ${r.label}${r.exposed ? ' — Truth Exposed' : ''}</div>
+            <div class="opk-item-sub">${collected} / ${total} aspects collected</div>
+          </div>
+        </div>
+      `
+    }).join('')
   }
 
   // ── Pane item action delegation ───────────────────────────────────────────

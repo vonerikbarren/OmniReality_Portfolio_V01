@@ -191,9 +191,77 @@ function startGalaxyPreset (ctx, opts = {}) {
   return { update, dispose }
 }
 
+// ── Preset: playerAura — small, always-in-front particle aura ──────────────
+// Camera-relative like entrance, but continuous like galaxy — never
+// auto-disposes. Color reacts live to OmniPlayerGame's own emotional-
+// state events (omni:player-emotional-state-changed), matching the
+// request that this work "in tandem with any other OmniProduct"
+// rather than needing direct, per-product wiring — anything that
+// dispatches that real event changes the aura's color, not just
+// OmniPlayerGame specifically.
+function startPlayerAuraPreset (ctx, opts = {}) {
+  const count      = opts.count ?? 24        // small, per the request — a subtle presence, not a spectacle
+  const spread     = opts.spread ?? 0.35     // tight cluster right in front of the camera
+  const forwardOffset = opts.forwardOffset ?? -1.4   // how far in front of the camera the aura sits
+  const drift      = opts.drift ?? 0.15      // gentle wander speed
+  let color        = opts.color ?? 0xffffff
+
+  const basePositions = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2
+    const r = (Math.sin(i * 12.9898) * 0.5 + 0.5) * spread
+    basePositions[i * 3]     = Math.cos(angle) * r
+    basePositions[i * 3 + 1] = Math.sin(angle) * r
+    basePositions[i * 3 + 2] = 0
+  }
+
+  const geo = new THREE.BufferGeometry()
+  const verts = new Float32Array(count * 3)
+  geo.setAttribute('position', new THREE.BufferAttribute(verts, 3))
+
+  const mat = new THREE.PointsMaterial({
+    color, size: 0.05, map: opts.dotTexture,
+    transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  })
+  const points = new THREE.Points(geo, mat)
+  points.frustumCulled = false
+  points.position.set(0, 0, forwardOffset)
+  ctx.camera.add(points)   // camera-relative — always in front, regardless of where the camera looks
+
+  const onStateChanged = (e) => {
+    if (!e.detail?.color) return
+    mat.color.set(e.detail.color)
+  }
+  window.addEventListener('omni:player-emotional-state-changed', onStateChanged)
+
+  let elapsed = 0
+  function update (delta) {
+    elapsed += delta
+    const posAttr = geo.attributes.position
+    for (let i = 0; i < count; i++) {
+      const wobble = Math.sin(elapsed * drift * 4 + i) * 0.05
+      verts[i * 3]     = basePositions[i * 3]     + wobble
+      verts[i * 3 + 1] = basePositions[i * 3 + 1] + Math.cos(elapsed * drift * 3 + i) * 0.05
+      verts[i * 3 + 2] = basePositions[i * 3 + 2] + wobble
+    }
+    posAttr.needsUpdate = true
+  }
+
+  function dispose () {
+    window.removeEventListener('omni:player-emotional-state-changed', onStateChanged)
+    ctx.camera.remove(points)
+    geo.dispose()
+    mat.dispose()
+  }
+
+  return { update, dispose }
+}
+
 const PRESETS = {
   entrance: startEntrancePreset,
   galaxy: startGalaxyPreset,
+  playerAura: startPlayerAuraPreset,
 }
 
 export default class OmniExpressionator {

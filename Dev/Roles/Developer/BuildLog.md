@@ -167,6 +167,45 @@ Also added `⟐NavMap` to `Drawer.js`'s real item list immediately —
 directly applying the lesson from the OmniTargeting bug caught two
 versions ago. 19 checks, all passing.
 
+### V26
+The OmniPlayer gaming interface — a large, multi-system build in one
+pass. `data/OmniPlayerRealities.js`: 30 Core Realities x 5 Aspects
+each (150 total), reusing the same "30" already meaningful elsewhere
+in this project. `systems/OmniPlayerGame.js`: real collection logic,
+truth-exposure on completing a reality, a 5-state emotional system
+(Neutral/Curious/Focused/Alert/Triumphant), and real persistence.
+`OmniPocket.js` extended with a genuine 4th tab ("Aspects") as real
+inventory, per the explicit request, rather than a separate inventory
+UI. `OmniExpressionator.js` gained a new `playerAura` preset — small,
+camera-relative, continuous, reacting live to a real, generic
+emotional-state event any OmniProduct can dispatch. Exposing a truth
+pushes a real notification through the already-built OmniNotify
+system. `ui/OmniPlayerDashboard.js`: 5 tabs, with Status and Visors
+carrying real data and Boundaries/Languages/Skills left as honest,
+clearly-labeled placeholders rather than invented content. 22 checks,
+all passing, including the full real chain from a single collected
+Aspect through to a real notification appearing in OmniNotifyPanel.
+
+### V27
+OmniUser built — the non-gamer counterpart to OmniPlayer, per the
+explicit distinction given. `data/OmniUserWellness.js`: the 14
+Dimensions of Wellness (Life through International), each a real
+0–100 rating defaulting to a neutral 50, not 0. `systems/OmniUserProfile.js`:
+real profile fields plus wellness state, with real persistence and
+clamping (a value outside 0–100 is genuinely clamped, not silently
+accepted). `ui/OmniUserPanel.js`: a real, separate panel — not a
+Dashboard tab — toggled from a new button in `OmniPlayerDashboard`'s
+own header, keeping the stated audience distinction real
+structurally. Also made the Dashboard's Skills tab real: a genuine,
+persisted "Number of Life Skills" count on `OmniPlayerGame`, replacing
+what had been an honest placeholder, per the explicit request that
+this be shown even with no fuller design given for what constitutes
+a skill. One real bug caught and fixed in the same pass — an early,
+nonsensical fallback chain in `getLifeSkillsCount()` — fixed before
+it shipped. 18 checks, all passing, including the full end-to-end
+connection from the real Dashboard button to the real, separate
+OmniUserPanel opening.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
