@@ -28,16 +28,34 @@ a keyboard is inherently flat rather than orbital.
 
 A vertical strip of six blank key options (the panel's own "header,"
 oriented vertically per the request) sits on the left; sections
-extend rightward from there, each one four vertical sliders side by
-side, like a small EQ. An "Add Section" control keeps extending the
-keyboard further right — confirmed directly, clicking it genuinely
-grows the section count and persists it, rather than resetting on
-reload.
+extend rightward from there, each one four real cryptex ring types
+side by side, like a small EQ. An "Add Section" control keeps
+extending the keyboard further right — confirmed directly, clicking
+it genuinely grows the section count and persists it, rather than
+resetting on reload.
 
-Sliders are real `<input type="range">` elements, rotated via CSS
-rather than the non-standard, Firefox-only `orient="vertical"`
-attribute — the rotate approach is the reliable, cross-browser way to
-get a vertical slider from a normal horizontal one.
+**A real correction from this doc's own earlier version**: the
+sections were first built as blank, generic 0–100 sliders with no
+real meaning — a genuine misunderstanding, since OmniKryptx's
+sections were always meant to *be* the cryptex, using the same real
+type vocabulary as the 3D astrolabe (`modules/OmniCryptx.js`), not an
+unrelated slider panel that happened to look similar. Fixed: both now
+import from one shared module, `data/OmniCryptxTypes.js` — confirmed
+directly, not assumed, that both surfaces render the exact same color
+for the exact same type. Each of a section's 4 slots gets a real
+type (Number, typed password, State, MasterKeySymbol, etc., cycling
+through the full vocabulary as sections are added), with the right
+widget for that type — a genuine `<input type="range">` for a
+bounded value like Number, but a real text field for a typed
+password or a chosen symbol, never a slider wearing a mismatched
+label.
+
+Range-type slots still use real `<input type="range">` elements,
+rotated via CSS rather than the non-standard, Firefox-only
+`orient="vertical"` attribute — the rotate approach is the reliable,
+cross-browser way to get a vertical slider from a normal horizontal
+one. The other widget kinds (text fields, selects) are deliberately
+left upright, not rotated — a sideways text field is unusable.
 
 The six vertical key options are deliberately blank — "you can make
 them blank," per the request, the same honest not-yet-filled-in

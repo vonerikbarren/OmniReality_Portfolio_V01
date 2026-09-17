@@ -89,6 +89,29 @@ unreachable from the Left Drawer since it was built.
 
 ---
 
+### V21
+`modules/OmniCryptx.js` built — the core, tier-agnostic ring engine
+underneath Admin/Standard/CustomOmniCryptx: nested rings sharing one
+axis, radius growing with depth, innermost ring spinning fastest.
+Clicking a ring's marker drills in — generates a new, smaller ring
+stack centered on that marker's real world position, one fewer ring
+type, recursively, only ever built the moment it's needed. Verified
+directly, 22 checks, including the recursive drill-in itself and
+correct cleanup through a full parent/child/grandchild chain.
+
+### V22
+Real bug fix, not a new feature: OmniKryptx's sections
+(`ui/OmniKeys.js`) had been built as blank, generic 0–100 sliders
+with no real meaning — a genuine misunderstanding, since they were
+always meant to be the actual cryptex ring types, the same ones
+`modules/OmniCryptx.js` uses for its 3D rings. Fixed by extracting a
+shared `data/OmniCryptxTypes.js` module — both surfaces now read
+from one real source of truth, confirmed directly (both render the
+identical color for the identical type, not two coincidentally-
+matching copies), and each of a section's slots now uses the right
+widget for its real type (a range slider for Number, a text field
+for a typed password, never a slider wearing a mismatched label).
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

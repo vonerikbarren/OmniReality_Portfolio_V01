@@ -102,24 +102,126 @@ extending outward. The keyboard's own vertical-slider widget is a
 strong candidate to reuse directly here rather than building a second,
 parallel vertical-scroll control.
 
-## Per-ring types — the real, current default list
+## Per-ring types — a real hierarchy, not a flat list
 
-A config panel lets someone assign a type to each ring — what kind of
-value that ring's layer actually requires. No fixed number of rings
-assumed (matches OmniCryptexLab's own "generated on demand" nature),
-but the available **types** are fixed, for now, to this list: Symbol,
-Time (military format), Letter, Number, State, px, py, pz, typed
-password. This is an explicit placeholder set — a fuller schema
-worked out separately (with Copilot, previously) may replace or
-extend it once it's recovered; not designed against that fuller
-schema yet since it isn't in hand.
+Corrected from the earlier flat 9-item list: the symbol-based types
+form their own real tier, above the basic value types, not equal
+members of one list.
 
-Notably, **px/py/pz being literal spatial coordinates** means a ring's
-"password" can genuinely be a specific point in space, not just a
-typed value — directly consistent with the multi-factor, per-symbol
-security idea raised earlier, and a real, concrete link toward the
-spatial/sub-password memory-palace mechanic already documented in
-`OMNISENSE_DASHBOARD_DESIGN.md`.
+**The symbol tier, highest to lowest:**
+- **MasterKeySymbol** — an AdminMasterKey, and a real, deliberate
+  correction worth stating plainly: this is **not** a bypass or
+  skeleton key. Having the correct MasterKeySymbol does not by itself
+  grant access — it must still match the full stack alongside it: the
+  string of keys/symbols/numbers, the location (px/py/pz), Music
+  Notation (see below), and field-specific passwords the reality
+  itself requires. MasterKeySymbol is a genuine failsafe factor,
+  co-equal with everything else it's checked against, not a factor
+  that outranks or overrides them. This is the same "having the
+  address isn't the same as having access" philosophy the whole
+  Cryptex was founded on, now proven to hold even at the admin tier —
+  a leaked master key alone still isn't enough on its own.
+  **Placeholder for now**: ⟐ (the project's own existing symbol),
+  30 of them — real, distinct MasterKeySymbol glyphs to come later.
+- **KeySymbol** — below MasterKeySymbol.
+- **Symbol** — the general case.
+
+Both KeySymbol and Symbol can be represented as a real **Unicode
+symbol** or an **emoji**, specifically for memorability — someone
+can actually recognize and recall an emoji in a way an arbitrary
+generated glyph doesn't support. This is a direct, practical
+extension of the "reverse programming the user" memory-palace
+framing (`OMNISENSE_DASHBOARD_DESIGN.md`) — the building blocks of
+the password are themselves made memorable, not just the act of
+placing them. These symbols are also confirmed as genuine, literal
+identifiers in their own right, not purely mnemonic decoration.
+
+**The basic value types, alongside the symbol tier:** Time (military
+format), Letter, Number, State, px, py, pz, typed password, and now
+**Music Notation** — a real, new addition, not yet specified beyond
+its name (what "matching" a music-notation factor actually requires
+— a note, a chord, a short rhythm — isn't decided). Still an explicit
+placeholder set overall — a fuller schema worked out separately (with
+Copilot, previously) may replace or extend it once recovered.
+
+Notably, **px/py/pz being literal spatial coordinates** means a
+ring's "password" can genuinely be a specific point in space, not
+just a typed value — directly consistent with the multi-factor,
+per-symbol security idea raised earlier, and a real, concrete link
+toward the spatial/sub-password memory-palace mechanic already
+documented in `OMNISENSE_DASHBOARD_DESIGN.md`.
+
+## The full authentication stack, layered
+
+Confirmed as genuinely layered, not a single check: the ring sequence
+itself (whichever types a given reality's rings use) sits underneath
+**the user's own personal password**, on top of everything else —
+authenticating fully means satisfying the ring stack *and* the
+person's own separate password, not one or the other.
+
+## Rings are pre-made, not built from scratch per node
+
+OmniCryptexLab's panel already contains its vertical sliders,
+pre-made — a real, ready-to-use library of ring configurations, not
+something assembled fresh every time a node needs securing.
+
+## Fixed vs. adjustable rings — the actual control/privacy mechanism
+
+A real, load-bearing design decision: the platform owner authors
+**Objective** ring configurations (tying directly into OmniReality
+Primitives' own objective structures, `OMNISENSE_DASHBOARD_DESIGN.md`).
+For any other visiting user, depending on which reality they're in,
+some of that reality's ring sequences are **fixed** — locked by the
+reality's own definition, not user-editable — while others remain
+**adjustable**, left open for that visitor to set their own private
+values on their own vertical wheels.
+
+This is the actual mechanism for balancing platform control with
+user privacy: fixed rings enforce whatever rules the reality's
+creator needs enforced; adjustable rings are genuinely private to the
+visitor, even from the platform's own objective structure. Not one
+system with an exception — both halves are real, permanent parts of
+how a ring behaves. Which specific rings are fixed vs. adjustable for
+a given reality is set by that reality's own Objective definition, not
+a global rule.
+
+## The 30 MasterKeySymbols are the same 30 as the custom alphabet
+
+Confirmed directly — not a coincidence. The 30 placeholder ⟐
+MasterKeySymbols and the 30-letter custom alphabet (raised much
+earlier, intended for the eventual Product-to-Tier mapping exercise,
+`Dev/Roles/Developer/DeveloperQueue.md` item 9) are the same 30.
+Should be scaffolded so one real system feeds the other later, not
+built as two unrelated sets of 30 that happen to share a count.
+
+## Music Notation — confirmed idea-only, deferred
+
+Explicitly: just an idea for now, nothing more specified. What
+"matching" a music-notation factor would actually require — a note,
+a chord, a short rhythm — is not decided and not being designed
+against yet.
+
+## Three real tiers of OmniCryptx, not one
+
+A direct answer to "where does entering a MasterKeySymbol actually
+happen": OmniCryptx isn't a single panel — it's three distinct
+tiers, each its own real surface:
+
+- **AdminOmniCryptx** — where MasterKeySymbol entry actually lives;
+  the admin-only tier.
+- **StandardOmniCryptx** — the default tier; exact scope relative to
+  Custom not yet fully specified, but understood as the platform's
+  own baseline ring configuration, ahead of any personal
+  customization.
+- **CustomOmniCryptx** — the personal tier: what a user builds for
+  their own OS, and what visitors to that specific OS actually
+  encounter.
+
+Not yet resolved: Standard's precise boundary against Custom. Not
+blocking the ring geometry itself, though, since the core
+nested-ring mechanic is tier-agnostic — Admin/Standard/Custom are
+different configurations of the same underlying engine, not three
+different engines.
 
 ## The marble-maze idea — documented, not built
 
@@ -133,10 +235,10 @@ the future, not part of the near-term build.
 
 ## Status
 
-Purely conceptual, no code. Confirmed: OmniCryptx (this whole system)
-is now sequenced ahead of the OmniSense dashboard, not after — its
-passcryptx panel depends on this existing first. The 9-type ring list
-and the OmniKryptx slider reuse are real, current decisions; a fuller
-ring-type schema may replace them once recovered. No confirmation yet
-of exactly how many taxonomy categories exist beyond Physical/
-Digital/Logical, and the marble-maze idea remains explicitly deferred.
+`modules/OmniCryptx.js` (the core ring engine) and OmniKryptx's own
+sections (`ui/OmniKeys.js`) now genuinely share one source of truth —
+`data/OmniCryptxTypes.js` — confirmed directly, not assumed (see
+`Dev/Roles/Developer/BuildLog.md` V21–V22). Everything else remains
+conceptual: the Admin/Standard/Custom tier configurations themselves,
+MasterKeySymbol's real placeholder glyphs (⟐×30), Music Notation's
+actual mechanic, and the marble-maze idea.

@@ -59,6 +59,7 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
+import { ALL_RING_TYPES, colorFor, widgetFor } from '../data/OmniCryptxTypes.js'
 
 const COLS = 16
 const PAGE_COUNT = 20
@@ -718,10 +719,12 @@ const STYLES = /* css */`
 }
 
 .ok-kryptx-slider-wrap {
-  width          : 32px;
+  width          : 60px;
   display        : flex;
+  flex-direction : column;
   align-items    : center;
   justify-content: center;
+  gap            : 4px;
 }
 
 /* The reliable, cross-browser way to get a vertical range slider —
@@ -733,6 +736,33 @@ const STYLES = /* css */`
   width          : 140px;
   transform      : rotate(-90deg);
   accent-color   : var(--ok-accent);
+}
+
+/* The new, real per-type widgets — deliberately NOT rotated, unlike
+   the slider above. A sideways text field is unusable; these stay
+   upright within their own vertical slot instead. */
+.ok-kryptx-text, .ok-kryptx-symbol, .ok-kryptx-select {
+  width          : 56px;
+  background     : rgba(255,255,255,0.05);
+  border         : 1px solid var(--ring-color, var(--ok-border));
+  border-radius  : 4px;
+  color          : var(--ok-text);
+  font-family    : inherit;
+  font-size      : 11px;
+  padding        : 4px;
+  text-align     : center;
+}
+.ok-kryptx-symbol { font-size: 16px; }
+
+.ok-kryptx-ring-label {
+  font-size      : 8px;
+  letter-spacing : 0.04em;
+  color          : var(--ring-color, var(--ok-text-dim));
+  text-transform : uppercase;
+  text-align     : center;
+  max-width      : 60px;
+  overflow       : hidden;
+  white-space    : nowrap;
 }
 
 .ok-kryptx-add-section {
@@ -1037,15 +1067,28 @@ export default class OmniKeys {
    *  type="range">, rotated via CSS rather than relying on the
    *  non-standard, Firefox-only orient="vertical" attribute — the
    *  rotate approach works consistently across real browsers. */
+  /** Real cryptex ring types now, not blank generic sliders — this
+   *  is the fix: OmniKryptx's sections were always meant to BE the
+   *  cryptex, using the same real type vocabulary as the 3D
+   *  astrolabe (`modules/OmniCryptx.js`), not an unrelated slider
+   *  panel that happened to look similar. Each section is one ring
+   *  stack; each of its 4 slots gets a real type, cycling through
+   *  the full vocabulary as more sections are added, with the right
+   *  widget for that type — a slider is wrong for a typed password
+   *  or a chosen symbol, so those get their own real input kind. */
   _renderKryptxSections (container) {
     if (!container) return
     let html = ''
     for (let s = 0; s < this._kryptxSectionCount; s++) {
       html += `<div class="ok-kryptx-section" data-section-index="${s}">`
       for (let k = 0; k < 4; k++) {
+        const type = ALL_RING_TYPES[(s * 4 + k) % ALL_RING_TYPES.length]
+        const color = colorFor(type)
+        const widget = widgetFor(type)
         html += `
-          <div class="ok-kryptx-slider-wrap">
-            <input type="range" class="ok-kryptx-slider" min="0" max="100" value="50" data-section="${s}" data-slot="${k}">
+          <div class="ok-kryptx-slider-wrap" style="--ring-color:${color}" data-ring-type="${type}">
+            <span class="ok-kryptx-ring-label">${type}</span>
+            ${this._buildKryptxWidget(type, widget, s, k)}
           </div>
         `
       }
@@ -1059,6 +1102,33 @@ export default class OmniKeys {
       try { localStorage.setItem('omni:omnikeys:kryptx-sections', String(this._kryptxSectionCount)) } catch (_) {}
       this._renderKryptxSections(container)
     })
+  }
+
+  /** The right widget per type, not "everything is secretly a
+   *  0-100 slider wearing a label." Symbol/KeySymbol/MasterKeySymbol
+   *  use a short text field for a real Unicode symbol or emoji, per
+   *  the confirmed memorability decision — a full picker UI is real,
+   *  separate future work, not built here. Music Notation is
+   *  explicitly idea-only/deferred (architecture/OMNICRYPTEXLAB_DESIGN.md)
+   *  and gets an honest placeholder text field for the same reason. */
+  _buildKryptxWidget (type, widget, s, k) {
+    const dataAttrs = `data-section="${s}" data-slot="${k}" data-ring-type="${type}"`
+    switch (widget) {
+      case 'text':
+        return `<input type="text" class="ok-kryptx-text" placeholder="password" ${dataAttrs}>`
+      case 'symbol-picker':
+        return `<input type="text" class="ok-kryptx-symbol" maxlength="2" placeholder="⟐" ${dataAttrs}>`
+      case 'letter-wheel':
+        return `<input type="text" class="ok-kryptx-symbol" maxlength="1" placeholder="A" ${dataAttrs}>`
+      case 'note-picker':
+        return `<input type="text" class="ok-kryptx-symbol" placeholder="♪" title="Music Notation — idea only, deferred" ${dataAttrs}>`
+      case 'toggle':
+        return `<select class="ok-kryptx-select" ${dataAttrs}><option>On</option><option>Off</option></select>`
+      case 'time':
+        return `<input type="time" class="ok-kryptx-select" ${dataAttrs}>`
+      default:   // 'slider' — Number, px, py, pz: genuinely bounded, continuous values
+        return `<input type="range" class="ok-kryptx-slider" min="0" max="100" value="50" ${dataAttrs}>`
+    }
   }
 
   /** Swaps views in place — rebuilds the panel's own DOM rather than
