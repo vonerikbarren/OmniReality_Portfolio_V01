@@ -266,6 +266,17 @@ spawning new panels on top of it. 17 checks, all passing, including
 the trickiest one — a nested open branch correctly force-collapsing
 when its parent closes, with no orphaned nodes left behind.
 
+### V37
+Real bug caught and fixed while tracing OmniJsonifier's own step-by-
+step behavior, before testing hit it: `_loadJson()` never despawned
+the previous tree before building a new one, meaning loading a
+second JSON string would have left the first tree's nodes — and any
+branch a user had opened — orphaned in the scene. Fixed by calling
+the already-real `_collapseRecursive()` on the outgoing tree first,
+which already handles despawning both a node's open children and the
+node itself. 5 checks, all passing, confirming the previous tree's
+root is genuinely removed and the new tree starts clean.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

@@ -286,3 +286,40 @@ the actual landing-page content — the local static page in a
 its own section — has not been started. Nothing in `/pages` exists
 yet.
 
+## 21. OmniInspector's data-tab — screen-space panel view
+
+Checked directly: the node data-tab is a real 3D mesh with a canvas
+painted onto it as a texture, which is why it currently needs to
+face the camera to use its own scroll controls. The canvas already
+exists as a plain 2D canvas before it becomes a texture, so a
+screen-space panel view wouldn't mean rebuilding the rendering — just
+relocating where that same canvas visually lives. Not started;
+`OmniInspector.js` is 3800+ lines and deserves its own focused pass,
+not a rushed edit alongside other work.
+
+## 22. OmniDraw(Dynamic) — still-deferred pieces
+
+Rotation styles (linear/vertical/diagonal whip), the qualitative/
+quantitative command panel, and FilterMorphing-style capture+texture+
+tooltip remain exactly where they were scoped out to — real, agreed
+future work, not started. FilterMorphing itself still doesn't exist
+anywhere in the codebase.
+
+## 23. OmniJsonifier — the "shrink as it grows" option
+
+Raised as a real "maybe," not committed to: showing the entire JSON
+tree at once, with nodes auto-shrinking in scale as the total node
+count grows, as an alternative to the current manual per-branch
+toggle. Not designed in detail; the toggle system itself is real and
+built.
+
+## 24. The 30-letter Product-to-Tier mapping — still not started
+
+The reclassification itself is done (`architecture/THE_30_RECLASSIFICATION.md`)
+and two of its letters are already confirmed load-bearing (Desire/
+PrimaryForce, wired into OmniDraw's real Desire/PrimaryForce hook).
+The actual mapping — which of the 30 letters corresponds to which
+existing or future OmniProduct, and the resulting official Product-
+to-Tier capability list — has not been started. This was the
+original ask behind item 9, further back in this queue.
+

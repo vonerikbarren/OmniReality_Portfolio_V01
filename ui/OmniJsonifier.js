@@ -196,6 +196,13 @@ export default class OmniJsonifier {
     }
     this._clearError()
 
+    // Real cleanup — without this, loading a second JSON string would
+    // leave the previous tree's nodes (and any of its open branches)
+    // orphaned in the scene, since this._tree is about to be overwritten.
+    // _collapseRecursive already despawns the node itself, not just its
+    // children, so this one call is sufficient.
+    if (this._tree) this._collapseRecursive(this._tree)
+
     const cam = this.ctx.camera
     const dir = new THREE.Vector3()
     cam.getWorldDirection(dir)
