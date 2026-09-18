@@ -402,6 +402,51 @@ pairs but is actually a plain array of node objects — confirmed the
 real format directly via a debug script rather than continuing to
 guess, then corrected the test.
 
+### V50
+The last two pieces of OmniChronos's originally-planned build order.
+`modules/ChronosRealityNode.js` — the real, large node traveling
+through the Master Tunnel as Primary Time plays, deliberately kept
+outside OmniNode's normal registry, the same way RootSpace's own
+tunnel meshes are. Its Y-position loops once per real day across the
+tunnel's actual floor-to-ceiling span, verified at time zero, at the
+real midpoint, and correctly wrapping after a full day rather than
+climbing past the ceiling. Real video-texture support confirmed: a
+genuine, muted `<video>` element with its own native loop disabled,
+its playback position kept in direct, tested correlation with
+Primary Time's own value rather than left to its native clock.
+`utils/PerspectiveTime.js` — the real `perspectiveTime(object,
+TimeData)` mechanism and the X-axis's stable per-perspective slots,
+confirmed to share the exact same day-cycle Y-mapping the traveling
+node itself uses, tested directly rather than assumed. 13 checks, all
+passing on the first run — 41 total across the full OmniChronos build.
+
+### V52
+Real bug fixed: the Master Clock's own creation was auto-selecting
+itself at app startup, which pinned OrbitControls' orbit pivot to it
+permanently (`MovementPad.js` re-centers orbiting on whatever gets
+selected) and force-opened the Inspector (`OmniInspector.js` opens on
+any selection) — neither correct for a structural, non-user node.
+Fixed with a real, optional `skipAutoSelect` flag on
+`omni:node-create-request`, respected only when explicitly set.
+`ChronosFloorClock.js` now sets it; every normal node's behavior is
+unaffected. 6 checks, all passing, including a direct regression
+check confirming ordinary node creation still auto-selects exactly
+as before.
+
+### V53
+Three new real chart types added to OmniCellPanel — Pie, Radar, Area
+— alongside the existing Bar/Line. `_drawChart` restructured so
+Pie/Radar (genuinely non-Cartesian, no shared axes with the others)
+get their own dedicated setup rather than being forced through
+Bar/Line's scales. Pie deliberately shows only the first visible
+series' own breakdown by label, colored per-label; Radar renders
+every visible series as its own closed polygon across shared labeled
+axes, colored per-series — the real target for OmniUser's own 14
+wellness dimensions, flagged back in the original SWOT. Area reuses
+Line's own scales as its natural filled sibling. 7 checks, all
+passing, including confirming cycling through all five types in
+sequence leaves no leftover elements behind.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

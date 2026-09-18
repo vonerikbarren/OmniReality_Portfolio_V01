@@ -184,6 +184,40 @@ be genuinely correlated with Primary Time's own clock value, not
 played back independently. Switching spaces (the X-axis) happens
 concurrently with this, not as a separate mode that pauses it.
 
+## Built and tested — the traveling reality-node and perspectiveTime
+
+`modules/ChronosRealityNode.js` is the real, large node that travels
+through the Master Tunnel as Primary Time plays — a structural part
+of the tunnel system itself, deliberately not registered through
+OmniNode's normal node-create-request path, the same way RootSpace's
+own tunnel meshes aren't. Its Y-position loops once per real day
+(86400 seconds) across the tunnel's own real floor-to-ceiling span —
+tying naturally into the floor clock's own 24-hour read rather than
+an arbitrary, disconnected cycle length. Confirmed and tested: starts
+at the floor at time zero, reaches the real midpoint at exactly half
+a day, and correctly loops back to the floor after a full day rather
+than climbing past the ceiling.
+
+Real, any-texture support, including video — confirmed and tested:
+a video texture creates a genuine, muted `<video>` element with its
+own native loop deliberately disabled, since Primary Time itself
+drives the loop instead. The video's own playback position is kept
+in real, direct correlation with Primary Time's current cycle
+position, not left to play on its own native clock.
+
+`utils/PerspectiveTime.js` is the real X-axis mechanism —
+`perspectiveTime(object, TimeData)`, confirmed directly as the
+concrete mechanism behind switching spaces on the X-axis while
+Primary Time keeps playing on Y. Each named perspective gets a real,
+stable X-offset slot, assigned once and never reassigned. Confirmed
+and tested that `perspectiveTime()`'s own Y-mapping uses the exact
+same day-cycle logic the traveling reality-node itself uses, so a
+perspective's view of a given TimeData lines up with the real tunnel
+height rather than a second, disconnected scale.
+
+13 further checks, all passing — 41 total across the whole OmniChronos
+build so far.
+
 ## Built and tested — the real first pass
 
 `RootSpace.js` gained a real, toggleable, fully-reversible
@@ -211,6 +245,24 @@ reset a user's own chart-type or series-visibility choice on its
 own periodic refresh.
 
 28 checks total across both build passes, all passing.
+
+## Real bug fixed — the Master Clock no longer hijacks the camera or Inspector
+
+Every node creation unconditionally auto-selected itself
+(`OmniNode.js`'s own `_createNode`), which two other systems key
+off: `MovementPad.js` moves OrbitControls' own pivot to whatever was
+just selected, and `OmniInspector.js` force-opens on selection. Since
+the Master Clock creates itself once at real app startup, this
+pinned the camera's orbit target to the clock permanently and forced
+the Inspector open on load — neither of which makes sense for a
+structural, non-user node.
+
+Fixed with a real, optional `skipAutoSelect` flag on
+`omni:node-create-request`, respected only when explicitly set —
+every normal, user-created node's behavior is completely unaffected.
+`ChronosFloorClock.js` now sets it. Verified directly, including the
+critical regression check that a normal node with no flag still
+auto-selects exactly as before.
 
 ## Status
 

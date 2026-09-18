@@ -313,13 +313,18 @@ count grows, as an alternative to the current manual per-branch
 toggle. Not designed in detail; the toggle system itself is real and
 built.
 
-## 24. The 30-letter Product-to-Tier mapping — still not started
+## 24. The 30-letter Product-to-Tier mapping — a real first pass done
 
-The reclassification itself is done (`architecture/THE_30_RECLASSIFICATION.md`)
-and two of its letters are already confirmed load-bearing (Desire/
-PrimaryForce, wired into OmniDraw's real Desire/PrimaryForce hook).
-The actual mapping — which of the 30 letters corresponds to which
-existing or future OmniProduct, and the resulting official Product-
-to-Tier capability list — has not been started. This was the
-original ask behind item 9, further back in this queue.
+The reclassification itself is done
+(`architecture/THE_30_RECLASSIFICATION.md`), and now a real, reasoned
+first-pass mapping exists too
+(`architecture/OMNIPRODUCTS_ALPHABET_CROSS_ANALYSIS.md`) — each
+letter matched to whichever real product's function embodies it,
+with genuine double-uses (OmniPlayer, OmniValue, OmniBrowserSpace,
+OmniCell each carry more than one letter) and open gaps (Begin's own
+match is weak; OmniAction/OmniTruths are matched while still mostly
+conceptual) stated plainly. Not yet decided: whether the double-uses
+should stay as-is or get pulled apart into named sub-products, and
+no actual Product-to-Tier capability list has been built on top of
+this mapping yet — this is the proposal it would be built from.
 

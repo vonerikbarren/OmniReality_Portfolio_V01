@@ -204,6 +204,30 @@ exact sales-by-product example from the design conversation and a
 real regression check confirming Jsonifier's own detection still
 works correctly after being refactored onto the shared utility.
 
+## Three real chart types added — pie, radar, area
+
+Confirmed and built: Pie and Radar are genuinely non-Cartesian — no
+shared x/y axes with Bar/Line/Area — so `_drawChart` now branches
+them into their own dedicated setup rather than forcing them through
+the same scales, verified directly that neither renders the
+Cartesian axes at all.
+
+**Pie** deliberately shows only the first visible series' own
+breakdown by label, colored per-label — a genuinely different
+question ("how does this one series break down") from Bar/Line/
+Area's "how do series compare," so showing several series at once in
+one pie was never the right behavior to force. **Radar** is the
+real complement — each visible series becomes its own closed
+polygon across the same labeled axes, colored per-series, making
+multi-series comparison the whole point (and the direct, real target
+for OmniUser's own 14 wellness dimensions, flagged as an opportunity
+back in the original OmniCell SWOT). **Area** is Line's natural
+filled sibling, reusing its same scales.
+
+7 checks, all passing, including confirming that cycling through
+all five chart types in sequence leaves no leftover elements from
+whichever type came before.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

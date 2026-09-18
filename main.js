@@ -78,6 +78,7 @@ import OmniSelector      from './ui/OmniSelector.js'
 import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
 import OmniChronos from './ui/OmniChronos.js'
 import ChronosFloorClock from './modules/ChronosFloorClock.js'
+import ChronosRealityNode from './modules/ChronosRealityNode.js'
 import OmniInternalPanel from './ui/OmniInternalPanel.js'
 import PanelControl from './ui/PanelControl.js'
 import OmniInspection from './ui/OmniInspection.js'
@@ -343,6 +344,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniChronos = new OmniChronos(base.context)
   base.addModule(omniChronos)
   base.addModule(new ChronosFloorClock(base.context))
+  base.addModule(new ChronosRealityNode(base.context))
 
   const omniInternalPanel = new OmniInternalPanel(base.context)
   base.addModule(omniInternalPanel)

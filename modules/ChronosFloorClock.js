@@ -55,6 +55,7 @@ export default class ChronosFloorClock {
         id: this._nodeId, label: 'MasterClock',
         geometry: 'IcosahedronGeometry', primitive: 'objective', color: '#ffb347',
         position: [0, FLOOR_Y, 0], rotation: [0, 0, 0], scale: [0.4, 0.4, 0.4], parentId: null,
+        skipAutoSelect: true,   // a structural node, not user content — shouldn't force-open the Inspector or pin the camera's orbit pivot to itself
       }
     }))
 

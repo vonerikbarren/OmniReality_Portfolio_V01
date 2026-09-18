@@ -143,6 +143,11 @@ still purely conceptual. Check each doc's own Status section.
   alphabet to 30, confirming ⟐ as the Omni(x) prefix itself, not one
   of the 30 — the real next step toward the Product-to-Tier mapping
   (DeveloperQueue item 9).
+- [`architecture/OMNIPRODUCTS_ALPHABET_CROSS_ANALYSIS.md`](architecture/OMNIPRODUCTS_ALPHABET_CROSS_ANALYSIS.md)
+  — the real Product-to-Tier mapping itself: each of the 30 letters
+  matched to the real product whose actual function embodies it,
+  with genuine double-uses and open gaps stated plainly rather than
+  forced.
 - [`omniproducts/OMNIBRAND_DESIGN.md`](omniproducts/OMNIBRAND_DESIGN.md)
   — root-object-equivalent brand identity as a Tree Building System,
   serving as both a map for simple users and navigation for complex

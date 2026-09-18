@@ -212,6 +212,9 @@ export default class OmniCellPanel {
         <select class="ocl-type-select" id="ocl-chart-type">
           <option value="bar" ${c.chartType === 'bar' ? 'selected' : ''}>Bar</option>
           <option value="line" ${c.chartType === 'line' ? 'selected' : ''}>Line</option>
+          <option value="area" ${c.chartType === 'area' ? 'selected' : ''}>Area</option>
+          <option value="pie" ${c.chartType === 'pie' ? 'selected' : ''}>Pie</option>
+          <option value="radar" ${c.chartType === 'radar' ? 'selected' : ''}>Radar</option>
         </select>
       </div>
       <div class="ocl-series-toggles" id="ocl-series-toggles">${chipsHTML}</div>
@@ -259,9 +262,22 @@ export default class OmniCellPanel {
     const labels = Object.keys(c.seriesData[visibleNames[0]])
     const allValues = visibleNames.flatMap(name => Object.values(c.seriesData[name]))
     const colorOf = (name) => SERIES_COLORS[Object.keys(c.seriesData).indexOf(name) % SERIES_COLORS.length]
+    const colorOfLabel = (label) => SERIES_COLORS[labels.indexOf(label) % SERIES_COLORS.length]
 
     const svg = d3.select(wrap).append('svg').attr('viewBox', `0 0 ${width} ${height}`)
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+
+    // Pie and radar are genuinely non-Cartesian — no shared x/y axes
+    // with bar/line/area, so they get their own dedicated setup
+    // rather than being forced through the same scales.
+    if (c.chartType === 'pie') {
+      this._drawPie(g, innerW, innerH, visibleNames[0], c, labels, colorOfLabel)
+      return
+    }
+    if (c.chartType === 'radar') {
+      this._drawRadar(g, innerW, innerH, visibleNames, c, labels, colorOf, allValues)
+      return
+    }
 
     const x0 = d3.scaleBand().domain(labels).range([0, innerW]).padding(0.2)
     const y = d3.scaleLinear().domain([0, d3.max(allValues) * 1.1 || 1]).range([innerH, 0])
@@ -281,6 +297,17 @@ export default class OmniCellPanel {
           .attr('height', label => innerH - y(c.seriesData[name][label] ?? 0))
           .attr('fill', colorOf(name))
       })
+    } else if (c.chartType === 'area') {
+      const xPoint = d3.scalePoint().domain(labels).range([0, innerW])
+      const area = d3.area().x(([label]) => xPoint(label)).y0(innerH).y1(([, v]) => y(v))
+      const line = d3.line().x(([label]) => xPoint(label)).y(([, v]) => y(v))
+      visibleNames.forEach(name => {
+        const points = labels.map(label => [label, c.seriesData[name][label] ?? 0])
+        g.append('path').datum(points).attr('fill', colorOf(name)).attr('fill-opacity', 0.25)
+          .attr('stroke', 'none').attr('d', area)
+        g.append('path').datum(points).attr('fill', 'none').attr('stroke', colorOf(name))
+          .attr('stroke-width', 2).attr('d', line)
+      })
     } else {
       const xPoint = d3.scalePoint().domain(labels).range([0, innerW])
       const line = d3.line().x(([label]) => xPoint(label)).y(([, v]) => y(v))
@@ -291,6 +318,58 @@ export default class OmniCellPanel {
       })
     }
   }
+
+  /** Pie shows exactly one series' own breakdown by label — a
+   *  fundamentally different question from bar/line/area's "compare
+   *  across series," so it deliberately uses only the first visible
+   *  series rather than trying to force several series into one
+   *  pie. Colored per-label, not per-series, since the story here is
+   *  "how does this one series break down," not "how do series
+   *  compare." */
+  _drawPie (g, innerW, innerH, seriesName, c, labels, colorOfLabel) {
+    const radius = Math.min(innerW, innerH) / 2
+    const pieG = g.append('g').attr('transform', `translate(${innerW / 2},${innerH / 2})`)
+    const data = labels.map(label => ({ label, value: c.seriesData[seriesName][label] ?? 0 }))
+    const arcs = d3.pie().value(d => d.value)(data)
+    const arcGen = d3.arc().innerRadius(0).outerRadius(radius)
+    pieG.selectAll('path').data(arcs).join('path')
+      .attr('d', arcGen).attr('fill', d => colorOfLabel(d.data.label))
+      .attr('stroke', 'rgba(8,8,12,0.6)').attr('stroke-width', 1)
+  }
+
+  /** Each visible series becomes its own closed polygon — vertices
+   *  evenly spaced by angle (one per label, same order all series
+   *  share), radial distance scaled by value. Colored per-series,
+   *  matching bar/line/area, since the real question here is
+   *  comparing several series against the same set of labels at
+   *  once, not one series' own breakdown. */
+  _drawRadar (g, innerW, innerH, visibleNames, c, labels, colorOf, allValues) {
+    const radius = Math.min(innerW, innerH) / 2
+    const radarG = g.append('g').attr('transform', `translate(${innerW / 2},${innerH / 2})`)
+    const angleFor = (i) => (i / labels.length) * Math.PI * 2 - Math.PI / 2
+    const rScale = d3.scaleLinear().domain([0, d3.max(allValues) * 1.1 || 1]).range([0, radius])
+
+    labels.forEach((label, i) => {
+      const angle = angleFor(i)
+      radarG.append('line')
+        .attr('x1', 0).attr('y1', 0)
+        .attr('x2', Math.cos(angle) * radius).attr('y2', Math.sin(angle) * radius)
+        .attr('stroke', 'rgba(255,255,255,0.15)')
+    })
+
+    const pointsFor = (name) => labels.map((label, i) => {
+      const angle = angleFor(i)
+      const r = rScale(c.seriesData[name][label] ?? 0)
+      return [Math.cos(angle) * r, Math.sin(angle) * r]
+    })
+    const lineGen = d3.line()
+    visibleNames.forEach(name => {
+      radarG.append('path').datum(pointsFor(name)).attr('d', d => lineGen(d) + 'Z')
+        .attr('fill', colorOf(name)).attr('fill-opacity', 0.15)
+        .attr('stroke', colorOf(name)).attr('stroke-width', 2)
+    })
+  }
+
 
   _buildDOM () {
     const el = document.createElement('div')

@@ -1576,7 +1576,7 @@ export default class OmniNode {
 
     this._save()
     this._updateNodeList()
-    this._selectNode(data.id)
+    if (!data.skipAutoSelect) this._selectNode(data.id)
 
     window.dispatchEvent(new CustomEvent('omni:node-created',  { detail: { node: data, mesh } }))
     window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
@@ -2340,6 +2340,7 @@ export default class OmniNode {
         text: d.text ?? '',
         textSequence: d.textSequence ?? null,
         font: d.font ?? 'Courier New, monospace',
+        skipAutoSelect: d.skipAutoSelect ?? false,
       })
     }
 
