@@ -315,6 +315,60 @@ speed slider, Save with visible confirmation, and genuine periodic
 autosave verified to not fire early. 24 checks, all passing on the
 first run.
 
+### V41
+OmniJsonifier folded into OmniDraw's own mode picker as a real third
+mode — its standalone Drawer entry removed, its listener moved to a
+new `⟐OmniDrawJsonifier` label, matching exactly how Static itself
+works. The existing voxel/stationary-reality concept renamed from
+"OmniCell" to **OmniRealityCell** throughout every doc that
+referenced it, freeing the name for a genuinely new, upcoming fourth
+mode — `OmniDraw(OmniCell)`, a numerical/D3 node — not yet built,
+real open questions still being resolved first. 4 checks, all
+passing, confirming the new three-button picker and Jsonifier's
+correct label migration.
+
+### V42
+OmniCell built. D3 added to the project's real importmap alongside
+three/gsap. `OmniJsonifier.js` extended with real chart-eligibility
+detection — both the single-series shape (all children plain
+numbers) and multi-series shape (children themselves all-numeric
+branches) — giving eligible nodes a distinct geometry/color and a 📊
+tree-list icon, registering their real data into the new
+`utils/ChartDataRegistry.js` on spawn. `ui/OmniCellPanel.js` built as
+its own dedicated panel, separate from OmniInspector, matching
+OmniCommunicationPanel's real retargeting model including its same
+UX fix (never force-opens for an unrelated node). Real, working D3
+bar and line charts, per-series toggle chips reusing Jsonifier's own
+toggle mechanism for a different meaning, a real empty-state message
+when every series is hidden. A real architectural note surfaced
+directly rather than silently decided: OmniCell doesn't get its own
+mode-picker button — it's discovered through Jsonifier's own tree,
+not a separate input flow. 17 checks, all passing, using the exact
+sales-by-product example from the design conversation. One real bug
+caught in the test itself, not the code, while verifying: D3's own
+axis rendering produces `path.domain` elements, which an
+overly-broad selector was also counting as data lines — fixed the
+selector, confirmed the underlying chart was correct all along.
+
+### V43
+OmniCell corrected to a real, fourth, standalone mode — reversing
+the previous build's own call, per explicit, direct feedback: it
+matches the project's real 4-hand architecture in count, and its
+D3-specific settings deserve their own dedicated entry rather than
+living only inside Jsonifier's general tree explorer. Extracted the
+shared chart-eligibility detection into `utils/ChartEligibility.js`
+first, so `ui/OmniJsonifier.js`'s own tree-walker and the new
+`ui/OmniDrawCell.js` — a real, direct creation panel, name + JSON
+straight to a chart node, no tree needed — share one real
+implementation rather than two independently-maintained copies. Mode
+picker now has all four real buttons. Both paths genuinely coexist:
+Jsonifier still auto-detects chart-eligible branches on its own;
+OmniCell is now also directly reachable. 14 checks, all passing,
+including a real regression check confirming Jsonifier's own
+detection still works correctly after being refactored onto the
+shared utility, and real validation checks confirming invalid JSON
+and non-chart-shaped JSON both correctly create nothing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

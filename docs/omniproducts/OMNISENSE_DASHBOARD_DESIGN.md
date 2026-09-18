@@ -1,9 +1,18 @@
-# OmniSense Dashboard & OmniCell Creation Flow
+# OmniSense Dashboard & OmniRealityCell Creation Flow
 
 Nothing built. Captured from a real design conversation. Builds
 directly on the existing, real `ui/OmniStartHUD.js` shell (see
 below) — this is proposed as the first real content for that shell,
 not a new, separate quadrant system.
+
+**Renamed from "OmniCell"** — that name is now freed up for a
+genuinely different, new numerical/D3 node concept
+(`core-systems/OMNIDRAW_MODES_DESIGN.md`). Chosen "OmniRealityCell"
+over "OmniSenseCell" specifically because this concept is already
+described below as "conceptually a voxel/stationary-reality" — this
+matches the already-established "Stationary Reality" terminology
+directly (`OMNISENSE_GLYPH_SYSTEM_DESIGN.md`), rather than tying the
+name to which product's dashboard happens to create it.
 
 ## The dashboard shell — already real, not hypothetical
 
@@ -33,9 +42,9 @@ a mouse, not a thumb. Both a ribbon and buttons were raised as
 options; this doc records bottom tabs as the concrete recommendation,
 not a decision made unilaterally.
 
-## OmniCell creation flow
+## OmniRealityCell creation flow
 
-1. User creates a new OmniCell (the working name for what's
+1. User creates a new OmniRealityCell (the working name for what's
    conceptually a voxel/stationary-reality) — this creates a box on
    the grid.
 2. User defines the reality's own boundary. **Hard limit, for now**:
@@ -76,7 +85,7 @@ natural, currently-missing sixth face, given a cube has six.
 Raised directly as a point of comparison: Magnific's own Boards
 product is a free-form, AI-assisted canvas — Boards has its own
 internal grid, but placement within it is otherwise unconstrained.
-OmniCell is deliberately the opposite: strictly cell-based, bounded,
+OmniRealityCell is deliberately the opposite: strictly cell-based, bounded,
 discrete. This is worth keeping as a real distinction rather than
 softening it — a bounded cell has a definite, knowable extent; a
 free-form canvas doesn't, which cuts directly against OmniSense's own

@@ -24,6 +24,8 @@ import { generateId } from '../systems/OmniNode.js'
 import { confirmPrimaryForce } from '../utils/DesirePrimaryForce.js'
 import WordTicker from '../utils/WordTicker.js'
 import { registerTicker, unregisterTicker } from '../utils/WordTickerRegistry.js'
+import { registerChart, unregisterChart } from '../utils/ChartDataRegistry.js'
+import { detectSeriesData } from '../utils/ChartEligibility.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
 
@@ -140,7 +142,7 @@ export default class OmniJsonifier {
   init () {
     injectStyles()
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniJsonifier') return
+      if (e.detail?.item !== '⟐OmniDrawJsonifier') return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
@@ -226,6 +228,7 @@ export default class OmniJsonifier {
     const node = {
       nodeId, key, value, position, parentNodeId,
       isLeaf, isOpen: false, meshCreated: false, children: [],
+      isChartEligible: false, seriesData: null,
     }
     if (!isLeaf) {
       const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
@@ -238,8 +241,20 @@ export default class OmniJsonifier {
         )
         return this._buildTreeNode(childKey, childValue, childPos, nodeId)
       })
+      this._detectChartEligibility(node)
     }
     return node
+  }
+
+  /** Real chart-eligibility detection — delegates to the shared
+   *  utils/ChartEligibility.js, so this and OmniDrawCell's own
+   *  standalone creation panel share one real implementation. */
+  _detectChartEligibility (node) {
+    const seriesData = detectSeriesData(node.key, node.value)
+    if (seriesData) {
+      node.isChartEligible = true
+      node.seriesData = seriesData
+    }
   }
 
   /** Real 3D placement — reuses Static's own real mechanism, now
@@ -257,15 +272,23 @@ export default class OmniJsonifier {
       detail: {
         id: node.nodeId,
         label: node.key,
-        geometry: node.isLeaf ? 'SphereGeometry' : 'OctahedronGeometry',
+        geometry: node.isChartEligible ? 'IcosahedronGeometry' : (node.isLeaf ? 'SphereGeometry' : 'OctahedronGeometry'),
         primitive: 'objective',
-        color: node.isLeaf ? '#8cff8c' : '#7fd8ff',
+        color: node.isChartEligible ? '#ffb347' : (node.isLeaf ? '#8cff8c' : '#7fd8ff'),
         position: [node.position.x, node.position.y, node.position.z],
         rotation: [0, 0, 0],
         scale: node.isLeaf ? [0.22, 0.22, 0.22] : [0.3, 0.3, 0.3],
         parentId: node.parentNodeId,   // the real fix — Dynamic's own ticker still sends null; a tree node never should
       }
     }))
+
+    if (node.isChartEligible) {
+      registerChart(node.nodeId, {
+        seriesData: node.seriesData,
+        seriesVisibility: Object.fromEntries(Object.keys(node.seriesData).map(name => [name, true])),
+        chartType: 'bar',
+      })
+    }
 
     if (isTickerLeaf) {
       const ticker = new WordTicker(this.ctx.camera, node.position.clone(), words)
@@ -279,6 +302,7 @@ export default class OmniJsonifier {
     if (!node.meshCreated) return
     node.meshCreated = false
     window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: node.nodeId } }))
+    if (node.isChartEligible) unregisterChart(node.nodeId)
     this._tickers = this._tickers.filter(t => {
       const isThisNode = t.nodeId === node.nodeId
       if (isThisNode) { unregisterTicker(t.nodeId); t.destroy() }
@@ -318,11 +342,12 @@ export default class OmniJsonifier {
   _renderNode (node) {
     const valuePreview = node.isLeaf ? ` = ${JSON.stringify(node.value)}` : ` (${node.children.length})`
     const toggleSymbol = node.isLeaf ? '·' : (node.isOpen ? '▾' : '▸')
+    const chartIcon = node.isChartEligible ? ' 📊' : ''
     let html = `
       <div class="oj-node">
         <div class="oj-row" data-node-id="${node.nodeId}">
           <span class="oj-toggle">${toggleSymbol}</span>
-          <span class="oj-key">${node.key}</span>
+          <span class="oj-key">${node.key}${chartIcon}</span>
           <span class="oj-leaf-value">${valuePreview}</span>
         </div>
     `

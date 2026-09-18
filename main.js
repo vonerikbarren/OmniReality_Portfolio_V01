@@ -67,6 +67,8 @@ import OmniDrawModePicker from './ui/OmniDrawModePicker.js'
 import OmniDrawDynamic   from './ui/OmniDrawDynamic.js'
 import OmniJsonifier     from './ui/OmniJsonifier.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
+import OmniCellPanel     from './ui/OmniCellPanel.js'
+import OmniDrawCell      from './ui/OmniDrawCell.js'
 import AdminPanel        from './ui/AdminPanel.js'
 import OmniExpression    from './ui/OmniExpression.js'
 import OmniExpressionInspector from './ui/OmniExpressionInspector.js'
@@ -269,6 +271,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniDrawDynamic(base.context))
   base.addModule(new OmniJsonifier(base.context))
   base.addModule(new OmniCommunicationPanel(base.context))
+  base.addModule(new OmniCellPanel(base.context))
+  base.addModule(new OmniDrawCell(base.context))
 
   const adminPanel = new AdminPanel(base.context)
   base.addModule(adminPanel)

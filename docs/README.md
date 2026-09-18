@@ -149,7 +149,7 @@ still purely conceptual. Check each doc's own Status section.
   shape/color/texture customization, a CSS2D-style tooltip.
 - [`omniproducts/OMNISENSE_DASHBOARD_DESIGN.md`](omniproducts/OMNISENSE_DASHBOARD_DESIGN.md)
   — the dashboard (built on the existing OmniStartHUD quadrant shell),
-  the OmniCell creation flow, and the Rubik's-cube radial option menu.
+  the OmniRealityCell creation flow, and the Rubik's-cube radial option menu.
 - [`omniproducts/OMNIPLAYER_BADGES_DESIGN.md`](omniproducts/OMNIPLAYER_BADGES_DESIGN.md)
   — a game-like identification/access badge system for OmniPlayer,
   likely converging with the tier system and the access overview;

@@ -187,5 +187,5 @@ experience it directly, through the OS itself.
 Entirely conceptual — no code, no glyph data model, no actual grid-to-
 wall transform, no tunnel-as-reality implementation. This doc exists
 so the full depth of this design conversation has one real home,
-given how much of it is foundational to what OmniSense, OmniCell, and
+given how much of it is foundational to what OmniSense, OmniRealityCell, and
 the wall-map system are each eventually meant to become.

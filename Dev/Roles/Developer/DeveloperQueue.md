@@ -250,7 +250,7 @@ per-ring default list (Symbol/Time/Letter/Number/State/px/py/pz/typed
 password), and the marble-maze idea (documented, explicitly deferred,
 not part of this build). See `architecture/OMNICRYPTEXLAB_DESIGN.md`.
 
-## 18. OmniSense Dashboard + OmniCell creation flow
+## 18. OmniSense Dashboard + OmniRealityCell creation flow
 
 Builds on the existing, real `OmniStartHUD.js` quadrant shell rather
 than a new system. Now confirmed to come after item 17 — its

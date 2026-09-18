@@ -135,6 +135,75 @@ seconds) — verified to not fire early.
 work ("build this in parts"): per-word context changing shape and
 saved texture on iteration.
 
+## Jsonifier folded into the mode picker as a real third mode
+
+Confirmed directly: OmniJsonifier is now reached through the same
+`⟐OmniDraw` mode picker as Static and Dynamic — its own standalone
+Drawer entry removed, matching exactly how Static itself lost its
+direct entry when the picker was first built. Its own nav-select
+listener updated to `⟐OmniDrawJsonifier`, a new, specific label
+distinct from the old standalone one.
+
+## OmniCell — the name is now free, and reserved for something new
+
+The existing voxel/stationary-reality concept previously called
+"OmniCell" (`OMNISENSE_DASHBOARD_DESIGN.md`) has been renamed to
+**OmniRealityCell** throughout — chosen over "OmniSenseCell" because
+it already matched the existing "Stationary Reality" terminology
+more directly than naming it after whichever dashboard creates it.
+
+"OmniCell" is now reserved for a genuinely different, new fourth
+mode — `OmniDraw(OmniCell)` — a numerical/data node opening into
+real D3 visualizations. Confirmed to follow the same toggle-based
+complexity management OmniJsonifier itself uses, explicitly
+endorsed as the right approach for this system generally. Not yet
+built — real open questions (data input shape, first chart type,
+what the toggles actually toggle, and canvas-texture vs. screen-space
+rendering) are still being resolved before this starts.
+
+## OmniCell — now a real, fourth, standalone mode
+
+Superseding the note that used to be here: OmniCell was first built
+as something discovered only through Jsonifier's own tree, with no
+separate entry point. Confirmed directly afterward that this wasn't
+right — it now has its own real, fourth mode-picker button,
+alongside Static/Dynamic/Jsonifier, for two real reasons: it matches
+the project's own 4-hand architecture in count, and its own
+D3-specific settings deserve a dedicated creation surface rather
+than being buried inside a general JSON-tree explorer.
+
+`ui/OmniDrawCell.js` is that dedicated entry — a real, separate
+panel, name + JSON straight to a chart node, no tree, no toggles,
+since the whole point of a dedicated entry is skipping the general
+explorer. It shares the exact same detection Jsonifier's own tree-
+walker uses (`utils/ChartEligibility.js`, extracted specifically so
+neither path invents its own rules for what counts as a real chart
+shape), and the same real placement pattern every other mode uses.
+Jsonifier itself still produces chart-eligible nodes automatically
+when a branch's own shape qualifies — both paths genuinely coexist,
+neither replaced the other.
+
+**Scene vs. panel, confirmed and built exactly as reasoned**: the
+scene shows only a simple, distinct marker (`IcosahedronGeometry`,
+warm orange) — no attempt to render chart data in 3D space at all.
+The real, detailed, interactive chart lives entirely in
+`ui/OmniCellPanel.js`, its own dedicated panel, separate from
+`OmniInspector` — the Inspector stays about the node generically,
+this panel is what a D3 node specifically looks like and does. One
+shared panel, retargeted by selection, matching
+`OmniCommunicationPanel`'s own real model, including its same real
+UX fix — never force-opens for an unrelated node selection.
+
+**Toggling a series** reuses Jsonifier's own real toggle mechanism,
+applied to a genuinely different meaning — turning a data series on
+or off inside the chart, not revealing 3D nodes. D3 added to the
+project's real importmap (`index.html`) the same way three/gsap
+already are. Real, working bar and line charts, both genuinely
+tested. 31 checks total across both build passes, including the
+exact sales-by-product example from the design conversation and a
+real regression check confirming Jsonifier's own detection still
+works correctly after being refactored onto the shared utility.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build
