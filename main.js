@@ -38,6 +38,7 @@ import MovementPad       from './ui/MovementPad.js'
 // ── Phase 4 — Core Systems ────────────────────────────────
 import OmniNode          from './systems/OmniNode.js'
 import OmniGrab          from './systems/OmniGrab.js'
+import ToolTipMenu       from './ui/ToolTipMenu.js'
 import OmniInspector     from './systems/OmniInspector.js'
 import OmniPresenter     from './systems/OmniPresenter.js'
 import OmniPocket        from './systems/OmniPocket.js'
@@ -62,6 +63,9 @@ import MiniMap           from './ui/MiniMap.js'
 import TreeView          from './ui/TreeView.js'
 import RadialMenu from './ui/RadialMenu.js'
 import OmniDraw          from './ui/OmniDraw.js'
+import OmniDrawModePicker from './ui/OmniDrawModePicker.js'
+import OmniDrawDynamic   from './ui/OmniDrawDynamic.js'
+import OmniJsonifier     from './ui/OmniJsonifier.js'
 import AdminPanel        from './ui/AdminPanel.js'
 import OmniExpression    from './ui/OmniExpression.js'
 import OmniExpressionInspector from './ui/OmniExpressionInspector.js'
@@ -152,7 +156,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   base.addModule(nodeManager)
   base.addModule(omniNode)
-  base.addModule(new OmniGrab(base.context, omniNode))
+  const omniGrab = base.addModule(new OmniGrab(base.context, omniNode))
+  base.addModule(new ToolTipMenu(base.context, omniNode, omniGrab))
   base.addModule(omniInspector)
   base.addModule(omniPresenter)
   base.addModule(omniPocket)
@@ -259,6 +264,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniDraw = new OmniDraw(base.context)
   base.addModule(omniDraw)
+  const omniDrawModePicker = base.addModule(new OmniDrawModePicker())
+  base.addModule(new OmniDrawDynamic(base.context))
+  base.addModule(new OmniJsonifier(base.context))
 
   const adminPanel = new AdminPanel(base.context)
   base.addModule(adminPanel)
@@ -651,7 +659,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     else omniBrowserWindow1.openFromSide()
   })
 
-  // ── 'n' — toggle OmniDraw ──────────────────────────────────
+  // ── 'n' — open the OmniDraw mode picker (Static or Dynamic) ──
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'n' || e.repeat) return
     const active = document.activeElement
@@ -661,8 +669,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
       active.isContentEditable
     )
     if (isTyping) return
-    if (omniDraw._isOpen) omniDraw.close()
-    else omniDraw.open()
+    if (omniDrawModePicker._isOpen) omniDrawModePicker.close()
+    else omniDrawModePicker.open()
   })
 
   // ── 'm' — toggle OmniMixer ─────────────────────────────────

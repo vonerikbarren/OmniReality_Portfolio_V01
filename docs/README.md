@@ -42,6 +42,10 @@ specific named OmniProduct.
   — the 24 right-drawer (NavMenu) leaf panels.
 - [`core-systems/DIMENSIONAL_TEXT_DESIGN.md`](core-systems/DIMENSIONAL_TEXT_DESIGN.md)
 - [`core-systems/OMNIKEYBOARD_DESIGN.md`](core-systems/OMNIKEYBOARD_DESIGN.md)
+- [`core-systems/OMNIDRAW_MODES_DESIGN.md`](core-systems/OMNIDRAW_MODES_DESIGN.md)
+  — the Static/Dynamic mode picker, built and verified: the first
+  real use of Desire/PrimaryForce, and OmniDraw(Dynamic)'s word-
+  ticker mechanic.
 - [`core-systems/EXPORT_IMPORT_DESIGN.md`](core-systems/EXPORT_IMPORT_DESIGN.md) —
   built and tested: exports/imports a real .zip of every setting plus
   every saved image/audio/video across the whole app, with version
@@ -130,6 +134,11 @@ still purely conceptual. Check each doc's own Status section.
   ahead of the OmniSense dashboard), OmniCryptexLab (the general
   nested-orbit tool), OmniAddressCryptex, OmniAddress, per-ring
   security types, and the marble-maze idea (documented, deferred).
+- [`architecture/THE_30_RECLASSIFICATION.md`](architecture/THE_30_RECLASSIFICATION.md)
+  — a real, reasoned proposal reducing the legacy 44-function
+  alphabet to 30, confirming ⟐ as the Omni(x) prefix itself, not one
+  of the 30 — the real next step toward the Product-to-Tier mapping
+  (DeveloperQueue item 9).
 - [`omniproducts/OMNIBRAND_DESIGN.md`](omniproducts/OMNIBRAND_DESIGN.md)
   — root-object-equivalent brand identity as a Tree Building System,
   serving as both a map for simple users and navigation for complex

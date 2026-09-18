@@ -121,7 +121,7 @@ export default class OmniTargeting {
   update (delta) {
     if (!this._group.visible || !this._targetMesh) return
     this._group.position.copy(this._targetMesh.position)
-    this._group.rotation.y += delta * 0.6   // slow rotation, reads as "actively locked on," not static
+    this._group.rotation.z += delta * 0.6   // slow rotation, reads as "actively locked on," not static
 
     // Screen-project the target's real world position for the tooltip —
     // a genuine CSS2D-style label, not Three.js's own add-on.
@@ -162,7 +162,7 @@ export default class OmniTargeting {
       const marker = new THREE.Mesh(geo, mat)
 
       const angle = (i / MARKER_COUNT) * Math.PI * 2
-      marker.position.set(Math.cos(angle) * ORBIT_RADIUS, 0, Math.sin(angle) * ORBIT_RADIUS)
+      marker.position.set(Math.cos(angle) * ORBIT_RADIUS, Math.sin(angle) * ORBIT_RADIUS, 0)
       // Point each marker's own "top" inward toward the target center —
       // the actual Z-target reticle look, not four markers facing outward.
       marker.lookAt(0, 0, 0)

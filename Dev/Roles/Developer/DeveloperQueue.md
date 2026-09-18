@@ -88,27 +88,23 @@ Not yet designed in detail (line style, whether toggleable per
 system, whether tied into the existing Group Lock / OmniCore Origin
 mechanics) — real next design pass, not decided here.
 
-## 5. OmniDraw — grabbing an object "into a hand" / right-click options
+## 5. OmniDraw — right-click options on a geometry (the hand-grab half is now built)
 
-Two related but distinct questions raised, both currently
-unanswered by any existing mechanism — confirmed via direct
-investigation, not assumed:
+Two related but distinct questions were raised here. One is now
+real code:
 
-- **Right-click-style options on a geometry.** Today, a single click
-  on a node only ever does one thing — dispatches `omni:node-selected`,
-  which opens the Inspector. No secondary/context menu exists for 3D
-  objects anywhere in the codebase (`PanelIcon.js` has a real
-  `contextmenu` listener, but only for 2D panel icons/minimized
-  orbs, not 3D scene objects). Technically straightforward to add —
-  the same real, already-proven pattern, just extended to 3D raycasts.
-- **Placing an object "in one of the user's hands."** A genuinely new
-  mechanic — an object reference held by one of the four hands (LH/
-  RH/OmniHand/ConsciousHand) for quick access, distinct from
-  selecting it or opening its Inspector. Not designed yet — which
-  hand(s) this applies to, what "holding" an object actually changes
-  about interacting with it, and how it relates to the right-click
-  menu above (is grabbing an option *inside* that menu, or a
-  separate gesture?) are all open.
+- **Placing an object "in one of the user's hands" — built.**
+  `systems/OmniGrab.js` (Build Log V24): grab any real node, jitter
+  while held, drag toward a hand, and only a genuinely *open* hand
+  (its own hamburger menu active) is a valid drop target. 20 checks,
+  verified.
+- **Right-click-style options on a geometry — still not built.**
+  A single click on a node still only ever dispatches
+  `omni:node-selected`, opening the Inspector. No secondary/context
+  menu exists for 3D objects. `PanelIcon.js` has a real `contextmenu`
+  listener, but only for 2D panel icons, not 3D scene objects.
+  Technically straightforward to add — the same real, already-proven
+  pattern, just extended to 3D raycasts.
 
 ## 6. OmniNotify — new OmniProduct, now partially real
 
@@ -264,4 +260,29 @@ drag-boundary behavior at a quadrant's edge (free movement confirmed
 for mobile's own per-tab panels), and OmniReality Primitives'
 classification (not yet done) for default-password-by-default
 personal realities. See `omniproducts/OMNISENSE_DASHBOARD_DESIGN.md`.
+
+## 19. OmniPlayer/OmniUser — open threads from today's build
+
+- **Fixed-path camera travel** is still not connected — `NavMapPanel`
+  currently snaps the camera directly (fast-travel, for testing);
+  the real, constrained-position/free-rotation travel system
+  discussed for the landing room hasn't been built or wired to
+  OmniPlayer's own realities yet.
+- **Boundaries and Languages tabs** in `OmniPlayerDashboard` remain
+  honest placeholders — no real design given yet for either.
+- **OmniUser's entry point** is currently only reachable through
+  OmniPlayer's own Dashboard — a real tension with "OmniUser is for
+  non-gamers," worth a direct decision (its own Left Drawer item?)
+  rather than leaving non-gamers routed through a gamer-first surface.
+- **The landing room's near-wall navigable volume and per-node
+  geometry variation** (beyond the current fixed/random shape
+  assignment) are both still unbuilt — explicitly saved for later.
+
+## 20. OmniLandingRoom — the /pages content itself
+
+The room (7 nodes, Cross formation) and its NavMapPanel are real;
+the actual landing-page content — the local static page in a
+`/pages` directory, and each arm's own `OmniBrowserWindow` pointed at
+its own section — has not been started. Nothing in `/pages` exists
+yet.
 

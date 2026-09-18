@@ -206,6 +206,66 @@ it shipped. 18 checks, all passing, including the full end-to-end
 connection from the real Dashboard button to the real, separate
 OmniUserPanel opening.
 
+### V29
+OmniTargeting's orbit fixed to rotate on the Z-axis, per the tester
+log's corrected command — markers moved to the XY plane and the
+continuous spin now applies to `rotation.z`, not `.y`. Verified the
+inward-pointing property genuinely still holds after rotation, not
+just at rest (caught a real measurement bug of my own along the
+way — checking a child's local quaternion doesn't account for a
+rotating parent group; fixed to use the marker's world quaternion).
+`utils/CameraTravel.js` extracted from `OmniInspector.js`'s own
+`_goToObject()` — both it and the new `ToolTipMenu` now share one
+real implementation instead of two. `OmniGrab.js` gained a public
+`grabMesh()`, letting a button trigger the exact same grab as a
+raycasted mousedown. `ui/ToolTipMenu.js` built: a real header above
+every node (synced live against OmniNode's actual mesh registry, not
+a fixed list), each with a QuickActionMenu offering Take Me There and
+Grab — the latter a genuine mobile-friendly path into OmniGrab that
+doesn't depend on the press-and-drag gesture at all. 18 checks, all
+passing, including confirming OmniInspector's own button still works
+correctly through the newly-shared utility.
+
+### V35
+OmniDraw split into Static/Dynamic, and the first real use of Desire/
+PrimaryForce. `ui/OmniDrawModePicker.js` — `⟐OmniDraw` now opens a
+real mode choice instead of one panel directly; the click itself
+declares Desire (via the new, deliberately minimal
+`utils/DesirePrimaryForce.js`), routing to `⟐OmniDrawStatic` or
+`⟐OmniDrawDynamic`. `OmniDraw.js` updated to listen for its own
+specific label rather than the bare one, which now belongs to the
+picker; the `n` key updated to match. `ui/OmniDrawDynamic.js` built:
+a string splits into a real word array and displays one word at a
+time, in order, looping, shifting like a notification — reusing
+Static's own real placement mechanism for its anchor rather than a
+second one, and confirming PrimaryForce on real success. Rotation
+styles, the command panel, and FilterMorphing capture are explicitly
+deferred, matching the agreed scope. 15 checks, all passing — one
+real environmental limitation hit and worked around correctly along
+the way (Static's own WebGL-dependent preview setup can't run
+headless; verified the label-routing fix by a signal that happens
+before that unrelated, pre-existing crash point, not by pretending it
+doesn't exist).
+
+### V36
+OmniJsonifier built — JSON tree construction for OmniDraw(Dynamic),
+live and manual per branch, confirmed scope ("so we don't break
+anything"): toggle a branch open, its direct children spawn as real
+3D nodes with a genuine `parentId` (Dynamic's own flat ticker still
+correctly sends `null` — a tree node never should, and now doesn't).
+Close a branch and its children despawn via the already-real
+`omni:node-delete-request`, recursively force-collapsing any nested
+branch left open underneath rather than orphaning it. Multi-word
+string leaves get a real `WordTicker` attached; single-value leaves
+don't — extracted `WordTicker` into its own shared file first, since
+it's confirmed a genuine, reusable "form," not specific to plain-
+string Dynamic; both consumers now share one real implementation.
+Also: `WindowManager`'s cascade start position moved from 24px to
+170px, clearing OmniHand's own real top-left footprint instead of
+spawning new panels on top of it. 17 checks, all passing, including
+the trickiest one — a nested open branch correctly force-collapsing
+when its parent closes, with no orphaned nodes left behind.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

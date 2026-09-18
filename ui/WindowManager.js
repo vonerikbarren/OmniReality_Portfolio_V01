@@ -109,7 +109,7 @@ export function getRegisteredWindows () {
 // ── Cascade positioning — "windows within windows," offset in the same
 // direction consecutive opens always come out in, so each new one stays
 // reachable without fully hiding whatever's behind it ────────────────
-const CASCADE_LEFT_MARGIN = 24
+const CASCADE_LEFT_MARGIN = 170  // clears OmniHand's own top-left area (flush at left:0, several 50px cells wide), leaving real space rather than spawning on top of it
 const CASCADE_TOP_GAP     = 20   // below the header, not flush against it
 const CASCADE_STEP        = 32   // px right + down per additional open window
 const CASCADE_MAX_STEPS   = 8    // wraps back to the base position after this many

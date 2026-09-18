@@ -597,7 +597,7 @@ export default class OmniDraw {
 
   _bindEvents () {
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniDraw') return
+      if (e.detail?.item !== '⟐OmniDrawStatic') return
       this.open()
     }
     this._onRestore = (e) => {

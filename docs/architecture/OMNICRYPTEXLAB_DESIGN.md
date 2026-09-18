@@ -223,6 +223,26 @@ nested-ring mechanic is tier-agnostic — Admin/Standard/Custom are
 different configurations of the same underlying engine, not three
 different engines.
 
+## Ring outputs are type-and-purpose-specific, not one universal signal
+
+Confirmed directly: what a ring rotation actually *outputs* depends
+on which tier of OmniCryptx is being used (Admin/Standard/Custom) and
+what that specific cryptex is for — not one universal pass/fail
+signal reused everywhere. Consistent with everything else in this
+system refusing to collapse into a single scalar (the tiered ring
+types, the multi-factor MasterKeySymbol check) — the output itself
+gets the same treatment.
+
+**A real, concrete connection worth recording**: a cryptex securing
+an OmniValue trade (`omniproducts/OMNIVALUE_DESIGN.md`) doesn't need
+a generic "access granted" — its type-specific output could
+literally *be* the trade's own remainder ("3 fruit → 1 credit, 1
+fruit remainder recorded to your account"), unifying the cryptex's
+verification step with OmniValue's own remainder-as-change mechanic
+rather than treating them as two separate features bolted together.
+Not confirmed as the actual design yet — recorded here as the
+natural place these two threads meet.
+
 ## The marble-maze idea — documented, not built
 
 Raised directly as future, fun complexity, not current scope: modeled

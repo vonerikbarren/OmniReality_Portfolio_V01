@@ -122,7 +122,16 @@ export default class OmniGrab {
     const hits = this._raycaster.intersectObjects(meshes, false)
     if (!hits.length) return
 
-    const mesh = hits[0].object
+    this.grabMesh(hits[0].object)
+  }
+
+  /** Real, public grab-start — usable by anything, not just a
+   *  raycasted mousedown. This is what ToolTipMenu's QuickActionMenu
+   *  "Grab" button actually calls, so a button click produces the
+   *  exact same grab (same jitter, same condense-into-hand behavior)
+   *  as grabbing the object directly in the scene. */
+  grabMesh (mesh) {
+    if (!mesh || this._grabbedMesh) return
     this._grabbedMesh = mesh
     this._originalPosition = mesh.position.clone()
     this._originalScale = mesh.scale.clone()

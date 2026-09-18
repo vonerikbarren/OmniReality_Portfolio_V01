@@ -107,6 +107,7 @@ import gsap       from 'gsap'
 import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as GridWidgets   from '../ui/GridWidgets.js'
+import { goToObject } from '../utils/CameraTravel.js'
 
 // ── Layout constants (must match OmniNode.js and GlobalBar.js) ────────────────
 
@@ -3883,32 +3884,7 @@ export default class OmniInspector {
    *  object's own size so large objects aren't approached too closely
    *  and tiny ones aren't viewed from oddly far away. */
   _goToObject (mesh = this._currentMesh) {
-    if (!mesh) return
-    const objectPos = mesh.getWorldPosition(new THREE.Vector3())
-    const camera = this.ctx.camera
-
-    const away = camera.position.clone().sub(objectPos)
-    if (away.lengthSq() < 0.0001) away.set(0, 0, 1)   // camera essentially AT the object — pick an arbitrary side
-    away.normalize()
-
-    const scale = mesh.scale
-    const standoff = 2.5 + Math.max(scale.x, scale.y, scale.z)
-    const target = objectPos.clone().add(away.multiplyScalar(standoff))
-
-    // The actual bug: OrbitControls runs a real per-frame camera loop
-    // and was never told to stand down here — every other fly-to tween
-    // in this app (OmniPocket, OmniPresenter, OmniExpression) disables
-    // it first for exactly this reason. Without this, OrbitControls
-    // fights this tween's direct camera.position writes every frame,
-    // producing an unpredictable final position unrelated to the
-    // actual target — "taking me to some random location in space."
-    window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
-
-    gsap.to(camera.position, {
-      x: target.x, y: target.y, z: target.z, duration: 0.6, ease: 'power2.inOut',
-      onUpdate: () => camera.lookAt(objectPos),
-      onComplete: () => window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} })),
-    })
+    goToObject(this.ctx, mesh)
   }
 
   _scrollInfoPlane (amount, nodeId = this._currentId) {

@@ -100,6 +100,18 @@ the count itself was asked to be real and visible, so that's what's
 built — not an invented skill-tracking system layered on top of a
 request that only asked for a number.
 
+## A real future connection to OmniValue
+
+Raised while designing OmniValue's trade system, not designed here:
+a trade could show a real addition/subtraction against these exact
+structures — the 14 Wellness Dimensions (`OMNIUSER's` own data) and
+these Core Realities/Aspects — rather than just moving an abstract
+number. The same objective trade could carry different real impact
+depending on each party's own current state. See
+`OMNIVALUE_DESIGN.md`'s "Trades affect a person's real life-
+structure" section for the fuller reasoning; nothing here implements
+it yet.
+
 ## Status
 
 Built and verified directly, 22 checks: the full data model, real
