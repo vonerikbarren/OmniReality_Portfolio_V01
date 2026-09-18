@@ -77,6 +77,7 @@ export default class OmniDrawModePicker {
 
     this._onDocClick = (e) => {
       if (!this._isOpen) return
+      if (this._ignoreNextDocClick) return
       if (this._el.contains(e.target)) return
       this.close()
     }
@@ -96,6 +97,8 @@ export default class OmniDrawModePicker {
     this._isOpen = true
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: 1, duration: 0.2 })
+    this._ignoreNextDocClick = true
+    setTimeout(() => { this._ignoreNextDocClick = false }, 0)
   }
 
   close () {

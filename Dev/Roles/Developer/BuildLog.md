@@ -369,6 +369,39 @@ detection still works correctly after being refactored onto the
 shared utility, and real validation checks confirming invalid JSON
 and non-chart-shaped JSON both correctly create nothing.
 
+### V49
+Two real, reported bugs fixed. **The mode-picker flicker on mobile**:
+found precisely — tapping OmniKeys' virtual 'n' key fires a real
+click that synchronously dispatches a synthetic keydown, opening the
+picker, but that same original click keeps bubbling to `document`
+afterward, where the "click outside closes it" listener sees a click
+from an unrelated button and immediately closes what just opened, all
+in one tick. Physical keyboard presses never hit this — no click
+event rides along with a real keydown. Fixed with the same
+ignore-next-click guard pattern already proven elsewhere in this
+codebase (`OmniKeys.js` itself). Verified by reproducing the literal
+bug scenario directly, and confirming a genuinely later, real outside
+click still correctly closes the menu.
+
+**Texture not surviving a page refresh**: a real, two-part gap, not
+one. `OmniInspector.js`'s `loadNode()` only ever runs on an active
+user click (`omni:node-selected`) — never automatically when nodes
+are restored from storage on load. Separately, `loadNode()` itself
+never re-applied the saved texture URL to the mesh's material map at
+all, even when it did run — only wireframe/material-type/
+materialProps were being reapplied. Fixed both: extracted a real,
+reusable `_reapplyExtToMesh()`, added the missing texture
+re-application to it, and wired a new `omni:node-restored` event so
+this now runs silently for every node coming back from storage, not
+only ones a user re-selects. Verified end-to-end: a real save, a
+simulated real refresh (fresh OmniNode/OmniInspector instances,
+restoring from the same real storage), confirming re-application ran
+with no click at all. One real bug caught in the test itself along
+the way, not the fix: the storage format was assumed as `[id, data]`
+pairs but is actually a plain array of node objects — confirmed the
+real format directly via a debug script rather than continuing to
+guess, then corrected the test.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

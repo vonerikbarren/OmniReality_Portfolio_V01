@@ -25,9 +25,11 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
+import * as PrimaryTime from '../utils/PrimaryTime.js'
+import { formatSeconds } from '../utils/TimeData.js'
 
 const STORE_KEY = 'omni:chronos:settings'
-const DEFAULTS = { enabled: true, zAxis: false }
+const DEFAULTS = { enabled: true, zAxis: false, transparency: true, timeFormat: 'military' }
 
 function loadSettings () {
   try {
@@ -146,6 +148,20 @@ const STYLES = /* css */`
 .oc-row-label { font-size: 10.5px; color: var(--oc-text-dim); }
 .oc-row-sub { font-size: 8.5px; color: var(--oc-text-muted); margin-top: 2px; }
 
+.oc-primary-time {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--oc-border);
+}
+.oc-clock-display {
+  font-family: var(--mono); font-size: 20px; color: var(--oc-accent); letter-spacing: 0.05em;
+}
+.oc-play-btn {
+  background: rgba(255,210,127,0.15); border: 1px solid var(--oc-accent);
+  color: var(--oc-accent); font-family: var(--mono); font-size: 11px;
+  padding: 6px 12px; border-radius: 5px; cursor: pointer;
+}
+.oc-play-btn:hover { background: rgba(255,210,127,0.25); }
+
 .oc-toggle {
   width            : 34px;
   height           : 18px;
@@ -209,9 +225,13 @@ export default class OmniChronos {
     // meaningfully different when the user has customized it before.
     window.dispatchEvent(new CustomEvent('omni:chronos-toggle', { detail: { enabled: this._saved.enabled } }))
     window.dispatchEvent(new CustomEvent('omni:chronos-axis-set', { detail: { axis: this._saved.zAxis ? 'z' : 'y' } }))
+    window.dispatchEvent(new CustomEvent('omni:chronos-transparency-set', { detail: { enabled: this._saved.transparency } }))
   }
 
-  update () {}
+  update (delta) {
+    PrimaryTime.advance(delta)
+    if (this._isOpen) this._updateClockDisplay()
+  }
   onResize () {}
 
   destroy () {
@@ -258,6 +278,15 @@ export default class OmniChronos {
     }))
   }
 
+  /** Live, real clock text — reads PrimaryTime's actual current
+   *  value every frame while open, formatted per the staged/saved
+   *  preference (military or AM/PM, both real). */
+  _updateClockDisplay () {
+    const display = this._el?.querySelector('#oc-clock-display')
+    if (!display) return
+    display.textContent = formatSeconds(PrimaryTime.getCurrentSeconds(), this._saved.timeFormat)
+  }
+
   _playSound (id) {
     try {
       const Sound = this.ctx?.Sound
@@ -299,9 +328,35 @@ export default class OmniChronos {
           </div>
           <button class="oc-toggle ${s.zAxis ? 'is-on' : ''}" data-key="zAxis" role="switch" aria-checked="${s.zAxis}"></button>
         </div>
+
+        <div class="oc-row">
+          <div>
+            <div class="oc-row-label">Transparency</div>
+            <div class="oc-row-sub">"Clear and almost non-existent, but there"</div>
+          </div>
+          <button class="oc-toggle ${s.transparency ? 'is-on' : ''}" data-key="transparency" role="switch" aria-checked="${s.transparency}"></button>
+        </div>
+
+        <div class="oc-row">
+          <div>
+            <div class="oc-row-label">Time Format</div>
+            <div class="oc-row-sub">Both real, switchable — neither replaces the other</div>
+          </div>
+          <button class="oc-toggle ${s.timeFormat === 'ampm' ? 'is-on' : ''}" data-key="timeFormatToggle" role="switch" aria-checked="${s.timeFormat === 'ampm'}"></button>
+        </div>
+
+        <div class="oc-primary-time">
+          <div class="oc-clock-display" id="oc-clock-display">00:00</div>
+          <button class="oc-play-btn" id="oc-play-pause">${PrimaryTime.isPlaying() ? '⏸ Pause' : '▶ Play'}</button>
+        </div>
       </div>
       <div class="oc-resize-handle" aria-hidden="true"></div>
     `
+
+    el.querySelector('#oc-play-pause').addEventListener('click', () => {
+      if (PrimaryTime.isPlaying()) PrimaryTime.pause(); else PrimaryTime.play()
+      el.querySelector('#oc-play-pause').textContent = PrimaryTime.isPlaying() ? '⏸ Pause' : '▶ Play'
+    })
 
     this._bindHeader(el)
     this._bindResize(el)
@@ -321,6 +376,13 @@ export default class OmniChronos {
   _bindControls (el) {
     el.querySelectorAll('.oc-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.dataset.key === 'timeFormatToggle') {
+          const nextFormat = this._staged.timeFormat === 'ampm' ? 'military' : 'ampm'
+          this._setStaged('timeFormat', nextFormat)
+          btn.classList.toggle('is-on', nextFormat === 'ampm')
+          btn.setAttribute('aria-checked', String(nextFormat === 'ampm'))
+          return
+        }
         const next = !this._staged[btn.dataset.key]
         this._setStaged(btn.dataset.key, next)
         btn.classList.toggle('is-on', next)
@@ -354,6 +416,7 @@ export default class OmniChronos {
 
     window.dispatchEvent(new CustomEvent('omni:chronos-toggle', { detail: { enabled: this._saved.enabled } }))
     window.dispatchEvent(new CustomEvent('omni:chronos-axis-set', { detail: { axis: this._saved.zAxis ? 'z' : 'y' } }))
+    window.dispatchEvent(new CustomEvent('omni:chronos-transparency-set', { detail: { enabled: this._saved.transparency } }))
   }
 
   // ── Header drag / resize — same pattern as every other panel ─────────────

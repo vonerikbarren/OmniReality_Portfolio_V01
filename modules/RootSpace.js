@@ -81,6 +81,15 @@ export default class RootSpace {
       this._applyAxis(axis)
     }
     window.addEventListener('omni:chronos-axis-set', this._onChronosAxisSet)
+
+    // omni:chronos-transparency-set { enabled } — the real "clear and
+    // almost non-existent, but there" treatment OmniChronos specifically
+    // asked for. Applied only when this fires, and only to THIS
+    // RootSpace instance's own materials — WallpaperSphere/
+    // TerminalTunnel/VoidBoundary's own use of RootSpace keeps its
+    // normal, opaque default untouched.
+    this._onChronosTransparencySet = (e) => this._applyChronosTransparency(!!e.detail?.enabled)
+    window.addEventListener('omni:chronos-transparency-set', this._onChronosTransparencySet)
   }
 
   /** A bright flash — light + a camera-facing sprite — used by both
@@ -151,6 +160,38 @@ export default class RootSpace {
     } else {
       gsap.to(this.group.rotation, { x: 0, duration: 0.6, ease: 'power2.inOut' })
       gsap.to(this.group.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: 'power2.inOut' })
+    }
+  }
+
+  /** OmniChronos's own "clear and almost non-existent, but there"
+   *  treatment — real, toggleable, and reversible. Captures each
+   *  material's own original opacity/emissiveIntensity the first
+   *  time this runs, so turning it back off restores the exact
+   *  values WallpaperSphere/TerminalTunnel/VoidBoundary already
+   *  expect, rather than a guessed default. */
+  _applyChronosTransparency(enabled) {
+    const outerMat = this.meshes.outer?.material
+    const middleMat = this.meshes.middle?.material
+    if (!outerMat || !middleMat) return
+
+    if (!this._chronosOriginalMaterialState) {
+      this._chronosOriginalMaterialState = {
+        outerOpacity: outerMat.opacity, outerTransparent: outerMat.transparent, outerEmissive: outerMat.emissiveIntensity,
+        middleOpacity: middleMat.opacity, middleEmissive: middleMat.emissiveIntensity,
+      }
+    }
+    const orig = this._chronosOriginalMaterialState
+
+    if (enabled) {
+      outerMat.transparent = true
+      gsap.to(outerMat, { opacity: 0.06, emissiveIntensity: 0.02, duration: 0.6, ease: 'power2.inOut' })
+      gsap.to(middleMat, { opacity: 0.15, emissiveIntensity: 0.015, duration: 0.6, ease: 'power2.inOut' })
+    } else {
+      gsap.to(outerMat, {
+        opacity: orig.outerOpacity, emissiveIntensity: orig.outerEmissive, duration: 0.6, ease: 'power2.inOut',
+        onComplete: () => { outerMat.transparent = orig.outerTransparent },
+      })
+      gsap.to(middleMat, { opacity: orig.middleOpacity, emissiveIntensity: orig.middleEmissive, duration: 0.6, ease: 'power2.inOut' })
     }
   }
 
@@ -305,6 +346,7 @@ export default class RootSpace {
   destroy() {
     window.removeEventListener('omni:chronos-toggle', this._onChronosToggle)
     window.removeEventListener('omni:chronos-axis-set', this._onChronosAxisSet)
+    window.removeEventListener('omni:chronos-transparency-set', this._onChronosTransparencySet)
 
     // Dispose all geometries + materials (+ any texture maps, e.g. the
     // flash sprite's canvas texture)

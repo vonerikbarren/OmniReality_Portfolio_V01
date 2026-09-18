@@ -77,6 +77,10 @@ still purely conceptual. Check each doc's own Status section.
 - [`omniproducts/OMNIVALUE_DESIGN.md`](omniproducts/OMNIVALUE_DESIGN.md)
   — dimensionalized, multi-type value/bartering, and the paired future
   OmniStore project.
+- [`omniproducts/OMNICHRONOS_DESIGN.md`](omniproducts/OMNICHRONOS_DESIGN.md)
+  — the full time system: the Master Tunnel, ten sub-panels sharing
+  one real underlying system, and the real first target (timeline →
+  Jsonifier → cross-path node correlation).
 - [`omniproducts/OMNIFEED_DESIGN.md`](omniproducts/OMNIFEED_DESIGN.md)
   — blog interface plus live WebSocket comments.
 - [`omniproducts/OMNIBROWSERSPACE_LAYERS_DESIGN.md`](omniproducts/OMNIBROWSERSPACE_LAYERS_DESIGN.md)

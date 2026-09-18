@@ -1625,6 +1625,7 @@ export default class OmniInspector {
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
     window.removeEventListener('omni:node-selected', this._onSelected)
+    window.removeEventListener('omni:node-restored', this._onNodeRestored)
     window.removeEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
     window.removeEventListener('wheel', this._onWheel)
     window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
@@ -1688,6 +1689,39 @@ export default class OmniInspector {
    * @param {{ id, label, geometry, primitive, color, position, parentId, createdAt }} data
    * @param {THREE.Mesh | THREE.LineSegments} mesh
    */
+  /** Real, reusable re-application of a node's saved extended state
+   *  onto its actual mesh — wireframe, material type, material
+   *  properties, AND the texture itself. Extracted from loadNode so
+   *  a silent restore path (no panel open, no active selection) can
+   *  call exactly this, without loadNode's other side effects
+   *  (opening the panel, syncing UI state).
+   *
+   *  The texture URL specifically was the real, missing piece: this
+   *  block already re-applied wireframe/material-type/materialProps
+   *  on load, but never the texture map itself — so a saved texture
+   *  never visually returned to the mesh at all, even when this
+   *  method's own caller (loadNode) already ran. */
+  _reapplyExtToMesh (mesh, ext) {
+    if ('wireframe' in mesh.material) mesh.material.wireframe = !!ext.wireframe
+    const currentType = mesh.material.constructor?.name
+    if (ext.material && ext.material !== currentType) {
+      const prevMesh = this._currentMesh
+      this._currentMesh = mesh   // _applyMaterial reads this
+      this._applyMaterial(ext.material)
+      this._currentMesh = prevMesh
+    }
+    for (const [key, value] of Object.entries(ext.materialProps ?? {})) {
+      if (key in mesh.material) mesh.material[key] = value
+    }
+    if (ext.texture && !COLORLESS_MATS.has(ext.material)) {
+      texLoader.load(ext.texture, (texture) => {
+        mesh.material.map = texture
+        mesh.material.needsUpdate = true
+      })
+    }
+    mesh.material.needsUpdate = true
+  }
+
   loadNode (data, mesh) {
     clearTimeout(this._deleteArmTimer)
     this._el?.querySelector('.oi-ctrl--delete')?.classList.remove('is-armed')
@@ -1714,21 +1748,7 @@ export default class OmniInspector {
     // "clicking a Dimensional Text node doesn't open the Inspector" bug:
     // the corrupted material broke rendering before the panel could
     // meaningfully show.
-    if (mesh?.material && !(mesh instanceof THREE.Sprite)) {
-      if ('wireframe' in mesh.material) mesh.material.wireframe = !!this._ext.wireframe
-      const currentType = mesh.material.constructor?.name
-      if (this._ext.material && this._ext.material !== currentType) {
-        this._currentMesh = mesh   // _applyMaterial reads this
-        this._applyMaterial(this._ext.material)
-      }
-      // Same bug class as wireframe/material type — deeper properties
-      // (roughness, clearcoat, etc.) were saved correctly but never
-      // reapplied to the real mesh on load.
-      for (const [key, value] of Object.entries(this._ext.materialProps ?? {})) {
-        if (key in mesh.material) mesh.material[key] = value
-      }
-      mesh.material.needsUpdate = true
-    }
+    if (mesh?.material && !(mesh instanceof THREE.Sprite)) this._reapplyExtToMesh(mesh, this._ext)
 
     // Sync color state from node data
     const meshColor = mesh?.material?.color
@@ -4509,6 +4529,22 @@ export default class OmniInspector {
     window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
 
     window.addEventListener('omni:node-selected', this._onSelected)
+
+    // The actual fix for "texture doesn't stick after refresh": a
+    // restored node's mesh is brand new and starts with none of its
+    // saved material/texture state — omni:node-selected only fires
+    // on an active user click, never automatically during restore,
+    // so nothing else re-applies this silently. Deliberately does
+    // NOT touch _currentId/_currentMesh/_ext or open the panel —
+    // this must stay invisible to any node the user hasn't actually
+    // selected.
+    this._onNodeRestored = (e) => {
+      const { node, mesh } = e.detail ?? {}
+      if (!node?.id || !mesh?.material || mesh instanceof THREE.Sprite) return
+      const ext = { ...this._defaultExt(node), ...(this._loadExt(node.id) ?? {}) }
+      this._reapplyExtToMesh(mesh, ext)
+    }
+    window.addEventListener('omni:node-restored', this._onNodeRestored)
 
     // Lets any caller (OmniSystemCreatorPanel's per-node "Take Me
     // There" buttons) trigger a real travel directly, without first

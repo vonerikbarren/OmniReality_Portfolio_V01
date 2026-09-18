@@ -95,6 +95,9 @@
 import * as THREE from 'three'
 import gsap       from 'gsap'
 import OmniAimReticle from '../ui/OmniAimReticle.js'
+import { createTimeData } from '../utils/TimeData.js'
+import { lockToRuler, unlockFromRuler } from '../utils/TimeDataRegistry.js'
+import { getCurrentSeconds } from '../utils/PrimaryTime.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -1545,6 +1548,9 @@ export default class OmniNode {
     mesh.userData.nodeId = data.id
     mesh.userData.label = data.label   // real, global label access — any system holding this mesh can read its actual name, not just its id
     mesh.userData.font = data.font   // per-node, not global — each node carries its own real font, same pattern as label
+    const timeData = data.timeData ?? createTimeData(getCurrentSeconds())
+    data.timeData = timeData
+    lockToRuler(data.id, timeData)   // "creating a node locks it to the ruler" — never optional
 
     this.ctx.scene.add(mesh)
     this._nodes.set(data.id, { data, mesh })
@@ -2286,6 +2292,7 @@ export default class OmniNode {
       entry.mesh.geometry?.dispose()
       entry.mesh.material?.map?.dispose()   // canvas texture, for Dimensional Text sprites
       entry.mesh.material?.dispose()
+      unlockFromRuler(id)
       this._nodes.delete(id)
 
       this._save()
@@ -2667,8 +2674,12 @@ export default class OmniNode {
           mesh.userData.nodeId = data.id
           mesh.userData.label = data.label   // same real, global label fix — a node restored from storage needs this too, not only a freshly-created one
           mesh.userData.font = data.font   // per-node, not global — same real fix, needed on restore too
+          const timeData = data.timeData ?? createTimeData(getCurrentSeconds())
+          data.timeData = timeData
+          lockToRuler(data.id, timeData)
           this.ctx.scene.add(mesh)
           this._nodes.set(data.id, { data, mesh })
+          window.dispatchEvent(new CustomEvent('omni:node-restored', { detail: { node: data, mesh } }))
         })
       }
 
