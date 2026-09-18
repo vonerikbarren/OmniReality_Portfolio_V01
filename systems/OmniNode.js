@@ -1543,6 +1543,8 @@ export default class OmniNode {
       mesh.scale.set(...data.scale)
     }
     mesh.userData.nodeId = data.id
+    mesh.userData.label = data.label   // real, global label access — any system holding this mesh can read its actual name, not just its id
+    mesh.userData.font = data.font   // per-node, not global — each node carries its own real font, same pattern as label
 
     this.ctx.scene.add(mesh)
     this._nodes.set(data.id, { data, mesh })
@@ -2330,6 +2332,7 @@ export default class OmniNode {
         lookAtCoordinate: d.lookAtCoordinate ?? [0, 0, 0],
         text: d.text ?? '',
         textSequence: d.textSequence ?? null,
+        font: d.font ?? 'Courier New, monospace',
       })
     }
 
@@ -2662,6 +2665,8 @@ export default class OmniNode {
             mesh.material.needsUpdate = true
           }
           mesh.userData.nodeId = data.id
+          mesh.userData.label = data.label   // same real, global label fix — a node restored from storage needs this too, not only a freshly-created one
+          mesh.userData.font = data.font   // per-node, not global — same real fix, needed on restore too
           this.ctx.scene.add(mesh)
           this._nodes.set(data.id, { data, mesh })
         })

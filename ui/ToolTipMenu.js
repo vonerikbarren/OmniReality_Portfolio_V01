@@ -112,7 +112,7 @@ export default class ToolTipMenu {
   _buildHeaderEl (mesh) {
     const el = document.createElement('div')
     el.className = 'ttm-header'
-    el.textContent = mesh.userData?.omniLandingNode?.label ?? mesh.userData?.omniCryptxRing?.type ?? '⟐ Node'
+    el.textContent = mesh.userData?.label ?? mesh.userData?.omniLandingNode?.label ?? mesh.userData?.omniCryptxRing?.type ?? '⟐ Node'
     el.addEventListener('click', (e) => { e.stopPropagation(); this._toggleQuickMenu(mesh) })
     document.body.appendChild(el)
     return el

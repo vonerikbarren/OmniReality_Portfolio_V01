@@ -23,6 +23,7 @@ import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
 import { confirmPrimaryForce } from '../utils/DesirePrimaryForce.js'
 import WordTicker from '../utils/WordTicker.js'
+import { registerTicker, unregisterTicker } from '../utils/WordTickerRegistry.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
 
@@ -153,7 +154,7 @@ export default class OmniJsonifier {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
-    this._tickers.forEach(t => t.destroy())
+    this._tickers.forEach(t => { unregisterTicker(t.nodeId); t.destroy() })
     this._tickers = []
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omnijsonifier')
@@ -267,7 +268,10 @@ export default class OmniJsonifier {
     }))
 
     if (isTickerLeaf) {
-      this._tickers.push(new WordTicker(this.ctx.camera, node.position.clone(), words))
+      const ticker = new WordTicker(this.ctx.camera, node.position.clone(), words)
+      ticker.nodeId = node.nodeId
+      registerTicker(node.nodeId, ticker)
+      this._tickers.push(ticker)
     }
   }
 
@@ -276,8 +280,8 @@ export default class OmniJsonifier {
     node.meshCreated = false
     window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: node.nodeId } }))
     this._tickers = this._tickers.filter(t => {
-      const isThisNode = t.worldPos.equals(node.position)
-      if (isThisNode) t.destroy()
+      const isThisNode = t.nodeId === node.nodeId
+      if (isThisNode) { unregisterTicker(t.nodeId); t.destroy() }
       return !isThisNode
     })
   }

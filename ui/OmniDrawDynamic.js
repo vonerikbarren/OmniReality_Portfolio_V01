@@ -33,6 +33,7 @@ import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
 import { confirmPrimaryForce } from '../utils/DesirePrimaryForce.js'
 import WordTicker from '../utils/WordTicker.js'
+import { registerTicker, unregisterTicker } from '../utils/WordTickerRegistry.js'
 
 const STYLES = `
 
@@ -146,7 +147,7 @@ export default class OmniDrawDynamic {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
-    this._tickers.forEach(t => t.destroy())
+    this._tickers.forEach(t => { unregisterTicker(t.nodeId); t.destroy() })
     this._tickers = []
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omnidrawdynamic')
@@ -203,6 +204,8 @@ export default class OmniDrawDynamic {
 
     const worldPos = new THREE.Vector3(...position)
     const ticker = new WordTicker(cam, worldPos, words)
+    ticker.nodeId = id
+    registerTicker(id, ticker)
     this._tickers.push(ticker)
 
     confirmPrimaryForce('dynamic-draw-created', true, { id, wordCount: words.length })

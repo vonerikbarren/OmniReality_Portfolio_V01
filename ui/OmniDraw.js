@@ -70,6 +70,15 @@ const MATERIAL_TYPES = [
 
 const PARTICLE_SHAPE_OPTIONS = Object.keys(GEOMETRY_DEFS)
 
+// A real, curated list of fonts guaranteed to render consistently
+// without needing any font-loading — every one of these is a real
+// system/web-safe font, not a custom face that could silently fail
+// to load.
+export const FONT_OPTIONS = [
+  'Courier New, monospace', 'Arial, sans-serif', 'Georgia, serif',
+  'Verdana, sans-serif', 'Times New Roman, serif', 'Trebuchet MS, sans-serif',
+]
+
 // ── Property schema ─────────────────────────────────────────────────────────
 // One row-descriptor per requested field. Rendered generically by
 // _buildRow() below rather than hand-written per field — keeps this from
@@ -100,6 +109,8 @@ const SCHEMA = [
   { group: 'Media', key: 'videoMeshEnabled', label: 'Video Mesh (wraps sphere)', type: 'bool', default: false },
   { group: 'Media', key: 'imgMeshEnabled', label: 'Image Mesh (wraps sphere)', type: 'bool', default: false },
   { group: 'Media', key: 'mediaURL', label: 'Media URL', type: 'text', default: '', placeholder: 'video or image URL' },
+
+  { group: 'Text', key: 'font', label: 'Font', type: 'select', options: FONT_OPTIONS, default: 'Courier New, monospace' },
 
   { group: 'Transform', key: 'px', label: 'px', type: 'range', default: 0, min: -100, max: 100, step: 1, live: true },
   { group: 'Transform', key: 'py', label: 'py', type: 'range', default: 0, min: -100, max: 100, step: 1, live: true },
@@ -1223,6 +1234,7 @@ export default class OmniDraw {
         scale    : [this._data.sx, this._data.sy, this._data.sz],
         parentId : null,
         autoRotation      : this._data.autoRotation,
+        font              : this._data.font,
         autoRotationAxisX : this._data.autoRotationAxisX,
         autoRotationAxisY : this._data.autoRotationAxisY,
         autoRotationAxisZ : this._data.autoRotationAxisZ,

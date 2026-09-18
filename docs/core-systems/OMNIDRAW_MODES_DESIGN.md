@@ -86,6 +86,55 @@ shapes, not one universal rendering.
 as it grows" option raised alongside the toggle system — a real,
 worthwhile idea, offered as a "maybe," not committed to in this pass.
 
+## Font — a real, per-node property, not global
+
+Confirmed directly: font is per-node, exactly like color and scale
+already are — never a shared, app-wide setting. Added to
+OmniDraw(Static)'s own field schema first (a new `select` field,
+reusing the same pattern `meshTypeChannel`/`particleShape` already
+use), flowing through the same real, shared node-creation path every
+OmniNode already goes through — `mesh.userData.font` is now set
+alongside `mesh.userData.label`, in both real creation paths (fresh
+creation and restore-from-storage).
+
+## OmniCommunicationPanel — the real, second inspector for tickers
+
+Confirmed name. One shared panel, retargeted by selection — the same
+real model `OmniInspector` itself uses, not one instance per ticker,
+confirmed directly for mobile-scale reasoning. Finds its ticker
+through `utils/WordTickerRegistry.js`, a real, shared map from node
+id to ticker that both `OmniDrawDynamic` and `OmniJsonifier` register
+into — not fragile position-matching.
+
+A real UX correction made while building, not left as a defect: the
+panel does not force itself open for every node selection — only
+when the selected node genuinely has a registered ticker. Selecting
+something unrelated while the panel is already open updates it to a
+real, honest empty state instead of showing stale data.
+
+**`WordTicker` itself was substantially extended** — previously had
+zero external control (no pause, no per-instance speed, hardcoded
+style, a shared module-level interval). Now real, per-instance, and
+controllable: `play()`/`pause()`, `stepForward()`/`stepBackward()`
+(manual single steps), `toggleReverse()` (flips the same auto-play
+loop's direction — confirmed as genuinely different from a manual
+step), `jumpTo(index)`, `setSpeed()`, `setStyle()`, `setWord()`.
+Direction is stored as a plain signed value (+1/-1), confirmed
+directly to future-proof clockwise/counter-clockwise circular
+arrangements later, rather than a named forward/backward state.
+
+The panel itself: live-synced word-list highlighting (follows the
+ticker's real current index every frame, not just on button clicks),
+per-word click-to-edit, speed as both a number field and a slider,
+color/size/font controls reusing Static's own real `FONT_OPTIONS`
+list rather than a second, diverging copy, a real Save button with
+visible confirmation, and a genuine periodic autosave (every 8
+seconds) — verified to not fire early.
+
+**Explicitly not built here**, confirmed as real, separate future
+work ("build this in parts"): per-word context changing shape and
+saved texture on iteration.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

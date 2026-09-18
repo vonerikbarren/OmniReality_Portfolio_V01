@@ -277,6 +277,44 @@ which already handles despawning both a node's open children and the
 node itself. 5 checks, all passing, confirming the previous tree's
 root is genuinely removed and the new tree starts clean.
 
+### V38
+A real, global fix, not scoped to OmniJsonifier alone: `OmniNode.js`
+only ever stored a node's real label in its own private internal
+map, never on the mesh itself — `mesh.userData` only ever carried
+`nodeId`. This is exactly why `ToolTipMenu`'s floating headers showed
+the generic "⟐ Node" placeholder for every normal node, including
+every one of OmniJsonifier's own JSON-key-labeled nodes. Fixed at the
+actual source — `mesh.userData.label` is now set in both real
+node-creation paths (fresh creation and restore-from-storage) — so
+any system holding only a mesh reference (`ToolTipMenu`, and
+whatever else later) can now read a node's real name directly,
+globally, not just OmniNode's own internal bookkeeping.
+`ToolTipMenu` updated to check this real field first, with the
+existing special-object fallbacks (landing room panels, cryptex
+rings — neither of which go through normal node creation) kept
+intact underneath it. 5 checks, all passing, including a direct
+regression check confirming those fallbacks still work correctly.
+
+### V40
+OmniCommunicationPanel built — the real, second inspector for
+OmniDraw(Dynamic)'s tickers, confirmed name. Font added as a genuine
+per-node property first (`OmniDraw.js`'s own field schema, flowing
+through the same shared node-creation path label already uses).
+`WordTicker.js` substantially extended with a real control surface
+it never had — play/pause, manual step forward/backward, a real
+Reverse that flips auto-play's own direction (a signed +1/-1 value,
+not a named state, confirmed to future-proof clockwise/counter-
+clockwise circular arrangements later), jump-to-index, speed,
+style, and per-word editing. `utils/WordTickerRegistry.js` built so
+the panel can find any ticker by real node id, regardless of which
+panel created it. One real UX fix caught and corrected during the
+build itself: the panel no longer force-opens for every node
+selection — only genuine ticker nodes, with an honest empty state
+otherwise. Live word-highlight sync, click-to-edit words, a working
+speed slider, Save with visible confirmation, and genuine periodic
+autosave verified to not fire early. 24 checks, all passing on the
+first run.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
