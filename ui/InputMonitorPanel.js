@@ -201,7 +201,7 @@ export default class InputMonitorPanel {
       detail: {
         id: 'inputmonitor', label: '⟐OmniInputMonitor', iconLabel: '⟐IM',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

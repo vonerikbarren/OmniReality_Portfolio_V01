@@ -352,7 +352,7 @@ export default class PanelIcon {
     const startY = (fromRect?.y ?? window.innerHeight / 2) + (fromRect?.h ?? 0) / 2 - ICON_SIZE / 2
 
     const el = document.createElement('div')
-    el.className      = variant === 'orb' ? 'omni-panel-icon is-orb' : 'omni-panel-icon'
+    el.className      = variant === 'orb' ? 'omni-panel-icon is-orb' : 'omni-panel-icon is-app'
     el.dataset.panelId = id
     el.dataset.tooltip = `${iconLabel} — click to restore`
     el.setAttribute('role', 'button')

@@ -228,6 +228,57 @@ filled sibling, reusing its same scales.
 all five chart types in sequence leaves no leftover elements from
 whichever type came before.
 
+## OmniCell's default geometry — now a cube
+
+Changed in both real places a chart node is spawned — `OmniDrawCell.js`'s direct creation and `OmniJsonifier.js`'s own chart-eligible detection — from `IcosahedronGeometry` to `BoxGeometry`, so both real paths stay consistent with each other.
+
+## The Inspector already applies to OmniCell nodes — confirmed by tracing the code, with an honest limit on what could be verified from here
+
+Checked directly: chart nodes carry no special marker at all once created — `isChartEligible` lives only inside Jsonifier's own internal tree data and is never passed to the real scene node, so to `OmniNode`/`OmniInspector` a chart node is indistinguishable from anything Static could produce. The Inspector's own `loadNode()` does call `open()` at its end, unconditionally, whenever a node is selected — including a freshly-created OmniCell node, since node creation auto-selects by default.
+
+A headless test run initially looked like `open()` never fired, but tracing the actual stack trace showed why: `loadNode()` throws inside a real-WebGL-dependent preview step *before* reaching its own `open()` call — a genuine limitation of testing outside a real browser, not a logic bug in the code itself. Flagged honestly rather than either dismissed or quietly "fixed" with redundant code: this should already work correctly in a real browser, but browser confirmation is the one thing this environment can't fully provide.
+
+## Real value labels — every chart type now shows the actual numbers, not just the shape
+
+Confirmed and built: every one of the five chart types now renders
+real, correct D3 text labels showing the actual data values
+directly on the chart, not just the visual shape representing them.
+Bar shows a value above each bar; Line and Area show a value at each
+point; Pie shows a value at each slice's own real centroid
+(`d3.arc().centroid()`, correctly positioned regardless of slice
+size); Radar shows a value just outside each series' own vertex,
+colored to match its series. 9 checks, all passing, confirming
+correct label count and correct real values for every type.
+
+## Structure panel — real alternatives to the tree formation
+
+Confirmed directly: alongside the existing toggle mechanic, not a
+replacement for it. `utils/TreeLayout.js` is the real, shared
+positioning logic — the original circular 'tree' formation kept as
+the default, plus three genuine alternatives (`linear-vertical`,
+`linear-horizontal`, `linear-depth`), all tested for correct real
+positions. A new `omni:node-position-set` event lets an already-
+spawned child's real mesh move live when the mode changes, rather
+than requiring the branch to be closed and reopened.
+`ui/OmniStructurePanel.js` is the real panel, retargeted by
+selection with the same real UX fix already proven elsewhere (never
+force-opens for a node with no real children). `ToolTipMenu`'s quick
+menu gained a real "📐 Structure" option, shown under the same
+condition as the children-toggle.
+
+## Real, configurable Take Me There — speed, ease, and stagger
+
+`utils/CameraTravelSettings.js` is the real, persisted, shared
+settings behind every "Take Me There" in the project.
+`utils/CameraTravel.js`'s `goToObject()` now reads real duration and
+ease from it instead of hardcoded values. `ui/CameraTravelSettingsPanel.js`
+gives real control over both, plus a real, curated list of GSAP's
+own eases to choose from — not invented names. Stagger is included
+and genuinely saved, but honestly labeled as not yet doing anything:
+`goToObject()` only ever animates to one object at a time today: kept
+real rather than silently dropped, ready for whenever a multi-target
+travel exists to actually use it.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

@@ -3147,10 +3147,17 @@ export default class OmniInspector {
     row.className = 'oi-geneo-row' + (isCurrent ? ' is-current' : '')
     row.innerHTML = /* html */`
       <span class="oi-geneo-arrow">${children.length ? '▶' : '·'}</span>
-      <span class="oi-geneo-label">${node.label || node.id}</span>
+      <span class="oi-geneo-label" title="Click to view this node's own data">${node.label || node.id}</span>
       ${children.length ? `<span class="oi-geneo-count">${children.length}</span>` : ''}
     `
     wrap.appendChild(row)
+
+    if (!isCurrent) {
+      row.querySelector('.oi-geneo-label').addEventListener('click', (e) => {
+        e.stopPropagation()
+        window.dispatchEvent(new CustomEvent('omni:node-select-by-id', { detail: { id: node.id } }))
+      })
+    }
 
     const childContainer = document.createElement('div')
     childContainer.className = 'oi-geneo-children'

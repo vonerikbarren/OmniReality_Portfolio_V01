@@ -192,7 +192,7 @@ export default class OmniExpressionatorPanel {
       detail: {
         id: 'expressionator', label: '⟐OmniExpressionator', iconLabel: '⟐E',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

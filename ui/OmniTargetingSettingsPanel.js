@@ -184,7 +184,7 @@ export default class OmniTargetingSettingsPanel {
       detail: {
         id: 'targetingsettings', label: '⟐OmniTargetingSettings', iconLabel: '⟐T',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

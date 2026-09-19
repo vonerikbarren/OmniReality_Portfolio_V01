@@ -210,7 +210,7 @@ export default class OmniCommunicationPanel {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omnicommunicationpanel', label: '⟐OmniCommunicationPanel', iconLabel: '⟐C',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 

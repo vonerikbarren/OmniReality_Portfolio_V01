@@ -195,7 +195,7 @@ export default class OmniPlayerDashboard {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omniplayerdashboard', label: '⟐OmniPlayer', iconLabel: '⟐P',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 

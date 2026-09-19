@@ -447,6 +447,112 @@ Line's own scales as its natural filled sibling. 7 checks, all
 passing, including confirming cycling through all five types in
 sequence leaves no leftover elements behind.
 
+### V54
+Real bug fixed: "the nodes don't go to the hands" — traced to a
+genuinely fiddly two-step requirement (a hand's own hamburger menu
+had to be opened separately, then a grabbed object dragged precisely
+onto its small screen rect). Replaced with a real, direct alternative:
+`OmniGrab.sendToHand(mesh, handId)` condenses a mesh into a named
+hand immediately, no dragging, no pre-opening required.
+`ToolTipMenu`'s Grab button now opens a real 4-option hand picker.
+A second, real gap found while building this: placed nodes had their
+original position/scale cleared to `null` the instant they were
+placed, making release genuinely impossible. Fixed with a persistent
+`_placedNodes` map and a real `releaseFromHand()`; the menu now shows
+Release for a currently-placed node. One bug caught and fixed during
+the build itself: replacing the menu's own innerHTML mid-click
+detached the clicked button before its event finished bubbling,
+reproducing the exact flicker already fixed once in
+`OmniDrawModePicker` — applied the same proven guard. 12 checks, all
+passing.
+
+### V55
+State-transition particles built — confirmed and corrected from an
+earlier, wrong assumption (continuous emotion display) to what was
+actually asked for: assisting state changes specifically.
+`utils/StepMarker.js` built fresh — real px/py/pz movement tracking,
+no prior version found anywhere to reuse. `modules/
+StateTransitionParticles.js`: a continuous trail where spawn rate
+and per-particle life both scale with StepMarker's own real speed
+(faster real movement -> genuinely longer streaks, one real system
+across the whole speed range rather than separate fast/slow modes),
+and a one-shot teleport burst reusing the exact real
+`omni:orbit-disable`/`omni:orbit-enable` pair every camera travel in
+this project already dispatches — captures the real start position,
+animates a real cluster of particles toward the real destination,
+then genuinely settles them at rest rather than letting them vanish
+or drift. Kept genuinely small per explicit request, noticeable
+through additive glow rather than size. 10 checks, all passing.
+
+### V56
+Three real pieces. **Tree-access + data-panel children**:
+`OmniNode.js` gained a real, public `getChildrenOf(parentId)`.
+`ToolTipMenu.js`'s quick menu now shows a real "Show/Hide Children
+(N)" option, only when a node genuinely has children, toggling their
+real visibility — the exact mechanic Jsonifier already proved,
+generalized to any node. Found that OmniInspector already had a full
+genealogy tree explorer, but clicking a row only expanded/collapsed
+it — it never actually loaded that child's own data. Added a real,
+separately-clickable label (the arrow keeps its own expand/collapse)
+dispatching a new `omni:node-select-by-id` event, reusing
+`_selectNode`'s already-complete behavior rather than a second,
+parallel selection path.
+
+**Minimize redesign**: confirmed the "app icon" look already existed
+in `PanelIcon.js` as an unused second variant alongside the circular
+orb — every single panel in the project (29 occurrences, not just
+recent builds) was requesting `variant: 'orb'`. Bulk-changed all of
+them to a new, explicit `'app'` value rather than removing the field
+outright, avoiding any risk to varying surrounding syntax across 28
+files. Drag-to-dock already worked identically for both variants, so
+no separate fix was needed there — confirmed directly instead of
+assumed.
+
+**Color picker**: confirmed already built, exactly as suspected —
+`OmniCommunicationPanel.js`'s own `#ocp-color` input already controls
+a Dynamic ticker's tooltip-label color.
+
+11 checks, all passing.
+
+### V59
+Real bug fixed: freshly-created nodes with an explicit color (every
+Jsonifier branch/leaf/chart node, every OmniCell node) came out pure
+white and visually oversized until a full page reload. Traced
+precisely: `_createNode`'s own color computation only ever checked
+`data.color` for `DimensionalText` geometry — everything else always
+used the primitive-type default (white, for `objective`), silently
+discarding whatever explicit color was actually provided. The
+restore-from-storage path already had the correct logic
+(`data.color ?? primitive-default`) — this exact bug class was
+already found and fixed once before, but only for restore, never for
+fresh creation, which is why a reload always "fixed" it. Matched
+`_createNode` to the already-correct restore logic. The reported
+"super big" look was investigated directly rather than assumed
+fixed by association — scale-application code is identical between
+both paths, so this is very likely the same white-color bug's visual
+side effect (bright white reads as larger against a dark background)
+rather than an independent issue. 5 checks, all passing, including a
+direct regression check isolating `_createNode`'s own fallback logic
+from the separate defaulting the create-request event handler
+already does upstream.
+
+### V61
+The Structure panel and quick-menu option (Part 1+2 of the previous
+message) were rebuilt after discovering they hadn't actually been
+saved — a checkpoint had been packaged partway through that work,
+before these pieces existed, and the container reset before a later
+version was ever packaged. Confirmed by checking the actual
+checkpoint file directly rather than assuming. Rebuilt: `utils/
+TreeLayout.js` (the real, shared positioning logic — the original
+circular 'tree' formation plus three real linear alternatives), the
+`omni:node-position-set` event, `OmniJsonifier.js`'s `setLayoutMode`,
+`ui/OmniStructurePanel.js`, and `ToolTipMenu`'s "📐 Structure" option.
+`utils/CameraTravelSettings.js` and its panel (built the same prior
+turn) were confirmed already present and correct — only the
+Structure panel side needed redoing. Re-ran the full test suite
+before packaging this time, all 8 checks passing, rather than
+trusting the prior turn's report.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

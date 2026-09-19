@@ -26,6 +26,7 @@ import WordTicker from '../utils/WordTicker.js'
 import { registerTicker, unregisterTicker } from '../utils/WordTickerRegistry.js'
 import { registerChart, unregisterChart } from '../utils/ChartDataRegistry.js'
 import { detectSeriesData } from '../utils/ChartEligibility.js'
+import { computeChildPosition } from '../utils/TreeLayout.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
 
@@ -184,7 +185,7 @@ export default class OmniJsonifier {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omnijsonifier', label: '⟐OmniJsonifier', iconLabel: '⟐J',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 
@@ -229,17 +230,13 @@ export default class OmniJsonifier {
       nodeId, key, value, position, parentNodeId,
       isLeaf, isOpen: false, meshCreated: false, children: [],
       isChartEligible: false, seriesData: null,
+      layoutMode: 'tree',   // real, per-node — 'tree' (default) | 'linear-vertical' | 'linear-horizontal' | 'linear-depth'
     }
     if (!isLeaf) {
       const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
       node.children = entries.map(([childKey, childValue], i) => {
-        const angle = (i / Math.max(1, entries.length)) * Math.PI * 2
-        const childPos = new THREE.Vector3(
-          position.x + Math.cos(angle) * CHILD_OFFSET,
-          position.y - 1.2,
-          position.z + Math.sin(angle) * CHILD_OFFSET,
-        )
-        return this._buildTreeNode(childKey, childValue, childPos, nodeId)
+        const childPos = computeChildPosition(position, i, entries.length, node.layoutMode)
+        return this._buildTreeNode(childKey, childValue, new THREE.Vector3(childPos.x, childPos.y, childPos.z), nodeId)
       })
       this._detectChartEligibility(node)
     }
@@ -272,7 +269,7 @@ export default class OmniJsonifier {
       detail: {
         id: node.nodeId,
         label: node.key,
-        geometry: node.isChartEligible ? 'IcosahedronGeometry' : (node.isLeaf ? 'SphereGeometry' : 'OctahedronGeometry'),
+        geometry: node.isChartEligible ? 'BoxGeometry' : (node.isLeaf ? 'SphereGeometry' : 'OctahedronGeometry'),
         primitive: 'objective',
         color: node.isChartEligible ? '#ffb347' : (node.isLeaf ? '#8cff8c' : '#7fd8ff'),
         position: [node.position.x, node.position.y, node.position.z],
@@ -314,6 +311,22 @@ export default class OmniJsonifier {
    *  direct children live; closing it despawns them (and, recursively,
    *  anything open beneath them), rather than leaving orphaned nodes
    *  behind. */
+  /** The real mechanism behind the Structure panel — recomputes
+   *  every real child's position under the new layout mode, and for
+   *  any child already spawned in the scene, moves its real mesh
+   *  live rather than requiring the branch to be closed and
+   *  reopened to see the new formation. */
+  setLayoutMode (node, mode) {
+    node.layoutMode = mode
+    node.children.forEach((child, i) => {
+      const newPos = computeChildPosition(node.position, i, node.children.length, mode)
+      child.position.set(newPos.x, newPos.y, newPos.z)
+      if (child.meshCreated) {
+        window.dispatchEvent(new CustomEvent('omni:node-position-set', { detail: { id: child.nodeId, position: newPos } }))
+      }
+    })
+  }
+
   _toggleBranch (node) {
     node.isOpen = !node.isOpen
     if (node.isOpen) {

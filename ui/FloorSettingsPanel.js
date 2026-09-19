@@ -200,7 +200,7 @@ export default class FloorSettingsPanel {
       detail: {
         id: 'floorsettings', label: '⟐FloorSettings', iconLabel: '⟐F',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

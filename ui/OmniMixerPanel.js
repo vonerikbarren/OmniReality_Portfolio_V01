@@ -339,7 +339,7 @@ export default class OmniMixerPanel {
       detail: {
         id: 'omnimixer', label: '⟐OmniMixer', iconLabel: '⟐M',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

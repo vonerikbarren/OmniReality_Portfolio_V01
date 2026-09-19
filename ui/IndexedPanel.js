@@ -218,7 +218,7 @@ export default class IndexedPanel {
       detail: {
         id: this.config.id, label: this.config.title, iconLabel: this.config.iconLabel ?? this.config.prefix?.[0] ?? '⟐',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

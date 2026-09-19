@@ -62,6 +62,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniPlayer'      },
   { label: '⟐OmniRealities'   },
   { label: '⟐OmniChronos'     },
+  { label: '⟐CameraTravelSettings' },
   { label: '⟐OmniVision'      },
   { label: '⟐OmniSense'       },
   { label: '⟐OmniExpression'  },

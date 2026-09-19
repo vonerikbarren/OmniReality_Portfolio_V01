@@ -78,7 +78,10 @@ import OmniSelector      from './ui/OmniSelector.js'
 import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
 import OmniChronos from './ui/OmniChronos.js'
 import ChronosFloorClock from './modules/ChronosFloorClock.js'
+import CameraTravelSettingsPanel from './ui/CameraTravelSettingsPanel.js'
+import OmniStructurePanel from './ui/OmniStructurePanel.js'
 import ChronosRealityNode from './modules/ChronosRealityNode.js'
+import StateTransitionParticles from './modules/StateTransitionParticles.js'
 import OmniInternalPanel from './ui/OmniInternalPanel.js'
 import PanelControl from './ui/PanelControl.js'
 import OmniInspection from './ui/OmniInspection.js'
@@ -271,7 +274,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(omniDraw)
   const omniDrawModePicker = base.addModule(new OmniDrawModePicker())
   base.addModule(new OmniDrawDynamic(base.context))
-  base.addModule(new OmniJsonifier(base.context))
+  const omniJsonifier = base.addModule(new OmniJsonifier(base.context))
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
   base.addModule(new OmniDrawCell(base.context))
@@ -344,7 +347,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniChronos = new OmniChronos(base.context)
   base.addModule(omniChronos)
   base.addModule(new ChronosFloorClock(base.context))
+  base.addModule(new CameraTravelSettingsPanel())
+  base.addModule(new OmniStructurePanel(base.context, omniJsonifier))
   base.addModule(new ChronosRealityNode(base.context))
+  base.addModule(new StateTransitionParticles(base.context))
 
   const omniInternalPanel = new OmniInternalPanel(base.context)
   base.addModule(omniInternalPanel)

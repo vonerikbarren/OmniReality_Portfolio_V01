@@ -39,7 +39,7 @@
  *   omni:panel-restore  { id: 'omnidraw' }   — reopen from orb icon
  *
  * Events dispatched (window):
- *   omni:panel-minimized  { id, label, iconLabel, fromRect, variant: 'orb' }
+ *   omni:panel-minimized  { id, label, iconLabel, fromRect, variant: 'app' }
  *   omni:object-enter-space  { }   — stub, Enter tab click (not consumed anywhere yet)
  *
  * Follows the standard module contract (constructor / init / update / destroy).

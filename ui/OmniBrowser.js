@@ -264,7 +264,7 @@ export default class OmniBrowser {
       detail: {
         id: `omnibrowser-${this.windowId}`, label: `⟐OmniBrowser ${this.windowId}`, iconLabel: '⟐B',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

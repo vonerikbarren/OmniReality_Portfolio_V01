@@ -167,7 +167,7 @@ export default class ComingSoonPanel {
       detail: {
         id: this.winId, label: this.title, iconLabel: '⟐?',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

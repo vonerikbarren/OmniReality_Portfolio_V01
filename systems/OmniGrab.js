@@ -53,6 +53,14 @@ export default class OmniGrab {
     this._releasing = false
     this._releaseElapsed = 0
 
+    // Persistent — survives across grabs, unlike the transient drag
+    // state above. The actual fix for "release it back to its
+    // original spot": _endGrab() used to clear originalPosition to
+    // null the instant a node was placed, losing it forever. Every
+    // node currently sitting in a hand gets a real, durable entry
+    // here instead: nodeId -> { mesh, originalPosition, originalScale, handId }.
+    this._placedNodes = new Map()
+
     this._onPointerDown = null
     this._onPointerMove = null
     this._onPointerUp = null
@@ -148,6 +156,51 @@ export default class OmniGrab {
     window.dispatchEvent(new CustomEvent('omni:reality-grabbed', { detail: { mesh } }))
   }
 
+  /** The real fix for "the nodes don't go to the hands" — direct,
+   *  menu-driven placement, no dragging required at all. Bypasses
+   *  open-hand detection and screen-position dragging entirely; the
+   *  explicit menu choice itself is the permission, not a hand's
+   *  own open/closed visual state. Reuses the exact same real
+   *  condense mechanics (scale, hide, dispatch, persistent record)
+   *  the drag path already uses, so both paths stay in one real
+   *  system, not two. */
+  sendToHand (mesh, handId) {
+    if (!mesh) return
+    const handEl = document.getElementById(`omni-hand-${handId}`)
+    if (!handEl) return
+    const originalPosition = mesh.position.clone()
+    const originalScale = mesh.scale.clone()
+    const rect = handEl.getBoundingClientRect()
+    const worldPoint = this._screenPointToWorld(rect, mesh.position)
+
+    mesh.position.copy(worldPoint)
+    mesh.scale.setScalar(CONDENSE_SCALE)
+    mesh.visible = false
+
+    const nodeId = mesh.userData.nodeId
+    if (nodeId) this._placedNodes.set(nodeId, { mesh, originalPosition, originalScale, handId })
+
+    window.dispatchEvent(new CustomEvent('omni:reality-placed-in-hand', { detail: { mesh, handId } }))
+  }
+
+  /** The other real fix — releasing a node back to its actual
+   *  original spot, now genuinely possible since that data survives
+   *  in _placedNodes instead of being cleared the instant the node
+   *  was placed. */
+  releaseFromHand (nodeId) {
+    const entry = this._placedNodes.get(nodeId)
+    if (!entry) return
+    entry.mesh.visible = true
+    entry.mesh.position.copy(entry.originalPosition)
+    entry.mesh.scale.copy(entry.originalScale)
+    this._placedNodes.delete(nodeId)
+    window.dispatchEvent(new CustomEvent('omni:reality-released-from-hand', { detail: { mesh: entry.mesh, nodeId } }))
+  }
+
+  isPlaced (nodeId) {
+    return this._placedNodes.has(nodeId)
+  }
+
   _handlePointerMove (e) {
     if (!this._grabbedMesh || this._releasing) return
     this._setMouseFromEvent(e)
@@ -186,6 +239,15 @@ export default class OmniGrab {
       // that turns out to require.
       this._grabbedMesh.scale.setScalar(CONDENSE_SCALE)
       this._grabbedMesh.visible = false
+      const nodeId = this._grabbedMesh.userData.nodeId
+      if (nodeId) {
+        this._placedNodes.set(nodeId, {
+          mesh: this._grabbedMesh,
+          originalPosition: this._originalPosition.clone(),
+          originalScale: this._originalScale.clone(),
+          handId: this._condensingIntoHandId,
+        })
+      }
       window.dispatchEvent(new CustomEvent('omni:reality-placed-in-hand', {
         detail: { mesh: this._grabbedMesh, handId: this._condensingIntoHandId }
       }))

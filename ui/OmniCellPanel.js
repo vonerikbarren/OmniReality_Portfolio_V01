@@ -108,6 +108,7 @@ const STYLES = `
 .ocl-chart-wrap { flex: 1 1 auto; min-height: 180px; }
 .ocl-chart-wrap svg { width: 100%; height: 100%; }
 .ocl-axis text { fill: var(--ocl-text-dim); font-size: 9px; font-family: var(--mono); }
+.ocl-value-label { fill: var(--ocl-text); font-size: 9px; font-family: var(--mono); pointer-events: none; }
 .ocl-axis path, .ocl-axis line { stroke: var(--ocl-border); }
 
 `
@@ -169,7 +170,7 @@ export default class OmniCellPanel {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omnicellpanel', label: '⟐OmniCellPanel', iconLabel: '⟐📊',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 
@@ -296,6 +297,12 @@ export default class OmniCellPanel {
           .attr('y', label => y(c.seriesData[name][label] ?? 0))
           .attr('height', label => innerH - y(c.seriesData[name][label] ?? 0))
           .attr('fill', colorOf(name))
+        groups.append('text')
+          .attr('class', 'ocl-value-label')
+          .attr('x', x1(name) + x1.bandwidth() / 2)
+          .attr('y', label => y(c.seriesData[name][label] ?? 0) - 4)
+          .attr('text-anchor', 'middle')
+          .text(label => c.seriesData[name][label] ?? 0)
       })
     } else if (c.chartType === 'area') {
       const xPoint = d3.scalePoint().domain(labels).range([0, innerW])
@@ -307,6 +314,12 @@ export default class OmniCellPanel {
           .attr('stroke', 'none').attr('d', area)
         g.append('path').datum(points).attr('fill', 'none').attr('stroke', colorOf(name))
           .attr('stroke-width', 2).attr('d', line)
+        g.selectAll(null).data(points).join('text')
+          .attr('class', 'ocl-value-label')
+          .attr('x', ([label]) => xPoint(label))
+          .attr('y', ([, v]) => y(v) - 6)
+          .attr('text-anchor', 'middle')
+          .text(([, v]) => v)
       })
     } else {
       const xPoint = d3.scalePoint().domain(labels).range([0, innerW])
@@ -315,6 +328,12 @@ export default class OmniCellPanel {
         const points = labels.map(label => [label, c.seriesData[name][label] ?? 0])
         g.append('path').datum(points).attr('fill', 'none').attr('stroke', colorOf(name))
           .attr('stroke-width', 2).attr('d', line)
+        g.selectAll(null).data(points).join('text')
+          .attr('class', 'ocl-value-label')
+          .attr('x', ([label]) => xPoint(label))
+          .attr('y', ([, v]) => y(v) - 6)
+          .attr('text-anchor', 'middle')
+          .text(([, v]) => v)
       })
     }
   }
@@ -335,6 +354,11 @@ export default class OmniCellPanel {
     pieG.selectAll('path').data(arcs).join('path')
       .attr('d', arcGen).attr('fill', d => colorOfLabel(d.data.label))
       .attr('stroke', 'rgba(8,8,12,0.6)').attr('stroke-width', 1)
+    pieG.selectAll('text').data(arcs).join('text')
+      .attr('class', 'ocl-value-label')
+      .attr('transform', d => `translate(${arcGen.centroid(d)})`)
+      .attr('text-anchor', 'middle')
+      .text(d => d.data.value)
   }
 
   /** Each visible series becomes its own closed polygon — vertices
@@ -367,6 +391,13 @@ export default class OmniCellPanel {
       radarG.append('path').datum(pointsFor(name)).attr('d', d => lineGen(d) + 'Z')
         .attr('fill', colorOf(name)).attr('fill-opacity', 0.15)
         .attr('stroke', colorOf(name)).attr('stroke-width', 2)
+      radarG.selectAll(null).data(labels).join('text')
+        .attr('class', 'ocl-value-label')
+        .attr('x', (label, i) => { const r = rScale(c.seriesData[name][label] ?? 0); return Math.cos(angleFor(i)) * (r + 10) })
+        .attr('y', (label, i) => { const r = rScale(c.seriesData[name][label] ?? 0); return Math.sin(angleFor(i)) * (r + 10) })
+        .attr('text-anchor', 'middle')
+        .attr('fill', colorOf(name))
+        .text(label => c.seriesData[name][label] ?? 0)
     })
   }
 

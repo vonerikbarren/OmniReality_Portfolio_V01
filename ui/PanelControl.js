@@ -287,7 +287,7 @@ export default class PanelControl {
       detail: {
         id: 'panelcontrol', label: '⟐PanelControl', iconLabel: '⟐P',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

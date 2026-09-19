@@ -72,6 +72,7 @@ export default class ToolTipMenu {
     injectStyles()
     this._onDocClick = (e) => {
       if (!this._openMenuMesh) return
+      if (this._ignoreNextDocClick) return
       if (e.target.closest('.ttm-quickmenu') || e.target.closest('.ttm-header')) return
       this._closeQuickMenu()
     }
@@ -134,20 +135,71 @@ export default class ToolTipMenu {
     this._openMenuMesh = mesh
     this._menuEl = document.createElement('div')
     this._menuEl.className = 'ttm-quickmenu'
+    document.body.appendChild(this._menuEl)
+    this._renderMainMenu(mesh)
+    this._positionQuickMenu(mesh)
+  }
+
+  _renderMainMenu (mesh) {
+    const nodeId = mesh.userData.nodeId
+    const isPlaced = nodeId && this.omniGrab?.isPlaced(nodeId)
+    const children = nodeId ? (this.omniNode?.getChildrenOf?.(nodeId) ?? []) : []
+    const hasChildren = children.length > 0
+    const childrenVisible = hasChildren && children[0].mesh?.visible
+
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
-      <button class="ttm-action-btn" data-action="grab">✊ Grab</button>
+      <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
+      ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${children.length})</button>` : ''}
+      ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
     `
     this._menuEl.querySelector('[data-action="take-me-there"]').addEventListener('click', () => {
       goToObject(this.ctx, mesh)
       this._closeQuickMenu()
     })
-    this._menuEl.querySelector('[data-action="grab"]').addEventListener('click', () => {
-      this.omniGrab?.grabMesh(mesh)
-      this._closeQuickMenu()
+
+    if (hasChildren) {
+      this._menuEl.querySelector('[data-action="structure"]').addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: nodeId }, mesh } }))
+        this._closeQuickMenu()
+      })
+    }
+
+    if (isPlaced) {
+      this._menuEl.querySelector('[data-action="release"]').addEventListener('click', () => {
+        this.omniGrab?.releaseFromHand(nodeId)
+        this._closeQuickMenu()
+      })
+    } else {
+      this._menuEl.querySelector('[data-action="grab"]').addEventListener('click', () => this._renderHandPicker(mesh))
+    }
+
+    if (hasChildren) {
+      this._menuEl.querySelector('[data-action="toggle-children"]').addEventListener('click', () => {
+        children.forEach(child => { if (child.mesh) child.mesh.visible = !childrenVisible })
+        this._closeQuickMenu()
+      })
+    }
+  }
+
+  /** The real, direct fix — pick a hand from a menu, no dragging
+   *  onto a small screen target required at all. */
+  _renderHandPicker (mesh) {
+    const hands = [['tl', 'Top Left'], ['tr', 'Top Right'], ['bl', 'Bottom Left'], ['br', 'Bottom Right']]
+    this._menuEl.innerHTML = `
+      <button class="ttm-action-btn" data-action="back">← Back</button>
+      ${hands.map(([id, label]) => `<button class="ttm-action-btn" data-hand="${id}">✊ ${label}</button>`).join('')}
+    `
+    this._menuEl.querySelector('[data-action="back"]').addEventListener('click', () => this._renderMainMenu(mesh))
+    hands.forEach(([id]) => {
+      this._menuEl.querySelector(`[data-hand="${id}"]`).addEventListener('click', () => {
+        this.omniGrab?.sendToHand(mesh, id)
+        this._closeQuickMenu()
+      })
     })
-    document.body.appendChild(this._menuEl)
     this._positionQuickMenu(mesh)
+    this._ignoreNextDocClick = true
+    setTimeout(() => { this._ignoreNextDocClick = false }, 0)
   }
 
   _closeQuickMenu () {

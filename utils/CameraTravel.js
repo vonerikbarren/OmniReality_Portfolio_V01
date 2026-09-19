@@ -15,6 +15,7 @@
 
 import * as THREE from 'three'
 import gsap from 'gsap'
+import { getSettings } from './CameraTravelSettings.js'
 
 export function goToObject (ctx, mesh) {
   if (!mesh) return
@@ -31,8 +32,9 @@ export function goToObject (ctx, mesh) {
 
   window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
 
+  const { duration, ease } = getSettings()
   gsap.to(camera.position, {
-    x: target.x, y: target.y, z: target.z, duration: 0.6, ease: 'power2.inOut',
+    x: target.x, y: target.y, z: target.z, duration, ease,
     onUpdate: () => camera.lookAt(objectPos),
     onComplete: () => window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} })),
   })

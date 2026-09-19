@@ -128,6 +128,40 @@ axis is structurally different from OmniReality's. Recorded here so
 it's a known, open dimension of this design rather than something
 quietly collapsed into a single list the first time this gets built.
 
+## Real bug fixed — "the nodes don't go to the hands"
+
+Traced to a genuinely two-step, fiddly requirement: a hand only
+became a valid drop target once its own hamburger menu was
+separately opened (`dataset.handOpen`), and even then the grabbed
+object had to be dragged precisely onto that hand's small screen
+rectangle. Neither step was obvious, and missing either meant the
+node always just snapped back.
+
+Fixed with a real, direct, menu-driven alternative — confirmed as
+the better UX going forward: `OmniGrab.js` gained `sendToHand(mesh,
+handId)`, which condenses a mesh into a named hand's real screen
+position immediately, regardless of that hand's own open/closed
+state — the explicit menu choice itself is the permission now, not a
+hand's visual state. `ToolTipMenu.js`'s Grab button now opens a real
+4-option hand picker instead of starting a drag directly.
+
+**The other real gap, found while building this**: once a node was
+placed in a hand, its original position/scale were being cleared to
+`null` the instant it was placed — there was no way to release it
+back at all. Fixed with a real, persistent `_placedNodes` map that
+survives across placements, and a new `releaseFromHand(nodeId)`
+that genuinely restores it. `ToolTipMenu`'s menu now shows Release
+instead of Grab for a node currently in a hand.
+
+One real bug caught and fixed while building this, not left in:
+`_renderHandPicker` replacing the menu's own `innerHTML` mid-click
+detached the clicked button before the event finished bubbling to
+`document`, causing the exact same "outside click closes what it
+just opened" flicker already fixed once before in
+`OmniDrawModePicker`. Applied the identical, proven guard.
+
+12 checks, all passing.
+
 ## Status
 
 Purely conceptual mapping — no code changes from this doc. OmniHand

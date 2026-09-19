@@ -266,7 +266,7 @@ export default class OmniBrowserSpacePanel {
       detail: {
         id: 'browserspacepanel', label: '⟐OmniBrowserSpaceSettings', iconLabel: '⟐S',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

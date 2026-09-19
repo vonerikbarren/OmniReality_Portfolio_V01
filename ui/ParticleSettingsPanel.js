@@ -224,7 +224,7 @@ export default class ParticleSettingsPanel {
       detail: {
         id: 'particlesettings', label: '⟐OmniParticleSettings', iconLabel: '⟐P',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }

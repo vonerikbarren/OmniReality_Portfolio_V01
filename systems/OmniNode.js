@@ -1010,6 +1010,8 @@ export default class OmniNode {
     window.removeEventListener('omni:force-save', this._onForceSave)
     window.removeEventListener('omni:node-parent-set', this._onParentSet)
     window.removeEventListener('omni:genealogy-select-request', this._onGenealogySelect)
+    window.removeEventListener('omni:node-select-by-id', this._onSelectById)
+    window.removeEventListener('omni:node-position-set', this._onPositionSet)
     window.removeEventListener('omni:nodes-request', this._onNodesRequest)
     window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
 
@@ -1074,6 +1076,16 @@ export default class OmniNode {
    */
   getAllNodes () {
     return [...this._nodes.values()].map(n => n.data)
+  }
+
+  /** Real, public children-query — both nodes and their meshes, for
+   *  whatever needs to show or toggle a parent's real children
+   *  (ToolTipMenu's tree-access option, OmniInspector's children
+   *  section). */
+  getChildrenOf (parentId) {
+    return [...this._nodes.values()]
+      .filter(n => n.data.parentId === parentId)
+      .map(n => ({ data: n.data, mesh: n.mesh }))
   }
 
   /**
@@ -1536,7 +1548,16 @@ export default class OmniNode {
    * @param {object} data  — node schema object
    */
   _createNode (data) {
-    const color  = data.geometry === 'DimensionalText' ? (data.color ?? '#ffffff') : (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
+    // Matches the restore path's own, already-correct logic — this
+    // was the same real bug already found and fixed once for restore
+    // ("color/texture doesn't stick after reload"), but the fix was
+    // never applied here too: fresh creation always used the
+    // primitive-type default color, discarding any explicit color a
+    // caller (Jsonifier, OmniCell, etc.) actually provided — which is
+    // exactly why every Jsonifier/OmniCell node came out pure white
+    // until a page reload routed it through the correct restore path
+    // instead.
+    const color  = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
     const mesh   = this._buildMesh(data.geometry, color, data.text)
 
     mesh.position.set(...data.position)
@@ -2344,6 +2365,21 @@ export default class OmniNode {
       })
     }
 
+    // omni:node-position-set { id, position } — a real, direct
+    // reposition for an already-existing node, live, without
+    // recreating it. The real mechanism the Structure panel needs to
+    // move already-spawned children when a layout mode changes,
+    // matching the established event-bus pattern rather than
+    // threading a direct OmniNode reference into whatever needs this.
+    this._onPositionSet = (e) => {
+      const { id, position } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry || !position) return
+      entry.mesh.position.set(position.x, position.y, position.z)
+      entry.data.position = [position.x, position.y, position.z]
+    }
+    window.addEventListener('omni:node-position-set', this._onPositionSet)
+
     // Explicit save request — from OmniInspector's Save button. All fields
     // already autosave on change; this just guarantees an immediate,
     // unconditional flush of whatever is currently in memory.
@@ -2379,6 +2415,17 @@ export default class OmniNode {
     // persistent multi-select (nodes aren't individually selectable as a
     // group yet — dragging/editing the whole tree together would be a
     // separate, larger feature).
+    // The real fix for "tie children to the data panel" — a genealogy
+    // row's own label can request a specific node be genuinely loaded
+    // into the Inspector (not just have its tree expanded/collapsed),
+    // reusing _selectNode's already-complete behavior rather than a
+    // second, parallel selection path.
+    this._onSelectById = (e) => {
+      const { id } = e.detail ?? {}
+      if (id && this._nodes.has(id)) this._selectNode(id)
+    }
+    window.addEventListener('omni:node-select-by-id', this._onSelectById)
+
     this._onGenealogySelect = (e) => {
       const { id } = e.detail ?? {}
       const entry = this._nodes.get(id)

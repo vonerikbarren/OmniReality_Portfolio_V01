@@ -175,7 +175,7 @@ export default class OmniDrawDynamic {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omnidrawdynamic', label: '⟐OmniDrawDynamic', iconLabel: '⟐D',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 

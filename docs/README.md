@@ -43,6 +43,9 @@ specific named OmniProduct.
 - [`core-systems/DIMENSIONAL_TEXT_DESIGN.md`](core-systems/DIMENSIONAL_TEXT_DESIGN.md)
 - [`core-systems/OMNIKEYBOARD_DESIGN.md`](core-systems/OMNIKEYBOARD_DESIGN.md)
 - [`core-systems/OMNIDRAW_MODES_DESIGN.md`](core-systems/OMNIDRAW_MODES_DESIGN.md)
+- [`core-systems/STATE_TRANSITION_PARTICLES_DESIGN.md`](core-systems/STATE_TRANSITION_PARTICLES_DESIGN.md)
+  — real movement-speed trail particles and the teleport burst-then-
+  settle effect, both built and tested.
   — the Static/Dynamic mode picker, built and verified: the first
   real use of Desire/PrimaryForce, and OmniDraw(Dynamic)'s word-
   ticker mechanic.

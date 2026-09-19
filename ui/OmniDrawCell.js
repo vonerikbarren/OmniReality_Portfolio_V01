@@ -158,7 +158,7 @@ export default class OmniDrawCell {
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: { id: 'omnidrawcell', label: '⟐OmniDraw(OmniCell)', iconLabel: '⟐📊',
-        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'orb' }
+        fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
 
@@ -189,7 +189,7 @@ export default class OmniDrawCell {
     window.dispatchEvent(new CustomEvent('omni:node-create-request', {
       detail: {
         id, label: name || 'OmniCell_' + Date.now().toString(36).slice(-4),
-        geometry: 'IcosahedronGeometry', primitive: 'objective', color: '#ffb347',
+        geometry: 'BoxGeometry', primitive: 'objective', color: '#ffb347',
         position, rotation: [0, 0, 0], scale: [0.3, 0.3, 0.3], parentId: null,
       }
     }))

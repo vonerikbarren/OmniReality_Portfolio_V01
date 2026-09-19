@@ -418,7 +418,7 @@ export default class AdminPanel {
       detail: {
         id: 'adminpanel', label: '⟐Admin', iconLabel: '⟐A',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
-        variant: 'orb',
+        variant: 'app',
       }
     }))
   }
