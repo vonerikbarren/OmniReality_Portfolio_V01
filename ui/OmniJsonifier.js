@@ -354,6 +354,16 @@ export default class OmniJsonifier {
         rotation: [0, 0, 0],
         scale: node.isLeaf ? [0.22, 0.22, 0.22] : [0.3, 0.3, 0.3],
         parentId: node.parentNodeId,   // the real fix — Dynamic's own ticker still sends null; a tree node never should
+        // Real fix — every spawned node used to auto-select by
+        // default, meaning opening a branch with several children
+        // (or restoring several open branches on a page refresh)
+        // fired the full, real selection cascade — all 8 systems
+        // that listen for it, including Inspector's own heavy WebGL
+        // preview setup — once per node, all at once. A user's own
+        // deliberate click already selects a node correctly through
+        // its own real path; bulk-spawning during toggle/restore
+        // never should.
+        skipAutoSelect: true,
       }
     }))
 
@@ -461,7 +471,7 @@ export default class OmniJsonifier {
         if (!node) return
         if (!node.isLeaf) this._toggleBranch(node)
         const mesh = this.omniNode?.getMeshById(nodeId)
-        if (mesh) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: nodeId }, mesh } }))
+        if (mesh) window.dispatchEvent(new CustomEvent('omni:structure-focus', { detail: { mesh } }))
       })
     })
   }
@@ -516,7 +526,7 @@ export default class OmniJsonifier {
     el.querySelector('#oj-open-structure').addEventListener('click', () => {
       if (!this._tree) return
       const mesh = this.omniNode?.getMeshById(this._tree.nodeId)
-      if (mesh) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: this._tree.nodeId }, mesh } }))
+      if (mesh) window.dispatchEvent(new CustomEvent('omni:structure-focus', { detail: { mesh } }))
     })
 
     this._bindHeader(el)

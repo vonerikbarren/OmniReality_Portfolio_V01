@@ -650,6 +650,25 @@ passing; two were my own test's bugs (a stale mesh reference and a
 forgotten branch-toggle after loading second JSON, not the real
 code), caught and fixed before trusting the final result.
 
+### V68
+Full review pass requested after reports of Structure opening
+Inspector instead, plus the OS eventually crashing. Two real,
+distinct bugs found and fixed, not one. (1) The exact reported bug:
+`omni:node-selected` has 8 real listeners project-wide; all three of
+Structure's own trigger points were mistakenly built to dispatch
+this shared event, unavoidably firing every listener — including
+Inspector's own always-opens-on-selection behavior — every time
+Structure opened. Fixed with a new, dedicated `omni:structure-focus`
+event Structure alone listens for. (2) Found during the review, not
+directly reported: Jsonifier's own node spawning never passed
+`skipAutoSelect`, so toggling one branch with several children (or
+restoring several open branches on refresh) cascaded the full,
+real 8-listener chain once per node, all at once — a genuine,
+plausible contributor to the reported instability. Fixed with
+`skipAutoSelect: true` on Jsonifier's own spawns specifically, not
+applied elsewhere, since OmniCell/Static/Dynamic's one-action-one-
+node pattern makes auto-select correct there. 9 checks, all passing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

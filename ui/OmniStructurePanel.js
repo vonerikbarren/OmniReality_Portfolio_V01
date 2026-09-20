@@ -118,20 +118,26 @@ export default class OmniStructurePanel {
     this._el = null
     this._isOpen = false
     this._currentNode = null
-    this._onNodeSelected = null
+    this._onStructureFocus = null
   }
 
   init () {
     injectStyles()
-    this._onNodeSelected = (e) => this._retarget(e.detail?.mesh)
-    window.addEventListener('omni:node-selected', this._onNodeSelected)
+    // Real fix — this used to listen to the shared omni:node-selected
+    // event, the same one Inspector, OmniPocket, OmniTargeting, and
+    // several other systems all listen to. Every time Structure was
+    // opened, all of them fired too, regardless of intent — which is
+    // exactly why Inspector appeared to "open instead." A dedicated
+    // event means opening Structure now only ever does that.
+    this._onStructureFocus = (e) => this._retarget(e.detail?.mesh)
+    window.addEventListener('omni:structure-focus', this._onStructureFocus)
   }
 
   update () {}
   onResize () {}
 
   destroy () {
-    window.removeEventListener('omni:node-selected', this._onNodeSelected)
+    window.removeEventListener('omni:structure-focus', this._onStructureFocus)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omnistructurepanel')
   }

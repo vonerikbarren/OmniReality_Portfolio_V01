@@ -396,6 +396,47 @@ checks, all passing, including confirming a branch correctly has no
 Show Value option at all, and that dangerous-looking string content
 renders as inert text.
 
+## Two real bugs found and fixed during a full review pass
+
+Reported: Structure opening Inspector instead, and the whole OS
+eventually crashing. Investigated both directly rather than
+reassuring first.
+
+**Bug 1 — the exact reported one.** `omni:node-selected` has 8 real
+listeners across the project (Inspector, OmniTargeting, MovementPad,
+OmniCommunicationPanel, OmniCellPanel, OmniPocket, OmniPresenter, and
+Structure itself). All three of Structure's own trigger points
+(ToolTipMenu's quick-menu button, Jsonifier's row clicks, Jsonifier's
+toolbar button) were built to dispatch this same shared event —
+meaning opening Structure unavoidably fired all 8 listeners every
+time, including Inspector's own always-opens-on-selection behavior.
+That's precisely why Inspector appeared instead. Fixed with a new,
+dedicated `omni:structure-focus` event that only Structure listens
+for; the original, legitimate `omni:node-selected` dispatch in
+OmniNode.js (a real, deliberate user click) was untouched and still
+works exactly as before.
+
+**Bug 2 — found during the review, not reported directly, but a
+real, plausible contributor to the crash.** Jsonifier's own
+`_spawnMesh` never passed `skipAutoSelect`, so every node it created
+auto-selected by default. Toggling one branch with several children
+— or restoring several open branches on a page refresh — spawned
+all of them at once, each one independently cascading the full,
+real 8-listener selection chain, including Inspector's own heavy
+WebGL preview setup, all in rapid succession. Fixed by passing
+`skipAutoSelect: true` on Jsonifier's own spawns specifically —
+deliberately not applied to OmniCell/Static/Dynamic, since those
+create one node per one deliberate user action, where auto-select is
+the correct, intended behavior; Jsonifier's own "one action spawns
+many nodes at once" pattern is what made this a real problem there
+specifically.
+
+9 checks, all passing, including the exact reported scenario (three
+real trigger points, confirmed Inspector no longer opens), a
+regression check confirming genuine selection still works normally,
+and a direct simulation of the bulk-spawn scenario that used to
+cascade.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

@@ -210,7 +210,7 @@ export default class ToolTipMenu {
 
     if (hasChildren) {
       this._menuEl.querySelector('[data-action="structure"]').addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: nodeId }, mesh } }))
+        window.dispatchEvent(new CustomEvent('omni:structure-focus', { detail: { mesh } }))
         this._closeQuickMenu()
       })
     }
