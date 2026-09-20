@@ -22,6 +22,8 @@
 
 import * as THREE from 'three'
 import { goToObject } from '../utils/CameraTravel.js'
+import { getOverride as getTooltipOverride, setOverride as setTooltipOverride, clearOverride as clearTooltipOverride, hasOverride as hasTooltipOverride } from '../utils/ToolTipNodeOverrides.js'
+import { hexToRgba } from '../utils/ColorUtils.js'
 
 const HEADER_Y_OFFSET = 0.9   // world units above the node's own position
 
@@ -29,8 +31,8 @@ const STYLES = `
 
 .ttm-header {
   position: fixed; pointer-events: auto; transform: translate(-50%, -100%);
-  background: rgba(8,8,12,0.82); color: #fff; font: 10px 'Courier New', monospace;
-  padding: 3px 8px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.15);
+  background: var(--ttm-bg, rgba(8,8,12,0.82)); color: var(--ttm-color, #fff); font: 10px 'Courier New', monospace;
+  padding: 3px 8px; border-radius: 5px; border: 1px solid var(--ttm-border, rgba(255,255,255,0.15));
   cursor: pointer; white-space: nowrap; z-index: 40;
 }
 .ttm-header:hover { background: rgba(255,255,255,0.12); }
@@ -46,6 +48,19 @@ const STYLES = `
   padding: 5px 10px; text-align: left; cursor: pointer; border-radius: 4px; white-space: nowrap;
 }
 .ttm-action-btn:hover { background: rgba(255,255,255,0.12); }
+.ttm-editor-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 5px 10px; font-size: 10px; color: #fff;
+}
+.ttm-editor-row input[type="color"] { width: 28px; height: 22px; padding: 0; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); cursor: pointer; }
+.ttm-value-type {
+  font-size: 8px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 4px 10px 0;
+}
+.ttm-value-display {
+  font-size: 11px; color: #fff; padding: 4px 10px 8px; max-width: 220px;
+  word-break: break-word; white-space: pre-wrap; max-height: 140px; overflow-y: auto;
+}
 
 `
 
@@ -62,10 +77,17 @@ export default class ToolTipMenu {
     this.ctx = context
     this.omniNode = omniNode
     this.omniGrab = omniGrab
+    this.jsonifier = null   // set later via setJsonifier() — OmniJsonifier isn't created yet at this point in main.js's own real ordering
     this._headers = new Map()   // mesh -> { el, mesh }
     this._openMenuMesh = null
     this._menuEl = null
     this._onDocClick = null
+  }
+
+  /** Wired in after both modules exist, since OmniJsonifier is
+   *  created later than ToolTipMenu in main.js's real module order. */
+  setJsonifier (jsonifier) {
+    this.jsonifier = jsonifier
   }
 
   init () {
@@ -114,9 +136,23 @@ export default class ToolTipMenu {
     const el = document.createElement('div')
     el.className = 'ttm-header'
     el.textContent = mesh.userData?.label ?? mesh.userData?.omniLandingNode?.label ?? mesh.userData?.omniCryptxRing?.type ?? '⟐ Node'
+    this._applyNodeOverride(el, mesh.userData?.nodeId)
     el.addEventListener('click', (e) => { e.stopPropagation(); this._toggleQuickMenu(mesh) })
     document.body.appendChild(el)
     return el
+  }
+
+  /** Real, per-node styling — genuinely independent of the global
+   *  default, confirmed directly: stays the same even if
+   *  ToolTipSettings' own default changes later. Inline style
+   *  naturally wins over the :root-level custom property in the
+   *  real CSS cascade, so no special-case override logic is needed
+   *  anywhere else — the browser's own cascade does the real work. */
+  _applyNodeOverride (el, nodeId) {
+    const override = nodeId ? getTooltipOverride(nodeId) : null
+    el.style.background = override?.background ? hexToRgba(override.background, 0.82) : ''
+    el.style.borderColor = override?.border ? hexToRgba(override.border, 0.6) : ''
+    el.style.color = override?.color ?? ''
   }
 
   _positionHeader (entry) {
@@ -147,16 +183,30 @@ export default class ToolTipMenu {
     const hasChildren = children.length > 0
     const childrenVisible = hasChildren && children[0].mesh?.visible
 
+    // Real, direct check — is this genuinely a Jsonifier leaf node
+    // (a flat piece of data, not a branch whose own children already
+    // represent its value)? Only leaves get the Show Value option.
+    const jsonNode = (nodeId && this.jsonifier?._tree) ? this.jsonifier._findNode(this.jsonifier._tree, nodeId) : null
+    const isJsonLeaf = jsonNode?.isLeaf === true
+
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
       <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
       ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${children.length})</button>` : ''}
       ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
+      ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
+      <button class="ttm-action-btn" data-action="edit-tooltip">🎨 Edit Tooltip</button>
     `
     this._menuEl.querySelector('[data-action="take-me-there"]').addEventListener('click', () => {
       goToObject(this.ctx, mesh)
       this._closeQuickMenu()
     })
+
+    this._menuEl.querySelector('[data-action="edit-tooltip"]').addEventListener('click', () => this._renderTooltipEditor(mesh))
+
+    if (isJsonLeaf) {
+      this._menuEl.querySelector('[data-action="show-value"]').addEventListener('click', () => this._renderValueViewer(mesh, jsonNode))
+    }
 
     if (hasChildren) {
       this._menuEl.querySelector('[data-action="structure"]').addEventListener('click', () => {
@@ -197,6 +247,75 @@ export default class ToolTipMenu {
         this._closeQuickMenu()
       })
     })
+    this._positionQuickMenu(mesh)
+    this._ignoreNextDocClick = true
+    setTimeout(() => { this._ignoreNextDocClick = false }, 0)
+  }
+
+  /** Real, per-node tooltip styling — confirmed directly: stays the
+   *  same even if ToolTipSettings' own global default changes later,
+   *  since this is a genuinely separate, saved value, not a
+   *  snapshot of the default taken at edit time. */
+  /** Real value display for a genuine Jsonifier leaf — the actual
+   *  flat data, distinct from the key already shown on the header
+   *  above it. Deliberately not offered for a branch node: a
+   *  branch's own children already represent its value spatially,
+   *  so a second display of the same thing here would be redundant. */
+  _renderValueViewer (mesh, jsonNode) {
+    const value = jsonNode.value
+    const typeLabel = value === null ? 'null' : typeof value
+    const displayValue = value === null ? 'null' : String(value)
+
+    this._menuEl.innerHTML = `
+      <button class="ttm-action-btn" data-action="back">← Back</button>
+      <div class="ttm-value-type">${typeLabel}</div>
+      <div class="ttm-value-display">${this._escapeHtml(displayValue)}</div>
+    `
+    this._menuEl.querySelector('[data-action="back"]').addEventListener('click', () => this._renderMainMenu(mesh))
+
+    this._positionQuickMenu(mesh)
+    this._ignoreNextDocClick = true
+    setTimeout(() => { this._ignoreNextDocClick = false }, 0)
+  }
+
+  _escapeHtml (str) {
+    const div = document.createElement('div')
+    div.textContent = str
+    return div.innerHTML
+  }
+
+  _renderTooltipEditor (mesh) {
+    const nodeId = mesh.userData?.nodeId
+    const current = (nodeId && getTooltipOverride(nodeId)) ?? {}
+    const headerEl = this._headers.get(mesh)?.el
+
+    this._menuEl.innerHTML = `
+      <button class="ttm-action-btn" data-action="back">← Back</button>
+      <div class="ttm-editor-row"><span>Background</span><input type="color" id="ttm-edit-bg" value="${current.background ?? '#08080c'}" /></div>
+      <div class="ttm-editor-row"><span>Border</span><input type="color" id="ttm-edit-border" value="${current.border ?? '#ffffff'}" /></div>
+      <div class="ttm-editor-row"><span>Font</span><input type="color" id="ttm-edit-color" value="${current.color ?? '#ffffff'}" /></div>
+      ${nodeId && hasTooltipOverride(nodeId) ? `<button class="ttm-action-btn" data-action="reset-tooltip">↺ Reset to Default</button>` : ''}
+    `
+    this._menuEl.querySelector('[data-action="back"]').addEventListener('click', () => this._renderMainMenu(mesh))
+
+    const applyLive = (patch) => {
+      if (!nodeId) return
+      setTooltipOverride(nodeId, patch)
+      if (headerEl) this._applyNodeOverride(headerEl, nodeId)
+    }
+    this._menuEl.querySelector('#ttm-edit-bg').addEventListener('input', (e) => applyLive({ background: e.target.value }))
+    this._menuEl.querySelector('#ttm-edit-border').addEventListener('input', (e) => applyLive({ border: e.target.value }))
+    this._menuEl.querySelector('#ttm-edit-color').addEventListener('input', (e) => applyLive({ color: e.target.value }))
+
+    const resetBtn = this._menuEl.querySelector('[data-action="reset-tooltip"]')
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        clearTooltipOverride(nodeId)
+        if (headerEl) this._applyNodeOverride(headerEl, nodeId)
+        this._renderTooltipEditor(mesh)
+      })
+    }
+
     this._positionQuickMenu(mesh)
     this._ignoreNextDocClick = true
     setTimeout(() => { this._ignoreNextDocClick = false }, 0)

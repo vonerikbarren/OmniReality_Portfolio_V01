@@ -971,6 +971,15 @@ export default class OmniNode {
     return [...this._nodes.values()].map(n => n.mesh).filter(Boolean)
   }
 
+  /** A direct, single-node lookup — the real mechanism Jsonifier's
+   *  own list-view row clicks need to dispatch a real, proper
+   *  omni:node-selected event (with a genuine mesh, safe for every
+   *  other listener that expects one) rather than scanning
+   *  getAllMeshes() every time. */
+  getMeshById (id) {
+    return this._nodes.get(id)?.mesh ?? null
+  }
+
   destroy () {
     // Remove panel DOM
     this._el?.parentNode?.removeChild(this._el)

@@ -29,6 +29,7 @@ import { detectSeriesData } from '../utils/ChartEligibility.js'
 import { computeChildPosition } from '../utils/TreeLayout.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
+const STORE_KEY = 'omni:jsonifier:tree'   // real persistence — the actual fix for "the toggle tree doesn't reappear" after a page refresh
 
 const STYLES = `
 
@@ -97,10 +98,11 @@ const STYLES = `
   background: rgba(255,255,255,0.04); border: 1px solid var(--oj-border);
   border-radius: 5px; color: var(--oj-text); font-family: inherit; font-size: 11px; padding: 7px;
 }
+.oj-toolbar-row { display: flex; gap: 6px; margin-bottom: 10px; }
 .oj-create-btn {
-  width: 100%; background: rgba(127,216,255,0.15); border: 1px solid var(--oj-accent);
+  flex: 1; background: rgba(127,216,255,0.15); border: 1px solid var(--oj-accent);
   color: var(--oj-accent); font-family: inherit; font-size: 11px; padding: 7px; border-radius: 5px;
-  cursor: pointer; margin-bottom: 10px;
+  cursor: pointer;
 }
 .oj-create-btn:hover { background: rgba(127,216,255,0.25); }
 .oj-error { color: #ff8c8c; font-size: 10px; margin-bottom: 8px; }
@@ -131,8 +133,9 @@ function injectStyles () {
 }
 
 export default class OmniJsonifier {
-  constructor (context) {
+  constructor (context, omniNode) {
     this.ctx = context
+    this.omniNode = omniNode
     this._el = null
     this._isOpen = false
     this._tree = null        // the real, parsed tree — { key, value, children: [...], nodeId, isOpen, meshCreated }
@@ -147,6 +150,7 @@ export default class OmniJsonifier {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+    this._restoreState()
   }
 
   update (delta) {
@@ -213,21 +217,95 @@ export default class OmniJsonifier {
     dir.multiplyScalar(6)
     const rootPos = new THREE.Vector3(cam.position.x + dir.x, Math.max(0.5, cam.position.y + dir.y), cam.position.z + dir.z)
 
-    this._tree = this._buildTreeNode('root', parsed, rootPos, null)
+    this._tree = this._buildTreeNode('root', parsed, rootPos, null, 'root')
     this._spawnMesh(this._tree)   // the root is always real immediately — everything under it waits for a real toggle
     this._renderTree()
+    this._lastRawJson = rawText
+    this._saveState()
 
     confirmPrimaryForce('json-tree-created', true, { rootKey: 'root' })
   }
 
+  /** Real persistence — the actual fix for "the toggle tree doesn't
+   *  reappear": without this, the tree only ever lived in memory,
+   *  gone completely the moment the page refreshed. Keyed by each
+   *  node's real, stable path (not its random, regenerating nodeId),
+   *  since a fresh re-parse of the same JSON produces new ids but
+   *  the same real paths. */
+  _saveState () {
+    if (!this._tree || !this._lastRawJson) return
+    const openPaths = []
+    const layoutModes = {}
+    const walk = (node) => {
+      if (node.isOpen) openPaths.push(node.path)
+      if (node.layoutMode !== 'tree') layoutModes[node.path] = node.layoutMode
+      node.children.forEach(walk)
+    }
+    walk(this._tree)
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ rawJson: this._lastRawJson, openPaths, layoutModes }))
+    } catch (_) { /* real save simply skipped if storage unavailable */ }
+  }
+
+  /** The other half of the real fix — rebuilds the tree from the
+   *  real, saved JSON on init, then re-applies real open/layout
+   *  state by matching each node's own real, stable path, spawning
+   *  every branch that was genuinely open before, in real parent-
+   *  before-child order (a child can't spawn before its own parent
+   *  does). */
+  _restoreState () {
+    let saved
+    try {
+      const raw = localStorage.getItem(STORE_KEY)
+      if (!raw) return
+      saved = JSON.parse(raw)
+    } catch (_) { return }
+    if (!saved?.rawJson) return
+
+    let parsed
+    try { parsed = JSON.parse(saved.rawJson) } catch (_) { return }
+
+    const cam = this.ctx.camera
+    const dir = new THREE.Vector3()
+    cam.getWorldDirection(dir)
+    dir.multiplyScalar(6)
+    const rootPos = new THREE.Vector3(cam.position.x + dir.x, Math.max(0.5, cam.position.y + dir.y), cam.position.z + dir.z)
+
+    this._tree = this._buildTreeNode('root', parsed, rootPos, null, 'root')
+    this._lastRawJson = saved.rawJson
+    this._spawnMesh(this._tree)
+
+    const openPathSet = new Set(saved.openPaths ?? [])
+    const applyLayoutModes = (node) => {
+      if (saved.layoutModes?.[node.path]) node.layoutMode = saved.layoutModes[node.path]
+      node.children.forEach(applyLayoutModes)
+    }
+    applyLayoutModes(this._tree)
+
+    // Real parent-before-child order — walk breadth-first from the
+    // root so a branch only ever opens once its own parent already has.
+    const queue = [this._tree]
+    while (queue.length) {
+      const node = queue.shift()
+      if (openPathSet.has(node.path) && !node.isLeaf) {
+        node.isOpen = true
+        node.children.forEach(child => this._spawnMesh(child))
+      }
+      queue.push(...node.children)
+    }
+  }
+
   /** Builds the real, in-memory tree structure recursively — no 3D
    *  side effects here at all; mesh creation is deferred until a
-   *  branch is actually toggled open. */
-  _buildTreeNode (key, value, position, parentNodeId) {
+   *  branch is actually toggled open. `path` is a real, stable
+   *  identifier (unlike nodeId, which is random and regenerates on
+   *  every reload) — the actual mechanism real persistence depends
+   *  on, since open/layout state needs something durable to key off. */
+  _buildTreeNode (key, value, position, parentNodeId, path) {
     const nodeId = generateId()
     const isLeaf = value === null || typeof value !== 'object'
     const node = {
-      nodeId, key, value, position, parentNodeId,
+      nodeId, key, value, position, parentNodeId, path,
       isLeaf, isOpen: false, meshCreated: false, children: [],
       isChartEligible: false, seriesData: null,
       layoutMode: 'tree',   // real, per-node — 'tree' (default) | 'linear-vertical' | 'linear-horizontal' | 'linear-depth'
@@ -236,7 +314,7 @@ export default class OmniJsonifier {
       const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
       node.children = entries.map(([childKey, childValue], i) => {
         const childPos = computeChildPosition(position, i, entries.length, node.layoutMode)
-        return this._buildTreeNode(childKey, childValue, new THREE.Vector3(childPos.x, childPos.y, childPos.z), nodeId)
+        return this._buildTreeNode(childKey, childValue, new THREE.Vector3(childPos.x, childPos.y, childPos.z), nodeId, `${path}.${childKey}`)
       })
       this._detectChartEligibility(node)
     }
@@ -325,6 +403,7 @@ export default class OmniJsonifier {
         window.dispatchEvent(new CustomEvent('omni:node-position-set', { detail: { id: child.nodeId, position: newPos } }))
       }
     })
+    this._saveState()
   }
 
   _toggleBranch (node) {
@@ -335,6 +414,7 @@ export default class OmniJsonifier {
       node.children.forEach(child => this._collapseRecursive(child))
     }
     this._renderTree()
+    this._saveState()
   }
 
   _collapseRecursive (node) {
@@ -378,7 +458,10 @@ export default class OmniJsonifier {
       row.addEventListener('click', () => {
         const nodeId = row.dataset.nodeId
         const node = this._findNode(this._tree, nodeId)
-        if (node && !node.isLeaf) this._toggleBranch(node)
+        if (!node) return
+        if (!node.isLeaf) this._toggleBranch(node)
+        const mesh = this.omniNode?.getMeshById(nodeId)
+        if (mesh) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: nodeId }, mesh } }))
       })
     })
   }
@@ -415,7 +498,10 @@ export default class OmniJsonifier {
       </div>
       <div class="oj-body">
         <textarea class="oj-text-input" id="oj-json-input" placeholder='{"example": {"nested": "value"}}'></textarea>
-        <button class="oj-create-btn" id="oj-create">Build Tree</button>
+        <div class="oj-toolbar-row">
+          <button class="oj-create-btn" id="oj-create">Build Tree</button>
+          <button class="oj-create-btn" id="oj-open-structure" title="Open the Structure panel for the root node">📐 Structure</button>
+        </div>
         <div class="oj-error" id="oj-error" style="display:none"></div>
         <div id="oj-tree"></div>
       </div>
@@ -426,6 +512,11 @@ export default class OmniJsonifier {
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('#oj-create').addEventListener('click', () => {
       this._loadJson(el.querySelector('#oj-json-input').value)
+    })
+    el.querySelector('#oj-open-structure').addEventListener('click', () => {
+      if (!this._tree) return
+      const mesh = this.omniNode?.getMeshById(this._tree.nodeId)
+      if (mesh) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: { id: this._tree.nodeId }, mesh } }))
     })
 
     this._bindHeader(el)

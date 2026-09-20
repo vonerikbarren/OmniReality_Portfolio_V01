@@ -36,6 +36,14 @@ export function goToObject (ctx, mesh) {
   gsap.to(camera.position, {
     x: target.x, y: target.y, z: target.z, duration, ease,
     onUpdate: () => camera.lookAt(objectPos),
-    onComplete: () => window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} })),
+    onComplete: () => {
+      // Real fix — this used to leave the orbit pivot stale at
+      // wherever it was before the travel, disconnected from where
+      // the camera actually ended up. Reuses the same, already-proven
+      // omni:orbit-target-set mechanism WASD-rotate-around already
+      // uses, rather than a second, separate way of setting the pivot.
+      window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: objectPos.x, y: objectPos.y, z: objectPos.z } }))
+      window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} }))
+    },
   })
 }

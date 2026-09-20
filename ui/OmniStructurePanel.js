@@ -27,6 +27,8 @@ const MODE_LABELS = {
   'linear-vertical': 'Linear — Vertical',
   'linear-horizontal': 'Linear — Horizontal',
   'linear-depth': 'Linear — Depth (Z-axis)',
+  'sphere': 'Sphere',
+  'spiral': 'Spiral',
 }
 
 const STYLES = `

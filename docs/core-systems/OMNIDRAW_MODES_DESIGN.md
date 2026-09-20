@@ -279,6 +279,123 @@ and genuinely saved, but honestly labeled as not yet doing anything:
 real rather than silently dropped, ready for whenever a multi-target
 travel exists to actually use it.
 
+## Real bug fixed — the toggle tree now survives a page refresh
+
+Traced directly: Jsonifier's own tree had never been saved anywhere
+— it lived purely in the module instance's memory, gone completely
+the moment the page reloaded, with no way back except re-pasting the
+JSON and re-toggling everything by hand. Every other system in this
+project persists to storage; this was a genuine, real outlier.
+
+Fixed with real, stable persistence keyed by each node's own path
+(the sequence of keys from the root) rather than its `nodeId` —
+node ids are randomly generated and regenerate on every fresh parse
+of the same JSON, so they can't be used to match open/closed state
+across a reload; path is the one thing that stays the same. Saves
+the raw JSON text, every open path, and any non-default layout mode
+on every real state change (load, toggle, layout mode change), and
+restores all of it on init — rebuilding the tree, re-opening every
+branch that was genuinely open before in real parent-before-child
+order, and re-spawning the right nodes, all before the panel is even
+reopened. 10 checks, all passing, including a direct simulation of
+an actual page refresh — a completely independent second instance
+correctly restoring open state two nesting levels deep, plus the
+saved layout mode.
+
+## ToolTipSettings — Admin slot 9, the real global tooltip default
+
+Confirmed no such panel existed before this. Built as a real Admin
+sub-panel, matching the exact pattern every other numbered slot
+already uses (`indexedPanelConfigs`'s Admin entry, `specialSlots`).
+Controls background, border, and font color for every tooltip
+header's own default appearance — confirmed directly as a global
+default, not per-node customization, which remains a real, separate,
+future feature. `ToolTipMenu.js`'s own header CSS was converted from
+hardcoded colors to `var(--x, fallback)` custom properties, the same
+theming pattern already used everywhere else in this project, so
+nothing visually changed until a setting is actually adjusted.
+Applies live and immediately on boot — `init()` alone re-applies
+whatever was saved last session before the settings panel is ever
+opened. 9 checks, all passing, including confirming the real CSS
+custom properties are genuinely written to `:root`, not just saved
+to storage and never actually applied.
+
+## Per-node tooltip override — genuinely independent of the global default
+
+Confirmed directly: stays the same even if ToolTipSettings' own
+global default changes later — a real, separate, persisted value,
+not a snapshot of the default taken at edit time. `utils/
+ToolTipNodeOverrides.js` keys by a node's own real, stable id
+(confirmed to survive a reload). Applies as real inline style on the
+specific header element, which naturally takes precedence over the
+`:root`-level global default in the actual CSS cascade — no special
+override-checking logic needed anywhere else. Reachable from the
+quick menu's new "🎨 Edit Tooltip" option (shown for every node, not
+gated behind having children), with a real "↺ Reset to Default"
+option that only appears once an override actually exists, and
+genuinely clears it rather than just hiding it. Extracted
+`utils/ColorUtils.js` for the hex-to-rgba conversion both this and
+ToolTipSettings need, rather than a second, independently-maintained
+copy. 10 checks, all passing, including the literal, exact
+requirement — a node's override surviving a real change to the
+global default.
+
+## Structure panel — reachable from Jsonifier's own list, plus two new shapes
+
+Confirmed a real gap: clicking a row inside Jsonifier's own list
+view never dispatched `omni:node-selected` at all — only clicking a
+node's header in the 3D scene did. Fixed by wiring a direct
+`omniNode` reference into `OmniJsonifier` (via a new, real
+`OmniNode.getMeshById()` lookup, extracted since scanning
+`getAllMeshes()` per click would be wasteful) so a row click now
+looks up the node's real mesh and dispatches a genuine
+`omni:node-selected` event with it — safe for every other listener
+that expects a real mesh, not just Structure's own. Jsonifier's own
+toolbar also gained a direct "📐 Structure" button, opening the panel
+for the root node without needing to click a specific row first.
+
+Two new real shapes added to `utils/TreeLayout.js`: 'sphere' (a real
+Fibonacci-sphere distribution — an even spread across a sphere's
+surface, not clustering at the poles) and 'spiral' (a real, expanding
+descending helix — radius grows and height drops together as the
+index increases). 12 checks, all passing, including confirming a
+real click on a real row in Jsonifier's own rendered list correctly
+opens the Structure panel with all six real shape options available.
+
+## Real bug fixed — stale orbit pivot after Take Me There / deselection
+
+Traced precisely: `_syncOrbitTarget()`, the function that recomputes
+where the camera pivots around, only ever ran on WASD or R/F key
+release — never on node deselection, and never after `goToObject`
+("Take Me There") moved the camera. Two real gaps, both fixed.
+Deselecting a node previously only cleared an internal flag; it now
+immediately calls the same real recompute. `goToObject` moved the
+camera to look at a target but never told the pivot system where it
+had gone — it now dispatches the same, already-proven
+`omni:orbit-target-set` event WASD-rotate-around already uses,
+right before re-enabling orbit, so the pivot is correct the instant
+the user can interact again rather than staying stale at wherever it
+was set before the travel. 4 checks, all passing, including
+confirming the dispatched position genuinely matches the real object
+traveled to, and that it happens before orbit re-enables.
+
+## Show Value — a real leaf's own value, in the quick menu
+
+Confirmed directly: only for leaves, not branches — a branch's own
+children already represent its value spatially, so a second display
+of the same thing would be redundant. Deliberately kept as an inline
+quick-menu sub-view, the same real pattern the tooltip editor already
+uses, rather than a new panel or Inspector's own still-unbuilt data
+tab — a small, self-contained feature shouldn't depend on finishing
+something much larger and not yet scoped. `ToolTipMenu` gained a
+real `jsonifier` reference, wired via a setter (not the constructor)
+since `OmniJsonifier` isn't created until later in main.js's own real
+module order. Shows the value's real type and content, with genuine
+HTML escaping so a string value can't be interpreted as markup. 11
+checks, all passing, including confirming a branch correctly has no
+Show Value option at all, and that dangerous-looking string content
+renders as inert text.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

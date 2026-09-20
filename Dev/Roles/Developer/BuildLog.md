@@ -553,6 +553,103 @@ Structure panel side needed redoing. Re-ran the full test suite
 before packaging this time, all 8 checks passing, rather than
 trusting the prior turn's report.
 
+### V62
+Real bug fixed: Jsonifier's own tree had never been persisted
+anywhere — purely in-memory, gone completely on any page refresh,
+confirmed by directly testing the exact reported scenario rather
+than trusting a prior (incorrect) claim that reopening the panel
+alone would restore it. Fixed with real persistence keyed by each
+node's own stable path, not its random, regenerating `nodeId` —
+saves raw JSON, every open path, and non-default layout modes on
+every real state change, restoring all of it on init in real
+parent-before-child order. 10 checks, all passing, including a
+direct simulation of an actual refresh: a fully independent second
+instance correctly rebuilding open state two levels deep plus a
+saved layout mode, not just confirming data was written to storage.
+
+### V63
+ToolTipSettings built — confirmed no such panel existed before this.
+Real Admin sub-panel, slot 9, matching the exact `specialSlots`
+pattern every other numbered Admin item already uses. Controls the
+real global default for every tooltip header's background, border,
+and font color — confirmed directly as the default applied to all
+tooltips, not per-node customization, which stays a real, separate,
+future feature. `ToolTipMenu.js`'s own header CSS converted from
+hardcoded values to real `var(--x, fallback)` custom properties,
+matching the exact theming pattern already used throughout this
+project — nothing changed visually until a setting is actually
+adjusted. Applies live, and immediately on boot from whatever was
+saved last session, before the panel itself is ever opened. 9
+checks, all passing, including confirming the real CSS custom
+properties are genuinely written to `:root`, not just saved and
+never actually applied.
+
+### V64
+Per-node tooltip override built — confirmed directly: genuinely
+independent of ToolTipSettings' own global default, not a snapshot
+taken at edit time. `utils/ToolTipNodeOverrides.js` persists by each
+node's own real, stable id. Applies as real inline style on the
+specific header element, letting the browser's own CSS cascade do
+the actual work (inline naturally beats the `:root`-level default)
+rather than adding special-case override-checking logic elsewhere.
+Reachable from the quick menu's new "🎨 Edit Tooltip" option, with a
+real Reset option that only shows once an override actually exists.
+Extracted `utils/ColorUtils.js` during the build itself, after
+noticing the hex-to-rgba conversion was about to be duplicated a
+second time rather than shared. 10 checks, all passing, including
+the literal, exact ask — a node's own override surviving a real
+change to the global default, not just two settings existing
+side by side untested against each other.
+
+### V65
+Structure panel access expanded, and two new shapes added. Traced
+and fixed a real gap: clicking a row inside Jsonifier's own list
+view never dispatched `omni:node-selected` — only a node's header in
+the 3D scene did. Fixed with a new, real `OmniNode.getMeshById()`
+lookup (a direct accessor, avoiding a linear scan of
+`getAllMeshes()` on every click) wired into `OmniJsonifier` via a
+new constructor parameter, so a row click now dispatches a genuine
+event carrying a real mesh — safe for every other listener that
+expects one, not a synthetic stand-in that could have broken
+OmniInspector or others silently. Jsonifier's own toolbar also
+gained a direct "📐 Structure" button for the root node. `utils/
+TreeLayout.js` gained 'sphere' (a real Fibonacci-sphere distribution)
+and 'spiral' (a real, expanding descending helix) — six real modes
+total now. 12 checks, all passing.
+
+### V66
+Real bug fixed: stale orbit pivot after Take Me There or node
+deselection, reported as "clicking outside defaults to some sort of
+center focus that's either the previously targeted item or a random
+point in space." Traced precisely: `_syncOrbitTarget()` — the actual
+function that recomputes the camera's orbit pivot — only ever ran on
+WASD/R/F key release. Two real gaps: node deselection only cleared
+an internal flag without ever recomputing anything, and `goToObject`
+moved the camera without ever updating the pivot at all, leaving it
+stale at wherever it was set before the travel — exactly matching
+the reported "Take Me There is a good example of why this fails."
+Fixed both: deselection now immediately recomputes; `goToObject` now
+dispatches the same, already-proven `omni:orbit-target-set` event
+WASD-rotate-around already uses, before re-enabling orbit. 4 checks,
+all passing, including confirming the real dispatched position
+matches the actual object traveled to, not a stale or arbitrary
+point, and that ordering relative to orbit re-enabling is correct.
+
+### V67
+Show Value quick-menu option built — real, for genuine Jsonifier
+leaves only, confirmed directly as the right scope since a branch's
+own children already represent its value spatially. Kept as an
+inline quick-menu sub-view rather than a new panel or Inspector's
+own still-unbuilt data tab, so this stays small and shippable
+independent of a much larger, not-yet-scoped task. `ToolTipMenu`
+gained a real `jsonifier` reference via a new setter method — a
+constructor parameter wasn't possible since `OmniJsonifier` isn't
+created until later in main.js's own real module order. Shows the
+real type and value, with genuine HTML escaping. 11 checks, all
+passing; two were my own test's bugs (a stale mesh reference and a
+forgotten branch-toggle after loading second JSON, not the real
+code), caught and fixed before trusting the final result.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

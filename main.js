@@ -26,6 +26,7 @@ import OmniFloor         from './modules/OmniFloor.js'
 import OmniTargeting     from './modules/OmniTargeting.js'
 import OmniTargetingSettingsPanel from './ui/OmniTargetingSettingsPanel.js'
 import FloorSettingsPanel from './ui/FloorSettingsPanel.js'
+import ToolTipSettingsPanel from './ui/ToolTipSettingsPanel.js'
 import TerminalTunnel    from './modules/TerminalTunnel.js'
 import VoidBoundary      from './modules/VoidBoundary.js'
 import WallpaperSphere   from './modules/WallpaperSphere.js'
@@ -147,6 +148,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
                    base.addModule(new OmniTargeting(base.context))
                    base.addModule(new OmniTargetingSettingsPanel(base.context))
                    base.addModule(new FloorSettingsPanel(base.context))
+                   base.addModule(new ToolTipSettingsPanel())
                    base.addModule(new TerminalTunnel(base.context))
                    base.addModule(new VoidBoundary(base.context))
                    base.addModule(new WallpaperSphere(base.context))
@@ -165,7 +167,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(nodeManager)
   base.addModule(omniNode)
   const omniGrab = base.addModule(new OmniGrab(base.context, omniNode))
-  base.addModule(new ToolTipMenu(base.context, omniNode, omniGrab))
+  const toolTipMenu = base.addModule(new ToolTipMenu(base.context, omniNode, omniGrab))
   base.addModule(omniInspector)
   base.addModule(omniPresenter)
   base.addModule(omniPocket)
@@ -244,7 +246,18 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     orbitMod.controls.target.set(e.detail.x, e.detail.y, e.detail.z)
     orbitMod.controls.update()
   })
-  window.addEventListener('omni:node-deselected', () => { _hasSelectedPivot = false })
+  window.addEventListener('omni:node-deselected', () => {
+    _hasSelectedPivot = false
+    // Real fix: deselecting a node previously only cleared this flag
+    // and left the actual pivot stale — pointing at wherever it was
+    // last set, disconnected from wherever the camera has since
+    // moved to (especially after Take Me There, which moves the
+    // camera without ever touching this pivot itself). Immediately
+    // recomputing here, rather than waiting for a WASD/RF release
+    // that may never come, is the real fix for the reported snap to
+    // a stale or seemingly random point on the next orbit drag.
+    _syncOrbitTarget()
+  })
 
   const _syncOrbitTarget = () => {
     if (_hasSelectedPivot) return
@@ -274,7 +287,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(omniDraw)
   const omniDrawModePicker = base.addModule(new OmniDrawModePicker())
   base.addModule(new OmniDrawDynamic(base.context))
-  const omniJsonifier = base.addModule(new OmniJsonifier(base.context))
+  const omniJsonifier = base.addModule(new OmniJsonifier(base.context, omniNode))
+  toolTipMenu.setJsonifier(omniJsonifier)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
   base.addModule(new OmniDrawCell(base.context))
@@ -412,6 +426,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
         7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },
         8: { label: 'FloorSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorSettings' } })) },
+        9: { label: 'ToolTipSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐ToolTipSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
