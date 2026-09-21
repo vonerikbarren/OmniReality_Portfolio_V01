@@ -5,56 +5,66 @@
  * share one real implementation, not two. 'tree' is the original,
  * already-proven circular/downward formation, kept as the real
  * default; 'sphere' and 'spiral' are real, later additions.
+ *
+ * Every mode's own spacing now reads live from
+ * utils/StructureSpacingSettings.js instead of a fixed constant —
+ * confirmed directly as wanted: real, editable, equidistant control
+ * over how far apart nodes sit. Each mode's own ratio to the
+ * original hardcoded LINEAR_SPACING is preserved, so the visual
+ * relationship between modes stays consistent as the real setting
+ * changes, not just one mode scaling while the others stay fixed.
  */
 
-const CHILD_OFFSET = 2.4    // matches Jsonifier's own existing real spacing
-const LINEAR_SPACING = 1.6  // real spacing between siblings in a straight line
-const SPHERE_RADIUS = 2.2
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))   // real, even distribution across a sphere's surface
-const SPIRAL_ANGLE_STEP = 0.9
-const SPIRAL_RADIUS_GROWTH = 0.35
-const SPIRAL_HEIGHT_STEP = 0.55
+import { getSpacing } from './StructureSpacingSettings.js'
 
 export const LAYOUT_MODES = ['tree', 'linear-vertical', 'linear-horizontal', 'linear-depth', 'sphere', 'spiral']
 
 /** Real position for one child, given its own index among its real
  *  siblings, its parent's real position, and the chosen mode. */
 export function computeChildPosition (parentPosition, index, totalChildren, mode) {
+  const spacing = getSpacing()
+  const childOffset = spacing * 1.5           // tree's own ratio to the original 1.6 base (2.4 / 1.6)
+  const sphereRadius = spacing * 1.375        // sphere's own ratio (2.2 / 1.6)
+  const spiralBaseRadius = spacing * 0.625    // spiral's own starting-radius ratio (1.0 / 1.6)
+  const spiralRadiusGrowth = spacing * 0.21875 // spiral's own per-step growth ratio (0.35 / 1.6)
+  const spiralHeightStep = spacing * 0.34375  // spiral's own per-step descent ratio (0.55 / 1.6)
+  const golden = Math.PI * (3 - Math.sqrt(5))  // real, even distribution across a sphere's surface — not spacing-dependent
+
   switch (mode) {
     case 'linear-vertical':
       return {
         x: parentPosition.x,
-        y: parentPosition.y - (index + 1) * LINEAR_SPACING,
+        y: parentPosition.y - (index + 1) * spacing,
         z: parentPosition.z,
       }
     case 'linear-horizontal': {
-      const offset = (index - (totalChildren - 1) / 2) * LINEAR_SPACING
+      const offset = (index - (totalChildren - 1) / 2) * spacing
       return { x: parentPosition.x + offset, y: parentPosition.y - 1.2, z: parentPosition.z }
     }
     case 'linear-depth': {
-      const offset = (index - (totalChildren - 1) / 2) * LINEAR_SPACING
+      const offset = (index - (totalChildren - 1) / 2) * spacing
       return { x: parentPosition.x, y: parentPosition.y - 1.2, z: parentPosition.z + offset }
     }
     case 'sphere': {
       // A single child has no real surface to distribute across —
       // just place it directly below, matching every other mode's
       // own real single-child behavior.
-      if (totalChildren <= 1) return { x: parentPosition.x, y: parentPosition.y - SPHERE_RADIUS, z: parentPosition.z }
+      if (totalChildren <= 1) return { x: parentPosition.x, y: parentPosition.y - sphereRadius, z: parentPosition.z }
       const yFrac = 1 - (index / (totalChildren - 1)) * 2   // from 1 to -1, real top-to-bottom coverage
       const radiusAtY = Math.sqrt(Math.max(0, 1 - yFrac * yFrac))
-      const theta = GOLDEN_ANGLE * index
+      const theta = golden * index
       return {
-        x: parentPosition.x + Math.cos(theta) * radiusAtY * SPHERE_RADIUS,
-        y: parentPosition.y - 1.2 + yFrac * SPHERE_RADIUS,
-        z: parentPosition.z + Math.sin(theta) * radiusAtY * SPHERE_RADIUS,
+        x: parentPosition.x + Math.cos(theta) * radiusAtY * sphereRadius,
+        y: parentPosition.y - 1.2 + yFrac * sphereRadius,
+        z: parentPosition.z + Math.sin(theta) * radiusAtY * sphereRadius,
       }
     }
     case 'spiral': {
-      const angle = index * SPIRAL_ANGLE_STEP
-      const radius = 1.0 + index * SPIRAL_RADIUS_GROWTH
+      const angle = index * 0.9   // real angular step — not a spacing/distance value, kept fixed
+      const radius = spiralBaseRadius + index * spiralRadiusGrowth
       return {
         x: parentPosition.x + Math.cos(angle) * radius,
-        y: parentPosition.y - 1.2 - index * SPIRAL_HEIGHT_STEP,
+        y: parentPosition.y - 1.2 - index * spiralHeightStep,
         z: parentPosition.z + Math.sin(angle) * radius,
       }
     }
@@ -62,9 +72,9 @@ export function computeChildPosition (parentPosition, index, totalChildren, mode
     default: {
       const angle = (index / Math.max(1, totalChildren)) * Math.PI * 2
       return {
-        x: parentPosition.x + Math.cos(angle) * CHILD_OFFSET,
+        x: parentPosition.x + Math.cos(angle) * childOffset,
         y: parentPosition.y - 1.2,
-        z: parentPosition.z + Math.sin(angle) * CHILD_OFFSET,
+        z: parentPosition.z + Math.sin(angle) * childOffset,
       }
     }
   }

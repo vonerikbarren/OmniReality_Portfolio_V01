@@ -21,6 +21,7 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { LAYOUT_MODES } from '../utils/TreeLayout.js'
+import { getSpacing, setSpacing, resetSpacing } from '../utils/StructureSpacingSettings.js'
 
 const MODE_LABELS = {
   'tree': 'Tree (circular)',
@@ -100,6 +101,18 @@ const STYLES = `
 }
 .osp-mode-btn:hover { background: rgba(255,255,255,0.1); }
 .osp-mode-btn.is-active { border-color: var(--osp-accent); color: var(--osp-accent); background: rgba(127,216,255,0.1); }
+
+.osp-spacing-row { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--osp-border); }
+.osp-field-label { font-size: 9px; color: var(--osp-text-dim); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+.osp-spacing-controls { display: flex; align-items: center; gap: 8px; }
+.osp-spacing-controls input[type="range"] { flex: 1; }
+.osp-spacing-value { font-size: 10px; color: var(--osp-accent); min-width: 22px; text-align: right; }
+.osp-reset-btn {
+  width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--osp-border);
+  background: rgba(255,255,255,0.04); color: var(--osp-text-dim); font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.osp-reset-btn:hover { background: rgba(255,255,255,0.1); color: var(--osp-text); }
 
 `
 
@@ -188,13 +201,26 @@ export default class OmniStructurePanel {
   _render () {
     const body = this._el?.querySelector('.osp-body')
     if (!body) return
+
+    const spacingControl = `
+      <div class="osp-spacing-row">
+        <div class="osp-field-label">Spacing (distance between nodes)</div>
+        <div class="osp-spacing-controls">
+          <input type="range" id="osp-spacing-slider" min="0.4" max="5" step="0.1" value="${getSpacing()}" />
+          <span class="osp-spacing-value">${getSpacing().toFixed(1)}</span>
+          <button class="osp-reset-btn" id="osp-spacing-reset" title="Reset to default">↺</button>
+        </div>
+      </div>
+    `
+
     if (!this._currentNode || this._currentNode.children.length === 0) {
-      body.innerHTML = `<div class="osp-empty">Select a node with real children to arrange its structure here.</div>`
+      body.innerHTML = spacingControl + `<div class="osp-empty">Select a node with real children to arrange its structure here.</div>`
+      this._bindSpacingControl(body)
       return
     }
 
     const node = this._currentNode
-    body.innerHTML = LAYOUT_MODES.map(mode => `
+    body.innerHTML = spacingControl + LAYOUT_MODES.map(mode => `
       <button class="osp-mode-btn ${mode === node.layoutMode ? 'is-active' : ''}" data-mode="${mode}">${MODE_LABELS[mode]}</button>
     `).join('')
 
@@ -203,6 +229,27 @@ export default class OmniStructurePanel {
         this.jsonifier.setLayoutMode(node, mode)
         this._render()
       })
+    })
+    this._bindSpacingControl(body)
+  }
+
+  /** Real, live spacing — dragging the slider immediately persists
+   *  and re-applies the new distance across every already-spawned
+   *  node in the whole tree, not just the current selection's own
+   *  children, since spacing is a global setting. */
+  _bindSpacingControl (body) {
+    const slider = body.querySelector('#osp-spacing-slider')
+    const valueLabel = body.querySelector('.osp-spacing-value')
+    slider?.addEventListener('input', (e) => {
+      const value = Number(e.target.value)
+      valueLabel.textContent = value.toFixed(1)
+      setSpacing(value)
+      this.jsonifier?.reapplySpacing?.()
+    })
+    body.querySelector('#osp-spacing-reset')?.addEventListener('click', () => {
+      resetSpacing()
+      this.jsonifier?.reapplySpacing?.()
+      this._render()
     })
   }
 

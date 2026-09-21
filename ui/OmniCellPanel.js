@@ -216,6 +216,7 @@ export default class OmniCellPanel {
           <option value="area" ${c.chartType === 'area' ? 'selected' : ''}>Area</option>
           <option value="pie" ${c.chartType === 'pie' ? 'selected' : ''}>Pie</option>
           <option value="radar" ${c.chartType === 'radar' ? 'selected' : ''}>Radar</option>
+          <option value="radial-area" ${c.chartType === 'radial-area' ? 'selected' : ''}>Radial Area</option>
         </select>
       </div>
       <div class="ocl-series-toggles" id="ocl-series-toggles">${chipsHTML}</div>
@@ -277,6 +278,10 @@ export default class OmniCellPanel {
     }
     if (c.chartType === 'radar') {
       this._drawRadar(g, innerW, innerH, visibleNames, c, labels, colorOf, allValues)
+      return
+    }
+    if (c.chartType === 'radial-area') {
+      this._drawRadialArea(g, innerW, innerH, visibleNames, c, labels, colorOf, allValues)
       return
     }
 
@@ -398,6 +403,48 @@ export default class OmniCellPanel {
         .attr('text-anchor', 'middle')
         .attr('fill', colorOf(name))
         .text(label => c.seriesData[name][label] ?? 0)
+    })
+  }
+  /** A real radial area chart — d3's own areaRadial/lineRadial
+   *  generators, the actual technique the referenced Observable
+   *  example uses, not a manual polygon like Radar's own approach.
+   *  Genuinely different visually: a smooth, closed curve filled
+   *  from the center outward at each label's angle, rather than
+   *  straight-edged polygon segments. */
+  _drawRadialArea (g, innerW, innerH, visibleNames, c, labels, colorOf, allValues) {
+    const radius = Math.min(innerW, innerH) / 2
+    const raG = g.append('g').attr('transform', `translate(${innerW / 2},${innerH / 2})`)
+    const angleFor = (i) => (i / labels.length) * Math.PI * 2
+    const rScale = d3.scaleLinear().domain([0, d3.max(allValues) * 1.1 || 1]).range([0, radius])
+
+    labels.forEach((label, i) => {
+      const angle = angleFor(i) - Math.PI / 2
+      raG.append('line')
+        .attr('x1', 0).attr('y1', 0)
+        .attr('x2', Math.cos(angle) * radius).attr('y2', Math.sin(angle) * radius)
+        .attr('stroke', 'rgba(255,255,255,0.15)')
+    })
+
+    const areaGen = d3.areaRadial()
+      .curve(d3.curveLinearClosed)
+      .angle(d => angleFor(d.i))
+      .innerRadius(0)
+      .outerRadius(d => rScale(d.value))
+
+    visibleNames.forEach(name => {
+      const points = labels.map((label, i) => ({ i, value: c.seriesData[name][label] ?? 0 }))
+      raG.append('path').datum(points)
+        .attr('d', areaGen)
+        .attr('fill', colorOf(name)).attr('fill-opacity', 0.25)
+        .attr('stroke', colorOf(name)).attr('stroke-width', 1.5)
+        .attr('transform', 'rotate(-90)')   // areaRadial's own 0-angle points right; rotate so label[0] sits at the top, matching Radar's own orientation
+      raG.selectAll(null).data(points).join('text')
+        .attr('class', 'ocl-value-label')
+        .attr('x', (d) => { const a = angleFor(d.i) - Math.PI / 2; return Math.cos(a) * (rScale(d.value) + 10) })
+        .attr('y', (d) => { const a = angleFor(d.i) - Math.PI / 2; return Math.sin(a) * (rScale(d.value) + 10) })
+        .attr('text-anchor', 'middle')
+        .attr('fill', colorOf(name))
+        .text(d => d.value)
     })
   }
 

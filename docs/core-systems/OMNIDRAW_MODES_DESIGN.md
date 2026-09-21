@@ -541,6 +541,135 @@ OmniPlayerDashboard itself already established, since no real
 backend or IP-tracking exists yet to show anything real. 20 checks,
 all passing.
 
+## Radial Area chart — a real, sixth option, checked against the actual reference
+
+Checked the real, referenced Observable example directly before
+building — the actual technique is `d3.areaRadial`/`d3.scaleRadial`,
+angle mapped from position around the circle, radius mapped from
+value. Built as a genuinely distinct chart type from Radar, not a
+reskin: Radar builds a manual polygon (straight edges between
+points); Radial Area uses d3's own real radial area generator with
+a closed curve, filling from the center outward — the actual
+technique the reference uses. Added to the chart-type dropdown,
+which was already real and live-editable before this — confirmed
+directly by testing the actual switch, not just assumed. 7 checks,
+all passing, including confirming the live-edit flow is genuinely
+bidirectional (switching to Radial Area and back to Line both
+correctly redraw).
+
+## Real, shared node spacing — equidistant control, confirmed as the core ask
+
+Every layout mode's own spacing was a hardcoded constant before this
+— confirmed directly by reading the actual code, not assumed.
+`utils/StructureSpacingSettings.js` is the real, persisted, shared
+"distance between nodes" value; every mode in `TreeLayout.js` now
+scales proportionally off it, using each mode's own original real
+ratio to the previous default, so the visual relationship between
+modes stays consistent as the setting changes rather than only one
+mode scaling. A new `reapplySpacing()` walks the entire tree, not
+just one node's direct children, since spacing is genuinely global.
+Real slider added to the Structure panel, always visible once open,
+not gated on a selection. 10 checks, all passing, including
+confirming a grandchild two levels deep gets repositioned too.
+
+**Noted, not built this pass**: connecting this same real spacing
+mechanism to OmniChronos, as raised directly — OmniChronos uses a
+genuinely different layout system (PerspectiveTime.js's own X-axis
+lanes), so wiring the two together is real, separate integration
+work, not a natural extension of this change.
+
+## Design idea — consolidating Structure/Jsonifier into one panel (documented, not built)
+
+Raised directly: merge OmniStructurePanel and OmniJsonifier into one
+panel, acting as a secondary inspector specifically for the
+Jsonifier aspect, with a maximize state revealing the full menu —
+and eventually evolving toward a HUD/widget system or full
+OmniVisors. Genuinely substantial scope, and both panels are
+currently real, working, separately-tested systems — merging them
+is a real, risky refactor worth a deliberate design pass of its own
+rather than folding into an unrelated spacing-settings change.
+Documented here as the real next design conversation, not started.
+
+## Real bug fixed — trashing a Jsonifier root orphaned every descendant
+
+Traced precisely: OmniNode's own trash handler deliberately
+re-parents a deleted node's children to its own parent rather than
+deleting them — the right, intentional instinct for a regular node
+("same instinct as deleting a folder: its contents move up a level,
+they don't vanish with it"), confirmed directly in its own existing
+comment. But a JSON tree's children genuinely are part of their
+parent, not independent siblings meant to survive it — so trashing a
+Jsonifier root only ever removed the root's own mesh, silently
+orphaning every real mesh beneath it in the scene.
+
+Fixed with a new, real listener in `OmniJsonifier.js` reacting to
+the same `omni:node-delete-request` event OmniNode's own handler
+already uses — but only ever cascading the matched node's own real
+children (via the already-proven `_collapseRecursive`), never the
+node itself, since the original event already handles that one
+directly. No re-entrancy risk: each cascaded despawn dispatches the
+same event again, but always for a different, distinct node id.
+Deleting the root also genuinely clears Jsonifier's own state and
+its saved persistence, so a future reload doesn't resurrect it.
+Deleting a non-root branch correctly cascades just that subtree,
+removing it from its real parent's children while leaving the rest
+of the tree untouched. 9 checks, all passing, including the critical
+regression — a genuine non-Jsonifier node's own delete still
+correctly re-parents its children exactly as before, unaffected.
+
+## Real bug fixed — stale connecting cylinders after a layout change
+
+Traced precisely: a node's own connecting cylinder (`_buildEdgeLine`)
+has its length and orientation baked into its actual geometry at
+creation, not just its transform — so when `omni:node-position-set`
+moved a node for a layout change, the cylinder connecting it never
+updated at all, left pointing at the old position. This wasn't
+specific to any one layout — it affected every mode that moves
+already-spawned nodes.
+
+Fixed with a new `_rebuildEdgesFor(nodeId)` in `OmniNode.js`, called
+from the same real `omni:node-position-set` handler every layout
+mode already routes through: finds every edge touching the moved
+node, disposes its old geometry and material for real, and builds a
+genuinely new cylinder at the current, real world positions of both
+endpoints. Fixed once, at the one real, shared event every mode
+uses — so this covers Tree, both Linear axes, Sphere, and Spiral
+alike, not a per-mode fix. 9 checks, all passing, including
+specifically Sphere and Spiral (the two directly asked about),
+confirming a genuine, verified dispose() call on the old geometry
+and material (not assumed), and confirming an edge untouched by the
+move is correctly left alone.
+
+## OmniTargeting made less invasive — real, precise fixes
+
+The old tetrahedron orientation (`lookAt` plus a guessed extra
+rotation) never reliably pointed any specific vertex at anything —
+`TetrahedronGeometry`'s own four default vertices sit at a
+cube-corner pattern, none aligned to a clean axis. Fixed at the
+geometry level instead: bakes a real rotation into the geometry
+itself so one actual vertex sits exactly on local -Z, the same
+direction `lookAt` always points an object's forward — so `lookAt`
+alone now genuinely aims a real apex at the target. Markers shrunk
+(0.35 → 0.2, confirmed smaller since more of them surround one
+target). Real black base with a white emissive highlight — the
+standard technique for "a dark shape with a glowing highlight" being
+described. Opacity default now 50%. `update()` rotates on both Y and
+Z again, restoring the original dual-axis spin. 10 checks, all
+passing, including a precise, direct verification of the geometry-
+level vertex alignment itself, not just a visual guess.
+
+## Landing platform — node now genuinely sits on top, real wireframe
+
+Confirmed the exact cause: the root's own real radius at its real
+scale is ~0.18 (0.6 base `OctahedronGeometry` × 0.3 scale); the old
+0.05 offset sat well inside that, cutting through it. Now 0.22,
+clearing the real radius with a small, deliberate gap. Switched to a
+real wireframe material, white. Honest note on "bold": set
+`wireframeLinewidth`, which is real, valid three.js API, but most
+browsers/GPUs silently ignore values above 1 — a real WebGL spec
+limitation, not a bug here, included honestly rather than silently
+dropped since it does work on a few platforms.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

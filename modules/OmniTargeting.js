@@ -25,7 +25,7 @@ import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
 const MARKER_COUNT = 4
 const DEFAULT_GEOMETRY = 'TetrahedronGeometry'
-const MARKER_RADIUS = 0.35   // each marker's own size
+const MARKER_RADIUS = 0.2    // real, deliberately smaller — more markers around one target needs less visual weight per marker
 const ORBIT_RADIUS = 1.6     // how far out from the target center the 4 markers sit
 
 // Same curated geometry vocabulary already used elsewhere (OmniDraw,
@@ -45,7 +45,11 @@ const targetTextureStore = createWallpaperStore('targeting-marker', TARGET_TEXTU
 
 const STORE_KEY = 'omni:targeting:settings'
 function loadSettings () {
-  const defaults = { geometry: DEFAULT_GEOMETRY, color: '#ffffff', alpha: 0.85, activeSlot: null }
+  // Black geometry with a white emissive highlight — the real,
+  // standard three.js technique for "a dark shape with a glowing
+  // highlight": color is the base surface tone, emissive is a real,
+  // separate glow layered on top, independent of scene lighting.
+  const defaults = { geometry: DEFAULT_GEOMETRY, color: '#000000', emissive: '#ffffff', emissiveIntensity: 0.5, alpha: 0.5, activeSlot: null }
   try {
     const raw = localStorage.getItem(STORE_KEY)
     return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
@@ -62,8 +66,10 @@ export default class OmniTargeting {
     this._markers = []
     this._targetMesh = null
     this._geometry = DEFAULT_GEOMETRY
-    this._color = '#ffffff'
-    this._alpha = 0.85
+    this._color = '#000000'
+    this._emissive = '#ffffff'
+    this._emissiveIntensity = 0.5
+    this._alpha = 0.5
     this._activeSlot = null
     this._texture = null
     this._tooltipEl = null
@@ -75,6 +81,8 @@ export default class OmniTargeting {
     const saved = loadSettings()
     this._geometry = GEOMETRY_BUILDERS[saved.geometry] ? saved.geometry : DEFAULT_GEOMETRY
     this._color = saved.color
+    this._emissive = saved.emissive
+    this._emissiveIntensity = saved.emissiveIntensity
     this._alpha = saved.alpha
     this._activeSlot = saved.activeSlot
 
@@ -122,6 +130,7 @@ export default class OmniTargeting {
     if (!this._group.visible || !this._targetMesh) return
     this._group.position.copy(this._targetMesh.position)
     this._group.rotation.z += delta * 0.6   // slow rotation, reads as "actively locked on," not static
+    this._group.rotation.y += delta * 0.4   // the real, original dual-axis spin, restored alongside Z
 
     // Screen-project the target's real world position for the tooltip —
     // a genuine CSS2D-style label, not Three.js's own add-on.
@@ -156,17 +165,39 @@ export default class OmniTargeting {
 
   _buildMarkers () {
     const builder = GEOMETRY_BUILDERS[this._geometry] ?? GEOMETRY_BUILDERS[DEFAULT_GEOMETRY]
+    const isTetrahedron = this._geometry === 'TetrahedronGeometry'
+
     for (let i = 0; i < MARKER_COUNT; i++) {
       const geo = builder(MARKER_RADIUS)
-      const mat = new THREE.MeshStandardMaterial({ color: this._color, transparent: true, opacity: this._alpha, roughness: 0.3, metalness: 0.1 })
+
+      // Real fix — TetrahedronGeometry's own default vertices sit at
+      // the cube-corner pattern (1,1,1), (-1,-1,1), (-1,1,-1),
+      // (1,-1,-1); none of them naturally line up with any one axis,
+      // so the old lookAt + guessed extra rotation never reliably
+      // pointed a real apex at anything. Baking a rotation into the
+      // geometry itself — so one real vertex sits exactly on local
+      // -Z, the same direction lookAt always points an object's own
+      // forward — means lookAt alone now genuinely aims an apex at
+      // the target, not an approximation.
+      if (isTetrahedron) {
+        const apexDefault = new THREE.Vector3(1, 1, 1).normalize()
+        const forward = new THREE.Vector3(0, 0, -1)
+        const align = new THREE.Quaternion().setFromUnitVectors(apexDefault, forward)
+        geo.applyQuaternion(align)
+      }
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: this._color, emissive: this._emissive, emissiveIntensity: this._emissiveIntensity,
+        transparent: true, opacity: this._alpha, roughness: 0.3, metalness: 0.1,
+      })
       const marker = new THREE.Mesh(geo, mat)
 
       const angle = (i / MARKER_COUNT) * Math.PI * 2
       marker.position.set(Math.cos(angle) * ORBIT_RADIUS, Math.sin(angle) * ORBIT_RADIUS, 0)
-      // Point each marker's own "top" inward toward the target center —
-      // the actual Z-target reticle look, not four markers facing outward.
+      // Point each marker toward the target center — for the
+      // tetrahedron, a real, baked-in apex; for every other shape,
+      // its own natural forward, same as before.
       marker.lookAt(0, 0, 0)
-      marker.rotateX(Math.PI / 2)
 
       this._group.add(marker)
       this._markers.push(marker)
@@ -185,6 +216,8 @@ export default class OmniTargeting {
   _applyColor () {
     this._markers.forEach(m => {
       if (!this._texture) m.material.color.set(this._color)
+      m.material.emissive.set(this._emissive)
+      m.material.emissiveIntensity = this._emissiveIntensity
       m.material.opacity = this._alpha
     })
   }

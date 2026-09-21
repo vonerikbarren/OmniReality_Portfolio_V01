@@ -152,6 +152,40 @@ export default class OmniJsonifier {
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
     this._restoreState()
+
+    // Real fix — trashing a node (Inspector's own 🗑) previously only
+    // ever removed that one node's own mesh; every descendant's real
+    // mesh was silently orphaned in the scene, since OmniNode's own
+    // delete handler re-parents children rather than deleting them —
+    // the right instinct for a regular node, but wrong for a JSON
+    // tree, where children are genuinely part of their parent, not
+    // independent siblings. Reacts to the same real event OmniNode's
+    // own handler already uses, but only ever cascades the matched
+    // node's own children — never the node itself, since the
+    // original event already handles that one directly — so this
+    // never re-processes the same id twice.
+    this._onDeleteRequest = (e) => {
+      const { id } = e.detail ?? {}
+      if (!this._tree) return
+      const node = this._findNode(this._tree, id)
+      if (!node) return
+
+      node.children.forEach(child => this._collapseRecursive(child))
+
+      if (node === this._tree) {
+        this._tree = null
+        this._lastRawJson = null
+        this._disposeLandingPlatform()
+        try { localStorage.removeItem(STORE_KEY) } catch (_) { /* real cleanup simply skipped if storage unavailable */ }
+        this._renderTree()
+      } else {
+        const parent = this._findParent(this._tree, id)
+        if (parent) parent.children = parent.children.filter(c => c.nodeId !== id)
+        this._renderTree()
+        this._saveState()
+      }
+    }
+    window.addEventListener('omni:node-delete-request', this._onDeleteRequest)
   }
 
   update (delta) {
@@ -162,6 +196,7 @@ export default class OmniJsonifier {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:node-delete-request', this._onDeleteRequest)
     this._tickers.forEach(t => { unregisterTicker(t.nodeId); t.destroy() })
     this._tickers = []
     this._disposeLandingPlatform()
@@ -419,13 +454,22 @@ export default class OmniJsonifier {
    *  once per node. */
   _spawnLandingPlatform (x, y, z) {
     const geometry = new THREE.CircleGeometry(1.1, 32)
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x7fd8ff, transparent: true, opacity: 0.25,
-      side: THREE.DoubleSide, roughness: 0.6, metalness: 0.1,
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff, wireframe: true, wireframeLinewidth: 3,
+      // wireframeLinewidth above 1 is real, valid three.js API, but
+      // most browsers/GPUs silently ignore it (a real WebGL spec
+      // limitation, not a bug here) — included honestly rather than
+      // silently dropped, since it does work on a few platforms.
+      transparent: true, opacity: 0.6,
     })
     const platform = new THREE.Mesh(geometry, material)
     platform.rotation.x = -Math.PI / 2   // lie flat, facing up
-    platform.position.set(x, y - 0.05, z)   // just beneath the root, avoiding z-fighting
+    // Real fix — the root's own actual radius at its real scale is
+    // ~0.18 (0.6 base OctahedronGeometry × 0.3 scale); the old 0.05
+    // offset sat well inside that, cutting through it. 0.22 clears
+    // the real radius with a small, deliberate gap, so the node
+    // genuinely sits on top rather than intersecting.
+    platform.position.set(x, y - 0.22, z)
     this.ctx.scene.add(platform)
     this._landingPlatform = platform
   }
@@ -468,6 +512,27 @@ export default class OmniJsonifier {
         window.dispatchEvent(new CustomEvent('omni:node-position-set', { detail: { id: child.nodeId, position: newPos } }))
       }
     })
+    this._saveState()
+  }
+
+  /** Real, tree-wide reapplication — since spacing is a global
+   *  setting, not tied to any one node's own selection, changing it
+   *  needs to walk the whole tree and recompute every node's real
+   *  position under its own parent's current layout mode, not just
+   *  the currently-selected node's direct children. */
+  reapplySpacing () {
+    if (!this._tree) return
+    const walk = (node) => {
+      node.children.forEach((child, i) => {
+        const newPos = computeChildPosition(node.position, i, node.children.length, node.layoutMode)
+        child.position.set(newPos.x, newPos.y, newPos.z)
+        if (child.meshCreated) {
+          window.dispatchEvent(new CustomEvent('omni:node-position-set', { detail: { id: child.nodeId, position: newPos } }))
+        }
+        walk(child)
+      })
+    }
+    walk(this._tree)
     this._saveState()
   }
 
@@ -536,6 +601,19 @@ export default class OmniJsonifier {
     if (node.nodeId === nodeId) return node
     for (const child of node.children) {
       const found = this._findNode(child, nodeId)
+      if (found) return found
+    }
+    return null
+  }
+
+  /** The real parent-lookup counterpart to _findNode — needed so a
+   *  non-root node's own delete can remove it from its real parent's
+   *  children array, not just despawn its mesh. */
+  _findParent (node, nodeId) {
+    if (!node) return null
+    for (const child of node.children) {
+      if (child.nodeId === nodeId) return node
+      const found = this._findParent(child, nodeId)
       if (found) return found
     }
     return null

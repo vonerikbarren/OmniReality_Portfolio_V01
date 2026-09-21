@@ -1977,6 +1977,35 @@ export default class OmniNode {
     this._genealogyHighlighted = new Set()
   }
 
+  /** Real fix for stale connecting cylinders after a node moves —
+   *  disposes every edge touching this node and rebuilds each one
+   *  fresh at the current, real world positions. A cylinder's own
+   *  length/orientation is baked into its geometry, not just its
+   *  transform, so this can't be a simple reposition — it's a real
+   *  dispose-and-recreate, same as any other geometry change in this
+   *  project. Works for any node any layout mode moves, current or
+   *  future, since they all route through this one real event. */
+  _rebuildEdgesFor (nodeId) {
+    this._edges.forEach(edge => {
+      if (edge.from !== nodeId && edge.to !== nodeId) return
+      const entryA = this._nodes.get(edge.from)
+      const entryB = this._nodes.get(edge.to)
+      if (!entryA || !entryB) return
+
+      this.ctx.scene.remove(edge.line)
+      edge.line.geometry?.dispose()
+      edge.line.material?.dispose()
+
+      const posA = entryA.mesh.getWorldPosition(new THREE.Vector3())
+      const posB = entryB.mesh.getWorldPosition(new THREE.Vector3())
+      const childDepth = this._computeAncestry(edge.to).depth
+      const newLine = this._buildEdgeLine(posA, posB, childDepth)
+      newLine.material.opacity = 0.45   // real, immediately visible — no re-fade-in needed for a rebuild, only a fresh connection
+      this.ctx.scene.add(newLine)
+      edge.line = newLine
+    })
+  }
+
   _buildEdgeLine (posA, posB, depth = 0) {
     const radius = Math.max(
       EDGE_MIN_RADIUS,
@@ -2386,6 +2415,14 @@ export default class OmniNode {
       if (!entry || !position) return
       entry.mesh.position.set(position.x, position.y, position.z)
       entry.data.position = [position.x, position.y, position.z]
+      // Real fix — a connecting cylinder's own length/orientation is
+      // baked into its geometry at creation, not just its transform,
+      // so simply moving the node left every edge touching it as a
+      // stale cylinder pointing at the old position. Rebuilding here
+      // means every layout mode (tree, linear, sphere, spiral —
+      // whatever comes later too) gets this fix for free, since they
+      // all move nodes through this same, one real event.
+      this._rebuildEdgesFor(id)
     }
     window.addEventListener('omni:node-position-set', this._onPositionSet)
 

@@ -730,6 +730,80 @@ actual login pattern, shown live in the panel. Confirmed everything
 despawns cleanly on close — no lingering scene objects. 11 checks,
 all passing.
 
+### V73
+Radial Area chart added as a real, sixth chart type — checked the
+actual referenced Observable example first (`d3.areaRadial`/
+`d3.scaleRadial`) rather than guessing at the technique. Genuinely
+distinct from Radar: real d3 radial area generator with a closed
+curve filling from center, not a manual straight-edged polygon.
+Confirmed and tested that chart type was already real, live-editable
+via the existing dropdown before this — the new type just slots into
+that same, already-working mechanism. 7 checks, all passing,
+including confirming the live-edit flow is genuinely bidirectional.
+
+### V74
+Real, shared node spacing built — confirmed the core, definite ask
+(equidistant distance between nodes, editable). Every layout mode's
+own spacing was a hardcoded constant before this, confirmed directly
+in the code. `utils/StructureSpacingSettings.js` is the real,
+persisted, shared value; `TreeLayout.js`'s six modes all scale
+proportionally off it now, using each mode's own original ratio to
+the previous default. New `reapplySpacing()` walks the whole tree,
+not just one node's children. Real slider added to the Structure
+panel. 10 checks, all passing. OmniChronos connection and the
+Structure/Jsonifier panel-consolidation idea (with maximize, and
+eventual HUD/OmniVisor evolution) both documented as real, separate
+next conversations rather than built this pass, given their own
+real scope and risk.
+
+### V75
+Real bug fixed: trashing a Jsonifier root orphaned every descendant
+mesh in the scene. Traced to OmniNode's own trash handler, which
+deliberately re-parents a deleted node's children rather than
+deleting them — correct, intentional behavior for a regular node,
+confirmed directly in its own existing comment, but wrong for a JSON
+tree specifically. Fixed with a new listener in `OmniJsonifier.js`
+on the same real delete event, cascading only the matched node's own
+children (never itself, avoiding re-entrancy) via the already-proven
+`_collapseRecursive`. Root deletion also clears Jsonifier's own
+state and saved persistence; non-root branch deletion cascades just
+that subtree, correctly removed from its real parent's children. 9
+checks, all passing, including the critical regression confirming
+regular, non-Jsonifier nodes are completely unaffected.
+
+### V76
+Real bug fixed: connecting cylinders left stale after a layout mode
+change. Traced to `_buildEdgeLine`'s own real geometry — a
+cylinder's length/orientation is baked into it at creation, not just
+its transform, so moving a node via `omni:node-position-set` never
+touched any edge connected to it. Fixed with a new
+`_rebuildEdgesFor(nodeId)` in `OmniNode.js`, wired into that same,
+one real event every layout mode already uses to move nodes —
+disposes the old geometry/material for real and builds a genuinely
+new cylinder at the current positions. Fixed at the shared event, so
+it covers every mode (Tree, both Linear axes, Sphere, Spiral) at
+once, not per-mode patches. 9 checks, all passing, specifically
+covering Sphere and Spiral as asked, with a real, verified dispose()
+spy rather than an assumed check.
+
+### V77
+OmniTargeting and the landing platform, both fixed with precise
+detail. Tetrahedron orientation fixed at the geometry level — a real
+rotation baked in so one actual vertex sits on local -Z, meaning
+`lookAt` alone now genuinely aims an apex at the target, unlike the
+old `lookAt` + guessed rotation which never reliably aligned
+anything (`TetrahedronGeometry`'s own vertices don't sit on any
+clean axis by default). Markers shrunk to 0.2. Black base + white
+emissive highlight (the real technique for the effect being
+described), 50% opacity, both Y and Z rotation restored in update().
+Landing platform: confirmed the root's own real radius (~0.18)
+against the old, too-small 0.05 offset — now 0.22, clearing it with
+a deliberate gap so the node genuinely sits on top. Real wireframe
+material, white, with an honest note on wireframeLinewidth's real
+browser-support limitation rather than silently dropping it. 10
+checks, all passing, including a direct, precise verification of the
+geometry-level vertex alignment itself.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
