@@ -804,6 +804,48 @@ browser-support limitation rather than silently dropping it. 10
 checks, all passing, including a direct, precise verification of the
 geometry-level vertex alignment itself.
 
+### V78
+Three threads. Mac grey-scene bug: found a real, plausible cause —
+WallpaperSphere's own default color (#445566) is exactly the flat
+grey reported, and its texture-load failure path was genuinely
+silent (zero logging on an empty IndexedDB record). Safari's own,
+documented IndexedDB blob-storage history plus both wallpaper and
+floor sharing the same texture-storage utility is a coherent
+explanation for why plain-color nodes keep working while textured
+surfaces don't. Added real, specific diagnostic logging rather than
+guessing further; honestly noted this is a strong hypothesis from
+reading the code, not a confirmed fix without real Mac console
+output. zFold frame drops: found one real, concrete contributor —
+ToolTipMenu.update() rescans every mesh and recomputes a full
+screen projection per node, every frame, unconditionally. Honestly
+noted that full mobile profiling isn't possible from here; real next
+step is the browser's own profiler on the actual device. OmniTargeting
+redesigned properly: two genuinely independent 4-marker rings (8
+total), not one set rotating on two axes — `_groupY` and `_groupZ`
+spin on only their own real axis each. Found and fixed a real,
+secondary orphaned-sub-group bug while rebuilding this. 11 checks,
+all passing.
+
+### V79
+Presenter panels clarified as OmniExpression's avatar + three
+backing circles, distinct from the unrelated systems/OmniPresenter.js.
+Traced the "too spread out in corners" complaint to the real, direct
+cause: the old radius progression (1.3/1.6/1.9) made the outer
+circle nearly double the avatar's own size — confirmed the group
+already correctly billboards toward the camera (no depth-alignment
+bug), so this was a size issue, not a positioning one. Tightened to
+1.12/1.22/1.32. Found and fixed a real colorSpace bug on all three
+texture-loading paths (avatar video, avatar image, backing-circle
+image) — none set texture.colorSpace, so three.js treated them as
+linear instead of sRGB, washing them out under this project's own
+ACES tone mapping — a concrete match for "looks white." Confirmed
+alternating rotation was already built and enabled by default,
+correcting a stale note in the design doc claiming otherwise. 9
+checks, all passing. One editing mistake caught and fixed during
+this pass — a str_replace accidentally deleted the doc's own
+"Status" header; found by checking the file's actual tail rather
+than assuming the edit landed cleanly.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

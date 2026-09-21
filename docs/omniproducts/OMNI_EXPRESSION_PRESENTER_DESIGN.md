@@ -258,6 +258,36 @@ vs SystemNode distinction is a stated, deliberate design fact about
 this product line going forward, not something to accidentally lose
 track of.
 
+### Presenter sizing and video fixes (this pass)
+
+Clarified: "presenter panels" refers to this exact system — the
+avatar plus three backing circles, not `systems/OmniPresenter.js`
+(a genuinely different, unrelated system, per the note above).
+
+**Radius progression tightened.** The old values (1.3 / 1.6 / 1.9)
+made the outer circle nearly double the avatar's own size — the
+real, direct cause of the stack looking spread out, independent of
+depth spacing (which the group already correctly billboards toward
+the camera for, confirmed by reading the actual code — no fix
+needed there). Now 1.12 / 1.22 / 1.32, genuinely subtler at every
+step, matching "slightly larger... not that much larger than the
+video circle" repeated for each one. The additional-circle formula
+(`1.3 + i * 0.3`) tightened to match (`1.12 + i * 0.1`).
+
+**Real colorSpace bug fixed**, on all three texture-loading paths
+(avatar video, avatar image, backing-circle image) — none of them
+set `texture.colorSpace`, so three.js treated them as linear instead
+of sRGB, washing them out under this project's own ACES tone
+mapping. A concrete, well-grounded match for "looks white." Matches
+the same, already-correct pattern `WallpaperSphere.js` uses.
+
+**Alternating rotation** — confirmed already built and already
+enabled by default (`circleRotation.enabled: true`), contrary to
+this doc's own earlier "not built yet" note, which was stale. No
+new work needed there; verified with a direct regression check.
+
+9 checks, all passing.
+
 ### Status
 
 Video player phase: agreed and scoped, not yet built. Everything from

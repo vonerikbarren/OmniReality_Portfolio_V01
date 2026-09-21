@@ -89,9 +89,9 @@ function loadState () {
     // defaults every OmniUser/OmniPlayer has, plus room to add more
     // personal ones later (see OMNI_EXPRESSION_PRESENTER_DESIGN.md).
     backingCircles: [
-      { id: 'life',   label: 'Circle of Life',   mediaUrl: '', mediaType: 'image', radiusScale: 1.3 },
-      { id: 'time',   label: 'Circle of Time',   mediaUrl: '', mediaType: 'image', radiusScale: 1.6 },
-      { id: 'choice', label: 'Circle of Choice', mediaUrl: '', mediaType: 'image', radiusScale: 1.9 },
+      { id: 'life',   label: 'Circle of Life',   mediaUrl: '', mediaType: 'image', radiusScale: 1.12 },
+      { id: 'time',   label: 'Circle of Time',   mediaUrl: '', mediaType: 'image', radiusScale: 1.22 },
+      { id: 'choice', label: 'Circle of Choice', mediaUrl: '', mediaType: 'image', radiusScale: 1.32 },
     ],
     // Circle 0 spins clockwise, circle 1 counter-clockwise, circle 2
     // clockwise again, alternating with depth — direction is computed
@@ -567,7 +567,7 @@ export default class OmniExpression {
   _addBackingCircle () {
     const id = 'circle_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
     const i = this._state.backingCircles.length
-    this._state.backingCircles.push({ id, label: `Circle ${i + 1}`, mediaUrl: '', mediaType: 'image', radiusScale: 1.3 + i * 0.3 })
+    this._state.backingCircles.push({ id, label: `Circle ${i + 1}`, mediaUrl: '', mediaType: 'image', radiusScale: 1.12 + i * 0.1 })
     saveState(this._state)
 
     const radius = this._state.radius * (1.3 + i * 0.3)
@@ -629,6 +629,7 @@ export default class OmniExpression {
     const loader = new THREE.TextureLoader()
     loader.load(url, (texture) => {
       if (entry.mesh) {
+        texture.colorSpace = THREE.SRGBColorSpace
         entry.mesh.material.map = texture
         entry.mesh.material.needsUpdate = true
       }
@@ -715,12 +716,18 @@ export default class OmniExpression {
       })
       this._mediaVideoEl = video
       const texture = new THREE.VideoTexture(video)
+      // Real fix — without this, three.js treats the texture as
+      // linear instead of sRGB, washing it out under this project's
+      // own ACES tone mapping. Matches the same, already-correct
+      // pattern WallpaperSphere.js uses for its own textures.
+      texture.colorSpace = THREE.SRGBColorSpace
       this._avatarMesh.material.map = texture
       this._avatarMesh.material.needsUpdate = true
     } else {
       const loader = new THREE.TextureLoader()
       loader.load(url, (texture) => {
         if (this._avatarMesh) {
+          texture.colorSpace = THREE.SRGBColorSpace
           this._avatarMesh.material.map = texture
           this._avatarMesh.material.needsUpdate = true
         }

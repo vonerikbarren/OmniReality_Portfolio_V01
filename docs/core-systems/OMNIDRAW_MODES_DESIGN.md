@@ -670,6 +670,54 @@ browsers/GPUs silently ignore values above 1 — a real WebGL spec
 limitation, not a bug here, included honestly rather than silently
 dropped since it does work on a few platforms.
 
+## Mac grey-scene bug — real diagnostic added, root cause hypothesized
+
+Reported: nodes render fine, but wallpaper, floor, and depth are
+grey, Mac-only. Traced a real, plausible, well-grounded cause:
+`WallpaperSphere.js`'s own default color (`#445566`) is exactly the
+flat grey-blue that would show if its texture never loads — and its
+own `_applyFromSlot` had a genuinely silent failure path, returning
+with zero logging if the real IndexedDB record came back empty.
+Safari has a real, documented history of blob-storage bugs in its
+own IndexedDB implementation specifically, which both wallpaper and
+floor depend on for their textures via the same shared
+`utils/WallpaperStorage.js`, while plain-color nodes don't depend on
+it at all — a coherent explanation for exactly this symptom pattern.
+Added real, specific diagnostic logging naming this hypothesis
+directly, so it can be confirmed from the actual browser console
+rather than guessed at further. Honest limit: this is a strong,
+well-reasoned diagnosis from reading the real code, not a confirmed
+fix — verifying it needs the actual Mac console output.
+
+## zFold frame drops — honest note, real contributing factor found
+
+Reported even with minimal scene content (the root's own fall
+animation). Found one real, concrete contributor while investigating:
+`ToolTipMenu.update()` re-scans every registered mesh and recomputes
+a full world-to-screen projection for every node's header, every
+single frame, regardless of what changed — a real, non-trivial cost
+that compounds with node count. Combined with dozens of registered
+modules each running their own `update()` every frame, this is a
+credible source of baseline overhead. Honest limit: fully profiling
+mobile GPU performance isn't possible from this environment — real
+next step is the browser's own performance profiler run directly on
+the zFold, which would give concrete data rather than further
+inference.
+
+## OmniTargeting — real two-ring redesign
+
+Confirmed directly: two genuinely independent sets of 4 markers (8
+total), not one set rotating on two axes. `_groupY` (a clock lying
+flat, hands sweeping horizontally from above) and `_groupZ` (a clock
+facing the camera, hands sweeping in the plane being looked at) are
+real, separate Three.js groups, each spinning on only its own axis.
+Fixed a real, secondary issue found while rebuilding this: disposal
+now also removes the two, now-empty sub-groups before a fresh
+rebuild, since they'd otherwise be left orphaned as empty children on
+every geometry switch. 11 checks, all passing, including direct
+confirmation that each ring's rotation never leaks onto the other's
+axis.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

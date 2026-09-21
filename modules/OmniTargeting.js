@@ -23,7 +23,7 @@
 import * as THREE from 'three'
 import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
-const MARKER_COUNT = 4
+const MARKER_COUNT = 4   // per ring — two rings, 8 markers total
 const DEFAULT_GEOMETRY = 'TetrahedronGeometry'
 const MARKER_RADIUS = 0.2    // real, deliberately smaller — more markers around one target needs less visual weight per marker
 const ORBIT_RADIUS = 1.6     // how far out from the target center the 4 markers sit
@@ -63,7 +63,9 @@ export default class OmniTargeting {
   constructor (context) {
     this.ctx = context
     this._group = null
-    this._markers = []
+    this._groupY = null   // spins on Y — a clock lying flat, hands sweeping horizontally from above
+    this._groupZ = null   // spins on Z — a clock facing the camera, hands sweeping in the plane being looked at
+    this._markers = []    // every marker across both rings — kept for texture/color application and disposal
     this._targetMesh = null
     this._geometry = DEFAULT_GEOMETRY
     this._color = '#000000'
@@ -129,8 +131,8 @@ export default class OmniTargeting {
   update (delta) {
     if (!this._group.visible || !this._targetMesh) return
     this._group.position.copy(this._targetMesh.position)
-    this._group.rotation.z += delta * 0.6   // slow rotation, reads as "actively locked on," not static
-    this._group.rotation.y += delta * 0.4   // the real, original dual-axis spin, restored alongside Z
+    this._groupZ.rotation.z += delta * 0.6   // a clock facing the camera — hands sweeping in the plane being looked at
+    this._groupY.rotation.y += delta * 0.4   // a clock lying flat — hands sweeping horizontally when viewed from above
 
     // Screen-project the target's real world position for the tooltip —
     // a genuine CSS2D-style label, not Three.js's own add-on.
@@ -164,6 +166,17 @@ export default class OmniTargeting {
   }
 
   _buildMarkers () {
+    this._groupY = new THREE.Group()
+    this._groupZ = new THREE.Group()
+    this._group.add(this._groupY, this._groupZ)
+    this._buildRing(this._groupY)
+    this._buildRing(this._groupZ)
+  }
+
+  /** One real ring of 4 markers, built the same way regardless of
+   *  which sub-group it's parented to — the two rings only differ in
+   *  which axis their own parent group spins on, in update(). */
+  _buildRing (parentGroup) {
     const builder = GEOMETRY_BUILDERS[this._geometry] ?? GEOMETRY_BUILDERS[DEFAULT_GEOMETRY]
     const isTetrahedron = this._geometry === 'TetrahedronGeometry'
 
@@ -199,18 +212,26 @@ export default class OmniTargeting {
       // its own natural forward, same as before.
       marker.lookAt(0, 0, 0)
 
-      this._group.add(marker)
+      parentGroup.add(marker)
       this._markers.push(marker)
     }
   }
 
   _disposeMarkers () {
     this._markers.forEach(m => {
-      this._group.remove(m)
+      m.parent?.remove(m)
       m.geometry.dispose()
       m.material.dispose()
     })
     this._markers = []
+    // Real fix — _buildMarkers() creates fresh sub-groups every time,
+    // so the previous ones need removing here too, or they'd be left
+    // as orphaned, empty children on every rebuild (e.g. switching
+    // the marker geometry).
+    if (this._groupY) this._group.remove(this._groupY)
+    if (this._groupZ) this._group.remove(this._groupZ)
+    this._groupY = null
+    this._groupZ = null
   }
 
   _applyColor () {

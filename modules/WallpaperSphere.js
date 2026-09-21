@@ -247,7 +247,17 @@ export default class WallpaperSphere {
   async _applyFromSlot (slot) {
     try {
       const record = await loadWallpaper(slot)
-      if (!record) return
+      if (!record) {
+        // Real fix — this used to return here with zero logging, no
+        // way to tell "no wallpaper was ever saved to this slot"
+        // apart from "a real read failure happened." Safari's own
+        // IndexedDB implementation has a real, documented history of
+        // blob-storage bugs specifically — this warning is the
+        // direct way to confirm whether that's what's happening here,
+        // rather than guessing at it from the visual symptom alone.
+        console.warn(`⟐WallpaperSphere — slot ${slot} was requested but came back empty. If a wallpaper was genuinely saved to this slot before, this may be Safari's own known IndexedDB blob-storage issue rather than a real missing save.`)
+        return
+      }
       const url = URL.createObjectURL(record.blob)
       this._applyImage(url, /* isObjectUrl */ true)
     } catch (err) {
