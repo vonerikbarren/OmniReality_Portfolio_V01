@@ -252,7 +252,7 @@ const STYLES = /* css */`
 
   position          : fixed;
   top               : ${BAR_H}px;
-  right             : 0;
+  left              : 0;
   width             : ${PANEL_W}px;
   min-width         : 260px;
   max-width         : 640px;
@@ -266,9 +266,9 @@ const STYLES = /* css */`
   background        : var(--oi-bg);
   backdrop-filter   : blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  border-left       : 1px solid var(--oi-border);
+  border-right      : 1px solid var(--oi-border);
   border-bottom     : 1px solid var(--oi-border);
-  border-radius     : 0 0 0 10px;
+  border-radius     : 0 0 10px 0;
 
   font-family       : var(--mono);
   color             : var(--oi-text);
@@ -303,11 +303,11 @@ const STYLES = /* css */`
 
 .oi-resize-handle {
   position          : absolute;
-  left              : 0;
+  right             : 0;
   bottom            : 0;
   width             : 16px;
   height            : 16px;
-  cursor            : nesw-resize;
+  cursor            : nwse-resize;
   z-index           : 2;
 }
 
@@ -1913,9 +1913,8 @@ export default class OmniInspector {
       const cy = e.touches?.[0]?.clientY ?? e.clientY
       const dx = cx - this._drag.startX
       const dy = cy - this._drag.startY
-      // Switch from the default right-anchored position to left/top once
-      // dragging starts — inline left/width takes precedence over the
-      // stylesheet's `right: 0` per the CSS spec's over-constrained rule.
+      // Now left-docked by default, so dragging just moves left/top
+      // directly — no right-anchor CSS to override anymore.
       gsap.set(el, { left: this._drag.originX + dx, top: this._drag.originY + dy, right: 'auto' })
     }
     const onUp = () => {
@@ -1961,7 +1960,7 @@ export default class OmniInspector {
       if (!resize.active) return
       const cx = e.touches?.[0]?.clientX ?? e.clientX
       const cy = e.touches?.[0]?.clientY ?? e.clientY
-      const newW = resize.startW - (cx - resize.startX)   // dragging left grows it
+      const newW = resize.startW + (cx - resize.startX)   // left-docked now — dragging right grows it
       const newH = resize.startH + (cy - resize.startY)   // dragging down grows it
       gsap.set(el, { width: newW, height: newH })
     }

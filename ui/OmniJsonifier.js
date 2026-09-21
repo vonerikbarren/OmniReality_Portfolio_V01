@@ -140,6 +140,7 @@ export default class OmniJsonifier {
     this._isOpen = false
     this._tree = null        // the real, parsed tree — { key, value, children: [...], nodeId, isOpen, meshCreated }
     this._tickers = []       // real WordTicker instances for multi-word leaves, live across open/close
+    this._landingPlatform = null   // the root's own real landing platform mesh, disposed and recreated on each fresh JSON load
     this._onNavSelect = null
   }
 
@@ -163,6 +164,7 @@ export default class OmniJsonifier {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     this._tickers.forEach(t => { unregisterTicker(t.nodeId); t.destroy() })
     this._tickers = []
+    this._disposeLandingPlatform()
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omnijsonifier')
   }
@@ -217,8 +219,9 @@ export default class OmniJsonifier {
     dir.multiplyScalar(6)
     const rootPos = new THREE.Vector3(cam.position.x + dir.x, Math.max(0.5, cam.position.y + dir.y), cam.position.z + dir.z)
 
+    this._disposeLandingPlatform()
     this._tree = this._buildTreeNode('root', parsed, rootPos, null, 'root')
-    this._spawnMesh(this._tree)   // the root is always real immediately — everything under it waits for a real toggle
+    this._spawnRootWithFall(this._tree)   // the root falls into place and lands on a real platform — everything under it still waits for a real toggle
     this._renderTree()
     this._lastRawJson = rawText
     this._saveState()
@@ -381,6 +384,58 @@ export default class OmniJsonifier {
       registerTicker(node.nodeId, ticker)
       this._tickers.push(ticker)
     }
+  }
+
+  /** The root's own real fall-from-sky spawn — confirmed directly as
+   *  root-only, never for children/parents beneath it. The node's own
+   *  logical position stays at its real, intended value throughout
+   *  (children positioning and persistence both depend on it) —
+   *  only the real mesh's own Y gets animated down separately, high
+   *  above its real landing point. */
+  _spawnRootWithFall (node) {
+    const FALL_HEIGHT = 14      // world units above the real landing point
+    const FALL_DURATION = 1.8   // slow and deliberate, not a quick drop
+
+    const realY = node.position.y
+    node.position.y = realY + FALL_HEIGHT
+    this._spawnMesh(node)
+    node.position.y = realY   // restore immediately — the real, logical position never actually left this value
+
+    const mesh = this.omniNode?.getMeshById(node.nodeId)
+    if (!mesh) { this._spawnLandingPlatform(node.position.x, realY, node.position.z); return }
+
+    mesh.position.y = realY + FALL_HEIGHT   // the real mesh does start high, even though node.position itself was only ever offset briefly
+    gsap.to(mesh.position, {
+      y: realY,
+      duration: FALL_DURATION,
+      ease: 'power2.out',
+      onComplete: () => this._spawnLandingPlatform(node.position.x, realY, node.position.z),
+    })
+  }
+
+  /** A real, small, persistent landing platform beneath the root —
+   *  a single flat circle, trivial on memory (one draw call, a
+   *  couple dozen vertices), created once per fresh JSON load, not
+   *  once per node. */
+  _spawnLandingPlatform (x, y, z) {
+    const geometry = new THREE.CircleGeometry(1.1, 32)
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x7fd8ff, transparent: true, opacity: 0.25,
+      side: THREE.DoubleSide, roughness: 0.6, metalness: 0.1,
+    })
+    const platform = new THREE.Mesh(geometry, material)
+    platform.rotation.x = -Math.PI / 2   // lie flat, facing up
+    platform.position.set(x, y - 0.05, z)   // just beneath the root, avoiding z-fighting
+    this.ctx.scene.add(platform)
+    this._landingPlatform = platform
+  }
+
+  _disposeLandingPlatform () {
+    if (!this._landingPlatform) return
+    this.ctx.scene.remove(this._landingPlatform)
+    this._landingPlatform.geometry?.dispose()
+    this._landingPlatform.material?.dispose()
+    this._landingPlatform = null
   }
 
   _despawnMesh (node) {

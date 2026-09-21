@@ -437,6 +437,110 @@ regression check confirming genuine selection still works normally,
 and a direct simulation of the bulk-spawn scenario that used to
 cascade.
 
+## Inspector flipped to left-docked, matching every other panel
+
+Confirmed a real inconsistency: Inspector was built as a full-height,
+right-docked sidebar — a fundamentally different design from every
+other panel this session, which are all left-anchored, small,
+floating windows. Flipped position, border side/radius corner, and
+the resize handle's own position and math together, since they're
+interconnected — changing only the position would have left resizing
+backwards. Verified directly: a real drag-resize interaction genuinely
+grows the panel when dragging right, not left.
+
+## The root's own real fall-from-sky spawn
+
+Confirmed root-only, never for parents or children beneath it — the
+node's own logical position stays at its real, final value
+throughout (children positioning and persistence both depend on it);
+only the real mesh's own Y is animated down separately, starting
+well above its landing point. A real, small, persistent landing
+platform (a single flat circle) spawns once the fall completes,
+disposed and recreated cleanly on every fresh JSON load rather than
+accumulating. Genuinely trivial on memory — one draw call, roughly
+32 vertices, created once per load, not once per node. 9 checks, all
+passing, including confirming a real, non-root child spawned via a
+normal branch toggle correctly gets no fall treatment at all.
+
+## Real bug fixed — a genuine catch-22 in Show Children/Structure
+
+Reported: toggle does nothing on a root node, Structure's button
+doesn't work either. Traced to a real, pre-existing architectural
+mismatch, not a regression from recent work: whether these two
+options even appeared in the quick menu depended on
+`OmniNode.getChildrenOf()`, which can only ever see children that
+already exist as real, spawned meshes. But Jsonifier deliberately
+defers spawning any node's children until it's toggled open —
+meaning a fresh root, never yet toggled, always had zero spawned
+children by design. The button meant to reveal children for the
+first time could never appear the first time, for any node, ever.
+
+Fixed by having `ToolTipMenu` check a genuine Jsonifier node's own
+logical tree data (`node.children.length`, `node.isOpen`) instead —
+data that's always correct regardless of whether children have been
+realized as meshes yet. The toggle button's own click handler now
+also routes a real Jsonifier node through `jsonifier._toggleBranch()`
+(which correctly spawns/despawns as needed) instead of directly
+flipping `mesh.visible`, which only ever worked for children that
+already had a real mesh. Non-Jsonifier nodes still use the original
+OmniNode-based check, unaffected. 9 checks, all passing, including
+the exact reported scenario — a completely fresh root, clicked for
+the very first time, before ever being toggled.
+
+## Design idea — animated life-stage timeline (documented, not built)
+
+Raised as an example: a person's life — baby, child, teenager,
+adult, elderly, death — as five life-stage branches, each holding
+its own real value nodes, with an "enjoyment" line chart shown "in
+motion."
+
+Two genuinely separate things worth keeping distinct when this gets
+built: (1) animating the *structure itself* — layout mode switches
+currently snap instantly (`setLayoutMode` sets position directly, no
+tween), a real, small, contained gap since the exact same GSAP
+pattern already used for the root's fall-from-sky landing would
+apply directly; (2) animating the *chart* — OmniCell's line chart
+draws correctly today but has no motion at all, and "in motion"
+itself needs a real decision between at least three different,
+non-interchangeable directions: the line progressively drawing
+itself in, a marker traveling along it stage by stage, or a
+loop/replay control.
+
+Proposed shape: `linear-horizontal` or `linear-depth` for the five
+life-stage branches (chronological order for free, since that layout
+already exists), a genuine OmniCell line chart for "enjoyment"
+reading values from those same stage nodes rather than duplicating
+data. Real next step, when picked up: confirm which chart-motion
+direction is wanted before building, since building the wrong one
+wastes real effort.
+
+## Account — Login, Profile, Dashboard: three real, dedicated panels
+
+Confirmed a real, pre-existing gap: `⟐Account`'s three children
+already existed in the Drawer, but only ever opened the same generic
+placeholder every other leaf nav item gets — no real, dedicated
+panel existed for any of them. Built all three, and removed their
+entries from the generic panel list to avoid a duplicate-open
+conflict with the real, new ones.
+
+`utils/OmniIdentity.js` is the real, shared, local identity list and
+active-identity state — confirmed directly as "different save states
+of the scene," and stated honestly in the Login panel itself as a
+real, local profile switcher, not server-backed authentication (no
+backend exists yet, a real, separate, later decision).
+`ui/AccountLoginPanel.js` creates and switches between real,
+persisted OmniIdentities. `ui/AccountProfilePanel.js` is the real
+"basic OmniPlayer" — confirmed as where the OmniUser Profile goes —
+reusing the exact same real, persisted OmniPlayerGame data
+OmniPlayerDashboard's own full view already reads from
+(`getRealities()`, `getExposedCount()`, etc.), not a second, separate
+data source. `ui/AccountDashboardPanel.js` shows the active identity
+as the real reality owner, with visitor/signup data clearly labeled
+as example — the same honest "placeholder, not filled in" pattern
+OmniPlayerDashboard itself already established, since no real
+backend or IP-tracking exists yet to show anything real. 20 checks,
+all passing.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

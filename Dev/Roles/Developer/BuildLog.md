@@ -669,6 +669,67 @@ plausible contributor to the reported instability. Fixed with
 applied elsewhere, since OmniCell/Static/Dynamic's one-action-one-
 node pattern makes auto-select correct there. 9 checks, all passing.
 
+### V69
+Two real pieces built. Inspector flipped from right-docked to
+left-docked, matching every other panel — confirmed it was a
+genuinely different design (full-height sidebar, not a small
+floating window like the rest), so this meant changing position,
+border side/radius, and the resize handle's own position and math
+together, not just one CSS line; verified the resize interaction
+itself genuinely grows correctly in the new direction. Root's own
+fall-from-sky spawn built for OmniJsonifier — confirmed root-only, a
+real landing platform (one flat circle, trivial on memory) spawns on
+landing, disposed cleanly on every fresh load rather than
+accumulating. 9 checks, all passing, including confirming a real
+non-root child gets no fall treatment.
+
+### V70
+Real, pre-existing bug fixed: reported as toggle doing nothing on a
+root node, Structure's button not working either. Traced to a
+genuine catch-22, not a recent regression — whether Show
+Children/Structure even appeared in the quick menu depended on
+OmniNode's registry, which can only see already-spawned children,
+but Jsonifier deliberately defers spawning until toggled open. A
+fresh root's own children could never be spawned yet, so the button
+meant to spawn them for the first time could never appear the first
+time. Fixed by routing a genuine Jsonifier node through its own
+logical tree data instead, and having the toggle button's own click
+handler call `jsonifier._toggleBranch()` directly rather than
+flipping `mesh.visible` on children that might not exist yet.
+Non-Jsonifier nodes unaffected, still using the original check. 9
+checks, all passing, including the exact reported scenario end to
+end.
+
+### V71
+Animated life-timeline idea documented, not built, per direction.
+Account panel layer built — confirmed `⟐Account`'s three children
+already existed in the Drawer but only ever opened the generic
+placeholder every other leaf gets; no real, dedicated panel existed.
+Built `utils/OmniIdentity.js` (real, local, persisted identities —
+honestly stated as a local profile switcher, not real
+authentication, since no backend exists), `AccountLoginPanel.js`,
+`AccountProfilePanel.js` (reuses OmniPlayerGame's exact real data
+source, not a second one), and `AccountDashboardPanel.js` (real
+active identity as reality owner, visitor/signup data honestly
+labeled example, matching OmniPlayerDashboard's own established
+placeholder convention). Removed the three now-redundant generic
+panel-list entries to avoid a duplicate-open conflict. 20 checks,
+all passing.
+
+### V72
+Real design doc written for the full Account spatial vision
+(Profiles carousel, Login/Cryptx, Dashboard sphere) — 8 recommended
+over 10 for the carousel, reasoning grounded in RadialMenu's own
+proven 5-per-page precedent and clean 45° spacing. Login/OmniCryptx
+prototyped for real: `modules/AccountLoginCryptx.js` spawns a real,
+screen-docked cylinder (repositioned every frame relative to the
+camera — the real mechanism a HUD element needs) plus a real,
+working OmniCryptx ring instance beside it, only while the Login
+panel is open. Real drill-down selections track as the user's
+actual login pattern, shown live in the panel. Confirmed everything
+despawns cleanly on close — no lingering scene objects. 11 checks,
+all passing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

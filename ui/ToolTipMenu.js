@@ -179,20 +179,27 @@ export default class ToolTipMenu {
   _renderMainMenu (mesh) {
     const nodeId = mesh.userData.nodeId
     const isPlaced = nodeId && this.omniGrab?.isPlaced(nodeId)
-    const children = nodeId ? (this.omniNode?.getChildrenOf?.(nodeId) ?? []) : []
-    const hasChildren = children.length > 0
-    const childrenVisible = hasChildren && children[0].mesh?.visible
 
-    // Real, direct check — is this genuinely a Jsonifier leaf node
-    // (a flat piece of data, not a branch whose own children already
-    // represent its value)? Only leaves get the Show Value option.
+    // Real, direct check — is this genuinely a Jsonifier node at all
+    // (leaf or branch)? Its own logical tree data always correctly
+    // knows about its children, spawned or not — unlike OmniNode's
+    // registry, which can only ever see children that already exist
+    // as real meshes. This was the actual root cause of the reported
+    // bug: Jsonifier defers spawning children until toggled, but
+    // hasChildren previously depended on them already being spawned
+    // — a real catch-22 where the button meant to reveal a fresh
+    // root's children could never appear at all.
     const jsonNode = (nodeId && this.jsonifier?._tree) ? this.jsonifier._findNode(this.jsonifier._tree, nodeId) : null
     const isJsonLeaf = jsonNode?.isLeaf === true
+
+    const hasChildren = jsonNode ? jsonNode.children.length > 0 : (this.omniNode?.getChildrenOf?.(nodeId)?.length > 0)
+    const childCount = jsonNode ? jsonNode.children.length : (this.omniNode?.getChildrenOf?.(nodeId)?.length ?? 0)
+    const childrenVisible = jsonNode ? jsonNode.isOpen : (hasChildren && this.omniNode?.getChildrenOf?.(nodeId)?.[0]?.mesh?.visible)
 
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
       <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
-      ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${children.length})</button>` : ''}
+      ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
       ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
       ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
       <button class="ttm-action-btn" data-action="edit-tooltip">🎨 Edit Tooltip</button>
@@ -226,7 +233,18 @@ export default class ToolTipMenu {
 
     if (hasChildren) {
       this._menuEl.querySelector('[data-action="toggle-children"]').addEventListener('click', () => {
-        children.forEach(child => { if (child.mesh) child.mesh.visible = !childrenVisible })
+        // Real fix — a genuine Jsonifier node routes through its own
+        // real toggle, which correctly spawns/despawns children as
+        // needed. Directly flipping mesh.visible (the old behavior)
+        // only ever worked for children that already had a real
+        // mesh — never true for a node being toggled open for the
+        // first time.
+        if (jsonNode) {
+          this.jsonifier._toggleBranch(jsonNode)
+        } else {
+          const children = this.omniNode?.getChildrenOf?.(nodeId) ?? []
+          children.forEach(child => { if (child.mesh) child.mesh.visible = !childrenVisible })
+        }
         this._closeQuickMenu()
       })
     }

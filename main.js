@@ -17,6 +17,10 @@ import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
 import OmniLandingRoom   from './modules/OmniLandingRoom.js'
 import OmniPlayerGame    from './systems/OmniPlayerGame.js'
+import AccountLoginPanel from './ui/AccountLoginPanel.js'
+import AccountLoginCryptx from './modules/AccountLoginCryptx.js'
+import AccountProfilePanel from './ui/AccountProfilePanel.js'
+import AccountDashboardPanel from './ui/AccountDashboardPanel.js'
 import OmniPlayerDashboard from './ui/OmniPlayerDashboard.js'
 import OmniUserProfile   from './systems/OmniUserProfile.js'
 import OmniUserPanel     from './ui/OmniUserPanel.js'
@@ -208,6 +212,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   // ── OmniPlayer ────────────────────────────────────────────
   const omniPlayerGame = base.addModule(new OmniPlayerGame())
+  const accountLoginCryptx = base.addModule(new AccountLoginCryptx(base.context))
+  base.addModule(new AccountLoginPanel(accountLoginCryptx))
+  base.addModule(new AccountProfilePanel(base.context, omniPlayerGame))
+  base.addModule(new AccountDashboardPanel())
   base.addModule(new OmniPlayerDashboard(base.context, omniPlayerGame))
   omniPocket.setPlayerGame(omniPlayerGame)   // real inventory wiring, per "OmniPocket will be simply inventory for this"
   omniExpressionator.play('playerAura', { color: omniPlayerGame.getCurrentVisorColor() })   // small, always-in-front, reacts live to emotional-state events
@@ -495,10 +503,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     { id: 'nav-services', navLabel: '⟐Services', title: 'Services', prefix: 'Service' },
     { id: 'nav-resources',navLabel: '⟐Resources',title: 'Resources',prefix: 'Resource' },
     { id: 'nav-contact',  navLabel: '⟐Contact',  title: 'Contact',  prefix: 'Contact' },
-    // Account children
-    { id: 'nav-login',     navLabel: 'Login',     title: 'Login',     prefix: 'Login' },
-    { id: 'nav-profile',   navLabel: 'Profile',   title: 'Profile',   prefix: 'Profile' },
-    { id: 'nav-dashboard', navLabel: 'Dashboard', title: 'Dashboard', prefix: 'Dashboard' },
+    // Account children — now real, dedicated panels (AccountLoginPanel,
+    // AccountProfilePanel, AccountDashboardPanel), not the generic
+    // placeholder treatment every other leaf still gets here.
     // About children
     { id: 'nav-about-me',           navLabel: 'About-Me',           title: 'About-Me',           prefix: 'AboutMe' },
     { id: 'nav-about-thevision',    navLabel: 'About-TheVision',    title: 'About-TheVision',    prefix: 'Vision' },
