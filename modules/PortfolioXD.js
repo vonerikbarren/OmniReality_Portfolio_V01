@@ -416,9 +416,16 @@ export default class PortfolioXD {
       emissiveIntensity:  0.15,
       roughness:          0.00,
       metalness:          0.00,
-      transmission:       0.70,   // highly transparent — screen-like
+      // Real fix — transmission removed. It triggers three.js's own
+      // renderTransmissionPass for the whole scene, which is failing
+      // to compile its internal shaders on at least one real,
+      // confirmed Mac/GPU combination and taking down the entire
+      // WebGL context, not just this material. Opacity raised
+      // slightly to keep a real, genuine see-through glass look
+      // without the fragile machinery transmission specifically
+      // requires.
       transparent:        true,
-      opacity:            0.72,
+      opacity:            0.78,
       thickness:          1.20,
       iridescence:        1.00,   // thin-film shimmer — XD design language
       iridescenceIOR:     1.40,

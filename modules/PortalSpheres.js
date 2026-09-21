@@ -65,9 +65,12 @@ export default class PortalSpheres {
         emissiveIntensity: 0.25,
         roughness:        0.1,
         metalness:        0.0,
-        transmission:     0.5,    // glass-like
+        // Real fix — transmission removed (see PortfolioXD.js for
+        // the full real reason: it crashes the entire WebGL context
+        // on at least one confirmed real Mac/GPU combination).
+        // Opacity raised slightly to keep a genuine glass-like look.
         transparent:      true,
-        opacity:          0.75,
+        opacity:          0.82,
         thickness:        1.5,
       })
 

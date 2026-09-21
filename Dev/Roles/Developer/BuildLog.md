@@ -846,6 +846,47 @@ this pass — a str_replace accidentally deleted the doc's own
 "Status" header; found by checking the file's actual tail rather
 than assuming the edit landed cleanly.
 
+### V80
+Real root cause of the Mac grey-scene/crash bug found, from actual
+console output this time — a completely different, more precise
+diagnosis than the earlier wallpaper/IndexedDB hypothesis.
+`renderTransmissionPass` in the real stack trace is a specific
+three.js internal feature triggered only by MeshPhysicalMaterial's
+`transmission` property, with a real, documented history of
+WebGL-implementation compatibility problems. Found three separate
+modules (PortfolioXD.js, PortalSpheres.js, Portfolio3D.js) hardcoding
+non-zero transmission unconditionally — not opt-in, active for every
+user the moment any of them render — plus a fourth, opt-in source in
+OmniInspector.js's own material-editing slider. Removed transmission
+from all three hardcoded sources, kept every other intentional
+material property (iridescence, metalness, emissive), raised opacity
+slightly on each to preserve the real, intended glass-like look.
+Added a direct, honest warning to the Inspector's own slider label.
+Verified via precise source inspection: transmission fully absent
+from all three files, new opacity values in place, nothing else
+disturbed.
+
+### V81
+Real billboarding bug fixed in OmniExpression's Presenter — reported
+as the avatar looking correct dead-center but tilting/skewing off to
+a side or corner. Traced precisely: the group's own rotation copied
+the camera's quaternion directly — "face the same direction as the
+camera," which only equals "face toward the camera" when the avatar
+sits directly ahead. Off-center, those two things split apart.
+Fixed with a real, true billboard (`lookAt(camera.position)`
+instead of a quaternion copy), keeping the avatar's plane genuinely
+perpendicular to the real camera-to-avatar line everywhere, not just
+centered. 3 checks, all passing — including catching and correcting
+my own test's wrong sign assumption about three.js's real lookAt
+convention on a plain Object3D (points +Z at the target, not -Z, an
+easy thing to misremember from how cameras specifically work), and
+confirming via direct, empirical geometry that the old approach
+genuinely lacked the billboard property off-center while the new one
+has it everywhere. Same doc-editing mistake as last pass repeated
+and caught again — a str_replace briefly deleted the "Status"
+header a second time; checked the file's actual tail and fixed it
+immediately rather than assuming the edit was clean.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

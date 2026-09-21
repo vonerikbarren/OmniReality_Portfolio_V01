@@ -288,6 +288,28 @@ new work needed there; verified with a direct regression check.
 
 9 checks, all passing.
 
+### True billboard fix (this pass)
+
+Reported: the avatar looks correct dead-center but tilts/skews when
+anchored off to a side or corner. Confirmed directly in the code:
+the group's own rotation was set by copying the camera's quaternion
+— "face the same direction the camera faces." That only matches
+"face toward the camera" when the avatar happens to sit directly
+ahead; off-center, the two split apart, since the avatar keeps
+facing forward while the camera is actually looking at it from an
+angle.
+
+Fixed with a real, true billboard — `lookAt(camera.position)`
+instead of copying the camera's own quaternion — which keeps the
+avatar's plane genuinely perpendicular to the actual camera-to-avatar
+line regardless of where on screen it's anchored, not just when
+centered. 3 checks, all passing, including direct, empirical
+confirmation of the real geometric property (the plane's own normal
+axis parallel to the real camera line) both off-center and at
+center, and confirming the old approach genuinely lacked this
+property off-center — proving the reported bug was real, not
+imagined.
+
 ### Status
 
 Video player phase: agreed and scoped, not yet built. Everything from

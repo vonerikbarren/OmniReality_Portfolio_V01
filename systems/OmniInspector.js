@@ -155,7 +155,7 @@ const MATERIAL_EXTRA_PROPS = {
     { key: 'metalness', label: 'Metalness', min: 0, max: 1, step: 0.01, default: 0.08 },
     { key: 'clearcoat', label: 'Clearcoat', min: 0, max: 1, step: 0.01, default: 0 },
     { key: 'clearcoatRoughness', label: 'Clearcoat Roughness', min: 0, max: 1, step: 0.01, default: 0 },
-    { key: 'transmission', label: 'Transmission', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'transmission', label: 'Transmission (⚠ can crash on some GPUs — real, confirmed issue)', min: 0, max: 1, step: 0.01, default: 0 },
     { key: 'ior', label: 'IOR', min: 1, max: 2.33, step: 0.01, default: 1.5 },
     { key: 'thickness', label: 'Thickness', min: 0, max: 5, step: 0.05, default: 0 },
     { key: 'sheen', label: 'Sheen', min: 0, max: 1, step: 0.01, default: 0 },

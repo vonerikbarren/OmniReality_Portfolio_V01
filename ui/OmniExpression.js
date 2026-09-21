@@ -495,7 +495,18 @@ export default class OmniExpression {
     // the viewer would just look like an edge-on line. Rotating the
     // GROUP (not just the avatar mesh) keeps every backing circle
     // facing the camera together with it.
-    this._avatarGroup.quaternion.copy(this.ctx.camera.quaternion)
+    // Real fix — a true billboard, not "face the same way the camera
+    // does." Copying the camera's own quaternion only looks correct
+    // when the avatar happens to sit directly ahead, since "facing
+    // the same direction as the camera" and "facing toward the
+    // camera" are only the same thing along that one, dead-center
+    // line. Off to a side or corner, those two split apart — the
+    // avatar keeps facing "forward" while the camera is now looking
+    // at it from an angle, which is exactly the tilt/skew reported.
+    // lookAt(camera.position) keeps the avatar's face pointed
+    // straight at the actual viewer regardless of where on screen
+    // it's anchored, so it reads identically in every direction.
+    this._avatarGroup.lookAt(this.ctx.camera.position)
 
     if (this._state.circleRotation.enabled) {
       const speed = this._state.circleRotation.speed

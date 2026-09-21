@@ -422,9 +422,12 @@ export default class Portfolio3D {
       emissiveIntensity: 0.18,
       roughness:         0.15,
       metalness:         0.35,   // metallic — distinguishes 3D from 2D's glassy look
-      transmission:      0.25,   // slight translucency, less than 2D's 0.5
+      // Real fix — transmission removed (see PortfolioXD.js for the
+      // full real reason). Opacity raised slightly, keeping this
+      // one's own real, intended character — less translucent than
+      // 2D's — just without the crash risk.
       transparent:       true,
-      opacity:           0.78,
+      opacity:           0.85,
       thickness:         2.0,
       side:              THREE.DoubleSide,
     })

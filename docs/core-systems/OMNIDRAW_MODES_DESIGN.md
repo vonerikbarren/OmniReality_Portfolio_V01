@@ -718,6 +718,38 @@ every geometry switch. 11 checks, all passing, including direct
 confirmation that each ring's rotation never leaks onto the other's
 axis.
 
+## The Mac grey-scene bug — real root cause found and fixed
+
+Given real, direct console output this time, not just a symptom
+description — and it pointed somewhere completely different from
+the earlier wallpaper/IndexedDB hypothesis. `renderTransmissionPass`
+appearing in the actual stack trace is a very specific, named
+three.js internal feature: it only activates when some material in
+the scene has `MeshPhysicalMaterial`'s `transmission` property set
+above 0 (real glass/refraction rendering), and it has a real,
+documented history of compatibility problems on certain WebGL
+implementations, including some Mac/GPU combinations — exactly
+matching the final "WebGL context LOST" log.
+
+Checked the actual codebase directly: three separate modules
+(`PortfolioXD.js`, `PortalSpheres.js`, `Portfolio3D.js`) hardcode
+non-zero transmission unconditionally (0.70, 0.5, 0.25) — not an
+opt-in setting, active the moment any of them render, for every
+user. `OmniInspector.js` also has an opt-in transmission slider
+(default 0) as a fourth, real, if not confirmed, contributing risk.
+
+Removed `transmission` from all three hardcoded sources — kept
+everything else each material intentionally uses (iridescence,
+metalness, emissive), with opacity raised slightly on each to
+preserve a genuine, real see-through glass look without the fragile
+`renderTransmissionPass` machinery. Added a direct, honest warning
+to the Inspector's own slider label, so dragging it later is an
+informed choice, not an accidental repeat of the same real crash.
+Verified directly via precise source inspection that transmission is
+now fully absent from all three files, the new opacity values are in
+place, and every other intended material property survived
+untouched.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build
