@@ -750,6 +750,52 @@ now fully absent from all three files, the new opacity values are in
 place, and every other intended material property survived
 untouched.
 
+## SectionCarousel — the real, reusable nav-page build tool (About Me proof-of-concept)
+
+Confirmed through direct discussion, not assumed: one shared,
+reusable template class (`modules/SectionCarousel.js`), instantiated
+once per nav page, not a single mutating object and not bespoke
+per-page builds. "Objective nodes" confirmed as OmniDraw's own four
+modes (Static/Dynamic/Jsonifier/OmniCell) — the real build mechanism
+— not the `primitive` field. "Shape" confirmed as OmniSystem's own
+formations, not Structure panel's existing Tree/Linear/Sphere/Spiral
+— its real Ring formula, pulled directly from
+`OmniSystemCreatorPanel.js` and verified against a known worked
+example from that system's own design doc, is now a real seventh
+mode (`omnisystem-ring`) in `TreeLayout.js`, and the real default for
+a fresh SectionCarousel root.
+
+Real per-identity content confirmed as wanted now, not deferred.
+`OmniJsonifier` gained an optional storage namespace and a
+`setStorageNamespace()` method for live switching, plus a
+configurable nav-select label and default root layout mode — all
+backward-compatible, defaulting to the exact original values so the
+standalone Jsonifier panel is completely unaffected.
+
+**A real, subtle bug found and fixed during full end-to-end
+testing, not caught by testing each piece in isolation**:
+`setStorageNamespace()`'s own internal despawn dispatches the same
+real `omni:node-delete-request` event the V75 cascade-delete fix
+listens for. That fix checks whether the deleted node is literally
+`this._tree` to distinguish "the root itself was deleted" (which
+correctly wipes storage) from "some other node was deleted." Because
+the despawn ran while `this._tree` still pointed at the old root, an
+internal namespace switch looked identical to a genuine user
+trash-click — silently wiping the very content it was trying to
+switch to. Fixed by clearing `this._tree` to null before the
+despawn, not after, so the delete-listener's own check correctly
+sees null and takes neither branch. Caught specifically because the
+full, real About Me flow was tested end-to-end rather than trusting
+the namespace primitive and the cascade-delete fix each passing
+their own separate tests in isolation.
+
+7 checks, all passing, covering the complete real flow: nav-label
+isolation (confirmed the generic Jsonifier label does NOT also open
+a section, the real bug found and fixed the previous pass), the real
+Ring default, genuine per-identity isolation with zero cross-talk,
+and a real, live identity switch correctly reloading the right
+content.
+
 ## Status
 
 Built and verified directly, 32 checks total across both build

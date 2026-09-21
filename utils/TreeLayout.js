@@ -17,7 +17,7 @@
 
 import { getSpacing } from './StructureSpacingSettings.js'
 
-export const LAYOUT_MODES = ['tree', 'linear-vertical', 'linear-horizontal', 'linear-depth', 'sphere', 'spiral']
+export const LAYOUT_MODES = ['tree', 'linear-vertical', 'linear-horizontal', 'linear-depth', 'sphere', 'spiral', 'omnisystem-ring']
 
 /** Real position for one child, given its own index among its real
  *  siblings, its parent's real position, and the chosen mode. */
@@ -66,6 +66,21 @@ export function computeChildPosition (parentPosition, index, totalChildren, mode
         x: parentPosition.x + Math.cos(angle) * radius,
         y: parentPosition.y - 1.2 - index * spiralHeightStep,
         z: parentPosition.z + Math.sin(angle) * radius,
+      }
+    }
+    case 'omnisystem-ring': {
+      // OmniSystem's own real, proven Ring formula, reused directly
+      // — clockwise from 12 o'clock, verified there against worked
+      // examples (N=2,3,4,6), generalizes identically to any N. Kept
+      // its own real characteristic: a flat ring at the parent's own
+      // Y, not offset downward like the other modes here.
+      const angleDeg = index * (360 / totalChildren)
+      const rad = angleDeg * Math.PI / 180
+      const d = childOffset
+      return {
+        x: parentPosition.x + d * Math.sin(rad),
+        y: parentPosition.y,
+        z: parentPosition.z - d * Math.cos(rad),
       }
     }
     case 'tree':

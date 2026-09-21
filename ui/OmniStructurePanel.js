@@ -30,6 +30,7 @@ const MODE_LABELS = {
   'linear-depth': 'Linear — Depth (Z-axis)',
   'sphere': 'Sphere',
   'spiral': 'Spiral',
+  'omnisystem-ring': 'OmniSystem Ring',
 }
 
 const STYLES = `

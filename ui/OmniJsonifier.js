@@ -29,7 +29,7 @@ import { detectSeriesData } from '../utils/ChartEligibility.js'
 import { computeChildPosition } from '../utils/TreeLayout.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
-const STORE_KEY = 'omni:jsonifier:tree'   // real persistence — the actual fix for "the toggle tree doesn't reappear" after a page refresh
+const DEFAULT_STORE_KEY = 'omni:jsonifier:tree'   // real persistence — the actual fix for "the toggle tree doesn't reappear" after a page refresh; the real, original key, preserved exactly for backward compatibility when no namespace is given
 
 const STYLES = `
 
@@ -133,9 +133,18 @@ function injectStyles () {
 }
 
 export default class OmniJsonifier {
-  constructor (context, omniNode) {
+  constructor (context, omniNode, storageNamespace = null, navLabel = '⟐OmniDrawJsonifier', defaultRootLayoutMode = 'tree') {
     this.ctx = context
     this.omniNode = omniNode
+    this._navLabel = navLabel
+    this._defaultRootLayoutMode = defaultRootLayoutMode
+    // Real, per-instance storage key — a genuine namespace (e.g. a
+    // section id plus the active identity) when given, so multiple,
+    // independent Jsonifier instances can coexist without stepping
+    // on each other's saved state. Falls back to the exact, original
+    // shared key when no namespace is given, so the existing,
+    // standalone Jsonifier panel is completely unaffected.
+    this._storeKey = storageNamespace ? `omni:sectioncarousel:${storageNamespace}` : DEFAULT_STORE_KEY
     this._el = null
     this._isOpen = false
     this._tree = null        // the real, parsed tree — { key, value, children: [...], nodeId, isOpen, meshCreated }
@@ -147,7 +156,7 @@ export default class OmniJsonifier {
   init () {
     injectStyles()
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniDrawJsonifier') return
+      if (e.detail?.item !== this._navLabel) return
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
@@ -176,7 +185,7 @@ export default class OmniJsonifier {
         this._tree = null
         this._lastRawJson = null
         this._disposeLandingPlatform()
-        try { localStorage.removeItem(STORE_KEY) } catch (_) { /* real cleanup simply skipped if storage unavailable */ }
+        try { localStorage.removeItem(this._storeKey) } catch (_) { /* real cleanup simply skipped if storage unavailable */ }
         this._renderTree()
       } else {
         const parent = this._findParent(this._tree, id)
@@ -281,7 +290,7 @@ export default class OmniJsonifier {
     }
     walk(this._tree)
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ rawJson: this._lastRawJson, openPaths, layoutModes }))
+      localStorage.setItem(this._storeKey, JSON.stringify({ rawJson: this._lastRawJson, openPaths, layoutModes }))
     } catch (_) { /* real save simply skipped if storage unavailable */ }
   }
 
@@ -291,10 +300,36 @@ export default class OmniJsonifier {
    *  every branch that was genuinely open before, in real parent-
    *  before-child order (a child can't spawn before its own parent
    *  does). */
+  /** Real, live namespace switch — despawns whatever's currently
+   *  loaded and loads whatever's genuinely saved under the new
+   *  namespace instead. The actual mechanism a per-identity section
+   *  needs to react when the active OmniIdentity changes: each
+   *  identity's own content lives under its own real, separate key,
+   *  never mixed with another identity's. */
+  setStorageNamespace (newNamespace) {
+    // Real fix — despawning the root dispatches the same real
+    // node-delete-request event the cascade-delete fix (V75) listens
+    // for, which checks node === this._tree to tell "the root itself
+    // was deleted" (wipe storage) apart from "some other node was
+    // deleted" (don't). Clearing this._tree to null BEFORE the
+    // despawn, not after, means that check correctly sees null here
+    // — not the old root — so an internal namespace switch no longer
+    // looks identical to a genuine user trash-click and no longer
+    // silently wipes the very content it's trying to switch to.
+    const oldTree = this._tree
+    this._tree = null
+    this._lastRawJson = null
+    this._disposeLandingPlatform()
+    if (oldTree) this._collapseRecursive(oldTree)
+    this._storeKey = newNamespace ? `omni:sectioncarousel:${newNamespace}` : DEFAULT_STORE_KEY
+    this._restoreState()
+    this._renderTree()
+  }
+
   _restoreState () {
     let saved
     try {
-      const raw = localStorage.getItem(STORE_KEY)
+      const raw = localStorage.getItem(this._storeKey)
       if (!raw) return
       saved = JSON.parse(raw)
     } catch (_) { return }
@@ -346,7 +381,12 @@ export default class OmniJsonifier {
       nodeId, key, value, position, parentNodeId, path,
       isLeaf, isOpen: false, meshCreated: false, children: [],
       isChartEligible: false, seriesData: null,
-      layoutMode: 'tree',   // real, per-node — 'tree' (default) | 'linear-vertical' | 'linear-horizontal' | 'linear-depth'
+      // Real, per-node — 'tree' (default) | 'linear-vertical' |
+      // 'linear-horizontal' | 'linear-depth' | 'sphere' | 'spiral' |
+      // 'omnisystem-ring'. Only the real root gets the instance's
+      // own configured default (e.g. Ring for a section carousel);
+      // every other node still defaults to 'tree' exactly as before.
+      layoutMode: parentNodeId === null ? this._defaultRootLayoutMode : 'tree',
     }
     if (!isLeaf) {
       const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)

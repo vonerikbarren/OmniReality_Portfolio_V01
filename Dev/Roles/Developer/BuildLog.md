@@ -887,6 +887,42 @@ and caught again — a str_replace briefly deleted the "Status"
 header a second time; checked the file's actual tail and fixed it
 immediately rather than assuming the edit was clean.
 
+### V82
+SectionCarousel built — the real, reusable "nav-page build tool"
+template, proven on About Me first per direction. One shared class
+per nav page, OmniDraw's own four modes confirmed as "objective
+nodes," OmniSystem's own real Ring formula (pulled directly from
+OmniSystemCreatorPanel.js, verified against its own documented
+worked example) added as a new, real `omnisystem-ring` mode in
+TreeLayout.js and set as the default shape for a fresh section root.
+Real per-identity content: OmniJsonifier gained an optional storage
+namespace, a live `setStorageNamespace()`, a configurable nav-select
+label, and a configurable default root layout mode — all
+backward-compatible. A real, subtle interaction bug found during
+full end-to-end testing (not caught by isolated unit tests):
+`setStorageNamespace()`'s own internal despawn was triggering the
+V75 cascade-delete fix's "the root was deleted, wipe storage" branch,
+since both react to the same real delete event and that fix couldn't
+tell an internal namespace switch apart from a genuine trash-click.
+Fixed by clearing the tree reference before despawning, not after.
+7 checks, all passing, covering the complete real flow. Redone this
+pass after confirming the prior turn's checkpoint predated most of
+this work — verified precisely via direct file inspection rather
+than assumed, learning from two earlier repeats of the same mistake
+this session.
+
+### V83
+Real, urgent bug fixed: nodes spawned at the wrong (larger) size,
+only correcting after a reload. Traced precisely: `_createNode`'s
+own entry animation was hardcoded to always animate scale to
+`(1,1,1)`, silently overwriting the real, correct scale that had
+just been set from `data.scale` moments earlier — any node with a
+custom, non-default scale (Jsonifier's smaller nodes, OmniSystem's
+half-size nodes) popped in at full size regardless. Confirmed the
+restore-on-reload path never shared this bug at all, which is
+exactly why reloading fixed it. Now animates to the node's own real,
+intended scale. 5 checks, all passing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

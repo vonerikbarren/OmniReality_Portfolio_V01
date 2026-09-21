@@ -71,6 +71,7 @@ import OmniDraw          from './ui/OmniDraw.js'
 import OmniDrawModePicker from './ui/OmniDrawModePicker.js'
 import OmniDrawDynamic   from './ui/OmniDrawDynamic.js'
 import OmniJsonifier     from './ui/OmniJsonifier.js'
+import SectionCarousel   from './modules/SectionCarousel.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
 import OmniCellPanel     from './ui/OmniCellPanel.js'
 import OmniDrawCell      from './ui/OmniDrawCell.js'
@@ -296,6 +297,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniDrawModePicker = base.addModule(new OmniDrawModePicker())
   base.addModule(new OmniDrawDynamic(base.context))
   const omniJsonifier = base.addModule(new OmniJsonifier(base.context, omniNode))
+  base.addModule(new SectionCarousel(base.context, omniNode, { sectionId: 'about-me', navLabel: 'About-Me' }))
   toolTipMenu.setJsonifier(omniJsonifier)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
@@ -507,7 +509,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     // AccountProfilePanel, AccountDashboardPanel), not the generic
     // placeholder treatment every other leaf still gets here.
     // About children
-    { id: 'nav-about-me',           navLabel: 'About-Me',           title: 'About-Me',           prefix: 'AboutMe' },
+    // 'nav-about-me' removed — now a real SectionCarousel instance, not the generic placeholder.
     { id: 'nav-about-thevision',    navLabel: 'About-TheVision',    title: 'About-TheVision',    prefix: 'Vision' },
     { id: 'nav-about-thesupporters',navLabel: 'About-TheSupporters',title: 'About-TheSupporters',prefix: 'Supporter' },
     // Portfolio children

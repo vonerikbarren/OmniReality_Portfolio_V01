@@ -1611,10 +1611,19 @@ export default class OmniNode {
     window.dispatchEvent(new CustomEvent('omni:node-created',  { detail: { node: data, mesh } }))
     window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
 
-    // GSAP entry — materialise from nothing
+    // GSAP entry — materialise from nothing, up to the node's own
+    // real, intended scale. Real fix — this used to always animate
+    // to a hardcoded (1,1,1), overwriting the real scale that was
+    // correctly set just above moments earlier. Any node with a
+    // real, custom scale (smaller than full size, or larger) popped
+    // in at the wrong size regardless of what data.scale actually
+    // said, only reading correctly after a reload, since the restore
+    // path never had this override at all — confirmed directly by
+    // comparing the two paths.
+    const targetScale = data.scale ?? [1, 1, 1]
     mesh.scale.set(0, 0, 0)
     gsap.to(mesh.scale, {
-      x: 1, y: 1, z: 1,
+      x: targetScale[0], y: targetScale[1], z: targetScale[2],
       duration: 0.45, ease: 'elastic.out(1, 0.55)',
     })
   }
