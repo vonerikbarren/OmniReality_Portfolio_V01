@@ -72,6 +72,8 @@ import OmniDrawModePicker from './ui/OmniDrawModePicker.js'
 import OmniDrawDynamic   from './ui/OmniDrawDynamic.js'
 import OmniJsonifier     from './ui/OmniJsonifier.js'
 import SectionCarousel   from './modules/SectionCarousel.js'
+import OmniChat          from './ui/OmniChat.js'
+import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
 import OmniCellPanel     from './ui/OmniCellPanel.js'
 import OmniDrawCell      from './ui/OmniDrawCell.js'
@@ -298,6 +300,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniDrawDynamic(base.context))
   const omniJsonifier = base.addModule(new OmniJsonifier(base.context, omniNode))
   base.addModule(new SectionCarousel(base.context, omniNode, { sectionId: 'about-me', navLabel: 'About-Me' }))
+  base.addModule(new OmniChat(base.context))
   toolTipMenu.setJsonifier(omniJsonifier)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
@@ -437,6 +440,17 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },
         8: { label: 'FloorSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorSettings' } })) },
         9: { label: 'ToolTipSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐ToolTipSettings' } })) },
+        10: {
+          label: '🔄 Reset All JSON Data', onClick: () => {
+            // Real, missing action, confirmed absent before this —
+            // the only prior way to clear a large or problematic
+            // tree was manually trashing the root by hand. Clears
+            // every real, currently-active Jsonifier instance at
+            // once, not just whichever one happens to be open.
+            if (!window.confirm('Reset every JSON structure across every section? This cannot be undone.')) return
+            getAllJsonifiers().forEach(j => j.clear())
+          },
+        },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -806,6 +820,22 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     )
     if (isInteractive) return
     window.dispatchEvent(new CustomEvent('omni:osh-toggle'))
+  })
+
+  // ── 'c' — toggle OmniChat ──────────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'c' || e.repeat) return
+    const active = document.activeElement
+    const isInteractive = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable ||
+      active.tagName === 'BUTTON' ||
+      active.getAttribute?.('role') === 'button' ||
+      (typeof active.tabIndex === 'number' && active.tabIndex >= 0 && active !== document.body)
+    )
+    if (isInteractive) return
+    window.dispatchEvent(new CustomEvent('omni:chat-toggle'))
   })
 
   // ── Key commands — hand menus ─────────────────────────────

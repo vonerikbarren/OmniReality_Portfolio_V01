@@ -328,3 +328,10 @@ should stay as-is or get pulled apart into named sub-products, and
 no actual Product-to-Tier capability list has been built on top of
 this mapping yet — this is the proposal it would be built from.
 
+## 25. Audio/sound — not yet incorporated into realities at all
+
+Raised directly while designing OmniState's own Logic-style loop-pad
+controls: realities currently have no sound dimension whatsoever —
+everything built so far is purely visual. Noted explicitly as a real
+gap to come back to, not something to design or build now.
+

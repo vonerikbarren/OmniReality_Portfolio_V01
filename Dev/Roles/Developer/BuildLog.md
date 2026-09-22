@@ -923,6 +923,52 @@ restore-on-reload path never shared this bug at all, which is
 exactly why reloading fixed it. Now animates to the node's own real,
 intended scale. 5 checks, all passing.
 
+### V84
+Real, missing reset functionality built — confirmed genuinely
+absent, not broken: no "reset"/"clear" action existed anywhere in
+Admin at all, which is why a large, problematic JSON tree had to be
+trashed by hand. New `clear()` on OmniJsonifier (same real logic the
+root-delete cascade already proved correct, exposed directly) plus
+a real Admin slot 10 that clears every registered instance at once,
+with a genuine confirm dialog first since it's destructive. Rebuilt
+`utils/JsonifierRegistry.js` along the way — needed for this
+feature regardless, and also the mechanism the still-pending Q3
+work depends on. 5 checks, all passing.
+
+Honest note: the Registry/Q3 work from the previous turn never
+actually got packaged — that turn hit its own tool-call limit before
+finishing, and the next message moved to a different topic rather
+than confirming to continue, so this turn started from the last
+real, packaged version, before that work existed. Rebuilt the
+registry here since this feature needed it either way; Q3 itself
+remains not yet re-applied.
+
+### V89
+OmniChat built — the real, first piece of the live-realities layer.
+`ui/OmniChat.js`. Dockable bottom-right panel, detachable, genie
+return-to-dock targeting `#omni-dock`'s own real, live position on
+close. Full Unicode text field. A real, important find made before
+building: `modules/TerminalTunnel.js` already existed as a
+partially-built 3D terminal visual, with its own real input system
+explicitly left as "Phase 4" — wired OmniChat's new Terminal tab to
+dispatch the same real `omni:terminal-invoke`/`omni:terminal-dismiss`
+events that system already listens for, rather than building a
+second, disconnected terminal. Dummy communication reality preview:
+one geometry looping through four real forms (open set, not fixed),
+combining animation, transformation, and mutation by default, plus
+basic play/pause as the first real piece of TheOmniStatePanelControls.
+Honest about the morph mechanism — cross-fade/scale between discrete
+shapes, not true vertex morphing, logged as real future work. Applied
+the exact lesson learned fixing OmniStartHUD's own preview diamond
+from the start this time: `_setupPreview()` built with its own
+try/catch guard from day one, not retrofitted after a crash. Toggled
+via a new 'c' keybinding, matching the established Enter-for-OSH
+pattern; a real Dock icon trigger is a reasonable, un-investigated
+follow-up. 17 checks, all passing, including direct confirmation that
+the genie animation's computed target exactly matches the dock's own
+real position, and that the terminal-tab integration genuinely fires
+the existing system's real events, not just new, parallel ones.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

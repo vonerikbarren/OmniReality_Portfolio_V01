@@ -27,6 +27,7 @@ import { registerTicker, unregisterTicker } from '../utils/WordTickerRegistry.js
 import { registerChart, unregisterChart } from '../utils/ChartDataRegistry.js'
 import { detectSeriesData } from '../utils/ChartEligibility.js'
 import { computeChildPosition } from '../utils/TreeLayout.js'
+import { registerJsonifier, unregisterJsonifier } from '../utils/JsonifierRegistry.js'
 
 const CHILD_OFFSET = 2.4   // world units each child sits from its own parent
 const DEFAULT_STORE_KEY = 'omni:jsonifier:tree'   // real persistence — the actual fix for "the toggle tree doesn't reappear" after a page refresh; the real, original key, preserved exactly for backward compatibility when no namespace is given
@@ -155,6 +156,7 @@ export default class OmniJsonifier {
 
   init () {
     injectStyles()
+    registerJsonifier(this)
     this._onNavSelect = (e) => {
       if (e.detail?.item !== this._navLabel) return
       this.open()
@@ -204,6 +206,7 @@ export default class OmniJsonifier {
   onResize () {}
 
   destroy () {
+    unregisterJsonifier(this)
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:node-delete-request', this._onDeleteRequest)
     this._tickers.forEach(t => { unregisterTicker(t.nodeId); t.destroy() })
@@ -306,6 +309,20 @@ export default class OmniJsonifier {
    *  needs to react when the active OmniIdentity changes: each
    *  identity's own content lives under its own real, separate key,
    *  never mixed with another identity's. */
+  /** The real, direct "reset this section" action — confirmed as a
+   *  genuine, missing piece: there was no way to clear a large or
+   *  problematic tree except manually trashing the root by hand.
+   *  Same real logic the root-delete cascade already uses, exposed
+   *  as something callable directly. */
+  clear () {
+    if (this._tree) this._collapseRecursive(this._tree)
+    this._tree = null
+    this._lastRawJson = null
+    this._disposeLandingPlatform()
+    try { localStorage.removeItem(this._storeKey) } catch (_) { /* real cleanup simply skipped if storage unavailable */ }
+    this._renderTree()
+  }
+
   setStorageNamespace (newNamespace) {
     // Real fix — despawning the root dispatches the same real
     // node-delete-request event the cascade-delete fix (V75) listens
