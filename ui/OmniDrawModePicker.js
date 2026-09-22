@@ -61,6 +61,7 @@ export default class OmniDrawModePicker {
       <button class="odmp-btn" data-mode="dynamic">Dynamic<span class="odmp-btn-sub">a string, read and shown over time</span></button>
       <button class="odmp-btn" data-mode="jsonifier">Jsonifier<span class="odmp-btn-sub">a JSON tree, toggled open branch by branch</span></button>
       <button class="odmp-btn" data-mode="omnicell">OmniCell<span class="odmp-btn-sub">numerical data, straight to a real D3 chart</span></button>
+      <button class="odmp-btn" data-mode="chat">Chat<span class="odmp-btn-sub">a live message/terminal build tool</span></button>
     `
     document.body.appendChild(this._el)
 
@@ -68,6 +69,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="dynamic"]').addEventListener('click', () => this._choose('dynamic'))
     this._el.querySelector('[data-mode="jsonifier"]').addEventListener('click', () => this._choose('jsonifier'))
     this._el.querySelector('[data-mode="omnicell"]').addEventListener('click', () => this._choose('omnicell'))
+    this._el.querySelector('[data-mode="chat"]').addEventListener('click', () => this._choose('chat'))
 
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐OmniDraw') return
@@ -108,7 +110,7 @@ export default class OmniDrawModePicker {
 
   _choose (mode) {
     declareDesire(`open-omnidraw-${mode}`, { mode })
-    const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell' }
+    const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell', chat: '⟐OmniDrawChat' }
     window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: labels[mode] } }))
     this.close()
   }

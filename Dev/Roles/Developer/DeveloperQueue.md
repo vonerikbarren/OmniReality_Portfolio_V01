@@ -335,3 +335,32 @@ controls: realities currently have no sound dimension whatsoever —
 everything built so far is purely visual. Noted explicitly as a real
 gap to come back to, not something to design or build now.
 
+## 26. OmniCommandTerminal — command language, and the tunnel-shooting visual
+
+Renamed from OmniTerminal, per direction — more accurate to its real
+legacy (`modules/TerminalTunnel.js`) and to what it literally is and
+does. Documentation-only pass complete, no code yet — see
+`omniproducts/OMNICOMMANDTERMINAL_COMMAND_LANGUAGE_DESIGN.md`. Two real
+pieces: a local-space-parented visual (sending a message down
+`TerminalTunnel`'s own cylinder correctly regardless of its
+orientation, since a cylinder's length runs along its own local
+Y-axis), and a real `⟐`-prefixed command grammar, reusing this
+project's own registry pattern so each OmniProduct registers its own
+commands rather than one giant switch file. The existing placeholder
+hint list (help/ls/cd/create/inspect/present/pocket) was mapped
+directly onto real, already-existing events rather than invented
+fresh. Three real open questions left unresolved in the doc before
+this is buildable — see its own Status section.
+
+Major real expansion added this pass: **OmniScript** — the real name
+now given to symbol-shorthand commands (`⟐☰` standing in for `⟐ls`,
+for instance), proposed to work alongside the word-based commands
+above, not replace them. Connects directly to two already-real,
+already-documented systems rather than inventing new ones: OmniSense
+(`OMNICRYPTEXLAB_DESIGN.md`), already defined as controlling symbols
+and what they grant access to, and `ui/OmniKeys.js`'s own QWERTY
+view, which already has real, deliberately-blank "symbol pages"
+waiting for exactly this kind of content. Rewarding real OmniScript
+use is proposed as a natural fit for Developer Queue item 13
+(OmniPlayer's own planned badge system) rather than a new mechanism.
+

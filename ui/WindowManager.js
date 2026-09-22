@@ -182,6 +182,7 @@ export function getFrontmost () {
 // level later without this API changing.
 
 const contextMenus = new Map()   // contextId -> { CategoryName: [{label, action}] }
+const globalItems = new Map()    // CategoryName -> [{label, action}] — shown regardless of frontmost context
 
 /**
  * @param {string} contextId   — usually a panel's own id (e.g. 'omnidraw')
@@ -196,9 +197,26 @@ export function unregisterContextMenu (contextId) {
   contextMenus.delete(contextId)
 }
 
-/** Categories contributed by the given context id, or {} if none registered. */
+/** Registers an item into a category (e.g. 'Assistance') that shows
+ *  up regardless of which panel is currently frontmost — for real,
+ *  global actions like keyboard shortcuts, not tied to any one
+ *  panel's own context. */
+export function registerGlobalItem (category, item) {
+  if (!globalItems.has(category)) globalItems.set(category, [])
+  globalItems.get(category).push(item)
+}
+
+/** Categories contributed by the given context id, merged with any
+ *  real, registered global items — {} (plus globals) if the context
+ *  itself has registered nothing. */
 export function getContextMenu (contextId) {
-  return contextMenus.get(contextId) ?? {}
+  const own = contextMenus.get(contextId) ?? {}
+  if (globalItems.size === 0) return own
+  const merged = { ...own }
+  for (const [category, items] of globalItems) {
+    merged[category] = [...items, ...(merged[category] ?? [])]
+  }
+  return merged
 }
 
 /**

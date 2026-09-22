@@ -73,6 +73,7 @@ import OmniDrawDynamic   from './ui/OmniDrawDynamic.js'
 import OmniJsonifier     from './ui/OmniJsonifier.js'
 import SectionCarousel   from './modules/SectionCarousel.js'
 import OmniChat          from './ui/OmniChat.js'
+import OmniKeyboardShortcutsPanel from './ui/OmniKeyboardShortcutsPanel.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
 import OmniCellPanel     from './ui/OmniCellPanel.js'
@@ -301,6 +302,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniJsonifier = base.addModule(new OmniJsonifier(base.context, omniNode))
   base.addModule(new SectionCarousel(base.context, omniNode, { sectionId: 'about-me', navLabel: 'About-Me' }))
   base.addModule(new OmniChat(base.context))
+  base.addModule(new OmniKeyboardShortcutsPanel())
   toolTipMenu.setJsonifier(omniJsonifier)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
@@ -822,21 +824,21 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     window.dispatchEvent(new CustomEvent('omni:osh-toggle'))
   })
 
-  // ── 'c' — toggle OmniChat ──────────────────────────────────
-  window.addEventListener('keydown', (e) => {
-    if (e.key !== 'c' || e.repeat) return
-    const active = document.activeElement
-    const isInteractive = active && (
-      active.tagName === 'INPUT' ||
-      active.tagName === 'TEXTAREA' ||
-      active.isContentEditable ||
-      active.tagName === 'BUTTON' ||
-      active.getAttribute?.('role') === 'button' ||
-      (typeof active.tabIndex === 'number' && active.tabIndex >= 0 && active !== document.body)
-    )
-    if (isInteractive) return
-    window.dispatchEvent(new CustomEvent('omni:chat-toggle'))
-  })
+  // Real fix, found on further investigation after direct correction
+  // — a genuinely redundant 'c' handler was removed from here. A
+  // real, already-existing, far more sophisticated returnToLanding()
+  // function (above, matching the exact real resting pose, handling
+  // orbit disable/enable and pivot reset correctly) already does
+  // exactly this. This is the second missed pre-existing binding
+  // found this pass (see the 'n' note above) — both confirm the same
+  // real lesson: check thoroughly for an existing handler before
+  // adding a new one, not just a quick, incomplete grep.
+
+  // Real fix — a redundant, colliding 'n' binding was removed from
+  // here. 'n' already, correctly opened the OmniDraw mode picker
+  // (see below), which now includes Chat as a real option — a
+  // second, direct 'n' toggle was firing alongside it on every
+  // keypress, unnecessary and a real bug, not a feature.
 
   // ── Key commands — hand menus ─────────────────────────────
   // Clicking the real hand-cell button (rather than dispatching events

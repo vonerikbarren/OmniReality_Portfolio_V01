@@ -969,6 +969,54 @@ the genie animation's computed target exactly matches the dock's own
 real position, and that the terminal-tab integration genuinely fires
 the existing system's real events, not just new, parallel ones.
 
+### V92
+OmniChat wired into the Left Drawer — reachable as
+⟐OmniSense → ⟐Sense02, the first real child that group has ever
+had (checked directly: it previously listed no children at all,
+matching the real gap noted in Developer Queue item 15). Added the
+same, already-established nav-select listener pattern every other
+reachable panel already uses — no new mechanism invented. The
+existing 'c' keybinding continues working unchanged alongside it. 4
+checks, all passing, confirming both paths open it correctly, an
+unrelated nav-select doesn't, and there's no regression between them.
+
+### V93
+Corrected OmniChat's own nav placement per direct feedback — the
+previous pass's ⟐OmniSense → ⟐Sense02 placement was rejected as the
+wrong spot. Removed cleanly (OmniSense reverted to childless, its
+listener removed from OmniChat.js) rather than left alongside a new
+one. Added the real, requested placement instead: a genuine fifth
+option (Chat) in OmniDraw's own mode picker
+(`ui/OmniDrawModePicker.js`), alongside Static/Dynamic/Jsonifier/
+OmniCell, reachable via the exact same real pattern each of those
+already uses (`⟐OmniDrawChat`). Also added a new 'n' keybinding,
+alongside the existing 'c', per direct request. 4 checks, all
+passing, including direct confirmation that the rejected Sense02
+label now genuinely does nothing — a clean removal, not a dead
+listener left behind.
+
+### V94
+Two real key-collision bugs found and fixed, both from the same root
+cause: incomplete checks for existing bindings before adding new
+ones. 'n' was already, correctly bound to opening the OmniDraw mode
+picker before a redundant, second 'n' toggle for OmniChat was added
+last pass — removed the duplicate; the mode picker's own real Chat
+option already covers this. 'c' was already, correctly bound to a
+sophisticated `returnToLanding()` function (exact resting pose,
+proper orbit disable/enable and pivot reset) — a redundant, inferior
+replacement was removed entirely, restoring the original, better
+function untouched. Real keyboard shortcuts panel built
+(`ui/OmniKeyboardShortcutsPanel.js`), listing every real, current
+shortcut compiled directly from main.js's own handlers. Reachable
+from the Assistance menu via a new, real global-item mechanism added
+to WindowManager.js (`registerGlobalItem`), merging into every
+context's own menu regardless of which panel is frontmost, rather
+than needing to register per-panel. Edit action genuinely gated on
+Admin being the real frontmost window (WindowManager's own
+getFrontmost(), not a guess), plus an OmniCryptx password prompt —
+honestly accepting only blank for now, since the real OmniCryptx
+system isn't built yet. 8 checks, all passing.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

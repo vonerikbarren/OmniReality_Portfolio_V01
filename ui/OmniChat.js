@@ -265,6 +265,16 @@ export default class OmniChat {
 
     this._onToggle = () => this.toggle()
     window.addEventListener('omni:chat-toggle', this._onToggle)
+
+    // Real, established pattern (same as every other OmniDraw mode)
+    // — reachable through the OmniDraw mode picker as a real, fifth
+    // option, since OmniChat's own terminal/build-tool side puts it
+    // in the same real category as Static/Dynamic/Jsonifier/OmniCell.
+    this._onNavSelect = (e) => {
+      if (e.detail?.item !== '⟐OmniDrawChat') return
+      this.open()
+    }
+    window.addEventListener('omni:nav-select', this._onNavSelect)
   }
 
   update (delta) {
@@ -324,6 +334,7 @@ export default class OmniChat {
 
   destroy () {
     window.removeEventListener('omni:chat-toggle', this._onToggle)
+    window.removeEventListener('omni:nav-select', this._onNavSelect)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
   }
