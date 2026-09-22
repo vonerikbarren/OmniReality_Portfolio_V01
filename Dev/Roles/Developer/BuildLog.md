@@ -1037,6 +1037,32 @@ never got packaged before the conversation moved to a new topic.
 Rebuilt from the same, already-proven design; 9 checks, all passing
 on the first run, confirming the redone work matches the original.
 
+### V96
+Real, definitive fix for the persisting OmniChat interaction bug —
+my earlier z-index fix (V95) addressed a real but different issue
+(stacking against direct-body-children like ToolTipMenu) and didn't
+touch this one, since OmniChat and Hand share the same parent
+stacking context (#omni-ui) regardless of that fix. The actual root
+cause: #omni-ui deliberately sets `pointer-events: none` so the 3D
+scene stays clickable through empty space, which means every real,
+interactive panel inside it must explicitly set its own
+`pointer-events: auto` — OmniChat's own CSS never did this anywhere,
+so every click, keystroke, and drag was being silently swallowed
+before ever reaching it, regardless of z-index. Fixed directly.
+Checked the other two recently-built panels (OmniKeyboardShortcuts,
+OmniDrawModePicker) for the same bug class — both are direct
+children of `body`, not `#omni-ui`, so genuinely unaffected.
+
+Also moved OmniChat off the bottom-right Hand's own real footprint
+entirely, per direct preference — confirmed as a genuine, direct
+overlap (both anchored to the same corner; Hand's own real 2×2 cell
+grid is ~102px wide). Right offset changed from 24px to 130px,
+clearing that footprint with real margin, landing it over the
+(centered) minimap's own area instead, as preferred. 5 checks, all
+passing, including a caught-and-fixed bug in my own test — an
+extraction regex that was accidentally matching my own comment text
+instead of the real, active CSS declaration.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

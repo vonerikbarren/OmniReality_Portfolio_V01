@@ -37,7 +37,13 @@ const STYLES = /* css */`
 
 #omni-chat {
   position        : fixed;
-  right            : 24px;
+  /* Real fix — was right: 24px, directly overlapping the bottom-
+     right Hand's own real footprint (anchored flush to the same
+     corner, ~102px wide). Moved clear of it entirely so there's no
+     shared screen space to contend over, per direct preference —
+     partially over the (centered) minimap is fine, the hand
+     controls are not. */
+  right            : 130px;
   bottom           : 88px;   /* clears the dock */
   width            : 340px;
   height           : 420px;
@@ -57,6 +63,16 @@ const STYLES = /* css */`
   transition       : opacity 0.22s ease, transform 0.22s ease;
   font-family      : 'Courier New', Courier, monospace;
   color            : rgba(255, 255, 255, 0.92);
+  /* Real fix — the actual root cause of the reported bug. #omni-ui
+     (this panel's real parent) deliberately sets pointer-events:
+     none so the 3D scene stays clickable through empty space —
+     every real, interactive panel inside it must explicitly set its
+     own pointer-events: auto to receive anything at all, the same
+     established pattern OmniStartHUD's own interactive panels
+     already use. This was missing here entirely, so every click,
+     keystroke, and drag was being silently swallowed before ever
+     reaching this panel, regardless of its own z-index. */
+  pointer-events   : auto;
 }
 #omni-chat.open {
   opacity    : 1;
