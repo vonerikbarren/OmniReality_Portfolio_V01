@@ -1017,6 +1017,26 @@ getFrontmost(), not a guess), plus an OmniCryptx password prompt —
 honestly accepting only blank for now, since the real OmniCryptx
 system isn't built yet. 8 checks, all passing.
 
+### V95
+Real tooltip/panel z-index bug fixed. Traced to `#omni-ui` (every
+real UI panel's shared container) creating its own stacking context
+via `position: fixed` + `z-index: 10` together — this caps every
+panel inside it, including OmniChat's own internal z-index:95, at
+that one outer number. ToolTipMenu's headers bypass `#omni-ui`
+entirely and append straight to `document.body` at z-index 40/41, so
+they were beating every real panel inside `#omni-ui` regardless of
+that panel's own, much higher number. Surveyed every z-index value
+and every direct-body-child in the project before picking a fix —
+raised `#omni-ui` to 55, clearing ToolTipMenu (40/41) and
+OmniAimReticle (50), while staying under the real, intentional
+modal-style overlays (OmniDrawModePicker at 65, GridPanel at 80).
+Also redid the Q3 selection-driven JSON tree browser in
+OmniStartHUD.js and its own defensive preview-setup fix — both
+confirmed lost in the same earlier incident where a turn's work
+never got packaged before the conversation moved to a new topic.
+Rebuilt from the same, already-proven design; 9 checks, all passing
+on the first run, confirming the redone work matches the original.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

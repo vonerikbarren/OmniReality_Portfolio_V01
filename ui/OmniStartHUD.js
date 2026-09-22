@@ -28,6 +28,7 @@
 
 import gsap from 'gsap'
 import * as THREE from 'three'
+import { findOwnerOf } from '../utils/JsonifierRegistry.js'
 
 const STYLES = /* css */`
 
@@ -182,6 +183,15 @@ const STYLES = /* css */`
     linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
   background-size      : 18px 18px;
   filter               : drop-shadow(0 2px 10px rgba(0, 0, 0, 0.65));
+}
+
+.osh-json-tree {
+  width: 100%; height: 100%; overflow-y: auto; pointer-events: auto;
+  font-family: 'Courier New', Courier, monospace;
+}
+.osh-json-empty {
+  color: rgba(255,255,255,0.45); font-size: 10px; text-align: center;
+  padding: 20px 10px; line-height: 1.6; font-family: 'Courier New', Courier, monospace;
 }
 
 .osh-data-group--performance      { grid-area: tl; text-align: left;   }
@@ -341,7 +351,10 @@ export default class OmniStartHUD {
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
 
-    this._setupPreview()
+    // Real fix — this decorative preview is small on purpose; a real
+    // WebGL failure here should never take down everything
+    // registered after it in init(), including Q3.
+    try { this._setupPreview() } catch (err) { console.warn('⟐OmniStartHUD — preview diamond failed to initialize, continuing without it', err) }
     this._buildDataGrid()
 
     this._onToggle = () => this.toggle()
@@ -352,6 +365,17 @@ export default class OmniStartHUD {
     // camera feed); this just renders whatever it broadcasts.
     this._onGlobalBarData = (e) => this._updateDataGrid(e.detail)
     window.addEventListener('omni:globalbar-data', this._onGlobalBarData)
+
+    // Q3 — reflects whatever's currently selected in the scene,
+    // regardless of which real Jsonifier instance's tree it belongs
+    // to (the standalone panel, About Me's own, or any future
+    // section) — the same real, shared selection signal every other
+    // selection-aware system here already reacts to.
+    this._onNodeSelected = (e) => this._updateJsonTree(e.detail?.mesh?.userData?.nodeId)
+    this._onNodeDeselected = () => this._updateJsonTree(null)
+    window.addEventListener('omni:node-selected', this._onNodeSelected)
+    window.addEventListener('omni:node-deselected', this._onNodeDeselected)
+    this._updateJsonTree(null)   // real, immediate empty state
   }
 
   update (delta) {
@@ -366,6 +390,8 @@ export default class OmniStartHUD {
   destroy () {
     window.removeEventListener('omni:osh-toggle', this._onToggle)
     window.removeEventListener('omni:globalbar-data', this._onGlobalBarData)
+    window.removeEventListener('omni:node-selected', this._onNodeSelected)
+    window.removeEventListener('omni:node-deselected', this._onNodeDeselected)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
   }
@@ -507,6 +533,26 @@ export default class OmniStartHUD {
     setKV('osh-dim-object',  d.dimObject)
   }
 
+  /** Q3 — just the toggleable tree for whatever node is currently
+   *  selected, discovered from its own real Jsonifier tree, not a
+   *  separate copy of one. Reuses the owning instance's own real
+   *  _renderNode()/_bindTreeClicks() directly, so toggling here
+   *  behaves identically to toggling in that instance's own panel. */
+  _updateJsonTree (nodeId) {
+    const container = this._el?.querySelector('#osh-json-tree')
+    if (!container) return
+
+    const owner = nodeId ? findOwnerOf(nodeId) : null
+    if (!owner) {
+      container.innerHTML = `<div class="osh-json-empty">Select a node that's part of a JSON structure to browse its tree here.</div>`
+      return
+    }
+
+    const { jsonifier, node } = owner
+    container.innerHTML = jsonifier._renderNode(node)
+    jsonifier._bindTreeClicks(container)
+  }
+
   toggle () {
     this._isOpen ? this.close() : this.open()
   }
@@ -570,7 +616,11 @@ export default class OmniStartHUD {
         <div class="osh-panel" data-panel="CUIQ02"><span class="osh-panel-label">CUIQ02</span></div>
       </div>
       <div class="osh-quadrant osh-quadrant--bl">
-        <div class="osh-panel" data-panel="CUIQ03"><span class="osh-panel-label">CUIQ03</span></div>
+        <div class="osh-panel osh-panel--data" data-panel="CUIQ03">
+          <div class="osh-json-tree" id="osh-json-tree">
+            <!-- populated by _updateJsonTree() whenever a Jsonifier-owned node is selected -->
+          </div>
+        </div>
       </div>
       <div class="osh-quadrant osh-quadrant--br">
         <div class="osh-panel" data-panel="CUIQ04"><span class="osh-panel-label">CUIQ04</span></div>

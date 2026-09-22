@@ -54,7 +54,20 @@
       width: 100%;
       height: 100%;
       pointer-events: none;   /* canvas stays interactive through it */
-      z-index: 10;
+      /* Real fix — was 10. This creates its own stacking context
+         (position:fixed + z-index together), which caps every real
+         panel inside it (OmniChat included, regardless of its own,
+         much higher internal z-index) at this one, outer number.
+         ToolTipMenu's headers bypass this element entirely and
+         append straight to document.body at z-index 40/41, so they
+         were beating every real panel in here no matter what number
+         that panel set internally. Raised just enough to clear
+         ToolTipMenu (40/41) and OmniAimReticle (50) — the two direct-
+         body-children actually sitting below where interactive
+         panels belong — while staying under the real, intentional
+         modal-style overlays (OmniDrawModePicker at 65, GridPanel at
+         80) that are correctly meant to sit above everything. */
+      z-index: 55;
     }
 
     /* ── Boot screen ─────────────────────────────────────── */
