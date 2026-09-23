@@ -79,6 +79,7 @@ export default class ToolTipMenu {
     this.omniGrab = omniGrab
     this.jsonifier = null   // set later via setJsonifier() — OmniJsonifier isn't created yet at this point in main.js's own real ordering
     this.omniTranslator = null   // set later via setOmniTranslator(), same real reason
+    this.omniPocket = null   // set later via setOmniPocket(), same real reason
     this._headers = new Map()   // mesh -> { el, mesh }
     this._openMenuMesh = null
     this._menuEl = null
@@ -93,6 +94,10 @@ export default class ToolTipMenu {
 
   setOmniTranslator (omniTranslator) {
     this.omniTranslator = omniTranslator
+  }
+
+  setOmniPocket (omniPocket) {
+    this.omniPocket = omniPocket
   }
 
   init () {
@@ -204,6 +209,7 @@ export default class ToolTipMenu {
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
       <button class="ttm-action-btn" data-action="edit">✎ Edit</button>
+      <button class="ttm-action-btn" data-action="pocket-this">⟐ PocketThis⟐</button>
       <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
       <button class="ttm-action-btn" data-action="translator-vault">⟐ Add to Translator</button>
       ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
@@ -220,6 +226,12 @@ export default class ToolTipMenu {
       const data = this.omniNode?.getNodeData(nodeId)
       if (data) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: data, mesh } }))
       window.dispatchEvent(new CustomEvent('omni:edit-request', { detail: { nodeId, mesh } }))
+      this._closeQuickMenu()
+    })
+
+    this._menuEl.querySelector('[data-action="pocket-this"]').addEventListener('click', () => {
+      const data = this.omniNode?.getNodeData(nodeId)
+      this.omniPocket?.pocketThis(data, mesh)
       this._closeQuickMenu()
     })
 

@@ -1267,6 +1267,81 @@ run. OmniPocket logged as the real next priority, future notes only
 per direct instruction — noted honestly that it already exists as a
 real, substantial system, not a concept to design from scratch.
 
+### V108
+OmniPocket added to the Left Drawer, confirmed as "the top left
+corner menu, all the OmniProducts." Real PocketThis⟐ quick-menu
+action built — reuses OmniPocket's own, proven extraction logic
+directly via two new, real public methods (pocketThis, reinstateNode,
+getExtracted), rather than a second, parallel implementation. Q2 of
+OmniStartHUD rebuilt into a real, live pocket manager: real title
+header on hover, real native drag-to-reorder with a persisted order,
+type-aware preview per item (a real JSON tree via the existing
+Jsonifier registry, raw data, or the full string for a dynamic node),
+and a real TakeOutOfPocket action, all re-rendering live on any real
+change to the pocket, not just on open. 12 checks, all passing.
+
+Two real TODO items logged per direct request: the pending
+OmniProduct index (the person's own list, not yet built), and the
+coordinate grid/altitude ruler idea for navigation, with a real,
+direct opinion given on naming — OmniSpaceExplorer as its own real
+product, distinct from OmniPlayer, which grants access to it rather
+than being it.
+
+### V109
+OmniRealityGridSelector built — a real Admin staging tool
+(`systems/OmniRealityGridSelector.js`, `ui/
+OmniRealityGridSelectorPanel.js`). Raycasts against a real,
+mathematical plane at the floor's own real Y level rather than its
+mesh directly (the floor is a group, not one exposed mesh — a plane
+intersection is also the standard, more robust real technique for a
+flat surface regardless). Cell size confirmed to match the floor's
+own real, existing grid exactly (20 units, from its own
+TILE_SIZE/TILE_DIVISIONS), so highlights land precisely on real grid
+lines, not a guessed size. Real, multi-cell selection, saved as
+named spatial contexts (localStorage, matching the established
+pattern) — load restores both the real cell list and its real
+highlight meshes. White highlight with a yellow outline, exactly as
+requested. Added to both a new Admin slot and the Left Drawer,
+confirmed as "the top left corner menu, all the OmniProducts." 16
+checks, all passing on the first full run.
+
+Floor/wallpaper auto-contrast (the minor, "on the side" request) not
+yet built this pass — real complexity worth flagging honestly: the
+wallpaper is a real photo texture, not a simple color value, so "is
+it white" would need genuine pixel sampling, not a one-line check.
+Real, planned approach: sample the wallpaper's own current texture
+onto an offscreen canvas and read its real average brightness,
+reusing the same conceptual goal as Hand.js's own mix-blend-mode
+contrast trick (which itself can't apply to a 3D mesh's material
+color directly, only real DOM/CSS rendering).
+
+### V110
+Real fix — OmniRealityGridSelector was wired into both the Left
+Drawer as a standalone top-level entry and Admin's own slot 12;
+confirmed directly it should live only nested inside Admin
+(TopLeftMenu/Admin/SubMenuPanel, Admin12), not also as a separate
+drawer item. Removed the standalone drawer entry; the Admin slot's
+own trigger dispatches the same real nav-select label independently,
+so the one remaining path needed no changes itself. 2 checks, both
+passing, confirming the panel still opens correctly through that
+one, now-correct path.
+
+### V111
+⟐Developer added to the real drawer, directly above ⟐Admin, with its
+own real sub-menu — same exact real mechanism Admin itself already
+uses (IndexedPanel + specialSlots), confirmed by reading Admin's own
+config rather than assuming. Correction along the way: initially
+believed Admin lived in a separate, right-side drawer system —
+checked directly and found it's genuinely the same, single drawer,
+just a later section of the same list; corrected before building
+Developer in the wrong place. 2 checks, both passing.
+
+Access-level gating ("based on the admin access type") intentionally
+not built — confirmed directly that no general access-type/role
+system exists anywhere yet, logged as its own real, honest queue
+item rather than faked. Every Developer slot is open to anyone who
+can reach the panel until that real system exists.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

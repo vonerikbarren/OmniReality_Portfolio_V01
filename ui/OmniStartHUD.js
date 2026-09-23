@@ -194,6 +194,29 @@ const STYLES = /* css */`
   padding: 20px 10px; line-height: 1.6; font-family: 'Courier New', Courier, monospace;
 }
 
+.osh-pocket-header {
+  font-size: 10px; color: rgba(255,255,255,0.7); padding: 4px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08); font-family: 'Courier New', Courier, monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.osh-pocket-list { flex: 1; overflow-y: auto; padding: 4px; pointer-events: auto; }
+.osh-pocket-item {
+  display: flex; align-items: center; gap: 4px; padding: 4px 6px; margin-bottom: 3px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 5px;
+  cursor: grab; font-size: 9.5px; color: rgba(255,255,255,0.85); font-family: 'Courier New', Courier, monospace;
+}
+.osh-pocket-item.dragging { opacity: 0.4; }
+.osh-pocket-item-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.osh-pocket-btn {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px;
+  color: #fff; font-size: 8.5px; padding: 2px 5px; cursor: pointer;
+}
+.osh-pocket-btn:hover { background: rgba(255,255,255,0.18); }
+.osh-pocket-preview {
+  margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 5px;
+  font-size: 9px; color: rgba(255,255,255,0.7); max-height: 100px; overflow-y: auto; white-space: pre-wrap;
+}
+
 .osh-data-group--performance      { grid-area: tl; text-align: left;   }
 .osh-data-group--systemdetails    { grid-area: tr; text-align: right;  }
 .osh-data-group--position         { grid-area: ml; text-align: left;   }
@@ -343,6 +366,7 @@ export default class OmniStartHUD {
     this._onToggle = null
     this._onGlobalBarData = null
     this._preview = null   // the center diamond's own tiny renderer/scene/mesh
+    this.omniPocket = null   // set later via setOmniPocket() — needed for Q2's own real pocket manager
   }
 
   init () {
@@ -376,6 +400,13 @@ export default class OmniStartHUD {
     window.addEventListener('omni:node-selected', this._onNodeSelected)
     window.addEventListener('omni:node-deselected', this._onNodeDeselected)
     this._updateJsonTree(null)   // real, immediate empty state
+
+    // Q2 — real, live pocket manager. Re-renders whenever the
+    // pocket's own real contents genuinely change, not just once on open.
+    this._onPocketChanged = () => this._renderPocketList()
+    window.addEventListener('omni:node-extracted', this._onPocketChanged)
+    window.addEventListener('omni:node-reinstated', this._onPocketChanged)
+    this._renderPocketList()
   }
 
   update (delta) {
@@ -392,6 +423,8 @@ export default class OmniStartHUD {
     window.removeEventListener('omni:globalbar-data', this._onGlobalBarData)
     window.removeEventListener('omni:node-selected', this._onNodeSelected)
     window.removeEventListener('omni:node-deselected', this._onNodeDeselected)
+    window.removeEventListener('omni:node-extracted', this._onPocketChanged)
+    window.removeEventListener('omni:node-reinstated', this._onPocketChanged)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
   }
@@ -553,6 +586,101 @@ export default class OmniStartHUD {
     jsonifier._bindTreeClicks(container)
   }
 
+  setOmniPocket (omniPocket) {
+    this.omniPocket = omniPocket
+    this._renderPocketList()
+  }
+
+  /** Q2 — real, live pocket manager. Renders every real, currently-
+   *  pocketed item, draggable to reorder (a real, separate, locally-
+   *  persisted order, since OmniPocket itself has no reorder concept
+   *  of its own), with TakeOutOfPocket and a type-aware preview per
+   *  item. */
+  _renderPocketList () {
+    const list = this._el?.querySelector('#osh-pocket-list')
+    if (!list || !this.omniPocket) return
+
+    const entries = this.omniPocket.getExtracted()
+    const order = this._loadPocketOrder()
+    entries.sort((a, b) => {
+      const ai = order.indexOf(a.id), bi = order.indexOf(b.id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+
+    if (entries.length === 0) {
+      list.innerHTML = `<div class="osh-json-empty">Nothing pocketed yet. Use PocketThis⟐ from a node's quick menu.</div>`
+      this._el.querySelector('#osh-pocket-header').textContent = 'Pocket'
+      return
+    }
+
+    list.innerHTML = entries.map(e => `
+      <div class="osh-pocket-item" draggable="true" data-id="${e.id}">
+        <span class="osh-pocket-item-label">${e.node.label ?? e.id}</span>
+        <button class="osh-pocket-btn" data-action="preview" data-id="${e.id}">👁</button>
+        <button class="osh-pocket-btn" data-action="take-out" data-id="${e.id}">Take Out</button>
+      </div>
+    `).join('')
+
+    list.querySelectorAll('.osh-pocket-item').forEach(row => {
+      row.addEventListener('mouseenter', () => {
+        const entry = entries.find(e => e.id === row.dataset.id)
+        this._el.querySelector('#osh-pocket-header').textContent = entry?.node.label ?? row.dataset.id
+      })
+      row.addEventListener('dragstart', () => row.classList.add('dragging'))
+      row.addEventListener('dragend', () => { row.classList.remove('dragging'); this._savePocketOrderFromDom() })
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        const dragging = list.querySelector('.dragging')
+        if (!dragging || dragging === row) return
+        const rect = row.getBoundingClientRect()
+        const after = (e.clientY - rect.top) > rect.height / 2
+        row.parentNode.insertBefore(dragging, after ? row.nextSibling : row)
+      })
+    })
+
+    list.querySelectorAll('[data-action="take-out"]').forEach(btn => {
+      btn.addEventListener('click', () => this.omniPocket.reinstateNode(btn.dataset.id))
+    })
+    list.querySelectorAll('[data-action="preview"]').forEach(btn => {
+      btn.addEventListener('click', () => this._togglePocketPreview(btn, entries.find(e => e.id === btn.dataset.id)))
+    })
+  }
+
+  /** Real, type-aware preview — a JSON tree via the real, existing
+   *  Jsonifier registry when this node genuinely belongs to one, the
+   *  node's own real data otherwise, or its full real string for a
+   *  dynamic-data node. */
+  _togglePocketPreview (btn, entry) {
+    const row = btn.closest('.osh-pocket-item')
+    const existing = row.nextElementSibling?.classList?.contains('osh-pocket-preview') ? row.nextElementSibling : null
+    if (existing) { existing.remove(); return }
+
+    const el = document.createElement('div')
+    el.className = 'osh-pocket-preview'
+
+    const owner = findOwnerOf(entry.id)
+    if (owner) {
+      el.innerHTML = owner.jsonifier._renderNode(owner.node)
+    } else if (entry.node.dynamicString !== undefined) {
+      el.textContent = entry.node.dynamicString
+    } else {
+      el.textContent = JSON.stringify(entry.node, null, 2)
+    }
+    row.insertAdjacentElement('afterend', el)
+  }
+
+  _loadPocketOrder () {
+    try { return JSON.parse(localStorage.getItem('omni:starthud:pocket-order') ?? '[]') } catch (_) { return [] }
+  }
+
+  _savePocketOrderFromDom () {
+    const ids = [...this._el.querySelectorAll('.osh-pocket-item')].map(el => el.dataset.id)
+    try { localStorage.setItem('omni:starthud:pocket-order', JSON.stringify(ids)) } catch (_) { /* real save simply skipped if storage unavailable */ }
+  }
+
   toggle () {
     this._isOpen ? this.close() : this.open()
   }
@@ -613,7 +741,10 @@ export default class OmniStartHUD {
         </div>
       </div>
       <div class="osh-quadrant osh-quadrant--tr">
-        <div class="osh-panel" data-panel="CUIQ02"><span class="osh-panel-label">CUIQ02</span></div>
+        <div class="osh-panel osh-panel--data" data-panel="CUIQ02">
+          <div class="osh-pocket-header" id="osh-pocket-header">Pocket</div>
+          <div class="osh-pocket-list" id="osh-pocket-list"></div>
+        </div>
       </div>
       <div class="osh-quadrant osh-quadrant--bl">
         <div class="osh-panel osh-panel--data" data-panel="CUIQ03">

@@ -738,6 +738,7 @@ export default class OmniPocket {
     }
 
     window.removeEventListener('omni:system-toggle', this._onToggle)
+    window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:node-selected', this._onNodeSel)
     window.removeEventListener('omni:node-deselected', this._onNodeDesel)
     window.removeEventListener('omni:node-deleted',  this._onNodeDel)
@@ -777,6 +778,29 @@ export default class OmniPocket {
   }
 
   toggle () { this._isOpen ? this.close() : this.open() }
+
+  /** Real, public getter — every currently-pocketed entry, as a real
+   *  array (not the internal Map directly), for any external system
+   *  (Q2's own pocket manager) to read without needing its own,
+   *  separate copy of this data. */
+  getExtracted () {
+    return [...this._extracted.entries()].map(([id, entry]) => ({ id, ...entry }))
+  }
+
+  /** Real, external trigger for "PocketThis⟐" in the quick menu —
+   *  reuses the exact same, proven internal extraction logic
+   *  _extractNode already uses for its own button, rather than a
+   *  second, separate implementation. */
+  pocketThis (node, mesh) {
+    if (!node) return
+    this._extractNode(node, mesh)
+  }
+
+  /** Real, public wrapper — needed for Q2's own "TakeOutOfPocket"
+   *  action to reinstate a node from outside this system. */
+  reinstateNode (id) {
+    this._reinstateNode(id)
+  }
 
   /** Real wiring for OmniPlayerGame — injected rather than
    *  constructor-ordered, since OmniPocket already exists earlier in
@@ -1589,6 +1613,13 @@ export default class OmniPocket {
       if (e.detail?.system !== 'omnipocket') return
       this.toggle()
     }
+
+    // Real, established pattern — reachable from the Left Drawer as ⟐OmniPocket.
+    this._onNavSelect = (e) => {
+      if (e.detail?.item !== '⟐OmniPocket') return
+      this.open()
+    }
+    window.addEventListener('omni:nav-select', this._onNavSelect)
 
     // Node selected in scene — update action strip
     this._onNodeSel = (e) => {

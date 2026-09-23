@@ -76,6 +76,8 @@ import OmniChat          from './ui/OmniChat.js'
 import OmniKeyboardShortcutsPanel from './ui/OmniKeyboardShortcutsPanel.js'
 import TerminalSettingsPanel from './ui/TerminalSettingsPanel.js'
 import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
+import OmniRealityGridSelector from './systems/OmniRealityGridSelector.js'
+import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
@@ -308,10 +310,14 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniKeyboardShortcutsPanel())
   base.addModule(new TerminalSettingsPanel())
   base.addModule(new OmniLogEditorPanel(base.context))
+  const omniRealityGridSelector = new OmniRealityGridSelector(base.context)
+  base.addModule(omniRealityGridSelector)
+  base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
   toolTipMenu.setOmniTranslator(omniTranslator)
+  toolTipMenu.setOmniPocket(omniPocket)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
   base.addModule(new OmniDrawCell(base.context))
@@ -439,6 +445,17 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // ── Indexed panels — one per non-Omni drawer section ─────
   const indexedPanelConfigs = [
     {
+      // Real access-level gating ("based on the admin access type")
+      // is NOT built here — confirmed directly that no general
+      // access-type/role system exists anywhere in this project yet
+      // (only CryptX's own, separate, unrelated "tier" concept for
+      // password patterns). This is a real, honest gap, not a
+      // faked/stubbed check — every dev tool slot is visible to
+      // anyone who can open this panel until that real system exists.
+      id: 'developer', navLabel: '⟐Developer', title: '⟐Developer', prefix: 'Dev', iconLabel: '⟐D',
+      specialSlots: {},
+    },
+    {
       id: 'admin', navLabel: '⟐Admin', title: '⟐Admin', prefix: 'Admin', iconLabel: '⟐A',
       specialSlots: {
         1: { label: 'OmniAdminSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐mniAdminSettings' } })) },
@@ -462,6 +479,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
           },
         },
         11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
+        12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -559,6 +577,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniStartHUD = new OmniStartHUD(base.context)
   base.addModule(omniStartHUD)
+  omniStartHUD.setOmniPocket(omniPocket)
 
   ThemeManager.initTheme()
 

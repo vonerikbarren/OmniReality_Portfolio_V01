@@ -376,3 +376,42 @@ means real integration/wiring work, not a new build. Worth a direct,
 real read of that file first, rather than assuming its current scope
 or gaps, before any real work begins on it.
 
+## 28. OmniProduct index — pending, from the person's own side
+
+Confirmed real, existing target: the Left Drawer ("the top left
+corner menu") is genuinely where all the real Omni-named products
+already live (OmniDraw, OmniTranslator, OmniPocket, and the rest).
+The person will index/ID these themselves and hand back a real,
+finished list — nothing to build here until that list exists. Real
+placeholder only, so this doesn't get lost.
+
+## 29. Coordinate grid / altitude ruler — real future idea, not built
+
+A real navigation aid for the floor grid plus altitude, so getting
+around is easier to judge at a glance. Confirmed scope: real,
+dev/admin access by default, opened up to real visitors specifically
+through OmniPlayer, "which will give them more freedom."
+
+Real, direct opinion given on naming, since it was asked for: a
+separate real product — **OmniSpaceExplorer** — rather than folding
+this into OmniPlayer itself. The real distinction: OmniPlayer is
+described as the thing that *grants* that freedom (already the real,
+established access-gating mechanism, already wired to OmniPocket as
+real inventory); the coordinate-awareness tool itself is a genuinely
+separate, real capability being unlocked, not what OmniPlayer's own
+core purpose already is. Worth keeping those two ideas distinct
+rather than merging them.
+
+## 30. Developer menu access-level gating — real, honest gap
+
+The real ⟐Developer entry and its own sub-menu now exist (above
+⟐Admin, same real pattern), but "based on the admin access type the
+dev tools will appear" is not built — confirmed directly that no
+general access-type/role system exists anywhere in this project yet.
+Every slot added to ⟐Developer is visible to anyone who can open the
+panel until a real access-level system exists to check against.
+WindowInspector (currently Admin's own slot 7) is a real, natural
+first candidate to move here once this menu starts filling in —
+flagged, not moved, since that's a real, visible change worth
+confirming first.
+
