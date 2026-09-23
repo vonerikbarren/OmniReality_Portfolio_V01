@@ -1181,6 +1181,65 @@ the same real node-creation path that already sets the fields
 addToVault needs, and the quick menu's "Add to Translator" option is
 unconditional, not gated to specific node types.
 
+### V104
+Real, genuine miscommunication resolved — "the clock" was never
+GlobalBar's own time display (V97's ms row there), it was
+`modules/ChronosFloorClock.js`, a real, dedicated module never
+checked at the time: a live 3D label floating above the MasterClock
+node positioned beneath the floor at Y=-102. Its own update loop only
+refreshed once a real second — milliseconds would have just sat
+frozen between refreshes even if shown. Now updates every frame;
+`formatSeconds()` itself stays untouched (shared with
+ui/OmniChronos.js, which depends on its current, ms-free output) —
+ms is computed directly from PrimaryTime's own real, continuously-
+accumulating fractional value and appended to the label separately.
+Chart registration correctly kept its own original once-a-second
+cadence, confirmed unaffected. A real floating-point precision bug
+was caught by direct testing (Math.floor reading one ms low due to
+IEEE 754 representation error) and fixed with Math.round. 4 checks,
+all passing.
+
+### V105
+Real fix for TerminalTunnel's own center panel. Found the precise
+target first — "the inSpace panel" refers to the same real concept
+`ui/PanelControl.js` already names ("in-space panels": planes living
+inside the 3D scene, not screen overlays), applied here to the
+terminal's own canvas-texture panel. Its position was set once,
+statically, at build time ("eye level, center of tunnel") and never
+actually tracked the camera afterward. Now recomputes every frame:
+'center' mode (the real, current default) tracks the camera's real Y
+while holding X/Z at the cylinder's own center, per direct request
+("limited to the center for now"). A new, real 'circumference' mode
+also added and wired into TerminalCommandSettings — follows the
+camera's real angular position around the cylinder's outer edge
+rather than sitting at a fixed spot that could end up out of view.
+10 checks, all passing, including live confirmation that moving the
+camera genuinely moves the panel with it in both modes, not a
+one-time snapshot.
+
+### V106
+OmniLog built — the real, seventh OmniDraw mode, confirmed and named
+directly. Real, automatic pagination (`utils/OmniLogPagination.js`)
+— parses the editor's own constrained rich-text (bold/italic/
+headers/lists) into real blocks, measures real text width with an
+actual 2D canvas context, and splits into pages once a page's real,
+measured line-height budget is exceeded. `modules/
+OmniLogPagesPanel.js` — genuinely separate, real 3D page planes
+positioned in sequence (confirmed directly over one panel with
+internally-scrolling text), parented under one real, transformable
+group using OmniDraw's own exact px/py/pz/rx/ry/rz/sx/sy/sz schema.
+Scroll navigation reuses goToObject() directly — the same real
+camera travel every other "take me there" interaction already uses
+— and only activates when the entry's own node is genuinely
+selected, confirmed via the same real selection-event pattern used
+elsewhere. `ui/OmniLogEditorPanel.js` reuses OmniChat's JSON tab as
+its real structural basis, with a real `contenteditable` region, a
+small formatting toolbar, and real starting templates. 17 checks,
+all passing on the first full run, covering block parsing,
+automatic pagination at both short and long lengths, real page
+sequencing, scroll clamping, selection-gated wheel navigation, and
+the full real editor-to-3D-pages submit flow.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

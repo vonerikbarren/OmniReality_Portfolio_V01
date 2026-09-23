@@ -10,7 +10,7 @@
  */
 
 const STORE_KEY = 'omni:terminal:settings'
-const DEFAULTS = { accent: '#00ff88', backgroundOpacity: 0.78 }
+const DEFAULTS = { accent: '#00ff88', backgroundOpacity: 0.78, panelPosition: 'center' }
 
 let settings = loadSettings()
 

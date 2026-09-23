@@ -74,11 +74,17 @@ export default class ChronosFloorClock {
   update (delta) {
     this._positionLabel()
     this._elapsed += delta
+    // Real, live milliseconds — updates every frame, unlike the
+    // HH:MM portion below (which only needs to recompute once a
+    // real second, since it can't change any faster than that). The
+    // whole reason to show ms at all is for it to read as genuinely
+    // live, not frozen between once-a-second refreshes.
+    this._updateLabelText(getCurrentSeconds())
+
     if (this._elapsed < UPDATE_INTERVAL) return
     this._elapsed = 0
 
     const seconds = getCurrentSeconds()
-    this._updateLabelText(seconds)
     this._registerChartFor(seconds)   // real, periodic re-registration — not every frame
   }
 
@@ -105,8 +111,19 @@ export default class ChronosFloorClock {
     })
   }
 
+  /** Real fix — this now runs every frame (see update()), so
+   *  milliseconds genuinely read as live rather than frozen between
+   *  once-a-second refreshes. Extracted directly from
+   *  currentSeconds' own real, continuously-accumulating fractional
+   *  part (utils/PrimaryTime.js) — not a separate clock, the same
+   *  real time source, just read to its actual, existing precision.
+   *  formatSeconds itself stays untouched — it's shared with
+   *  ui/OmniChronos.js, which depends on its current, ms-free
+   *  output. */
   _updateLabelText (totalSeconds) {
-    if (this._labelEl) this._labelEl.textContent = formatSeconds(totalSeconds, readTimeFormatPreference())
+    if (!this._labelEl) return
+    const ms = Math.round((totalSeconds % 1) * 1000) % 1000
+    this._labelEl.textContent = `${formatSeconds(totalSeconds, readTimeFormatPreference())}.${String(ms).padStart(3, '0')}`
   }
 
   _positionLabel () {

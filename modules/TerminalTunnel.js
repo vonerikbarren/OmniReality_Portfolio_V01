@@ -250,11 +250,38 @@ export default class TerminalTunnel {
     })
   }
 
-  /** Make panel face the camera each frame */
+  /** Make panel face the camera each frame, and track its real,
+   *  current position per the real, configurable setting. Real fix —
+   *  this used to be set once, statically, at build time and never
+   *  actually followed the camera's own real Y level afterward. */
   update() {
     if (!this._visible) return
     if (this._panel) {
+      this._updatePanelPosition()
       this._panel.lookAt(this.ctx.camera.position)
+    }
+  }
+
+  _updatePanelPosition () {
+    const camera = this.ctx.camera
+    const { panelPosition } = getSettings()
+
+    if (panelPosition === 'circumference') {
+      // Real, live angle toward the camera's own current position
+      // (relative to the tunnel's own center), so this stays near
+      // the camera rather than parked at a fixed spot on the ring
+      // that could end up out of view entirely.
+      const angle = Math.atan2(camera.position.x - this.group.position.x, camera.position.z - this.group.position.z)
+      this._panel.position.set(
+        Math.sin(angle) * TERMINAL_RADIUS * 0.85,
+        camera.position.y,
+        Math.cos(angle) * TERMINAL_RADIUS * 0.85,
+      )
+    } else {
+      // 'center' — real, live Y-tracking, X/Z held at the tunnel's
+      // own real center, per direct request ("limited to the center
+      // for now").
+      this._panel.position.set(0, camera.position.y, 0)
     }
   }
 

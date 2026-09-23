@@ -77,6 +77,10 @@ const STYLES = `
 .tms-row input[type="range"] { flex: 1; }
 .tms-swatch-label { font-size: 10px; color: var(--tms-text); }
 .tms-note { font-size: 9px; color: var(--tms-text-dim); line-height: 1.5; }
+.tms-select {
+  width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--tms-border);
+  border-radius: 5px; color: var(--tms-text); font-family: var(--mono); font-size: 10px; padding: 5px 6px;
+}
 `
 
 function injectStyles () {
@@ -167,6 +171,13 @@ export default class TerminalSettingsPanel {
             <span class="tms-swatch-label" id="tms-opacity-val">${Math.round(s.backgroundOpacity * 100)}%</span>
           </div>
         </div>
+        <div>
+          <div class="tms-field-label">Panel position</div>
+          <select id="tms-panel-position" class="tms-select">
+            <option value="center" ${s.panelPosition === 'center' ? 'selected' : ''}>Center of the cylinder</option>
+            <option value="circumference" ${s.panelPosition === 'circumference' ? 'selected' : ''}>Outer circumference</option>
+          </select>
+        </div>
         <div class="tms-note">Applies to both TerminalTunnel's own 3D visual and OmniChat's Terminal tab — one, real, shared default for both surfaces.</div>
       </div>
     `
@@ -180,6 +191,7 @@ export default class TerminalSettingsPanel {
       setSettings({ backgroundOpacity: val })
       el.querySelector('#tms-opacity-val').textContent = `${Math.round(val * 100)}%`
     })
+    el.querySelector('#tms-panel-position').addEventListener('change', (e) => setSettings({ panelPosition: e.target.value }))
 
     this._bindHeader(el)
     el.dataset.winId = 'terminalsettings'

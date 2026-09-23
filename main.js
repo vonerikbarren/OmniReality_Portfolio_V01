@@ -75,6 +75,7 @@ import SectionCarousel   from './modules/SectionCarousel.js'
 import OmniChat          from './ui/OmniChat.js'
 import OmniKeyboardShortcutsPanel from './ui/OmniKeyboardShortcutsPanel.js'
 import TerminalSettingsPanel from './ui/TerminalSettingsPanel.js'
+import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
@@ -306,6 +307,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniChat(base.context))
   base.addModule(new OmniKeyboardShortcutsPanel())
   base.addModule(new TerminalSettingsPanel())
+  base.addModule(new OmniLogEditorPanel(base.context))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
