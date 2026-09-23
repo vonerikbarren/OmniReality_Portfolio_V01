@@ -1151,6 +1151,36 @@ removable with a click. 9 checks, all passing, including direct,
 end-to-end confirmation that the two pools stay genuinely independent
 through the full real flow.
 
+### V102
+OmniTargeting's third and final ring added — X axis, completing all
+three (Y and Z already existed). Low-risk extension: `_buildRing()`
+was already generic and reusable regardless of which group it's
+parented to, so the X ring is built, rotated, and disposed the exact
+same way as the other two, just on its own axis and its own,
+distinct speed so all three stay visually distinguishable. Updated
+stale comments that referenced "two rings"/"8 markers" to the real,
+current "three rings"/"12 markers." 10 checks, all passing.
+
+### V103
+Real fix — OmniTranslator's Right/Left vaults were directly
+overlapping the Hand corner menus, confirmed precisely: both
+anchored to the same screen edges, with the vaults' own tall
+vertical span and near-edge positioning covering both the top and
+bottom corner menus on each side, not just one. Shrunk and pulled
+in from the edge on both sides to genuinely clear all four corners'
+real, computed footprint. Caught and fixed a real arithmetic mistake
+of my own during testing — an initial fix still fell 8px short of
+actually clearing the corner width, found by checking exact numbers
+rather than trusting the estimate. 6 checks, all passing, verifying
+the real, computed clearance on all four corners.
+
+Also confirmed directly, no build needed: any OmniDraw-created
+element (Static/Dynamic/Jsonifier/OmniCell) already works with
+OmniTranslator's vaults right now — all four modes dispatch through
+the same real node-creation path that already sets the fields
+addToVault needs, and the quick menu's "Add to Translator" option is
+unconditional, not gated to specific node types.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

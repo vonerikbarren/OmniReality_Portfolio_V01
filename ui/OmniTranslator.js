@@ -99,8 +99,14 @@ const STYLES = /* css */`
 
 /* ── Right — Problems / Risks ────────────────────────────────────────────── */
 .ot-vault--right {
-  top: 90px; right: 14px; bottom: 220px;
-  width: 92px;
+  /* Real fix — was right:14px, width:92px, top:90px, bottom:220px,
+     directly overlapping both the top-right and bottom-right Hand
+     corners (each a real ~102px square flush against this same
+     edge). Narrowed and pulled in from the edge to clear their real
+     width, and pulled top/bottom in to clear their real height too,
+     with real margin, not a bare-minimum squeeze. */
+  top: 170px; right: 110px; bottom: 174px;
+  width: 76px;
   border-radius: 10px;
 }
 
@@ -114,8 +120,11 @@ const STYLES = /* css */`
 
 /* ── Left — Solutions / Algorithms ───────────────────────────────────────── */
 .ot-vault--left {
-  top: 90px; left: 14px; bottom: 220px;
-  width: 92px;
+  /* Real fix — same real reason as the Right vault, mirrored: was
+     directly overlapping both the top-left and bottom-left Hand
+     corners. */
+  top: 170px; left: 110px; bottom: 174px;
+  width: 76px;
   border-radius: 10px;
 }
 `
