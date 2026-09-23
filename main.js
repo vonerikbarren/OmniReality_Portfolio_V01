@@ -631,6 +631,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   // ── Keyboard shortcuts ────────────────────────────────────
   window.addEventListener('keydown', (e) => {
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
     if (e.key === '`' || e.key === 'F1') {
       window.dispatchEvent(new CustomEvent('omni:terminal-invoke'))
     }
@@ -808,6 +815,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // browser was already going to handle on its own.
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
     if (document.fullscreenElement) document.exitFullscreen()
   })
 

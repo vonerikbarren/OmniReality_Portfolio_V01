@@ -18,6 +18,7 @@ import * as THREE from 'three'
 import { generateId } from '../systems/OmniNode.js'
 import { goToObject } from '../utils/CameraTravel.js'
 import { paginate, PAGE_WIDTH, PAGE_HEIGHT } from '../utils/OmniLogPagination.js'
+import { registerLogEntry, unregisterLogEntry } from '../utils/OmniLogRegistry.js'
 
 const PAGE_GAP = 3   // real, vertical world-unit gap between consecutive real pages
 const CANVAS_SCALE = 2   // real supersampling for crisp real text on the canvas texture
@@ -65,22 +66,38 @@ export default class OmniLogPagesPanel {
 
   /** Real, public entry point — builds the whole real, multi-page
    *  structure from a real OmniLog entry's own title and rich HTML,
-   *  at the given real transform. */
-  build (title, html, transform = {}) {
+   *  at the given real transform. Passing a real, existing nodeId
+   *  re-edits that same entry in place (updates its real transform,
+   *  rebuilds its real pages) instead of creating a new, duplicate
+   *  node. */
+  build (title, html, transform = {}, existingNodeId = null) {
     this._disposePages()
 
     const t = { px: 0, py: 0, pz: -5, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1, ...transform }
-    this._groupNodeId = generateId()
 
-    window.dispatchEvent(new CustomEvent('omni:node-create-request', {
-      detail: {
-        id: this._groupNodeId, label: title || 'OmniLog Entry',
-        geometry: 'BoxGeometry', primitive: 'objective', color: '#8899ff',
-        position: [t.px, t.py, t.pz], rotation: [t.rx, t.ry, t.rz], scale: [0.001, 0.001, 0.001],
-        // A near-invisible real anchor mesh — the actual, visible content is the real page planes below it.
-        parentId: null,
-      }
-    }))
+    if (existingNodeId) {
+      this._groupNodeId = existingNodeId
+      // Real, confirmed, already-established event — position only
+      // (this project has no real rotation-set equivalent), object
+      // payload shape, not an array. The anchor's own rotation isn't
+      // critical (it's a tiny, near-invisible anchor mesh — the
+      // real, visible pages below are controlled directly via
+      // this._group, set right after this).
+      window.dispatchEvent(new CustomEvent('omni:node-position-set', {
+        detail: { id: existingNodeId, position: { x: t.px, y: t.py, z: t.pz } },
+      }))
+    } else {
+      this._groupNodeId = generateId()
+      window.dispatchEvent(new CustomEvent('omni:node-create-request', {
+        detail: {
+          id: this._groupNodeId, label: title || 'OmniLog Entry',
+          geometry: 'BoxGeometry', primitive: 'objective', color: '#8899ff',
+          position: [t.px, t.py, t.pz], rotation: [t.rx, t.ry, t.rz], scale: [0.001, 0.001, 0.001],
+          // A near-invisible real anchor mesh — the actual, visible content is the real page planes below it.
+          parentId: null,
+        }
+      }))
+    }
 
     this._group = new THREE.Group()
     this._group.position.set(t.px, t.py, t.pz)
@@ -91,13 +108,14 @@ export default class OmniLogPagesPanel {
 
     const pages = paginate(html)
     pages.forEach((page, i) => {
-      const mesh = this._buildPageMesh(page, title, i, pages.length)
+      const mesh = this._buildPageMesh(page, title, i, pages.length, t.colorRgba)
       mesh.position.set(0, -i * PAGE_GAP, 0)
       this._group.add(mesh)
       this._pageMeshes.push(mesh)
     })
 
     this._currentPageIndex = 0
+    registerLogEntry(this._groupNodeId, { title, html, transform: t })
     return this._groupNodeId
   }
 
@@ -108,14 +126,14 @@ export default class OmniLogPagesPanel {
     if (mesh) goToObject(this.ctx, mesh)
   }
 
-  _buildPageMesh (blocks, title, pageIndex, totalPages) {
+  _buildPageMesh (blocks, title, pageIndex, totalPages, colorRgba) {
     const canvas = document.createElement('canvas')
     canvas.width = PAGE_WIDTH * CANVAS_SCALE
     canvas.height = PAGE_HEIGHT * CANVAS_SCALE
     const c = canvas.getContext('2d')
     c.scale(CANVAS_SCALE, CANVAS_SCALE)
 
-    c.fillStyle = 'rgba(250, 248, 244, 0.97)'
+    c.fillStyle = colorRgba || 'rgba(250, 248, 244, 0.97)'
     c.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT)
     c.strokeStyle = 'rgba(0,0,0,0.15)'
     c.strokeRect(1, 1, PAGE_WIDTH - 2, PAGE_HEIGHT - 2)

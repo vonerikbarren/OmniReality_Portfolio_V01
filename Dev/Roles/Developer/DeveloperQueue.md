@@ -364,3 +364,15 @@ waiting for exactly this kind of content. Rewarding real OmniScript
 use is proposed as a natural fit for Developer Queue item 13
 (OmniPlayer's own planned badge system) rather than a new mechanism.
 
+## 27. OmniPocket — genuinely needed next, real future notes only
+
+Confirmed as the real next priority after OmniLog's own fixes and
+additions — explicitly not attempted this pass, per direct
+instruction ("just future notes for now"). Worth being precise about
+its real, current state before it's picked up: `systems/
+OmniPocket.js` already exists as a real, substantial system, not a
+concept to design from scratch — getting it "up and running" likely
+means real integration/wiring work, not a new build. Worth a direct,
+real read of that file first, rather than assuming its current scope
+or gaps, before any real work begins on it.
+

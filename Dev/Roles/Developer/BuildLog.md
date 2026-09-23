@@ -1240,6 +1240,33 @@ automatic pagination at both short and long lengths, real page
 sequencing, scroll clamping, selection-gated wheel navigation, and
 the full real editor-to-3D-pages submit flow.
 
+### V107
+Completed OmniLog's real fixes and additions, all real and tested.
+Typing bug fixed — two keybindings (terminal invoke/dismiss on
+backtick/Escape, and the separate fullscreen-exit Escape handler)
+genuinely had no typing guard at all, unlike every other shortcut in
+the file, confirmed by directly checking every real handler rather
+than assuming. Universal Edit quick-menu action added to every node
+— dispatches the real omni:node-selected event the Inspector already
+auto-opens on, via a new, real getNodeData() getter matching
+getMeshById's own pattern. OmniLog re-editing built on top of a new
+registry (the pages panel only held rendered output, not editable
+source) — resubmitting a re-edited entry now genuinely updates it in
+place rather than creating a duplicate; caught and fixed a real
+mistake of my own along the way, an invented event that didn't
+actually exist, replaced with the real, confirmed
+omni:node-position-set. Real RGBA color added and genuinely applied
+to page rendering, not just decorative. Real Lorem Ipsum generation
+added under a new OmniLogPageOptions area, specifically to prove out
+multipage pagination on demand; caught a real bug before it shipped
+— the button shared a class with the formatting toolbar and would
+have been wired into execCommand(undefined, ...), fixed with a
+direct exclusion. Real number fields added alongside every transform
+slider, two-way synced. 12 checks, all passing on the first full
+run. OmniPocket logged as the real next priority, future notes only
+per direct instruction — noted honestly that it already exists as a
+real, substantial system, not a concept to design from scratch.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

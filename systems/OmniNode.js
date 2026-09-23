@@ -980,6 +980,15 @@ export default class OmniNode {
     return this._nodes.get(id)?.mesh ?? null
   }
 
+  /** Real, public getter for a node's own real data — matches
+   *  getMeshById's exact pattern. Needed so any external system (the
+   *  quick menu's new, universal Edit action) can dispatch a real,
+   *  correct omni:node-selected payload for a given node, without
+   *  needing its own, separate copy of this data. */
+  getNodeData (id) {
+    return this._nodes.get(id)?.data ?? null
+  }
+
   destroy () {
     // Remove panel DOM
     this._el?.parentNode?.removeChild(this._el)

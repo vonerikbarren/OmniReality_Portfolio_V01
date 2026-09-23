@@ -203,6 +203,7 @@ export default class ToolTipMenu {
 
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
+      <button class="ttm-action-btn" data-action="edit">✎ Edit</button>
       <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
       <button class="ttm-action-btn" data-action="translator-vault">⟐ Add to Translator</button>
       ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
@@ -212,6 +213,13 @@ export default class ToolTipMenu {
     `
     this._menuEl.querySelector('[data-action="take-me-there"]').addEventListener('click', () => {
       goToObject(this.ctx, mesh)
+      this._closeQuickMenu()
+    })
+
+    this._menuEl.querySelector('[data-action="edit"]').addEventListener('click', () => {
+      const data = this.omniNode?.getNodeData(nodeId)
+      if (data) window.dispatchEvent(new CustomEvent('omni:node-selected', { detail: { node: data, mesh } }))
+      window.dispatchEvent(new CustomEvent('omni:edit-request', { detail: { nodeId, mesh } }))
       this._closeQuickMenu()
     })
 
