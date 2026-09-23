@@ -281,9 +281,29 @@ actual, live position, and that the preview setup's WebGL failure
 handling learns directly from the same lesson found fixing
 OmniStartHUD's own preview diamond.
 
+## OmniTranslator — the real, visual shell built
+
+Same proven "shell first" approach as OmniStartHUD. Four real vault
+containers (`ui/OmniTranslator.js`), correctly positioned (Top
+centered near the screen's own top edge, Right and Left as vertical
+strips, Bottom centered above the dock and minimap), each carrying
+the confirmed "SystemsOfSpacialSystems" double-border-plus-glow
+identity and its own correct label, with an honest empty state —
+matching this project's own established pattern for something not
+yet filled in, rather than fake placeholder content.
+
+Deliberately not attempted in this pass: node typing/labeling,
+drag-to-extract, cross-reality linking, and the Right/Left pairing
+question — all genuinely still open, per the design above. Toggled
+via a new 't' keybinding and reachable from the Left Drawer as
+⟐OmniTranslator, matching OmniChat's own dual-path pattern. 13
+checks, all passing.
+
 ## Status
 
-OmniChat built and tested. OmniTranslator, OmniFeed, and the fuller
-TheOmniStatePanelControls remain design-only, in their already-agreed
-order: OmniTranslator (4-sided vault system) → OmniFeed, with
+OmniChat built and tested. OmniTranslator's real, visual shell built
+and tested — content logic (node typing, drag-to-extract,
+cross-reality linking) remains open, per its own section above.
+OmniFeed and the fuller TheOmniStatePanelControls remain design-only.
+Already-agreed order continues: OmniTranslator → OmniFeed, with
 OmniState threaded through each as they go live.

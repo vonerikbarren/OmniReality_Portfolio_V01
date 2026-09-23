@@ -74,6 +74,8 @@ import OmniJsonifier     from './ui/OmniJsonifier.js'
 import SectionCarousel   from './modules/SectionCarousel.js'
 import OmniChat          from './ui/OmniChat.js'
 import OmniKeyboardShortcutsPanel from './ui/OmniKeyboardShortcutsPanel.js'
+import TerminalSettingsPanel from './ui/TerminalSettingsPanel.js'
+import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
 import OmniCellPanel     from './ui/OmniCellPanel.js'
@@ -303,6 +305,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new SectionCarousel(base.context, omniNode, { sectionId: 'about-me', navLabel: 'About-Me' }))
   base.addModule(new OmniChat(base.context))
   base.addModule(new OmniKeyboardShortcutsPanel())
+  base.addModule(new TerminalSettingsPanel())
+  base.addModule(new OmniTranslator())
   toolTipMenu.setJsonifier(omniJsonifier)
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
@@ -453,6 +457,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
             getAllJsonifiers().forEach(j => j.clear())
           },
         },
+        11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -727,6 +732,22 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     if (isTyping) return
     if (omniDrawModePicker._isOpen) omniDrawModePicker.close()
     else omniDrawModePicker.open()
+  })
+
+  // ── 't' — toggle OmniTranslator ────────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 't' || e.repeat) return
+    const active = document.activeElement
+    const isInteractive = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable ||
+      active.tagName === 'BUTTON' ||
+      active.getAttribute?.('role') === 'button' ||
+      (typeof active.tabIndex === 'number' && active.tabIndex >= 0 && active !== document.body)
+    )
+    if (isInteractive) return
+    window.dispatchEvent(new CustomEvent('omni:translator-toggle'))
   })
 
   // ── 'm' — toggle OmniMixer ─────────────────────────────────

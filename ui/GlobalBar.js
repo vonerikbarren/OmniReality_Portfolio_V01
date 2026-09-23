@@ -568,6 +568,12 @@ export default class GlobalBar {
   }
 
   update (delta) {
+    // Real, per-frame update — milliseconds change continuously, so
+    // this can't ride the 1Hz _tickClock() interval above; every
+    // frame keeps it genuinely live rather than stepping once a
+    // second like the HH:MM:SS row does.
+    this._setEl('ob-current-ms', String(new Date().getMilliseconds()).padStart(3, '0'))
+
     this._frameCount++
     const now = performance.now()
     if (now - this._lastFpsTick >= 500) {
@@ -659,6 +665,10 @@ export default class GlobalBar {
           <div class="ob-kv">
             <span class="ob-kv-key">Time</span>
             <span class="ob-kv-val live" id="ob-current-time">--:--:--</span>
+          </div>
+          <div class="ob-kv">
+            <span class="ob-kv-key">ms</span>
+            <span class="ob-kv-val live" id="ob-current-ms">---</span>
           </div>
         </div>
       </div>

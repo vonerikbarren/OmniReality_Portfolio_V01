@@ -19,6 +19,8 @@
 
 import * as THREE from 'three'
 import gsap       from 'gsap'
+import { getSettings } from '../utils/TerminalSettings.js'
+import { hexToRgba } from '../utils/ColorUtils.js'
 
 const TERMINAL_RADIUS   = 10
 const TERMINAL_HEIGHT   = 260
@@ -57,6 +59,16 @@ export default class TerminalTunnel {
     this._onDismiss = () => this.dismiss()
     window.addEventListener('omni:terminal-invoke',  this._onInvoke)
     window.addEventListener('omni:terminal-dismiss', this._onDismiss)
+
+    // Real, live update — re-renders the panel immediately if a
+    // setting changes while this is visible, and re-applies the
+    // wireframe's own color too, rather than only picking up a new
+    // value the next time something else happens to redraw it.
+    this._onSettingsChanged = () => {
+      this._renderPanelContent(this._visible ? 'idle' : 'idle')
+      if (this._wireLines) this._wireLines.material.color.setHex(parseInt(getSettings().accent.replace('#', ''), 16))
+    }
+    window.addEventListener('omni:terminal-settings-changed', this._onSettingsChanged)
   }
 
   _buildCylinder() {
@@ -91,13 +103,14 @@ export default class TerminalTunnel {
     )
     const wireEdges = new THREE.EdgesGeometry(wireGeo)
     const wireMat   = new THREE.LineBasicMaterial({
-      color:       0x00ff88,
+      color:       parseInt(getSettings().accent.replace('#', ''), 16),
       transparent: true,
       opacity:     0.08,
     })
     const wireLines = new THREE.LineSegments(wireEdges, wireMat)
     wireLines.position.y = CYLINDER_Y
     wireGeo.dispose()
+    this._wireLines = wireLines   // real, stored reference — needed so a later settings change can actually re-color it
 
     this.group.add(wireLines)
   }
@@ -135,26 +148,27 @@ export default class TerminalTunnel {
     const c   = this._ctx2d
     const w   = this._canvas.width
     const h   = this._canvas.height
+    const accent = getSettings().accent   // real, configurable — TerminalSettings' own live value
 
     // Clear
     c.clearRect(0, 0, w, h)
 
     // Panel background — dark glassmorphism
-    c.fillStyle = 'rgba(0, 0, 0, 0.75)'
+    c.fillStyle = `rgba(0, 0, 0, ${getSettings().backgroundOpacity})`
     this._roundRect(c, 0, 0, w, h, 16)
     c.fill()
 
     // Border
-    c.strokeStyle = 'rgba(0, 255, 136, 0.4)'
+    c.strokeStyle = hexToRgba(accent, 0.4)
     c.lineWidth   = 2
     this._roundRect(c, 1, 1, w - 2, h - 2, 15)
     c.stroke()
 
     // Header bar
-    c.fillStyle = 'rgba(0, 255, 136, 0.1)'
+    c.fillStyle = hexToRgba(accent, 0.1)
     c.fillRect(1, 1, w - 2, 36)
 
-    c.fillStyle = '#00ff88'
+    c.fillStyle = accent
     c.font      = '13px "Courier New", monospace'
     c.fillText('⟐T  TERMINAL TUNNEL', 16, 24)
 
@@ -163,7 +177,7 @@ export default class TerminalTunnel {
     c.fillText('✕', w - 30, 24)
 
     // Body text
-    c.fillStyle = 'rgba(0, 255, 136, 0.7)'
+    c.fillStyle = hexToRgba(accent, 0.7)
     c.font      = '11px "Courier New", monospace'
 
     if (state === 'idle') {
@@ -247,6 +261,7 @@ export default class TerminalTunnel {
   destroy() {
     window.removeEventListener('omni:terminal-invoke',  this._onInvoke)
     window.removeEventListener('omni:terminal-dismiss', this._onDismiss)
+    window.removeEventListener('omni:terminal-settings-changed', this._onSettingsChanged)
 
     this._texture?.dispose()
     this.group.traverse((obj) => {

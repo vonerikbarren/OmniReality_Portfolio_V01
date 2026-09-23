@@ -1063,6 +1063,39 @@ passing, including a caught-and-fixed bug in my own test — an
 extraction regex that was accidentally matching my own comment text
 instead of the real, active CSS declaration.
 
+### V97
+Three real, separate items built. (1) Clock milliseconds — a new,
+real row in GlobalBar updating every frame, since ms need continuous
+updating unlike the existing 1Hz HH:MM:SS tick. (2) TerminalSettings
+— a real, new panel (`ui/TerminalSettingsPanel.js`,
+`utils/TerminalSettings.js`), matching ToolTipSettings' exact,
+proven pattern, controlling the terminal's accent color and
+background opacity. Wired into both real consumers — OmniChat's
+Terminal tab via CSS variables, and TerminalTunnel's own 3D visual
+directly (a Three.js material color and Canvas 2D drawing calls
+can't read CSS variables at all, so these needed a direct settings
+read instead) — plus a real, live change event so the 3D panel
+re-colors immediately if a setting changes while it's visible, not
+just on its next unrelated redraw. Reachable from Admin as slot 11.
+7 checks, all passing. (3) The pocket/quick-menu relocate-realities
+idea, noted but correctly not yet documented or built — the person's
+own instruction was to document it *after* OmniTranslator, not now.
+
+### V98
+OmniTranslator's real, visual shell built (`ui/OmniTranslator.js`) —
+the same proven "shell first" approach OmniStartHUD used, given this
+was already confirmed as several genuine subsystems with two real,
+still-open questions (Right/Left pairing, the node-typing mechanism)
+rather than one buildable panel. Four real vault containers, each
+correctly positioned and carrying the confirmed
+"SystemsOfSpacialSystems" double-border-plus-glow identity and its
+own correct label, with an honest empty state rather than fake
+content. Toggled via a new 't' keybinding and reachable from the
+Left Drawer, matching OmniChat's own dual-path pattern. 13 checks,
+all passing. Node typing/labeling, drag-to-extract, and
+cross-reality linking deliberately not attempted — real, separate,
+still-undesigned work, left for a real follow-up pass.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

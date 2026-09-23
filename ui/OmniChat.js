@@ -208,7 +208,7 @@ const STYLES = /* css */`
   flex           : 1;
   display        : flex;
   flex-direction : column;
-  background     : rgba(0, 0, 0, 0.78);
+  background     : rgba(0, 0, 0, var(--terminal-bg-opacity, 0.78));
   min-height     : 0;
 }
 .oc-terminal-output {
@@ -216,16 +216,16 @@ const STYLES = /* css */`
   overflow-y  : auto;
   padding     : 10px 12px;
   font-size   : 12px;
-  color       : #00ff88;
+  color       : var(--terminal-accent, #00ff88);
   line-height : 1.6;
 }
 .oc-terminal-row { display: flex; align-items: center; padding: 6px 8px; gap: 6px; border-top: 1px solid rgba(0, 255, 136, 0.15); }
-.oc-terminal-prompt { color: #00ff88; font-size: 12px; }
+.oc-terminal-prompt { color: var(--terminal-accent, #00ff88); font-size: 12px; }
 .oc-terminal-input {
   flex        : 1;
   background  : none;
   border      : none;
-  color       : #00ff88;
+  color       : var(--terminal-accent, #00ff88);
   font-family : inherit;
   font-size   : 12px;
   outline     : none;
