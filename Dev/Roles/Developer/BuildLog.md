@@ -1096,6 +1096,61 @@ all passing. Node typing/labeling, drag-to-extract, and
 cross-reality linking deliberately not attempted — real, separate,
 still-undesigned work, left for a real follow-up pass.
 
+### V99
+The real message-shooting mechanic built in OmniChat. A new toolbar
+(font/size/alignment/Form 1–6) in the Chat tab, between header and
+content. Sending a message launches it forward along the camera's
+own real, fixed direction, traveling the confirmed 2000-unit
+distance before real disposal. Forms 1–5: real, square planes
+(confirmed as visual-consistency, not performance — a plane's
+triangle count doesn't depend on aspect ratio). Form 6: real cubes,
+the confirmed lowest-cost material, which genuinely dismantle
+partway through flight — actually disposing the 3D mesh and
+continuing as a real DOM element reusing ToolTipMenu's own
+established look and its own world-to-screen projection math.
+Visible fade/flicker/jitter during the final stretch before
+disposal, per direct request. Also fixed a real early-return bug in
+update() that would have silently stopped this whole mechanic if the
+decorative preview ever failed to initialize — the two are
+independent systems and needed to be treated that way. A real bug in
+my own word-splitting algorithm was caught by direct testing (could
+leave later pieces empty depending on word lengths) and fixed with a
+guaranteed-correct approach. 17 checks, all passing.
+
+### V100
+OmniChat's JSON tab built — OmniChat(Text, JSON, Terminal) as
+confirmed. Two real findings checked directly before building:
+wallpaper has no actual multi-profile system, just one single saved
+configuration under one key, so `utils/JsonChatMessageOptions.js`
+matches that real pattern; and OmniDraw's own Transform schema
+already has the exact px/py/pz/rx/ry/rz/sx/sy/sz fields and ranges
+referenced, reused directly. Real, meaningful behavioral difference
+from text: a JSON tree travels from a chosen origin
+(user/left/right/ceiling/ground/instant-at-the-point) to its real,
+explicit destination and genuinely settles there, remaining in the
+scene, rather than being disposed like a transient text message.
+Reused Form 1-6 and the Form 6 cube-to-tooltip dismantle exactly as
+already proven. Real JSON validation with an honest error for
+invalid input. 17 checks, all passing, including a real regression
+check confirming text messages are completely unaffected.
+
+### V101
+OmniTranslator's real content logic resolved and built, closing both
+open questions from its own shell pass. Pairing: independent pools,
+not strict Right/Left linking. Node typing: found and reused a real,
+already-proven, lower-risk pattern instead of building new
+drag-detection — OmniGrab's own `sendToHand` already solved
+"menu-driven placement, no dragging" for hands; the exact same real
+approach now applies to all four vaults via a new vault picker in
+ToolTipMenu's quick menu and `OmniTranslator.addToVault()`. A node's
+own real, existing label is its identity — no separate
+type-classification system, honestly, since nothing real needs one
+yet. `utils/OmniTranslatorVaults.js` persists real, independent lists
+per side; vaults now render real entries in place of the empty state,
+removable with a click. 9 checks, all passing, including direct,
+end-to-end confirmation that the two pools stay genuinely independent
+through the full real flow.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

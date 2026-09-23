@@ -24,6 +24,8 @@
  * OmniTranslator, not OmniChat, per direct confirmation).
  */
 
+import { getVaults, addToVault as saveToVault, removeFromVault as deleteFromVault } from '../utils/OmniTranslatorVaults.js'
+
 const STYLES = /* css */`
 
 .ot-vault {
@@ -67,6 +69,26 @@ const STYLES = /* css */`
   padding        : 10px 14px;
   line-height    : 1.6;
 }
+.ot-vault-list {
+  flex        : 1;
+  overflow-y  : auto;
+  padding     : 4px 8px 8px;
+  display     : flex;
+  flex-direction: column;
+  gap         : 4px;
+}
+.ot-vault-entry {
+  font-size     : 10px;
+  padding       : 4px 8px;
+  border-radius : 5px;
+  background    : rgba(255, 255, 255, 0.05);
+  border        : 1px solid rgba(255, 255, 255, 0.08);
+  cursor        : pointer;
+  white-space   : nowrap;
+  overflow      : hidden;
+  text-overflow : ellipsis;
+}
+.ot-vault-entry:hover { background: rgba(255, 255, 255, 0.1); }
 
 /* ── Top — Notification Realities ────────────────────────────────────────── */
 .ot-vault--top {
@@ -130,10 +152,11 @@ export default class OmniTranslator {
       el.className = `ot-vault ot-vault--${v.side}`
       el.innerHTML = `
         <div class="ot-vault-label">⟐ ${v.label}</div>
-        <div class="ot-vault-empty">${v.empty}</div>
+        <div class="ot-vault-content"></div>
       `
       shell.appendChild(el)
       this._els[v.side] = el
+      this._renderVaultContent(v.side)
     })
 
     this._onToggle = () => this.toggle()
@@ -165,5 +188,45 @@ export default class OmniTranslator {
   close () {
     this._isOpen = false
     Object.values(this._els).forEach(el => el.classList.remove('open'))
+  }
+
+  /** Real, public entry point — called from the quick menu's vault
+   *  picker (ToolTipMenu), reusing the exact same real, low-risk
+   *  "menu-driven placement, no dragging" pattern already proven for
+   *  OmniGrab's sendToHand, rather than building new drag-detection
+   *  logic. A node's own real, current label is its identity here —
+   *  independent pools, no forced pairing, per direct confirmation. */
+  addToVault (mesh, side) {
+    const nodeId = mesh?.userData?.nodeId
+    if (!nodeId) return
+    const label = mesh.userData?.label ?? nodeId
+    saveToVault(side, nodeId, label)
+    this._renderVaultContent(side)
+  }
+
+  removeFromVault (side, nodeId) {
+    deleteFromVault(side, nodeId)
+    this._renderVaultContent(side)
+  }
+
+  _renderVaultContent (side) {
+    const el = this._els[side]
+    if (!el) return
+    const content = el.querySelector('.ot-vault-content')
+    const entries = getVaults()[side]
+    const meta = VAULTS.find(v => v.side === side)
+
+    if (!entries || entries.length === 0) {
+      content.innerHTML = `<div class="ot-vault-empty">${meta.empty}</div>`
+      return
+    }
+
+    content.innerHTML = `<div class="ot-vault-list">${entries.map(e =>
+      `<div class="ot-vault-entry" data-node-id="${e.nodeId}" title="Click to remove">${e.label}</div>`
+    ).join('')}</div>`
+
+    content.querySelectorAll('.ot-vault-entry').forEach(row => {
+      row.addEventListener('click', () => this.removeFromVault(side, row.dataset.nodeId))
+    })
   }
 }

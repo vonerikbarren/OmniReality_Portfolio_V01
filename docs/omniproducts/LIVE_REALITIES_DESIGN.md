@@ -299,11 +299,84 @@ via a new 't' keybinding and reachable from the Left Drawer as
 ⟐OmniTranslator, matching OmniChat's own dual-path pattern. 13
 checks, all passing.
 
+## OmniChat — the message-shooting mechanic, built
+
+A real, new toolbar in OmniChat's Chat tab (between header and
+content, per direct request) — font, size, alignment, and Form
+(1–6). Confirmed: Form splits one message into that many pieces, not
+N copies. Sending a message now launches its pieces forward along
+the camera's own real, fixed-at-launch direction, traveling the
+confirmed 2000-unit distance before real disposal.
+
+Forms 1–5 use real, square planes — confirmed as a visual-
+consistency choice, not a performance one (a flat plane's triangle
+count is identical regardless of aspect ratio). Form 6 uses real
+cubes — the confirmed lowest-cost material — which genuinely
+dismantle partway through their flight: the real 3D mesh is actually
+disposed, and the piece continues as a real DOM element reusing
+ToolTipMenu's own already-established `.ttm-header` look, tracked via
+the same real world-to-screen projection ToolTipMenu itself already
+uses. Every piece visibly fades/flickers/jitters during the final
+stretch before disposal, per direct request for a visible
+dissolve/glitch effect rather than silent removal.
+
+A real bug caught during testing, not assumed correct: the initial
+word-grouping algorithm for splitting a message into N pieces could
+leave later pieces empty depending on word-length distribution, even
+when there were enough words for all N. Replaced with a guaranteed-
+correct round-based distribution. 17 checks, all passing.
+
+## OmniChat — the JSON tab, built
+
+A real, third tab confirmed and built: OmniChat(Text, JSON,
+Terminal). Two real findings made before building, not assumed:
+checked directly that wallpaper has no actual multi-profile system —
+just one single, global saved configuration under one key — so
+`utils/JsonChatMessageOptions.js` matches that real pattern exactly,
+not a new profile system. Separately, confirmed OmniDraw's own
+Transform schema (`ui/OmniDraw.js`) already has the exact real
+px/py/pz/rx/ry/rz/sx/sy/sz fields and ranges being referenced —
+reused directly rather than inventing new ones.
+
+Real, meaningful difference from text messages: a JSON tree travels
+from its chosen origin (user/left/right/ceiling/ground/instant-at-
+the-point) toward its explicit destination transform and genuinely
+settles there, remaining in the scene — not disposed the way a
+transient text message is, since the person is deliberately placing
+something lasting, not firing off an effect. Form 1–6 (shape) and
+Form 6's real cube-to-tooltip dismantle are reused exactly as already
+proven for text. Real JSON validation with an honest error for
+invalid input, not a silent failure. 17 checks, all passing,
+including a real regression check confirming text messages are
+completely unaffected by this addition.
+
+## OmniTranslator — content logic resolved and built
+
+Both real, open questions resolved directly, then built. Pairing:
+independent pools, not strict Right/Left linking — same real
+reasoning already applied to OmniCommunicate's own type system,
+avoiding forced structure a real relationship won't always hold.
+
+Node typing: reused a real, existing, lower-risk pattern rather than
+building new drag-detection — OmniGrab's own `sendToHand` already
+proved "menu-driven placement, no dragging required" for hands;
+`OmniTranslator.addToVault()` and a new vault picker in ToolTipMenu's
+own quick menu apply the exact same real pattern to the four vaults.
+A node's own real, existing label is its identity — no separate
+type-classification system built, honestly, since nothing real has
+needed one yet.
+
+`utils/OmniTranslatorVaults.js` — real, saved, independent lists per
+side. Vaults now render real entries once added, replacing the empty
+state; clicking an entry removes it. 9 checks, all passing, including
+direct, end-to-end confirmation that the two pools genuinely stay
+independent through the full real flow, not just at the data layer.
+
 ## Status
 
-OmniChat built and tested. OmniTranslator's real, visual shell built
-and tested — content logic (node typing, drag-to-extract,
-cross-reality linking) remains open, per its own section above.
+OmniChat built and tested. OmniTranslator's real, visual shell and
+its content logic (node typing, vault entries) both built and
+tested — cross-reality linking remains a real, separate, later idea.
 OmniFeed and the fuller TheOmniStatePanelControls remain design-only.
-Already-agreed order continues: OmniTranslator → OmniFeed, with
-OmniState threaded through each as they go live.
+Already-agreed order continues: OmniFeed next, with OmniState
+threaded through each as they go live.

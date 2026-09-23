@@ -78,6 +78,7 @@ export default class ToolTipMenu {
     this.omniNode = omniNode
     this.omniGrab = omniGrab
     this.jsonifier = null   // set later via setJsonifier() — OmniJsonifier isn't created yet at this point in main.js's own real ordering
+    this.omniTranslator = null   // set later via setOmniTranslator(), same real reason
     this._headers = new Map()   // mesh -> { el, mesh }
     this._openMenuMesh = null
     this._menuEl = null
@@ -88,6 +89,10 @@ export default class ToolTipMenu {
    *  created later than ToolTipMenu in main.js's real module order. */
   setJsonifier (jsonifier) {
     this.jsonifier = jsonifier
+  }
+
+  setOmniTranslator (omniTranslator) {
+    this.omniTranslator = omniTranslator
   }
 
   init () {
@@ -199,6 +204,7 @@ export default class ToolTipMenu {
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
       <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
+      <button class="ttm-action-btn" data-action="translator-vault">⟐ Add to Translator</button>
       ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
       ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
       ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
@@ -231,6 +237,8 @@ export default class ToolTipMenu {
       this._menuEl.querySelector('[data-action="grab"]').addEventListener('click', () => this._renderHandPicker(mesh))
     }
 
+    this._menuEl.querySelector('[data-action="translator-vault"]').addEventListener('click', () => this._renderVaultPicker(mesh))
+
     if (hasChildren) {
       this._menuEl.querySelector('[data-action="toggle-children"]').addEventListener('click', () => {
         // Real fix — a genuine Jsonifier node routes through its own
@@ -262,6 +270,27 @@ export default class ToolTipMenu {
     hands.forEach(([id]) => {
       this._menuEl.querySelector(`[data-hand="${id}"]`).addEventListener('click', () => {
         this.omniGrab?.sendToHand(mesh, id)
+        this._closeQuickMenu()
+      })
+    })
+    this._positionQuickMenu(mesh)
+    this._ignoreNextDocClick = true
+    setTimeout(() => { this._ignoreNextDocClick = false }, 0)
+  }
+
+  /** Real vault picker — the exact same real, low-risk "menu-driven
+   *  placement, no dragging" pattern as _renderHandPicker above,
+   *  reused directly for OmniTranslator's four vaults. */
+  _renderVaultPicker (mesh) {
+    const sides = [['top', 'Top — Notifications'], ['right', 'Right — Problems'], ['bottom', 'Bottom — Tools'], ['left', 'Left — Solutions']]
+    this._menuEl.innerHTML = `
+      <button class="ttm-action-btn" data-action="back">← Back</button>
+      ${sides.map(([id, label]) => `<button class="ttm-action-btn" data-vault="${id}">⟐ ${label}</button>`).join('')}
+    `
+    this._menuEl.querySelector('[data-action="back"]').addEventListener('click', () => this._renderMainMenu(mesh))
+    sides.forEach(([id]) => {
+      this._menuEl.querySelector(`[data-vault="${id}"]`).addEventListener('click', () => {
+        this.omniTranslator?.addToVault(mesh, id)
         this._closeQuickMenu()
       })
     })

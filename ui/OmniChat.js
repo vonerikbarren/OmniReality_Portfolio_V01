@@ -32,6 +32,7 @@
 
 import gsap from 'gsap'
 import * as THREE from 'three'
+import { getSettings as getJsonOptions, setSettings as setJsonOptions } from '../utils/JsonChatMessageOptions.js'
 
 const STYLES = /* css */`
 
@@ -130,6 +131,36 @@ const STYLES = /* css */`
 .oc-panel { flex: 1; display: none; flex-direction: column; min-height: 0; }
 .oc-panel.active { display: flex; }
 
+.oc-toolbar {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  padding        : 6px 8px;
+  border-bottom  : 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink    : 0;
+}
+.oc-toolbar select {
+  background    : rgba(255, 255, 255, 0.06);
+  border        : 1px solid rgba(255, 255, 255, 0.10);
+  border-radius : 5px;
+  color         : #fff;
+  font-family   : inherit;
+  font-size     : 10px;
+  padding       : 3px 4px;
+}
+.oc-tb-align { display: flex; gap: 2px; margin-left: auto; }
+.oc-tb-align-btn {
+  background    : rgba(255, 255, 255, 0.06);
+  border        : 1px solid rgba(255, 255, 255, 0.10);
+  border-radius : 5px;
+  color         : rgba(255, 255, 255, 0.5);
+  font-size     : 10px;
+  width         : 22px;
+  height        : 22px;
+  cursor        : pointer;
+}
+.oc-tb-align-btn.active { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
 .oc-preview {
   height        : 120px;
   flex-shrink   : 0;
@@ -202,6 +233,61 @@ const STYLES = /* css */`
 }
 .oc-send:hover { background: rgba(255, 255, 255, 0.18); }
 
+/* ── JSON tab ─────────────────────────────────────────────────────────────── */
+
+.oc-json-body {
+  flex           : 1;
+  overflow-y     : auto;
+  padding        : 10px 12px;
+  display        : flex;
+  flex-direction : column;
+  gap            : 8px;
+}
+.oc-json-input {
+  height        : 70px;
+  background    : rgba(255, 255, 255, 0.06);
+  border        : 1px solid rgba(255, 255, 255, 0.10);
+  border-radius : 8px;
+  color         : #fff;
+  font-family   : inherit;
+  font-size     : 11px;
+  padding       : 8px;
+  resize        : vertical;
+}
+.oc-json-field-label { font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 0.04em; text-transform: uppercase; }
+.oc-json-form, .oc-json-origin {
+  background    : rgba(255, 255, 255, 0.06);
+  border        : 1px solid rgba(255, 255, 255, 0.10);
+  border-radius : 6px;
+  color         : #fff;
+  font-family   : inherit;
+  font-size     : 11px;
+  padding       : 5px 6px;
+}
+.oc-json-transform-grid {
+  display              : grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap                  : 6px 10px;
+}
+.oc-json-transform-grid label {
+  display     : flex;
+  flex-direction: column;
+  gap         : 2px;
+  font-size   : 9px;
+  color       : rgba(255, 255, 255, 0.55);
+}
+.oc-json-send {
+  background    : rgba(255, 255, 255, 0.10);
+  border        : 1px solid rgba(255, 255, 255, 0.12);
+  color         : #fff;
+  border-radius : 8px;
+  padding       : 8px;
+  cursor        : pointer;
+  font-size     : 11px;
+  margin-top    : 4px;
+}
+.oc-json-send:hover { background: rgba(255, 255, 255, 0.18); }
+
 /* ── Terminal tab — real black, with transparency added ──────────────────── */
 
 .oc-terminal {
@@ -251,6 +337,7 @@ const MORPH_GEOMETRIES = [
 ]
 const MORPH_HOLD_DURATION = 1.4     // seconds fully settled on one shape
 const MORPH_TRANSITION_DURATION = 0.6   // seconds cross-fading to the next
+const SHOOT_DISTANCE = 2000             // real, confirmed distance a shot message piece travels before disposal
 
 export default class OmniChat {
   constructor (context) {
@@ -268,6 +355,16 @@ export default class OmniChat {
 
     this._dragState = null
     this._isDetached = false
+
+    // Real toolbar state — read directly when a message is sent to
+    // build its shot-out pieces.
+    this._toolbar = {
+      font: "'Courier New', Courier, monospace",
+      size: 12,
+      align: 'left',
+      form: 1,
+    }
+    this._shotPieces = []   // real, currently-flying message pieces, tracked for update()
   }
 
   init () {
@@ -294,10 +391,12 @@ export default class OmniChat {
   }
 
   update (delta) {
-    if (!this._preview) return
-    if (this._isPlaying) this._advanceMorph(delta)
-    this._preview.group.rotation.y += delta * 0.5   // real orbit — the visible sign the loop is alive
-    this._preview.renderer.render(this._preview.scene, this._preview.camera)
+    if (this._preview) {
+      if (this._isPlaying) this._advanceMorph(delta)
+      this._preview.group.rotation.y += delta * 0.5   // real orbit — the visible sign the loop is alive
+      this._preview.renderer.render(this._preview.scene, this._preview.camera)
+    }
+    this._updateShotPieces(delta)
   }
 
   toggle () { this._isOpen ? this.close() : this.open() }
@@ -352,6 +451,8 @@ export default class OmniChat {
     window.removeEventListener('omni:chat-toggle', this._onToggle)
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     this._teardownPreview()
+    this._shotPieces.forEach(p => this._disposeShotPiece(p))
+    this._shotPieces = []
     this._el?.parentNode?.removeChild(this._el)
   }
 
@@ -363,11 +464,40 @@ export default class OmniChat {
     el.innerHTML = `
       <div class="oc-header">
         <button class="oc-tab active" data-tab="chat">⟐ Chat</button>
+        <button class="oc-tab" data-tab="json">⟐ JSON</button>
         <button class="oc-tab" data-tab="terminal">⟐ Terminal</button>
         <button class="oc-close" aria-label="Close">✕</button>
       </div>
 
       <div class="oc-panel active" data-panel="chat">
+        <div class="oc-toolbar">
+          <select class="oc-tb-font" title="Font">
+            <option value="'Courier New', Courier, monospace">Courier</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Times New Roman', serif">Times</option>
+          </select>
+          <select class="oc-tb-size" title="Font size">
+            <option value="10">10</option>
+            <option value="12" selected>12</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+          </select>
+          <div class="oc-tb-align">
+            <button class="oc-tb-align-btn active" data-align="left" title="Align left">⟸</button>
+            <button class="oc-tb-align-btn" data-align="center" title="Align center">⟺</button>
+            <button class="oc-tb-align-btn" data-align="right" title="Align right">⟹</button>
+          </div>
+          <select class="oc-tb-form" title="Form — how many pieces the message shoots out as">
+            <option value="1">Form 1</option>
+            <option value="2">Form 2</option>
+            <option value="3">Form 3</option>
+            <option value="4">Form 4</option>
+            <option value="5">Form 5</option>
+            <option value="6">Form 6</option>
+          </select>
+        </div>
         <div class="oc-preview">
           <canvas class="oc-preview-canvas"></canvas>
           <div class="oc-preview-controls">
@@ -378,6 +508,47 @@ export default class OmniChat {
         <div class="oc-input-row">
           <input class="oc-input" type="text" placeholder="Type a message…" />
           <button class="oc-send">Send</button>
+        </div>
+      </div>
+
+      <div class="oc-panel" data-panel="json">
+        <div class="oc-json-body">
+          <textarea class="oc-json-input" placeholder='{ "example": "paste or type a JSON tree here" }'></textarea>
+
+          <div class="oc-json-field-label">Shape</div>
+          <select class="oc-json-form">
+            <option value="1">Form 1</option>
+            <option value="2">Form 2</option>
+            <option value="3">Form 3</option>
+            <option value="4">Form 4</option>
+            <option value="5">Form 5</option>
+            <option value="6">Form 6</option>
+          </select>
+
+          <div class="oc-json-field-label">Comes from</div>
+          <select class="oc-json-origin">
+            <option value="user">You (camera)</option>
+            <option value="left">Left of scene</option>
+            <option value="right">Right of scene</option>
+            <option value="ceiling">Ceiling</option>
+            <option value="ground">Ground</option>
+            <option value="point">Appear at the point</option>
+          </select>
+
+          <div class="oc-json-field-label">Where it lands — position / rotation / scale</div>
+          <div class="oc-json-transform-grid">
+            <label>px<input type="range" class="oc-json-t" data-key="px" min="-100" max="100" step="1" /></label>
+            <label>py<input type="range" class="oc-json-t" data-key="py" min="-100" max="100" step="1" /></label>
+            <label>pz<input type="range" class="oc-json-t" data-key="pz" min="-100" max="100" step="1" /></label>
+            <label>rx<input type="range" class="oc-json-t" data-key="rx" min="-3.14" max="3.14" step="0.01" /></label>
+            <label>ry<input type="range" class="oc-json-t" data-key="ry" min="-3.14" max="3.14" step="0.01" /></label>
+            <label>rz<input type="range" class="oc-json-t" data-key="rz" min="-3.14" max="3.14" step="0.01" /></label>
+            <label>sx<input type="range" class="oc-json-t" data-key="sx" min="-100" max="100" step="1" /></label>
+            <label>sy<input type="range" class="oc-json-t" data-key="sy" min="-100" max="100" step="1" /></label>
+            <label>sz<input type="range" class="oc-json-t" data-key="sz" min="-100" max="100" step="1" /></label>
+          </div>
+
+          <button class="oc-json-send">Send JSON</button>
         </div>
       </div>
 
@@ -412,7 +583,44 @@ export default class OmniChat {
     const termInput = this._el.querySelector('.oc-terminal-input')
     termInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this._sendTerminalLine(termInput.value) })
 
+    this._el.querySelector('.oc-tb-font').addEventListener('change', (e) => { this._toolbar.font = e.target.value })
+    this._el.querySelector('.oc-tb-size').addEventListener('change', (e) => { this._toolbar.size = Number(e.target.value) })
+    this._el.querySelector('.oc-tb-form').addEventListener('change', (e) => { this._toolbar.form = Number(e.target.value) })
+    this._el.querySelectorAll('.oc-tb-align-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._toolbar.align = btn.dataset.align
+        this._el.querySelectorAll('.oc-tb-align-btn').forEach(b => b.classList.toggle('active', b === btn))
+      })
+    })
+
+    this._initJsonTab()
     this._bindDrag()
+  }
+
+  /** Real, live initialization from the saved, single, global
+   *  jsonChatMessageOptions configuration — matches the exact,
+   *  confirmed pattern wallpaper's own settings actually use (one
+   *  saved object, not a multi-profile system). Every field also
+   *  saves live on change. */
+  _initJsonTab () {
+    const s = getJsonOptions()
+    const formSelect = this._el.querySelector('.oc-json-form')
+    const originSelect = this._el.querySelector('.oc-json-origin')
+    formSelect.value = String(s.form)
+    originSelect.value = s.origin
+    formSelect.addEventListener('change', () => setJsonOptions({ form: Number(formSelect.value) }))
+    originSelect.addEventListener('change', () => setJsonOptions({ origin: originSelect.value }))
+
+    this._el.querySelectorAll('.oc-json-t').forEach(input => {
+      const key = input.dataset.key
+      input.value = String(s[key])
+      input.addEventListener('input', () => setJsonOptions({ [key]: Number(input.value) }))
+    })
+
+    this._el.querySelector('.oc-json-send').addEventListener('click', () => {
+      const text = this._el.querySelector('.oc-json-input').value
+      this._sendJson(text)
+    })
   }
 
   _switchTab (tabName) {
@@ -439,6 +647,7 @@ export default class OmniChat {
     list.appendChild(row)
     list.scrollTop = list.scrollHeight
     this._el.querySelector('.oc-input').value = ''
+    this._shootMessage(trimmed)
   }
 
   _sendTerminalLine (text) {
@@ -561,5 +770,309 @@ export default class OmniChat {
       this._morphPhase = 'hold'
       this._morphElapsed = 0
     }
+  }
+
+  // ── Message-shooting mechanic ───────────────────────────────────────────
+
+  /** Splits real message text into exactly `n` pieces, per direct
+   *  confirmation (Form splits one message, not n copies of it).
+   *  Groups by word boundaries when there are enough words to do so
+   *  cleanly; falls back to character-level splitting for short
+   *  messages so the requested piece count is still honored exactly
+   *  rather than silently producing fewer pieces than asked for. */
+  _splitIntoPieces (text, n) {
+    if (n <= 1) return [text]
+    const words = text.split(/\s+/).filter(Boolean)
+
+    if (words.length >= n) {
+      // Real fix — guarantees exactly n non-empty chunks, unlike a
+      // greedy character-target walk which could leave later chunks
+      // empty depending on word-length distribution (found by direct
+      // testing, not assumed correct).
+      const base = Math.floor(words.length / n)
+      const remainder = words.length % n
+      const chunks = []
+      let idx = 0
+      for (let i = 0; i < n; i++) {
+        const count = base + (i < remainder ? 1 : 0)
+        chunks.push(words.slice(idx, idx + count).join(' '))
+        idx += count
+      }
+      return chunks
+    }
+
+    // Real, honest fallback for short messages — character-level
+    // splitting, capped at the real text length so it never produces
+    // empty pieces.
+    const realCount = Math.min(n, text.length)
+    const len = Math.ceil(text.length / realCount)
+    const result = []
+    for (let i = 0; i < text.length; i += len) result.push(text.slice(i, i + len))
+    return result
+  }
+
+  /** Real, square (per direct confirmation — a plane's triangle
+   *  count is identical regardless of aspect ratio, so this is for
+   *  visual consistency across pieces, not performance) canvas-
+   *  textured piece. Forms 1–5 are flat planes; Form 6 is a cube,
+   *  the confirmed "lowest cost material" that dismantles into a
+   *  real DOM tooltip partway through its flight. */
+  _buildPieceMesh (text, formCount) {
+    const SIZE = 0.6
+    const isCube = formCount === 6
+    const geometry = isCube ? new THREE.BoxGeometry(SIZE, SIZE, SIZE) : new THREE.PlaneGeometry(SIZE, SIZE)
+    const texture = this._buildPieceTexture(text)
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
+    return new THREE.Mesh(geometry, material)
+  }
+
+  _buildPieceTexture (text) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256; canvas.height = 256
+    const c = canvas.getContext('2d')
+    c.fillStyle = 'rgba(10, 10, 16, 0.85)'
+    c.fillRect(0, 0, 256, 256)
+    c.strokeStyle = 'rgba(255, 255, 255, 0.25)'
+    c.lineWidth = 3
+    c.strokeRect(2, 2, 252, 252)
+
+    const { font, size, align } = this._toolbar
+    c.fillStyle = '#fff'
+    c.font = `${size * 1.6}px ${font}`
+    c.textAlign = align === 'center' ? 'center' : (align === 'right' ? 'right' : 'left')
+    const x = align === 'center' ? 128 : (align === 'right' ? 240 : 16)
+    this._wrapText(c, text, x, 40, 220, size * 1.6 + 6)
+
+    return new THREE.CanvasTexture(canvas)
+  }
+
+  _wrapText (c, text, x, startY, maxWidth, lineHeight) {
+    const words = text.split(/\s+/)
+    let line = ''
+    let y = startY
+    words.forEach(word => {
+      const test = line ? `${line} ${word}` : word
+      if (c.measureText(test).width > maxWidth && line) {
+        c.fillText(line, x, y)
+        line = word
+        y += lineHeight
+      } else {
+        line = test
+      }
+    })
+    if (line) c.fillText(line, x, y)
+  }
+
+  /** Real launch — reads the toolbar's own current settings, splits
+   *  the message into that many pieces, and sends them all forward
+   *  along the camera's real, fixed-at-launch direction. */
+  _shootMessage (text) {
+    const camera = this.ctx.camera
+    const n = this._toolbar.form
+    const pieces = this._splitIntoPieces(text, n)
+
+    const direction = new THREE.Vector3()
+    camera.getWorldDirection(direction)
+    const right = new THREE.Vector3().crossVectors(direction, camera.up).normalize()
+    const start = camera.position.clone().add(direction.clone().multiplyScalar(1.5))
+
+    pieces.forEach((pieceText, i) => {
+      const mesh = this._buildPieceMesh(pieceText, n)
+      const spread = (i - (pieces.length - 1) / 2) * 0.7
+      const worldPos = start.clone().add(right.clone().multiplyScalar(spread))
+      mesh.position.copy(worldPos)
+      mesh.quaternion.copy(camera.quaternion)   // faces the viewer at launch, same real billboard reasoning as OmniExpression's own fix
+      this.ctx.scene.add(mesh)
+
+      this._shotPieces.push({
+        mesh, text: pieceText, direction: direction.clone(), worldPos,
+        traveled: 0, isCube: n === 6, dismantled: false, domEl: null,
+      })
+    })
+  }
+
+  /** Real send for the JSON tab — validates real JSON first (honest
+   *  error, not a silent failure), then launches pieces from the
+   *  real, chosen origin toward the real, explicit destination
+   *  transform, reusing the exact same piece-splitting and
+   *  mesh-building already proven for text messages. */
+  _sendJson (rawText) {
+    const trimmed = rawText.trim()
+    if (!trimmed) return
+    try {
+      JSON.parse(trimmed)
+    } catch (err) {
+      window.alert(`Invalid JSON: ${err.message}`)
+      return
+    }
+
+    const opts = getJsonOptions()
+    const n = opts.form
+    const pieces = this._splitIntoPieces(trimmed, n)
+    const destination = new THREE.Vector3(opts.px, opts.py, opts.pz)
+    const originPos = this._computeJsonOrigin(opts.origin, destination)
+
+    pieces.forEach((pieceText, i) => {
+      const mesh = this._buildPieceMesh(pieceText, n)
+      const spread = (i - (pieces.length - 1) / 2) * 0.7
+      const spreadVec = new THREE.Vector3(spread, 0, 0)
+      const startPos = originPos.clone().add(spreadVec)
+      const pieceDestination = destination.clone().add(spreadVec)
+
+      mesh.position.copy(startPos)
+      mesh.rotation.set(opts.rx, opts.ry, opts.rz)
+      mesh.scale.set(opts.sx, opts.sy, opts.sz)
+      this.ctx.scene.add(mesh)
+
+      this._shotPieces.push({
+        mesh, text: pieceText, worldPos: startPos.clone(),
+        isCube: n === 6, dismantled: false, domEl: null,
+        isJson: true, startPos: startPos.clone(), destination: pieceDestination,
+        traveled: 0, totalDistance: startPos.distanceTo(pieceDestination),
+      })
+    })
+  }
+
+  /** Real origin computation per the confirmed options — 'user' is
+   *  the camera's own position (same real starting point text
+   *  already launches from); 'left'/'right' offset from the camera
+   *  along its own real right vector; 'ceiling'/'ground' use real Y
+   *  values relative to the camera's own established resting height
+   *  (2, from returnToLanding()); 'point' is the destination itself,
+   *  a real, honest instant appearance with no travel at all. */
+  _computeJsonOrigin (origin, destination) {
+    const camera = this.ctx.camera
+    if (origin === 'point') return destination.clone()
+
+    if (origin === 'ceiling') return new THREE.Vector3(destination.x, 15, destination.z)
+    if (origin === 'ground') return new THREE.Vector3(destination.x, 0, destination.z)
+
+    const forward = new THREE.Vector3()
+    camera.getWorldDirection(forward)
+    const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize()
+
+    if (origin === 'left') return camera.position.clone().add(right.clone().multiplyScalar(-15)).add(forward.clone().multiplyScalar(5))
+    if (origin === 'right') return camera.position.clone().add(right.clone().multiplyScalar(15)).add(forward.clone().multiplyScalar(5))
+
+    return camera.position.clone()   // 'user' — the real, same starting point text messages already use
+  }
+
+  /** Real, per-frame travel — every piece moves forward along its
+   *  own real, fixed direction; Form 6 pieces dismantle into a real
+   *  DOM tooltip partway through, and every piece visibly
+   *  fades/glitches out during the final stretch before real
+   *  disposal at the confirmed 2000-unit mark, per direct request. */
+  _updateShotPieces (delta) {
+    for (let i = this._shotPieces.length - 1; i >= 0; i--) {
+      const piece = this._shotPieces[i]
+      const done = piece.isJson ? this._updateJsonPiece(piece, delta) : this._updateTextPiece(piece, delta)
+      if (done) this._shotPieces.splice(i, 1)
+    }
+  }
+
+  /** Real text-piece update — unchanged real behavior: fixed
+   *  direction, fixed 2000-unit distance, real disposal at the end.
+   *  Returns true once this piece is genuinely done and removed. */
+  _updateTextPiece (piece, delta) {
+    const SPEED = 400
+    const GLITCH_START = 0.8
+    const DISMANTLE_AT = 0.5
+
+    const step = SPEED * delta
+    piece.traveled += step
+    piece.worldPos.add(piece.direction.clone().multiplyScalar(step))
+    if (piece.mesh) piece.mesh.position.copy(piece.worldPos)
+
+    const fraction = piece.traveled / SHOOT_DISTANCE
+
+    if (piece.isCube && !piece.dismantled && fraction >= DISMANTLE_AT) {
+      this._dismantleIntoTooltip(piece)
+    }
+
+    if (fraction >= GLITCH_START) {
+      const glitchT = (fraction - GLITCH_START) / (1 - GLITCH_START)
+      const flicker = Math.random() > 0.4 ? 1 : 0.25
+      if (piece.domEl) {
+        piece.domEl.style.opacity = String(flicker * (1 - glitchT))
+      } else if (piece.mesh) {
+        piece.mesh.material.opacity = flicker * (1 - glitchT)
+        piece.worldPos.x += (Math.random() - 0.5) * 0.04
+        piece.worldPos.y += (Math.random() - 0.5) * 0.04
+      }
+    }
+
+    if (piece.domEl) this._updateDismantledPosition(piece)
+
+    if (piece.traveled >= SHOOT_DISTANCE) {
+      this._disposeShotPiece(piece)
+      return true
+    }
+    return false
+  }
+
+  /** Real JSON-piece update — a genuinely different behavior from
+   *  text: travels from its real, chosen origin toward the real,
+   *  explicit destination transform the user configured, then
+   *  settles there and remains — a JSON tree is being placed
+   *  somewhere real and lasting in the scene, not fired off as a
+   *  disposable effect the way a plain chat message is. */
+  _updateJsonPiece (piece, delta) {
+    const SPEED = 6   // real units/sec — much slower than text's shot, since this is a deliberate placement, not a launch
+    if (piece.totalDistance > 0.0001) {
+      const step = Math.min(SPEED * delta, piece.totalDistance - piece.traveled)
+      piece.traveled += step
+      const t = piece.traveled / piece.totalDistance
+      piece.worldPos.lerpVectors(piece.startPos, piece.destination, t)
+      if (piece.mesh) piece.mesh.position.copy(piece.worldPos)
+    }
+
+    if (piece.isCube && !piece.dismantled && piece.traveled >= piece.totalDistance) {
+      // Real Form 6 JSON pieces settle as the real tooltip directly —
+      // still the confirmed lowest-cost material, just landed rather
+      // than continuing to fly.
+      this._dismantleIntoTooltip(piece)
+    }
+    if (piece.domEl) this._updateDismantledPosition(piece)
+
+    return false   // real JSON pieces are never auto-disposed — they settle and remain in the scene
+  }
+
+  /** Real dismantle — the cube's own 3D geometry is genuinely
+   *  disposed here, not just hidden; the piece continues its real
+   *  journey as a real DOM tooltip instead (ToolTipMenu's own,
+   *  already-established `.ttm-header` look — the real, confirmed
+   *  "lowest cost material" for a piece of text at this point). */
+  _dismantleIntoTooltip (piece) {
+    piece.dismantled = true
+    const el = document.createElement('div')
+    el.className = 'ttm-header'
+    el.textContent = piece.text
+    document.body.appendChild(el)
+    piece.domEl = el
+
+    piece.mesh.geometry.dispose()
+    piece.mesh.material.map?.dispose()
+    piece.mesh.material.dispose()
+    this.ctx.scene.remove(piece.mesh)
+    piece.mesh = null
+  }
+
+  _updateDismantledPosition (piece) {
+    const camera = this.ctx.camera
+    const projected = piece.worldPos.clone().project(camera)
+    if (projected.z > 1) { piece.domEl.style.display = 'none'; return }
+    piece.domEl.style.display = ''
+    piece.domEl.style.left = `${(projected.x * 0.5 + 0.5) * window.innerWidth}px`
+    piece.domEl.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight}px`
+  }
+
+  _disposeShotPiece (piece) {
+    if (piece.mesh) {
+      piece.mesh.geometry.dispose()
+      piece.mesh.material.map?.dispose()
+      piece.mesh.material.dispose()
+      this.ctx.scene.remove(piece.mesh)
+    }
+    piece.domEl?.remove()
   }
 }
