@@ -84,6 +84,8 @@ import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelector
 import OmniBotProgram from './systems/OmniBotProgram.js'
 import OmniProgramPanel from './ui/OmniProgramPanel.js'
 import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
+import OmniEmotionParticles from './modules/OmniEmotionParticles.js'
+import Dev_FPS_Exp_ListOfEmotions from './ui/Dev_FPS_Exp_ListOfEmotions.js'
 import { registerOmniCommandTerminalCommands } from './systems/OmniCommandTerminalCommands.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
@@ -329,6 +331,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniProgramPanel(omniBotProgram))
   base.addModule(new OmniCommandTerminalPanel(base.context, omniNode))
   registerOmniCommandTerminalCommands(omniGrab)
+  const omniEmotionParticles = new OmniEmotionParticles(base.context)
+  base.addModule(omniEmotionParticles)
+  base.addModule(new Dev_FPS_Exp_ListOfEmotions(omniEmotionParticles))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -478,6 +483,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         1: { label: 'OmniCommandTerminal', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniCommandTerminal' } })) },
         2: { label: 'OmniProgram', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniProgram' } })) },
         3: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
+        4: { label: 'Dev_FPS_Exp_ListOfEmotions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐Dev_FPS_Exp_ListOfEmotions' } })) },
       },
     },
     {

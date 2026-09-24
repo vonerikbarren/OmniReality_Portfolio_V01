@@ -1509,6 +1509,41 @@ panel itself listens for the same real nav-select label regardless
 of which menu dispatches it, so no changes were needed to
 InputMonitorPanel.js itself, only to which button triggers it.
 
+### V126
+OmniEmotionParticles built — a real, continuous, camera-attached
+particle system reflecting the user's current emotional/UX state,
+confirmed as a genuinely different job from StateTransitionParticles
+(that one's own header explicitly says it assists state changes,
+not a continuous mood display — checked directly before building
+this as its own, separate module rather than extending that one).
+Config-driven from a new `data/OmniEmotionStates.js`: 9 states named
+directly (Normal Walking, Dash, Scared, Mad, Sad, Happy, Peace,
+Chaos, Thinking/Passive), 4 more proposed per direct invitation
+("any other you feel like would be necessary") — Confused, Excited,
+Focused, and Alert (the last one system-level rather than strictly
+emotional, but the same real particle mechanism genuinely fits
+error/failure feedback). Normal Walking and Dash both genuinely
+scale off StepMarker's own real speed, the same real signal
+StateTransitionParticles' own Trail already uses — standing still
+produces few/no particles, real movement produces real ones. Seven
+real, distinct motion types implemented (drift, scatter, pulse,
+sink, bounce, orbit, chaos, converge, flash) so each state reads
+differently, not just differently colored. Real, smooth crossfade on
+state change rather than a hard cut. Reuses the exact same proven
+techniques as StateTransitionParticles (pooled BufferGeometry,
+additive-blended glow texture) rather than a second, parallel
+particle approach.
+
+Dev_FPS_Exp_ListOfEmotions built alongside it — real Dev04 panel,
+one button per state for live testing, named exactly as given.
+
+14 checks, all passing — two real test bugs caught and fixed along
+the way: dash needed the same movement-state exclusion as
+normalWalking in the "must spawn particles" check (both are
+correctly speed-driven, not always-on), and a real, positive check
+was added confirming movement genuinely does produce particles for
+those two states, rather than just excluding them silently.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
