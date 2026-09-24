@@ -81,6 +81,10 @@ import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniVerticalMeter from './ui/OmniVerticalMeter.js'
 import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
 import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
+import OmniBotProgram from './systems/OmniBotProgram.js'
+import OmniProgramPanel from './ui/OmniProgramPanel.js'
+import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
+import { registerOmniCommandTerminalCommands } from './systems/OmniCommandTerminalCommands.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
@@ -320,6 +324,11 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)
   base.addModule(omniRealityGridPointSelector)
   base.addModule(new OmniRealityGridPointSelectorPanel(omniRealityGridPointSelector))
+  const omniBotProgram = new OmniBotProgram(base.context, omniNode)
+  base.addModule(omniBotProgram)
+  base.addModule(new OmniProgramPanel(omniBotProgram))
+  base.addModule(new OmniCommandTerminalPanel(base.context, omniNode))
+  registerOmniCommandTerminalCommands(omniGrab)
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -460,7 +469,16 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
       // faked/stubbed check — every dev tool slot is visible to
       // anyone who can open this panel until that real system exists.
       id: 'developer', navLabel: '⟐Developer', title: '⟐Developer', prefix: 'Dev', iconLabel: '⟐D',
-      specialSlots: {},
+      specialSlots: {
+        // Real, honest placeholder — confirmed directly that
+        // OmniCommandTerminal has no real, openable panel anywhere
+        // yet (only its own command-language design doc and the
+        // separate TerminalTunnel visual). Labeled, not wired, so
+        // this doesn't pretend a working tool sits behind it.
+        1: { label: 'OmniCommandTerminal', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniCommandTerminal' } })) },
+        2: { label: 'OmniProgram', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniProgram' } })) },
+        3: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
+      },
     },
     {
       id: 'admin', navLabel: '⟐Admin', title: '⟐Admin', prefix: 'Admin', iconLabel: '⟐A',
@@ -468,7 +486,6 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         1: { label: 'OmniAdminSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐mniAdminSettings' } })) },
         2: { label: 'OmniParticleSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniParticleSettings' } })) },
         3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
-        4: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
         5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
         6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
         7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },

@@ -295,11 +295,20 @@ separate reward mechanism invented just for this.
 
 ## Status
 
-Documentation only. Nothing in this file is built. The tunnel-
-shooting mechanic is fully specified and low-risk to build whenever
-picked up (a real, contained, well-understood piece). The command
-language's core shape (the `⟐`-prefix rule, the registry pattern, the
-seven-command starting set already hinted at in the existing code) is
-proposed and reasoned through, but the three open questions above are
-real, unresolved design decisions, not implementation details —
-worth a real answer before this becomes buildable work.
+Part 2 (the command language) built (V122): the ⟐ grammar
+(`utils/CommandParser.js`), the shared registry
+(`utils/CommandRegistry.js`), the real terminal panel
+(`ui/OmniCommandTerminalPanel.js`, wired to Dev01), and the real,
+seven-command starting set from the table above
+(`systems/OmniCommandTerminalCommands.js`), each translating typed
+text into the exact same real event a button click already
+triggers. The three open questions were each given a real, stated
+default rather than left blocking: help stays flat (no categories —
+only seven commands exist); cd does maintain a real, persistent
+"current context," the same shell-cwd shape the design already drew
+the analogy to; failed commands get a real, visible error echo in
+the output rather than silence. 18 checks, all passing.
+
+Part 1 (the tunnel-shooting visual) and Part 3 (⟐ as an OmniSense/
+OmniKeys-level global stabilizer, OmniScript's own symbol shorthand)
+remain real, deliberately separate, not-yet-started work.

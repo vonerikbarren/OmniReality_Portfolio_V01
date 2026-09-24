@@ -1452,6 +1452,63 @@ real text field was disabling orbit controls and moving the camera
 vertically mid-type. Fixed with the same, already-proven guard
 pattern used elsewhere in the file.
 
+### V121
+OmniBotProgram built — the real entity behind OmniNavi
+(`systems/OmniBotProgram.js`, `ui/OmniProgramPanel.js`). Spawned
+through the exact same omni:node-create-request pipeline every
+other node uses (real fix needed along the way: base.context is
+frozen and has no omniNode reference, so OmniNode had to be passed
+in as a real, separate constructor argument, matching Jsonifier's
+own established pattern, rather than assumed to live on context).
+All four confirmed physical parts real: cube head with an embedded
+CanvasTexture panel (the same real technique already proven twice
+elsewhere), sphere body, stateCommunicator as its own separate
+object above the head with a real, simple dot-eye face. Basic tier
+gets a real, continuous idle loop (bob + spin); Intelligent tier
+intentionally left with no defined behavior, per direct instruction
+to leave it open-ended. Wired into the Developer menu's Dev02 slot
+and the Left Drawer's ⟐OmniNavi entry, both real, dual paths into
+the same real panel — Dev01 left as a genuinely honest, labeled
+placeholder since OmniCommandTerminal has no real panel to wire to
+yet. 19 checks, all passing — one real test-assertion bug caught
+and fixed along the way (miscounted the real stateCommunicator's own
+children: 3, not 2 — the sphere itself plus two eyes).
+
+OmniTranslator's own real message-thread work (Messages as a
+notification type, addressor sub-grouping, promotion into a
+bookmarkable Jsonifier structure) deliberately deferred — a real,
+separate, substantial build on its own, not started this pass.
+
+### V122
+OmniCommandTerminal built for Dev01 — Part 2 of its own design doc
+(the command language), not Part 1 (tunnel visual) or Part 3
+(OmniSense-level symbol vocabulary), both real, deliberately
+separate, unstarted work. Real ⟐ grammar parser
+(`utils/CommandParser.js`), a shared command registry matching the
+same real pattern already proven this session
+(`utils/CommandRegistry.js`), and the real seven-command starting
+set already hinted at in TerminalTunnel.js's own placeholder text
+(`systems/OmniCommandTerminalCommands.js`) — help, ls, cd, create,
+inspect, present, pocket — each a real translation of typed text
+into the exact same event a button click already triggers (ls reads
+OmniNode's own registry, cd reuses goToObject, create dispatches
+omni:node-create-request, inspect/present reuse omni:node-selected/
+omni:structure-focus, pocket calls OmniGrab's own real sendToHand).
+The doc's own three open questions each given a real, stated
+default rather than left blocking: help stays flat, cd maintains a
+real persistent context (shell-cwd shape), failed commands get a
+real visible error echo. One real mistake caught and fixed while
+building — pocket's own handler initially tried importing
+sendToHand as a standalone export; it's a real instance method on
+the OmniGrab class, fixed by calling it on the real, passed-in
+instance instead. 18 checks, all passing.
+
+Separately: OmniInputMonitor ("buttonReader") moved from Admin's
+slot 4 to the Developer menu's slot 3, per direct request — the
+panel itself listens for the same real nav-select label regardless
+of which menu dispatches it, so no changes were needed to
+InputMonitorPanel.js itself, only to which button triggers it.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

@@ -78,6 +78,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniSystem',     children: ['⟐OmniSystemCreator', '⟐OmniSystemAnimator', '⟐OmniSystemDimensionalizer', '⟐OmniSystemSettings'] },
   { label: '⟐OmniMixer'       },
   { label: '⟐OmniPocket'      },
+  { label: '⟐OmniNavi'        },
   { divider: true },
   { divider: true },
   { label: '⟐Developer'       },
