@@ -124,6 +124,8 @@ const EDGE_BASE_RADIUS = 0.05    // radius at depth 0 (root-level connections)
 const EDGE_MIN_RADIUS  = 0.012   // floor — thinnest an edge can ever get
 const EDGE_TAPER       = 0.72    // multiplier applied per additional depth level
 const GENEALOGY_HIGHLIGHT_COLOR = 0xb99cff   // persistent Ξ selection highlight
+const CLASSIFICATION_TRUTH_COLOR = 0x4caf50   // real, verifiable, reference-style data
+const CLASSIFICATION_FALSE_COLOR = 0xff4444   // false/biased/fictional data
 
 // ── Primitive color map ───────────────────────────────────────────────────────
 
@@ -1576,7 +1578,10 @@ export default class OmniNode {
     // until a page reload routed it through the correct restore path
     // instead.
     const color  = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
-    const mesh   = this._buildMesh(data.geometry, color, data.text)
+    const mesh   = this._buildMesh(data.geometry, color, data.text, {
+      metalness: data.metalness, roughness: data.roughness,
+      emissive: data.emissive, emissiveIntensity: data.emissiveIntensity,
+    })
 
     mesh.position.set(...data.position)
     if (data.rotation) mesh.rotation.set(...data.rotation)
@@ -1593,6 +1598,24 @@ export default class OmniNode {
 
     this.ctx.scene.add(mesh)
     this._nodes.set(data.id, { data, mesh })
+
+    // Real, persistent classification highlight — truth/neutral/
+    // false-fictional, per direct request ("primary identifiers,"
+    // "seen from a distance"). Reuses the exact same real technique
+    // already proven for genealogy outlines (a backface-only,
+    // slightly larger duplicate sharing the same geometry), just
+    // persistent from creation rather than selection-triggered.
+    // Neutral gets no highlight at all — it's the honest default,
+    // not a a third, competing color.
+    if (data.classification === 'truth' || data.classification === 'false') {
+      const highlightColor = data.classification === 'truth' ? CLASSIFICATION_TRUTH_COLOR : CLASSIFICATION_FALSE_COLOR
+      const highlight = new THREE.Mesh(
+        mesh.geometry,
+        new THREE.MeshBasicMaterial({ color: highlightColor, side: THREE.BackSide, transparent: true, opacity: 0.7 })
+      )
+      highlight.scale.setScalar(1.12)
+      mesh.add(highlight)
+    }
 
     // If a space/domain is currently "entered", new objects belong to it —
     // re-parent into that space's container mesh. .attach() (rather than
@@ -1832,7 +1855,7 @@ export default class OmniNode {
    * @param {number} color   — hex integer
    * @returns {THREE.Mesh | THREE.LineSegments}
    */
-  _buildMesh (geoType, color, text) {
+  _buildMesh (geoType, color, text, materialOverrides = {}) {
     if (geoType === 'DimensionalText') return this._buildTextSprite(text ?? '', color)
 
     const factory = GEOMETRY_DEFS[geoType] ?? GEOMETRY_DEFS.SphereGeometry
@@ -1845,10 +1868,10 @@ export default class OmniNode {
 
     const mat = new THREE.MeshStandardMaterial({
       color,
-      roughness   : 0.35,
-      metalness   : 0.08,
-      emissive    : new THREE.Color(0x000000),
-      emissiveIntensity: 1,
+      roughness   : materialOverrides.roughness   ?? 0.35,
+      metalness   : materialOverrides.metalness   ?? 0.08,
+      emissive    : new THREE.Color(materialOverrides.emissive ?? 0x000000),
+      emissiveIntensity: materialOverrides.emissiveIntensity ?? 1,
     })
     return new THREE.Mesh(geo, mat)
   }
@@ -2418,6 +2441,11 @@ export default class OmniNode {
         textSequence: d.textSequence ?? null,
         font: d.font ?? 'Courier New, monospace',
         skipAutoSelect: d.skipAutoSelect ?? false,
+        metalness: d.metalness,
+        roughness: d.roughness,
+        emissive: d.emissive,
+        emissiveIntensity: d.emissiveIntensity,
+        classification: d.classification ?? 'neutral',
       })
     }
 

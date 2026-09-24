@@ -99,14 +99,12 @@ const STYLES = /* css */`
 
 /* ── Right — Problems / Risks ────────────────────────────────────────────── */
 .ot-vault--right {
-  /* Real fix — was right:14px, width:92px, top:90px, bottom:220px,
-     directly overlapping both the top-right and bottom-right Hand
-     corners (each a real ~102px square flush against this same
-     edge). Narrowed and pulled in from the edge to clear their real
-     width, and pulled top/bottom in to clear their real height too,
-     with real margin, not a bare-minimum squeeze. */
-  top: 170px; right: 110px; bottom: 174px;
-  width: 76px;
+  /* Real fix — same real reason and geometry as the Left vault,
+     mirrored: top-right/bottom-right Hands share the exact same
+     real BAR_H/DOCK_H/CELL/GAP constants, so the same 150px/154px
+     bounds apply here too, flush against the right edge instead. */
+  top: 150px; right: 0; bottom: 154px;
+  width: 90px;
   border-radius: 10px;
 }
 
@@ -120,11 +118,16 @@ const STYLES = /* css */`
 
 /* ── Left — Solutions / Algorithms ───────────────────────────────────────── */
 .ot-vault--left {
-  /* Real fix — same real reason as the Right vault, mirrored: was
-     directly overlapping both the top-left and bottom-left Hand
-     corners. */
-  top: 170px; left: 110px; bottom: 174px;
-  width: 76px;
+  /* Real fix — moved out of the StartHUD's own inset:7% region
+     (the previous top/bottom values were arbitrary, landing near
+     screen center). Recomputed from Hand.js's own real geometry:
+     the top-left Hand's bottom edge sits at BAR_H(48) +
+     2*CELL+GAP(102) = 150px; the bottom-left Hand's top edge sits
+     at DOCK_H(52) + 102 = 154px from the viewport bottom. Sits
+     directly in that real gap, flush against the same left edge
+     both Hands already use. */
+  top: 150px; left: 0; bottom: 154px;
+  width: 90px;
   border-radius: 10px;
 }
 `

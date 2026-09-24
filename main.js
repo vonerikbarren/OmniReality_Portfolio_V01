@@ -78,6 +78,7 @@ import TerminalSettingsPanel from './ui/TerminalSettingsPanel.js'
 import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
 import OmniRealityGridSelector from './systems/OmniRealityGridSelector.js'
 import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
+import OmniVerticalMeter from './ui/OmniVerticalMeter.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
@@ -313,6 +314,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniRealityGridSelector = new OmniRealityGridSelector(base.context)
   base.addModule(omniRealityGridSelector)
   base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
+  base.addModule(new OmniVerticalMeter(base.context))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -480,6 +482,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         },
         11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
         12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
+        13: { label: 'OmniVerticalMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniVerticalMeter' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -578,6 +581,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniStartHUD = new OmniStartHUD(base.context)
   base.addModule(omniStartHUD)
   omniStartHUD.setOmniPocket(omniPocket)
+  omniStartHUD.setOmniNode(omniNode)
+  omniStartHUD.setOmniRealityGridSelector(omniRealityGridSelector)
 
   ThemeManager.initTheme()
 

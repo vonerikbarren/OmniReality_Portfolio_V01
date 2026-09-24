@@ -18,6 +18,7 @@
  */
 
 import * as THREE from 'three'
+import { getThemeAppearance } from '../utils/OmniThemes.js'
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
@@ -94,6 +95,10 @@ const STYLES = `
 .oj-ctrl:hover { background: rgba(255,255,255,0.1); color: var(--oj-text); }
 
 .oj-body { flex: 1 1 auto; overflow-y: auto; padding: 10px 12px; }
+.oj-theme-select {
+  width: 100%; margin-bottom: 6px; background: rgba(255,255,255,0.06); border: 1px solid var(--oj-border);
+  border-radius: 5px; color: var(--oj-text); font-family: inherit; font-size: 10.5px; padding: 5px 7px;
+}
 .oj-text-input {
   width: 100%; height: 56px; resize: vertical; margin-bottom: 8px;
   background: rgba(255,255,255,0.04); border: 1px solid var(--oj-border);
@@ -149,6 +154,7 @@ export default class OmniJsonifier {
     this._el = null
     this._isOpen = false
     this._tree = null        // the real, parsed tree — { key, value, children: [...], nodeId, isOpen, meshCreated }
+    this._activeTheme = 'grey'   // real, per-instance, chosen before the JSON is submitted
     this._tickers = []       // real WordTicker instances for multi-word leaves, live across open/close
     this._landingPlatform = null   // the root's own real landing platform mesh, disposed and recreated on each fresh JSON load
     this._onNavSelect = null
@@ -391,11 +397,16 @@ export default class OmniJsonifier {
    *  identifier (unlike nodeId, which is random and regenerates on
    *  every reload) — the actual mechanism real persistence depends
    *  on, since open/layout state needs something durable to key off. */
-  _buildTreeNode (key, value, position, parentNodeId, path) {
+  _buildTreeNode (key, value, position, parentNodeId, path, depth = 0, inheritedClassification = 'neutral') {
     const nodeId = generateId()
     const isLeaf = value === null || typeof value !== 'object'
+    // Real, reserved key — read directly from the user's own JSON at
+    // this level, per direct request. Falls back to whatever the
+    // nearest real ancestor specified (or 'neutral' at the root)
+    // when this level doesn't declare its own.
+    const classification = (!isLeaf && value?._classification) ? value._classification : inheritedClassification
     const node = {
-      nodeId, key, value, position, parentNodeId, path,
+      nodeId, key, value, position, parentNodeId, path, depth, classification,
       isLeaf, isOpen: false, meshCreated: false, children: [],
       isChartEligible: false, seriesData: null,
       // Real, per-node — 'tree' (default) | 'linear-vertical' |
@@ -406,10 +417,15 @@ export default class OmniJsonifier {
       layoutMode: parentNodeId === null ? this._defaultRootLayoutMode : 'tree',
     }
     if (!isLeaf) {
-      const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
+      // The reserved _classification key itself is real metadata,
+      // not real content — excluded here so it never becomes a
+      // spurious child node of its own.
+      const entries = Array.isArray(value)
+        ? value.map((v, i) => [String(i), v])
+        : Object.entries(value).filter(([k]) => k !== '_classification')
       node.children = entries.map(([childKey, childValue], i) => {
         const childPos = computeChildPosition(position, i, entries.length, node.layoutMode)
-        return this._buildTreeNode(childKey, childValue, new THREE.Vector3(childPos.x, childPos.y, childPos.z), nodeId, `${path}.${childKey}`)
+        return this._buildTreeNode(childKey, childValue, new THREE.Vector3(childPos.x, childPos.y, childPos.z), nodeId, `${path}.${childKey}`, depth + 1, classification)
       })
       this._detectChartEligibility(node)
     }
@@ -438,13 +454,20 @@ export default class OmniJsonifier {
     const words = node.isLeaf && typeof node.value === 'string' ? node.value.trim().split(/\s+/).filter(Boolean) : null
     const isTickerLeaf = words && words.length > 1
 
+    const appearance = getThemeAppearance(this._activeTheme, node.depth)
+
     window.dispatchEvent(new CustomEvent('omni:node-create-request', {
       detail: {
         id: node.nodeId,
         label: node.key,
         geometry: node.isChartEligible ? 'BoxGeometry' : (node.isLeaf ? 'SphereGeometry' : 'OctahedronGeometry'),
         primitive: 'objective',
-        color: node.isChartEligible ? '#ffb347' : (node.isLeaf ? '#8cff8c' : '#7fd8ff'),
+        color: appearance.color,
+        metalness: appearance.metalness,
+        roughness: appearance.roughness,
+        emissive: appearance.emissive,
+        emissiveIntensity: appearance.emissiveIntensity,
+        classification: node.classification,
         position: [node.position.x, node.position.y, node.position.z],
         rotation: [0, 0, 0],
         scale: node.isLeaf ? [0.22, 0.22, 0.22] : [0.3, 0.3, 0.3],
@@ -697,6 +720,11 @@ export default class OmniJsonifier {
         </div>
       </div>
       <div class="oj-body">
+        <select class="oj-theme-select" id="oj-theme-select" title="Chosen before the data is submitted — sets this tree's real color/material palette">
+          <option value="black">⬢ Black &amp; Metallic</option>
+          <option value="white">⬢ White, Glowy &amp; Metallic</option>
+          <option value="grey">⬢ Grey &amp; Metallic</option>
+        </select>
         <textarea class="oj-text-input" id="oj-json-input" placeholder='{"example": {"nested": "value"}}'></textarea>
         <div class="oj-toolbar-row">
           <button class="oj-create-btn" id="oj-create">Build Tree</button>
@@ -710,6 +738,10 @@ export default class OmniJsonifier {
 
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
+    el.querySelector('#oj-theme-select').value = this._activeTheme
+    el.querySelector('#oj-theme-select').addEventListener('change', (e) => {
+      this._activeTheme = e.target.value
+    })
     el.querySelector('#oj-create').addEventListener('click', () => {
       this._loadJson(el.querySelector('#oj-json-input').value)
     })

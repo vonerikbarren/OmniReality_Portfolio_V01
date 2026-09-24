@@ -37,6 +37,7 @@ export default class OmniRealityGridSelector {
     this._isSelecting = false
     this._selectedCells = []   // real, current, unsaved selection — [{cx, cz}]
     this._highlightMeshes = new Map()   // real "cx,cz" -> real THREE.Mesh
+    this._boundaryMeshes = new Map()   // real context id -> real THREE.LineSegments
     this._contexts = loadContexts()
     this._onClick = null
   }
@@ -54,7 +55,8 @@ export default class OmniRealityGridSelector {
 
   destroy () {
     this.ctx.renderer.domElement.removeEventListener('click', this._onClick)
-    this._clearHighlights()
+    this._clearHighlights();
+    [...this._boundaryMeshes.keys()].forEach(id => this._removeBoundary(id))
   }
 
   startSelecting () { this._isSelecting = true }
@@ -73,18 +75,24 @@ export default class OmniRealityGridSelector {
   }
 
   /** Real load — clears the current real highlights and displays a
-   *  previously-saved context's own real cells instead. */
+   *  previously-saved context's own real cells instead, plus a
+   *  real, grid-patterned wireframe boundary around the whole
+   *  region (more vertices than a plain box outline, so it
+   *  genuinely reads as a grid — matches the same real region
+   *  shown on Q4's minimap, per direct "both" request). */
   loadContext (id) {
     const ctx = this._contexts[id]
     if (!ctx) return
     this._clearHighlights()
     this._selectedCells = [...ctx.cells]
     this._selectedCells.forEach(cell => this._addHighlight(cell))
+    this._addBoundary(id, ctx.cells)
   }
 
   deleteContext (id) {
     delete this._contexts[id]
     saveContexts(this._contexts)
+    this._removeBoundary(id)
   }
 
   clearSelection () {
@@ -157,5 +165,45 @@ export default class OmniRealityGridSelector {
       const [cx, cz] = key.split(',').map(Number)
       this._removeHighlight({ cx, cz })
     })
+  }
+
+  /** Real, in-scene grid boundary around a whole staged context —
+   *  "like a box but more vertices so it looks like an actual grid,"
+   *  per direct request. A subdivided wireframe (segments matching
+   *  the real cell count) rather than a plain 12-edge box outline,
+   *  so each real cell boundary is visible on the boundary itself,
+   *  not just its outer corners. */
+  _addBoundary (id, cells) {
+    this._removeBoundary(id)
+    if (cells.length === 0) return
+
+    const minCx = Math.min(...cells.map(c => c.cx)), maxCx = Math.max(...cells.map(c => c.cx))
+    const minCz = Math.min(...cells.map(c => c.cz)), maxCz = Math.max(...cells.map(c => c.cz))
+    const widthCells = maxCx - minCx + 1
+    const depthCells = maxCz - minCz + 1
+    const width = widthCells * CELL_SIZE
+    const depth = depthCells * CELL_SIZE
+    const height = CELL_SIZE   // matches the real cell size, for visual consistency
+
+    const geometry = new THREE.BoxGeometry(width, height, depth, widthCells, 1, depthCells)
+    const wireframe = new THREE.WireframeGeometry(geometry)
+    const mesh = new THREE.LineSegments(wireframe, new THREE.LineBasicMaterial({ color: '#ffee00', transparent: true, opacity: 0.5 }))
+    mesh.position.set(
+      (minCx + widthCells / 2) * CELL_SIZE,
+      FLOOR_Y + height / 2,
+      (minCz + depthCells / 2) * CELL_SIZE,
+    )
+
+    this.ctx.scene.add(mesh)
+    this._boundaryMeshes.set(id, mesh)
+  }
+
+  _removeBoundary (id) {
+    const mesh = this._boundaryMeshes.get(id)
+    if (!mesh) return
+    mesh.geometry.dispose()
+    mesh.material.dispose()
+    this.ctx.scene.remove(mesh)
+    this._boundaryMeshes.delete(id)
   }
 }

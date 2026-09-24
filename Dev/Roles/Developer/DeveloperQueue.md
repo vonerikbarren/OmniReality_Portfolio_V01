@@ -364,17 +364,12 @@ waiting for exactly this kind of content. Rewarding real OmniScript
 use is proposed as a natural fit for Developer Queue item 13
 (OmniPlayer's own planned badge system) rather than a new mechanism.
 
-## 27. OmniPocket — genuinely needed next, real future notes only
+## 27. OmniPocket — RESOLVED, built in V108
 
-Confirmed as the real next priority after OmniLog's own fixes and
-additions — explicitly not attempted this pass, per direct
-instruction ("just future notes for now"). Worth being precise about
-its real, current state before it's picked up: `systems/
-OmniPocket.js` already exists as a real, substantial system, not a
-concept to design from scratch — getting it "up and running" likely
-means real integration/wiring work, not a new build. Worth a direct,
-real read of that file first, rather than assuming its current scope
-or gaps, before any real work begins on it.
+Was "genuinely needed next, future notes only" when this entry was
+written. Since built and shipped: real Extract/Shortcuts/Attach
+system live, wired into the Left Drawer, Admin, and Q2's own pocket
+manager. Left here only as a record, not an open item.
 
 ## 28. OmniProduct index — pending, from the person's own side
 
@@ -385,10 +380,13 @@ The person will index/ID these themselves and hand back a real,
 finished list — nothing to build here until that list exists. Real
 placeholder only, so this doesn't get lost.
 
-## 29. Coordinate grid / altitude ruler — real future idea, not built
+## 29. Coordinate grid / altitude ruler — PARTIALLY RESOLVED
 
-A real navigation aid for the floor grid plus altitude, so getting
-around is easier to judge at a glance. Confirmed scope: real,
+Altitude half built and shipped: OmniVerticalMeter, a real Admin
+item, live camera-height readout on a fixed screen-edge scale.
+
+Still open: the floor half — a real coordinate grid/ruler over the
+ground plane itself for placement. Confirmed scope unchanged: real,
 dev/admin access by default, opened up to real visitors specifically
 through OmniPlayer, "which will give them more freedom."
 

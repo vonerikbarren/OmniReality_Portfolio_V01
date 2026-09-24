@@ -115,7 +115,27 @@ const STYLES = /* css */`
   align-items     : center;
   justify-content : center;
   pointer-events  : none;   /* the box below re-enables it */
+  transition      : opacity 0.2s ease;
 }
+/* Real quadrant maximize — expands to fill this same, bounded
+   #omni-start-hud container (never the full browser viewport), so
+   the rest of the real UI (drawer, Admin, etc.) stays reachable
+   while one quadrant is maximized, per direct request. */
+.osh-quadrant.is-maximized {
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100%; height: 100%; z-index: 5;
+}
+.osh-quadrant.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.osh-maximize-btn {
+  position: absolute; top: 4px; right: 4px; z-index: 6; pointer-events: auto;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px; color: rgba(255,255,255,0.6); font-size: 11px;
+  width: 20px; height: 20px; cursor: pointer; line-height: 1;
+}
+.osh-maximize-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+.osh-panel--minimap { display: flex; flex-direction: column; width: 100%; height: 100%; pointer-events: auto; }
+.osh-minimap-header { font-size: 10px; color: rgba(255,255,255,0.7); padding: 4px 8px; font-family: 'Courier New', Courier, monospace; }
+.osh-minimap-canvas { flex: 1; width: 100%; cursor: pointer; }
 .osh-quadrant--tl { top: 28px;    left: 28px; }
 .osh-quadrant--tr { top: 28px;    right: 28px; }
 .osh-quadrant--bl { bottom: 28px; left: 28px; }
@@ -189,6 +209,17 @@ const STYLES = /* css */`
   width: 100%; height: 100%; overflow-y: auto; pointer-events: auto;
   font-family: 'Courier New', Courier, monospace;
 }
+/* Real fix — .oj-node/.oj-key/etc. (reused here from
+   OmniJsonifier.js's own _renderNode output) rely on CSS variables
+   scoped to .omni-jsonifier's own root; those variables are
+   undefined here, so text was silently falling back to the browser
+   default instead of white. Explicit override for this reuse. */
+.osh-json-tree .oj-node,
+.osh-json-tree .oj-toggle,
+.osh-json-tree .oj-key,
+.osh-json-tree .oj-leaf-value {
+  color: #ffffff;
+}
 .osh-json-empty {
   color: rgba(255,255,255,0.45); font-size: 10px; text-align: center;
   padding: 20px 10px; line-height: 1.6; font-family: 'Courier New', Courier, monospace;
@@ -215,6 +246,15 @@ const STYLES = /* css */`
 .osh-pocket-preview {
   margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 5px;
   font-size: 9px; color: rgba(255,255,255,0.7); max-height: 100px; overflow-y: auto; white-space: pre-wrap;
+}
+/* Real fix — same real cause as Q3's own fix above: this preview
+   also reuses OmniJsonifier's _renderNode output for JSON-type
+   entries, with the same undefined-CSS-variable problem. */
+.osh-pocket-preview .oj-node,
+.osh-pocket-preview .oj-toggle,
+.osh-pocket-preview .oj-key,
+.osh-pocket-preview .oj-leaf-value {
+  color: #ffffff;
 }
 
 .osh-data-group--performance      { grid-area: tl; text-align: left;   }
@@ -367,6 +407,8 @@ export default class OmniStartHUD {
     this._onGlobalBarData = null
     this._preview = null   // the center diamond's own tiny renderer/scene/mesh
     this.omniPocket = null   // set later via setOmniPocket() — needed for Q2's own real pocket manager
+    this.omniNode = null   // set later via setOmniNode() — needed for Q4's real node markers
+    this.omniRealityGridSelector = null   // set later via setOmniRealityGridSelector() — needed for Q4's real staged-context regions
   }
 
   init () {
@@ -407,6 +449,167 @@ export default class OmniStartHUD {
     window.addEventListener('omni:node-extracted', this._onPocketChanged)
     window.addEventListener('omni:node-reinstated', this._onPocketChanged)
     this._renderPocketList()
+
+    this._maximizedQuadrant = null
+    this._el.querySelectorAll('.osh-maximize-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._toggleMaximize(btn.dataset.quadrant))
+    })
+
+    // Q4 — real, live minimap. Re-renders on any real, genuine
+    // change to node data, not just once on open.
+    this._onNodesUpdatedForMinimap = () => this._renderMinimap()
+    window.addEventListener('omni:nodes-updated', this._onNodesUpdatedForMinimap)
+    this._el.querySelector('#osh-minimap-canvas').addEventListener('click', (e) => this._onMinimapClick(e))
+    this._renderMinimap()
+  }
+
+  /** Real quadrant maximize — expands the chosen quadrant to fill
+   *  the whole, already-bounded #omni-start-hud container (never
+   *  the full browser viewport, so the rest of the real UI stays
+   *  reachable, per direct request) and hides the other three.
+   *  Clicking the same button again restores the normal layout. */
+  _toggleMaximize (quadrant) {
+    const isRestoring = this._maximizedQuadrant === quadrant
+    this._maximizedQuadrant = isRestoring ? null : quadrant
+
+    this._el.querySelectorAll('.osh-quadrant').forEach(q => {
+      const isThisOne = q.dataset.quadrant === quadrant
+      q.classList.toggle('is-maximized', !isRestoring && isThisOne)
+      q.classList.toggle('is-hidden', !isRestoring && !isThisOne)
+      const btn = q.querySelector('.osh-maximize-btn')
+      btn.textContent = (!isRestoring && isThisOne) ? '⊡' : '⛶'
+    })
+
+    // The canvas's own real pixel size only settles once its
+    // container is done resizing (e.g. just maximized) — re-render
+    // on the next frame so the minimap isn't left stretched/blurry
+    // at its old, pre-maximize size.
+    requestAnimationFrame(() => this._renderMinimap())
+  }
+
+  /** Q4 — real, live minimap, fit to whatever real content actually
+   *  exists (real node positions, real staged-context regions, and
+   *  the real landing point) rather than the floor's full, mostly-
+   *  empty 3000-unit extent, which would leave everything a tiny
+   *  cluster in the center. A genuinely empty minimap is the honest,
+   *  correct state when nothing real exists yet — matches
+   *  OmniFloor's own real discipline of only building what actually
+   *  needs to exist. */
+  _renderMinimap () {
+    const canvas = this._el?.querySelector('#osh-minimap-canvas')
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return   // not laid out yet — nothing real to draw against
+    canvas.width = rect.width
+    canvas.height = rect.height
+    const c = canvas.getContext('2d')
+    c.clearRect(0, 0, canvas.width, canvas.height)
+
+    const CELL_SIZE = 20   // matches the floor's own real grid (OmniFloor.js) and OmniRealityGridSelector's own real cells
+    const LANDING = { x: 0, z: 0.001 }   // matches main.js's own real returnToLanding()
+
+    const nodes = this.omniNode?.getAllNodes() ?? []
+    const contexts = this.omniRealityGridSelector?.getContexts() ?? {}
+
+    // Real, current bounding box across every real thing that
+    // exists — nodes, every staged context's own real cells, and
+    // the real landing point — with a real, sensible fallback range
+    // when nothing exists yet, so the minimap never divides by zero.
+    let minX = LANDING.x, maxX = LANDING.x, minZ = LANDING.z, maxZ = LANDING.z
+    nodes.forEach(n => {
+      const [x, , z] = n.position ?? [0, 0, 0]
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+      minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z)
+    })
+    Object.values(contexts).forEach(ctx => {
+      ctx.cells.forEach(cell => {
+        const x0 = cell.cx * CELL_SIZE, x1 = x0 + CELL_SIZE
+        const z0 = cell.cz * CELL_SIZE, z1 = z0 + CELL_SIZE
+        minX = Math.min(minX, x0); maxX = Math.max(maxX, x1)
+        minZ = Math.min(minZ, z0); maxZ = Math.max(maxZ, z1)
+      })
+    })
+    const rangeX = Math.max(maxX - minX, CELL_SIZE * 4)
+    const rangeZ = Math.max(maxZ - minZ, CELL_SIZE * 4)
+    const pad = 0.2
+    minX -= rangeX * pad; maxX += rangeX * pad
+    minZ -= rangeZ * pad; maxZ += rangeZ * pad
+
+    const worldToCanvas = (x, z) => [
+      ((x - minX) / (maxX - minX)) * canvas.width,
+      ((z - minZ) / (maxZ - minZ)) * canvas.height,
+    ]
+    // Stored so a click on the canvas can reverse this exact
+    // mapping back to real world coordinates.
+    this._minimapMapping = { minX, maxX, minZ, maxZ, width: canvas.width, height: canvas.height }
+
+    // Faint grid background, at the real, matching cell size
+    c.strokeStyle = 'rgba(255,255,255,0.06)'
+    c.lineWidth = 1
+    const [gx0] = worldToCanvas(Math.ceil(minX / CELL_SIZE) * CELL_SIZE, 0)
+    const stepX = (CELL_SIZE / (maxX - minX)) * canvas.width
+    for (let x = gx0; x < canvas.width; x += stepX) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, canvas.height); c.stroke() }
+    const stepZ = (CELL_SIZE / (maxZ - minZ)) * canvas.height
+    const [, gz0] = worldToCanvas(0, Math.ceil(minZ / CELL_SIZE) * CELL_SIZE)
+    for (let z = gz0; z < canvas.height; z += stepZ) { c.beginPath(); c.moveTo(0, z); c.lineTo(canvas.width, z); c.stroke() }
+
+    // Real, staged contexts — drawn as real regions, exactly as
+    // they'll also appear as a real, in-scene wireframe boundary
+    // (OmniRealityGridSelector's own real loadContext), so the same
+    // area reads consistently both places, per direct request.
+    Object.entries(contexts).forEach(([id, ctx]) => {
+      c.fillStyle = 'rgba(255, 238, 0, 0.18)'
+      c.strokeStyle = 'rgba(255, 238, 0, 0.5)'
+      ctx.cells.forEach(cell => {
+        const [px, py] = worldToCanvas(cell.cx * CELL_SIZE, cell.cz * CELL_SIZE)
+        const [px2, py2] = worldToCanvas((cell.cx + 1) * CELL_SIZE, (cell.cz + 1) * CELL_SIZE)
+        c.fillRect(px, py, px2 - px, py2 - py)
+        c.strokeRect(px, py, px2 - px, py2 - py)
+      })
+      const firstCell = ctx.cells[0]
+      if (firstCell) {
+        const [lx, ly] = worldToCanvas(firstCell.cx * CELL_SIZE, firstCell.cz * CELL_SIZE)
+        c.fillStyle = 'rgba(255, 238, 0, 0.9)'
+        c.font = '8px monospace'
+        c.fillText(ctx.label ?? id, lx + 2, ly + 9)
+      }
+    })
+
+    // Real nodes, as simple markers
+    c.fillStyle = 'rgba(140, 255, 180, 0.9)'
+    nodes.forEach(n => {
+      const [x, , z] = n.position ?? [0, 0, 0]
+      const [px, py] = worldToCanvas(x, z)
+      c.beginPath(); c.arc(px, py, 2.5, 0, Math.PI * 2); c.fill()
+    })
+
+    // The real landing point — a distinct marker
+    const [lpx, lpy] = worldToCanvas(LANDING.x, LANDING.z)
+    c.strokeStyle = '#ffffff'
+    c.lineWidth = 1.5
+    c.beginPath()
+    c.moveTo(lpx - 5, lpy); c.lineTo(lpx + 5, lpy)
+    c.moveTo(lpx, lpy - 5); c.lineTo(lpx, lpy + 5)
+    c.stroke()
+  }
+
+  /** Real click-to-fast-travel — reverses the same real mapping
+   *  _renderMinimap used to draw the map, so the clicked point maps
+   *  back to the real world coordinate it visually represents. */
+  _onMinimapClick (e) {
+    const m = this._minimapMapping
+    if (!m) return
+    const rect = e.target.getBoundingClientRect()
+    const px = e.clientX - rect.left, py = e.clientY - rect.top
+    const worldX = m.minX + (px / m.width) * (m.maxX - m.minX)
+    const worldZ = m.minZ + (py / m.height) * (m.maxZ - m.minZ)
+
+    const cam = this.ctx.camera
+    gsap.to(cam.position, {
+      x: worldX, y: Math.max(cam.position.y, 8), z: worldZ + 15,
+      duration: 1.0, ease: 'power2.inOut',
+      onUpdate: () => cam.lookAt(worldX, 0, worldZ),
+    })
   }
 
   update (delta) {
@@ -425,6 +628,7 @@ export default class OmniStartHUD {
     window.removeEventListener('omni:node-deselected', this._onNodeDeselected)
     window.removeEventListener('omni:node-extracted', this._onPocketChanged)
     window.removeEventListener('omni:node-reinstated', this._onPocketChanged)
+    window.removeEventListener('omni:nodes-updated', this._onNodesUpdatedForMinimap)
     this._teardownPreview()
     this._el?.parentNode?.removeChild(this._el)
   }
@@ -591,6 +795,16 @@ export default class OmniStartHUD {
     this._renderPocketList()
   }
 
+  setOmniNode (omniNode) {
+    this.omniNode = omniNode
+    this._renderMinimap()
+  }
+
+  setOmniRealityGridSelector (selector) {
+    this.omniRealityGridSelector = selector
+    this._renderMinimap()
+  }
+
   /** Q2 — real, live pocket manager. Renders every real, currently-
    *  pocketed item, draggable to reorder (a real, separate, locally-
    *  persisted order, since OmniPocket itself has no reorder concept
@@ -733,28 +947,35 @@ export default class OmniStartHUD {
       <div class="osh-line osh-line--h" aria-hidden="true"></div>
       <div class="osh-line osh-line--v" aria-hidden="true"></div>
 
-      <div class="osh-quadrant osh-quadrant--tl">
+      <div class="osh-quadrant osh-quadrant--tl" data-quadrant="tl">
+        <button class="osh-maximize-btn" data-quadrant="tl">⛶</button>
         <div class="osh-panel osh-panel--data" data-panel="CUIQ01">
           <div class="osh-data-grid" id="osh-data-grid">
             <!-- populated by _updateDataGrid() from omni:globalbar-data -->
           </div>
         </div>
       </div>
-      <div class="osh-quadrant osh-quadrant--tr">
+      <div class="osh-quadrant osh-quadrant--tr" data-quadrant="tr">
+        <button class="osh-maximize-btn" data-quadrant="tr">⛶</button>
         <div class="osh-panel osh-panel--data" data-panel="CUIQ02">
           <div class="osh-pocket-header" id="osh-pocket-header">Pocket</div>
           <div class="osh-pocket-list" id="osh-pocket-list"></div>
         </div>
       </div>
-      <div class="osh-quadrant osh-quadrant--bl">
+      <div class="osh-quadrant osh-quadrant--bl" data-quadrant="bl">
+        <button class="osh-maximize-btn" data-quadrant="bl">⛶</button>
         <div class="osh-panel osh-panel--data" data-panel="CUIQ03">
           <div class="osh-json-tree" id="osh-json-tree">
             <!-- populated by _updateJsonTree() whenever a Jsonifier-owned node is selected -->
           </div>
         </div>
       </div>
-      <div class="osh-quadrant osh-quadrant--br">
-        <div class="osh-panel" data-panel="CUIQ04"><span class="osh-panel-label">CUIQ04</span></div>
+      <div class="osh-quadrant osh-quadrant--br" data-quadrant="br">
+        <button class="osh-maximize-btn" data-quadrant="br">⛶</button>
+        <div class="osh-panel osh-panel--minimap" data-panel="CUIQ04">
+          <div class="osh-minimap-header" id="osh-minimap-header">⟐ Reality Map</div>
+          <canvas class="osh-minimap-canvas" id="osh-minimap-canvas"></canvas>
+        </div>
       </div>
 
       <div class="osh-ring" aria-hidden="true"></div>

@@ -1342,6 +1342,74 @@ system exists anywhere yet, logged as its own real, honest queue
 item rather than faked. Every Developer slot is open to anyone who
 can reach the panel until that real system exists.
 
+### V112
+OmniVerticalMeter, quadrant maximize, and Q4's real minimap all
+completed and wired live. OmniVerticalMeter: real Admin item, live
+altitude readout on a fixed screen-edge scale, updating every frame.
+Quadrant maximize: any of the four StartHUD quadrants can now fill
+the whole, already-bounded HUD container (never the full browser
+viewport, so the rest of the real UI stays reachable) and restore.
+Q4: the real, first buildable piece of OmniSense's own already-
+documented "floor becomes a map" concept, flattened to 2D — draws
+real node positions, the real landing point, and every staged
+OmniRealityGridSelector context as an actual region, fit to whatever
+content genuinely exists rather than the floor's full, mostly-empty
+extent. Click-to-fast-travel reverses the same real coordinate
+mapping used to draw it. Staged contexts also now get a real,
+subdivided wireframe boundary directly in the 3D scene, not just on
+the minimap, so the same area reads consistently in both places, per
+direct "both" request.
+
+Real bug caught by the test suite itself, not by inspection: a prior
+edit had silently dropped the entire loadContext method from
+OmniRealityGridSelector — syntax validation alone passed because the
+file was still valid JS, it just no longer did what it claimed to.
+Only caught once a real test tried to call it. Restored with the
+real, intended boundary-creation behavior intact. 11 checks, all
+passing after that fix.
+
+### V113
+Two real bugs fixed. OmniTranslator's left/right vaults were landing
+near screen center (their top/bottom values were arbitrary leftovers
+from an earlier, horizontal-only overlap fix) — recomputed from
+Hand.js's own real geometry constants and repositioned into the real
+gap directly between the top and bottom Hands on each side. Q3 (and
+Q2's own JSON preview) text was invisible because the reused
+OmniJsonifier text classes rely on CSS variables scoped to that
+panel's own root — undefined outside it, silently falling back to
+the browser default instead of white. Fixed with an explicit
+override in both real reuse sites.
+
+Real theme system built: utils/OmniThemes.js defines three themes
+(black-metallic, white-glowy-metallic, grey-metallic), chosen before
+JSON submission per direct request, with color gradually shifting by
+depth (black/white both drift toward grey; grey drifts outward by
+depth parity — a stated, direct assumption on the one genuinely
+ambiguous case). Classification (truth/neutral/false) is read
+directly from a reserved _classification key in the user's own JSON,
+inherited down the tree, and drives a real, persistent highlight
+mesh — reusing the exact same "backface, slightly larger duplicate"
+technique already proven for genealogy outlines. Real material
+overrides (metalness/roughness/emissive) now flow through
+_buildMesh.
+
+A real bug caught mid-build: OmniNode's own omni:node-create-request
+handler builds its object field-by-field from e.detail rather than
+spreading it, so the new material/classification fields were
+silently discarded there even though _createNode and _buildMesh both
+correctly supported them — caught by the test actually creating a
+node and checking its real material, not by inspection. Fixed by
+adding the fields to that explicit list.
+
+Also worth recording: the vault and text-color fixes went missing
+from the working tree between this session's two turns and had to be
+reapplied from scratch — cause not fully diagnosed, but every other
+real change from every earlier turn was spot-checked and confirmed
+genuinely intact, so this appears to have been isolated to those two
+specific edits rather than a broader loss.
+
+16 checks, all passing after both real fixes above.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
