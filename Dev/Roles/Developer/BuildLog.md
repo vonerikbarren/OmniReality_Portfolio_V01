@@ -1410,6 +1410,48 @@ specific edits rather than a broader loss.
 
 16 checks, all passing after both real fixes above.
 
+### V116
+OmniRealityGridPointSelector built — real sibling to
+OmniRealityGridSelector (`systems/OmniRealityGridPointSelector.js`,
+`ui/OmniRealityGridPointSelectorPanel.js`). Same real floor-plane
+raycast, snapped to the nearest vertex (round) instead of the
+nearest cell (floor). Local subdivision — a selected cell's own
+anchor points can be densified (2x/4x/8x) without touching the
+floor's own global 20-unit grid at all, confirmed by keeping the
+subdivision map keyed per-cell rather than as a global setting.
+Vertical walls grow from one real, chosen edge of an already-
+selected cell (north/south/east/west), rotated in real 90° steps
+rather than freely, at the same real cell size. Nexus labels — a
+real canvas-texture sprite per point showing both its real world
+position and its real grid-cell index, billboarding to the camera
+for free via THREE.Sprite. Added to Admin's own slot 14, matching
+the same, already-corrected Admin-only pattern (no separate drawer
+entry). One real test bug caught and fixed along the way —
+WireframeGeometry doesn't carry the same .parameters object as its
+source PlaneGeometry, so the height check needed the real, computed
+bounding box instead. 18 checks, all passing.
+
+### V117
+Checked before building anything: the requested keyboard-shortcuts
+panel in a top "Assistance" menu already exists, fully built, fully
+wired, and genuinely open to every user type — no gating found on
+either the panel or the menu itself. Confirmed the real name too:
+the bar itself is GlobalBar (`ui/GlobalBar.js`), with Assistance as
+one of its own eight real top-level categories.
+
+Two real, genuine problems found and fixed while verifying it,
+rather than left alone: the shortcuts list itself had gone stale —
+missing 't' for OmniTranslator entirely, added since this panel was
+last touched. And, more importantly, the real r/f vertical-movement
+handler was found to have zero typing guard at all — missed by the
+earlier, session-wide typing-guard audit because it compares
+e.code ('KeyR'/'KeyF') rather than e.key, a different style than
+every handler that audit actually checked. Same real bug class as
+the earlier backtick/Escape fix: typing the letters r or f in any
+real text field was disabling orbit controls and moving the camera
+vertically mid-type. Fixed with the same, already-proven guard
+pattern used elsewhere in the file.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

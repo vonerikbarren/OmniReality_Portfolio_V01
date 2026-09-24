@@ -79,6 +79,8 @@ import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
 import OmniRealityGridSelector from './systems/OmniRealityGridSelector.js'
 import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniVerticalMeter from './ui/OmniVerticalMeter.js'
+import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
+import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
@@ -315,6 +317,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(omniRealityGridSelector)
   base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
   base.addModule(new OmniVerticalMeter(base.context))
+  const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)
+  base.addModule(omniRealityGridPointSelector)
+  base.addModule(new OmniRealityGridPointSelectorPanel(omniRealityGridPointSelector))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -483,6 +488,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
         12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
         13: { label: 'OmniVerticalMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniVerticalMeter' } })) },
+        14: { label: 'OmniRealityGridPointSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridPointSelector' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -605,6 +611,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const _vertPressed   = { r: false, f: false }
 
   window.addEventListener('keydown', (e) => {
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
     if (e.code === 'KeyR') { _vertPressed.r = true;  orbitMod.disable() }
     if (e.code === 'KeyF') { _vertPressed.f = true;  orbitMod.disable() }
   })

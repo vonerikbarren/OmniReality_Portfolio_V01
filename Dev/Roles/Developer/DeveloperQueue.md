@@ -413,3 +413,49 @@ first candidate to move here once this menu starts filling in —
 flagged, not moved, since that's a real, visible change worth
 confirming first.
 
+## 31. Data structures & algorithms — real future idea, not built
+
+Raised as a "would this be fun to sandbox" discussion, not a build
+request yet. Real architectural conclusion already reached: not a
+new module system — new OmniDraw modes, the exact same pattern
+Jsonifier/Chat/Log already use. Not a single, monolithic "DS&Algo"
+mode either — each new mode should reuse whichever existing real
+mechanic actually matches what it demonstrates, rather than forcing
+one mechanic to cover everything:
+- **⟐OmniDrawSort** — OmniSystem's own real formation-morphing
+  (confirmed genuinely built, not just designed: helix/spiral/ring/
+  sphere/galaxy/star already work). A fixed set of N nodes, only
+  position changes — exactly what a sort algorithm actually does.
+- **⟐OmniDrawGraph** — Jsonifier's own real tree engine, generalized
+  to allow more than one parent per node (arbitrary edges, cycles).
+- **⟐OmniDrawList** — Jsonifier's engine again, simpler: reuses the
+  already-existing linear-vertical/linear-horizontal layouts, with
+  push/pop as real, animated actions.
+
+All three would spawn nodes through the same, already-proven
+omni:node-create-request pipeline everything else uses — selection,
+Inspector editing, theming, pooling all stay free. Real new work per
+mode is just the model and its own operations (compare-and-swap,
+insert/traverse, push/pop), not the rendering underneath.
+
+## 32. OmniRandomizer — real future object, not built
+
+A standard, reusable object type — constantly, never-settling in
+geometry/color/material/transparency — representing any concept that
+falls within "chance, life, death, trouble, desire" as a category.
+Confirmed real, direct answer on the GPU-cost question that was
+asked: color/material property animation is effectively free (plain
+uniform updates); geometry is the real cost, but only if built the
+naive way (CPU-side rebuilding every frame). Built correctly —
+swapping between a small set of pre-built shapes, or true continuous
+vertex morphing done via a vertex shader with one time uniform
+rather than CPU geometry rebuilding — this is cheap enough to be a
+genuine, real standard object, matching the original gut instinct.
+
+Real utilization ideas raised, not yet built: a third, honest visual
+state for "genuinely undetermined" classification (distinct from
+Jsonifier's existing neutral, which just means no highlight, not
+"unresolved"); a click-to-settle "collapse the wavefunction"
+interaction; ambient, dataless scene dressing; a thematically
+consistent loading/pending indicator.
+
