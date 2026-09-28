@@ -60,7 +60,7 @@ than something that needed reconciling.
 **Tier 1 is now real code**: `systems/OmniGrab.js` — grab, jitter,
 drag toward a hand, condense into it only if that hand is genuinely
 open, dispatch a real placement event. See
-`Dev/Roles/Developer/BuildLog.md` V24 for the exact details and the
+`docs/dev/Roles/Developer/BuildLog.md` V24 for the exact details and the
 one real bug caught along the way. "Quick options without
 navigating in" and the expand-vs-link branching described below are
 not yet built — this is the grab-and-place mechanic specifically.

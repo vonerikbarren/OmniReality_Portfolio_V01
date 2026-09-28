@@ -206,6 +206,47 @@ const STYLES = `
 .omni-pad--tl { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: top left; }
 .omni-pad--tr { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: top right; }
 .omni-pad--bl { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: bottom left; }
+
+/* ── Dash button — docked to the outside edge of the LH (bl) pad ────────────── */
+
+.omni-dash-btn {
+  position         : fixed;
+  bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
+  left             : ${4 + PAD_INNER * 2 + PAD_CELL * 3 + PAD_GAP * 2 + 8}px;
+  width            : 40px;
+  height           : 40px;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  background       : rgba(8, 8, 12, 0.20);
+  border           : 1px solid rgba(255, 255, 255, 0.85);
+  border-radius    : 8px;
+  color            : rgba(255, 255, 255, 0.90);
+  font-size        : 13px;
+  letter-spacing   : 0.02em;
+  cursor           : pointer;
+  pointer-events   : auto;
+  z-index          : 55;
+  transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+.omni-dash-btn:hover   { background: rgba(255, 255, 255, 0.13); }
+.omni-dash-btn:active  { background: rgba(255, 255, 255, 0.26); }
+.omni-dash-btn.is-active {
+  background       : rgba(255, 255, 255, 0.26);
+  color            : rgba(255, 255, 255, 0.96);
+  box-shadow       : 0 0 14px rgba(255, 255, 255, 0.40);
+  text-shadow      : 0 0 10px rgba(255, 255, 255, 0.22);
+}
+.omni-dash-btn .dash-glyph { pointer-events: none; }
+
+@media (max-width: 560px) {
+  .omni-dash-btn {
+    left           : ${4 + 8 * 2 + 36 * 3 + 3 * 2 + 8}px;
+    width          : 34px;
+    height         : 34px;
+    font-size      : 11px;
+  }
+}
 .omni-pad--br { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: bottom right; }
 
 /* ── Header — compact and centered so it reads inside the circle ───────────── */
@@ -461,6 +502,15 @@ export default class MovementPad {
     this._orbitVerticalMultiplier = 1
     this._orbitHorizontalMultiplier = 1
 
+    // Dash — a manual on/off modifier layered ON TOP of the step-based
+    // _moveSpeedMultiplier above, LH (WASD) movement only. Doubles by
+    // default; the exact multiplier is admin-configurable under
+    // DashMovementSettings in ui/CameraMovementOptionsPanel.js, same
+    // storage key/broadcast every other Admin-driven value here uses.
+    this._dashActive     = false
+    this._dashMultiplier = 2
+    this._dashButtonEl   = null
+
     // Rotation pivot for OmniKeys' center-pad camera rotation —
     // defaults to the same point OrbitControls itself defaults to
     // (0, 2, 0), so keyboard rotation and mouse-drag orbit agree on
@@ -484,6 +534,7 @@ export default class MovementPad {
   init () {
     injectStyles()
     this._buildAllPads()
+    this._buildDashButton()
     this._bindGlobalEvents()
     this._bindKeyboard()
     const initialAll = this._computeAllMultipliers(this._readAdminSteps())
@@ -492,6 +543,7 @@ export default class MovementPad {
     this._altitudeDownMultiplier = initialAll.altitudeDown
     this._orbitVerticalMultiplier = initialAll.orbitVertical
     this._orbitHorizontalMultiplier = initialAll.orbitHorizontal
+    this._readDashMultiplierFromStorage()
     console.log('⟐ MovementPad: initialized.')
   }
 
@@ -513,6 +565,7 @@ export default class MovementPad {
 
   destroy () {
     Object.values(this._els).forEach(el => el?.parentNode?.removeChild(el))
+    this._dashButtonEl?.parentNode?.removeChild(this._dashButtonEl)
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
     window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
@@ -544,6 +597,31 @@ export default class MovementPad {
       this._els[handId] = el
       shell.appendChild(el)
     })
+  }
+
+  /** ⟫⟫ — dash toggle, docked to the outside edge of the LH (bl-corner)
+   *  pad. Own top-level fixed element rather than a pad child, same
+   *  double-init guard as _buildAllPads above. */
+  _buildDashButton () {
+    if (this._dashButtonEl) return
+    const shell = document.getElementById('omni-ui') ?? document.body
+    const el = document.createElement('button')
+    el.id        = 'omni-dash-btn'
+    el.className = 'omni-dash-btn'
+    el.type      = 'button'
+    el.title     = 'Dash (doubles LH movement speed)'
+    el.setAttribute('aria-label', 'Toggle dash — doubles LH movement speed')
+    el.setAttribute('aria-pressed', 'false')
+    el.innerHTML = `<span class="dash-glyph">⟫⟫</span>`
+    el.addEventListener('click', () => this.toggleDash())
+    shell.appendChild(el)
+    this._dashButtonEl = el
+  }
+
+  toggleDash (force) {
+    this._dashActive = typeof force === 'boolean' ? force : !this._dashActive
+    this._dashButtonEl?.classList.toggle('is-active', this._dashActive)
+    this._dashButtonEl?.setAttribute('aria-pressed', String(this._dashActive))
   }
 
   _buildPad (handId) {
@@ -712,7 +790,7 @@ export default class MovementPad {
   _applyLHMovement (cam, delta) {
     const p = this._pressed.lh
     if (!p.up && !p.down && !p.left && !p.right) return
-    const speed = MOVE_SPEED * this._moveSpeedMultiplier * delta
+    const speed = MOVE_SPEED * this._moveSpeedMultiplier * (this._dashActive ? this._dashMultiplier : 1) * delta
     cam.getWorldDirection(this._v3fwd)
     this._v3fwd.y = 0
 
@@ -913,6 +991,21 @@ export default class MovementPad {
     } catch (_) { return fallback }
   }
 
+  /** dashMultiplier lives at the top level of omni:admin:settings, NOT
+   *  inside the nested `.steps` object _readAdminSteps() returns — read
+   *  it directly here rather than through that helper. */
+  _readDashMultiplierFromStorage () {
+    try {
+      const raw = localStorage.getItem('omni:admin:settings')
+      const dashMultiplier = raw ? JSON.parse(raw)?.dashMultiplier : null
+      if (typeof dashMultiplier === 'number' && dashMultiplier > 0) {
+        this._dashMultiplier = dashMultiplier
+      }
+    } catch (_) {
+      // falls back to the constructor default (2)
+    }
+  }
+
   /** "When the number is smaller I move more slowly on all axis, when
    *  larger I move greater distances" — one combined multiplier
    *  across all three axes, not a separate per-axis speed, matching
@@ -952,6 +1045,14 @@ export default class MovementPad {
   }
 
   _handleAdminSteps (e) {
+    // dashMultiplier lives at the top level of the saved settings object
+    // (alongside `steps`, `theme`, etc.), not inside `steps` itself — see
+    // ui/CameraMovementOptionsPanel.js's DashMovementSettings group.
+    const dashMultiplier = e.detail?.dashMultiplier
+    if (typeof dashMultiplier === 'number' && dashMultiplier > 0) {
+      this._dashMultiplier = dashMultiplier
+    }
+
     const steps = e.detail?.steps
     if (!steps) return
     const merged = { ...this._readAdminSteps(), ...steps }

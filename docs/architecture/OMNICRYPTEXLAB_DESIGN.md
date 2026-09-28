@@ -190,7 +190,7 @@ a global rule.
 Confirmed directly — not a coincidence. The 30 placeholder ⟐
 MasterKeySymbols and the 30-letter custom alphabet (raised much
 earlier, intended for the eventual Product-to-Tier mapping exercise,
-`Dev/Roles/Developer/DeveloperQueue.md` item 9) are the same 30.
+`docs/dev/Roles/Developer/DeveloperQueue.md` item 9) are the same 30.
 Should be scaffolded so one real system feeds the other later, not
 built as two unrelated sets of 30 that happen to share a count.
 
@@ -258,7 +258,7 @@ the future, not part of the near-term build.
 `modules/OmniCryptx.js` (the core ring engine) and OmniKryptx's own
 sections (`ui/OmniKeys.js`) now genuinely share one source of truth —
 `data/OmniCryptxTypes.js` — confirmed directly, not assumed (see
-`Dev/Roles/Developer/BuildLog.md` V21–V22). Everything else remains
+`docs/dev/Roles/Developer/BuildLog.md` V21–V22). Everything else remains
 conceptual: the Admin/Standard/Custom tier configurations themselves,
 MasterKeySymbol's real placeholder glyphs (⟐×30), Music Notation's
 actual mechanic, and the marble-maze idea.

@@ -1,0 +1,37 @@
+{
+  "_readme": "A real, shared bug-tracking schema for the deep-dive testing pass — designed to hand off cleanly between you and Copilot, so both of you are filling in and reading the exact same structure rather than two different mental models of what a 'bug report' looks like.",
+  "_schema": {
+    "id": "Short, unique string. Suggested pattern: BUG-001, BUG-002, etc. — sequential, so nothing gets silently overwritten.",
+    "title": "One-line summary — what you'd say out loud if someone asked 'what's wrong'.",
+    "whatsHappening": "The actual, observed behavior. Be concrete: not 'the panel is broken', but 'clicking Save closes the panel without writing to localStorage'.",
+    "whereInApplication": "The real, specific location — which OmniProduct/panel/menu, and the real file if you know it (e.g. 'OmniTranslator, Left vault' or 'ui/OmniJsonifier.js, theme picker'). This is the field that saves the most real back-and-forth time later.",
+    "desiredOutcome": "What should happen instead — stated as the real, correct behavior, not just 'fix it'.",
+    "severity": "One of: blocking | high | medium | low | cosmetic. blocking = can't test past this point. cosmetic = visual only, nothing breaks.",
+    "status": "One of: untested | confirmed | in-progress | fixed | wontfix. Starts at 'confirmed' the moment you've actually seen it happen once.",
+    "stepsToReproduce": "Optional but genuinely valuable — a real, numbered list. Skip only if it's a one-glance visual issue.",
+    "foundBy": "Who found it — you, or noted during a Copilot session.",
+    "assignedTo": "Who's actually working the fix — you, Copilot, or Claude (this session).",
+    "dateFound": "ISO date, e.g. 2026-09-24.",
+    "notes": "Freeform — anything that doesn't fit the fields above. Screenshots, related bug ids, a hunch about the real cause."
+  },
+  "bugs": [
+    {
+      "id": "BUG-000",
+      "title": "EXAMPLE — delete this before real use",
+      "whatsHappening": "This is a real, worked example so the schema isn't abstract. Fill in your own real bugs below this one, then delete this entry.",
+      "whereInApplication": "N/A — this is the template example",
+      "desiredOutcome": "N/A",
+      "severity": "cosmetic",
+      "status": "wontfix",
+      "stepsToReproduce": [
+        "1. Read this entry",
+        "2. Understand the shape",
+        "3. Delete it, add real ones"
+      ],
+      "foundBy": "Claude",
+      "assignedTo": "you",
+      "dateFound": "2026-09-24",
+      "notes": "Real, known open item already logged elsewhere, shown here as a genuine example of the schema in use rather than a placeholder: OmniHand's paging (Developer Queue item 33) — 'there should be three pages for each hand, increase to 10' was raised, but no paging concept exists anywhere in Hand.js yet, so this is a real, unresolved design question, not a simple fix."
+    }
+  ]
+}

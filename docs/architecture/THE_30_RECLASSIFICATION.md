@@ -89,4 +89,4 @@ Subjugation) — both real signals a merge was already half-sensed.
 
 A real, reasoned proposal — not yet confirmed, not built, no
 Product-to-Tier mapping done on top of it yet (the actual next step,
-per `Dev/Roles/Developer/DeveloperQueue.md` item 9).
+per `docs/dev/Roles/Developer/DeveloperQueue.md` item 9).

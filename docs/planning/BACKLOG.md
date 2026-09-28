@@ -83,15 +83,20 @@ needed before they do anything visible:
 
 `WallpaperSphere`'s image support is now real (`THREE.TextureLoader`,
 defaults to `assets/images/wallpaper-default.jpg`, overridable via
-Admin's file-browse upload). The other three are still deferred, for
-the same reason as before — real shared infrastructure, not four
-one-off implementations:
+Admin's file-browse upload). `WallpaperSphere`'s **video** support is
+now real too — `THREE.VideoTexture` driven by an actual `<video>`
+element, single-slot IndexedDB storage (`utils/WallpaperStorage.js`'s
+`wallpaperVideoStore`), Video Wallpaper controls in
+`ui/WallpaperSettingsPanel.js` (upload/replace/clear, play/pause,
+loop, muted, volume), and a real fix along the way: textures on this
+sphere are mirrored left-right when viewed from inside (`THREE.BackSide`)
+unless flipped — `_flipForInteriorView()` now corrects both the image
+and video path, not just video. Two of the four still deferred, same
+reasoning as before — real shared infrastructure, not four one-off
+implementations:
 
 - `ObjectPanel`'s Media section (video/image mesh toggles + URL)
 - `OmniInspector`'s Domain section (Space Img field)
-- `WallpaperSphere`'s **video** upload specifically (image works; video
-  playback as a texture is a separate, bigger piece — `THREE.VideoTexture`
-  needs an actual `<video>` element driving it, not just a loaded file)
 - `UserSpaceSphere`'s Admin-configured texture URL
 
 ## Event-test indicators — replace when real features land

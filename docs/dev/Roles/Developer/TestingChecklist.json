@@ -1,0 +1,113 @@
+{
+  "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
+  "categories": [
+    {
+      "category": "Core Navigation & UI",
+      "items": [
+        {
+          "feature": "Left Drawer — the top-left menu, all OmniProducts",
+          "howToReach": "Click the top-left drawer handle",
+          "whatToCheck": "OmniDraw, OmniChat, OmniTranslator, OmniSystem*, OmniMixer, OmniPocket, OmniNavi all listed and clickable",
+          "tested": false
+        },
+        {
+          "feature": "GlobalBar — Assistance menu",
+          "howToReach": "Top bar, Assistance category",
+          "whatToCheck": "Keyboard Shortcuts panel opens, list is accurate (includes 't' for OmniTranslator)",
+          "tested": false
+        },
+        {
+          "feature": "Typing-guard fix",
+          "howToReach": "Open any real text input (OmniLog editor, Jsonifier's JSON box) and type the letters r, f, t, backtick, and Escape while focused",
+          "whatToCheck": "None of these should move the camera, open the terminal, or exit fullscreen while you're actually typing",
+          "tested": false
+        },
+        {
+          "feature": "OmniStartHUD quadrant maximize",
+          "howToReach": "Open the Start Menu HUD, hover a quadrant, click its maximize (⛶) button",
+          "whatToCheck": "That quadrant fills the whole HUD container (not full browser), other three hide, click again restores all four",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniDraw — all modes",
+      "items": [
+        { "feature": "Static mode", "howToReach": "Press 'n', pick Static", "whatToCheck": "Live shape preview, spawns a real node", "tested": false },
+        { "feature": "Dynamic mode", "howToReach": "Press 'n', pick Dynamic", "whatToCheck": "Real ticker/dynamic text node spawns", "tested": false },
+        { "feature": "Jsonifier mode + themes", "howToReach": "Press 'n', pick Jsonifier", "whatToCheck": "Theme picker (black/white/grey) affects spawned node color by depth; classification via a real '_classification' key in your JSON produces a colored highlight ring (green=truth, red=false, none=neutral)", "tested": false },
+        { "feature": "OmniCell mode", "howToReach": "Press 'n', pick OmniCell", "whatToCheck": "Standalone creation panel works", "tested": false },
+        { "feature": "Chat mode", "howToReach": "Press 'n', pick Chat", "whatToCheck": "OmniChat opens with Text/JSON/Terminal tabs", "tested": false },
+        { "feature": "Log mode", "howToReach": "Press 'n', pick Log", "whatToCheck": "OmniLog editor opens; try the Lorem Ipsum button in the page-options area to force multiple real pages; RGBA color picker affects the actual page background", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniLog specifics",
+      "items": [
+        { "feature": "Number fields next to sliders", "howToReach": "OmniLog editor, transform section", "whatToCheck": "Typing an exact number in the field updates the matching slider and vice versa", "tested": false },
+        { "feature": "Universal Edit action", "howToReach": "Right-click any node, including an existing OmniLog page", "whatToCheck": "On a regular node: opens Inspector. On an OmniLog entry: reopens the actual editor pre-filled, and resubmitting updates the same entry rather than creating a duplicate", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniPocket",
+      "items": [
+        { "feature": "PocketThis⟐", "howToReach": "Right-click any node's quick menu", "whatToCheck": "Node disappears from scene, appears in OmniPocket panel", "tested": false },
+        { "feature": "Q2 pocket manager", "howToReach": "Open Start Menu HUD, Q2 (top-right)", "whatToCheck": "Header shows hovered item's title; drag to reorder persists; preview button shows JSON tree/data/dynamic string depending on node type; Take Out reinstates the node live", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniTranslator",
+      "items": [
+        { "feature": "Vault positioning", "howToReach": "Press 't'", "whatToCheck": "Left/Right vaults sit in the real gap between the top and bottom Hand corners, not overlapping the Start Menu", "tested": false },
+        { "feature": "Add to Translator", "howToReach": "Right-click any OmniDraw element's quick menu", "whatToCheck": "Vault picker sub-menu adds the item to the chosen side", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniRealityGridSelector & PointSelector (Admin-only)",
+      "items": [
+        { "feature": "Cell selector", "howToReach": "Admin panel, slot 12", "whatToCheck": "Start Selecting, click floor cells, they highlight white with yellow outline; Save Context creates a real, listed, loadable named context with an in-scene grid wireframe boundary", "tested": false },
+        { "feature": "Point selector", "howToReach": "Admin panel, slot 14", "whatToCheck": "Points snap to grid vertices, not cell centers; nexus label shows world position + cell index; local subdivision densifies just one cell; raising a wall on north/south/east/west grows a real vertical grid from that edge", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniVerticalMeter",
+      "items": [
+        { "feature": "Altitude readout", "howToReach": "Admin panel, slot 13", "whatToCheck": "Marker position and number update live as you change camera height", "tested": false }
+      ]
+    },
+    {
+      "category": "Q4 Minimap",
+      "items": [
+        { "feature": "Real, live minimap", "howToReach": "Open Start Menu HUD, Q4 (bottom-right)", "whatToCheck": "Shows real node dots, the landing-point marker, and staged grid contexts as yellow regions, all scaled to fit whatever actually exists", "tested": false },
+        { "feature": "Click-to-fast-travel", "howToReach": "Click anywhere on the Q4 minimap", "whatToCheck": "Camera flies to that real world location", "tested": false }
+      ]
+    },
+    {
+      "category": "Developer Menu (above Admin)",
+      "items": [
+        { "feature": "OmniCommandTerminal — Dev01", "howToReach": "Developer menu, slot 1", "whatToCheck": "Try ⟐help, ⟐ls, ⟐create BoxGeometry test, ⟐cd <id>, ⟐inspect, ⟐present, ⟐pocket — typing without the leading ⟐ still works", "tested": false },
+        { "feature": "OmniProgram — Dev02", "howToReach": "Developer menu, slot 2, or ⟐OmniNavi in the Left Drawer", "whatToCheck": "Building spawns a real OmniBotProgram with cube head, embedded panel, sphere body, and a separate stateCommunicator sphere above the head; Basic tier idles with a continuous bob+spin", "tested": false },
+        { "feature": "OmniInputMonitor — Dev03", "howToReach": "Developer menu, slot 3", "whatToCheck": "Live camera position, orbit-enabled state, pressed directions", "tested": false },
+        { "feature": "Dev_FPS_Exp_ListOfEmotions — Dev04", "howToReach": "Developer menu, slot 4", "whatToCheck": "Every one of the 13 emotion buttons visibly changes the camera-attached particles' color and motion; standing still vs. moving changes Normal Walking/Dash density", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniHand (just activated)",
+      "items": [
+        { "feature": "All four hands visible", "howToReach": "Look at all four screen corners", "whatToCheck": "omnihand (TL), conscious (TR), lh (BL), rh (BR) all render with their real hamburger/pad/orbiter/radial cells", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniChronos (just fixed)",
+      "items": [
+        { "feature": "White-disc fix", "howToReach": "Enable OmniChronos, look into the RootSpace tunnel", "whatToCheck": "The traveling reality-node disc should be invisible until a real texture/video is actually set on it — no more opaque white circle by default", "tested": false }
+      ]
+    },
+    {
+      "category": "Admin (below Developer)",
+      "items": [
+        { "feature": "WallpaperSettings / TerminalSettings / reset action", "howToReach": "Admin panel, various slots", "whatToCheck": "Each opens its real panel", "tested": false }
+      ]
+    }
+  ]
+}

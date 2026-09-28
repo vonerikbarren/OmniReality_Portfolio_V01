@@ -127,4 +127,14 @@ export const KNOWN_NAMESPACES = [
   'omnimixer-skin',         // OmniMixerPanel's background skin image
   'omniexpression-video',   // OmniExpressionVideoPlayer's main video
   'omniexpression-circles', // OmniExpressionVideoPlayer's backing circle images
+  'wallpaper-video',        // WallpaperSphere's single video-wallpaper slot
 ]
+
+/**
+ * WallpaperSphere's video wallpaper — a single slot (unlike the 20-slot
+ * image browser above): one video applied at a time, and a real video
+ * file is heavy enough that a 20-slot browser for them would be a lot
+ * of IndexedDB storage for little benefit. Same namespaced store
+ * mechanism as everything else here, just with maxSlots=1.
+ */
+export const wallpaperVideoStore = createWallpaperStore('wallpaper-video', 1)

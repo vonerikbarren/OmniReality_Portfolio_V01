@@ -264,6 +264,25 @@ every normal, user-created node's behavior is completely unaffected.
 critical regression check that a normal node with no flag still
 auto-selects exactly as before.
 
+## Real, requested next feature — JSON timeline navigation
+
+Raised directly: the ability to author a real JSON timeline (named
+events/periods with their own timestamps) and navigate through it —
+not yet built. Confirmed real, current state: OmniChronos currently
+only controls enabled/disabled, Z-axis reorientation, transparency,
+and time format; there is no user-defined event/timeline concept
+anywhere yet, just PrimaryTime's own continuous clock.
+
+Real, natural hook already in place: ChronosRealityNode's own
+Y-position already maps directly onto PrimaryTime's real value
+(looping once per real day across the tunnel's real floor-to-ceiling
+span) — a real JSON timeline would plausibly be a list of
+`{ label, atSeconds, ... }` entries, each rendering as a real,
+labeled marker at its own real Y-position along that same tunnel,
+clickable to jump PrimaryTime directly to that moment. Not yet
+scoped or built — deferred given the scale of everything else
+addressed this same pass.
+
 ## Status
 
 No code yet beyond the existing small tunnel-toggle panel. But the

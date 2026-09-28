@@ -146,6 +146,8 @@ function injectStyles () {
 }
 
 export default class OmniBrowser {
+  static DEFAULT_LANDING_URL = 'https://en.wikipedia.org/wiki/Main_Page'
+
   /**
    * @param {object} context
    * @param {object} [config]
@@ -225,7 +227,13 @@ export default class OmniBrowser {
 
   /** Boot-time entrance only — slides in from the left edge rather
    *  than the regular fade, since this is meant to be the very first
-   *  thing a landing user sees, not just another panel being opened. */
+   *  thing a landing user sees, not just another panel being opened.
+   *
+   *  Real fix — auto-loads Wikipedia the moment this happens, rather
+   *  than opening to a blank iframe. Only window 1 (the one this method
+   *  is actually called on at boot) and only when nothing has already
+   *  navigated it anywhere — so this never clobbers a URL a person or
+   *  an omni:browser-set patch already set before this ran. */
   openFromSide () {
     if (!this._el) this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
@@ -233,6 +241,10 @@ export default class OmniBrowser {
     this._el.style.visibility = 'visible'
     this._isOpen = true
     this._playSound('open')
+
+    if (this.windowId === 1 && !this._currentUrl) {
+      this._navigate(OmniBrowser.DEFAULT_LANDING_URL)
+    }
 
     const targetLeft = parseFloat(this._el.style.left) || 120
     gsap.fromTo(this._el,

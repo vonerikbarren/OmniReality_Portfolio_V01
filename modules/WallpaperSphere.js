@@ -53,7 +53,9 @@
  */
 
 import * as THREE from 'three'
-import { loadWallpaper } from '../utils/WallpaperStorage.js'
+import { loadWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
+
+const VIDEO_SLOT = 1   // wallpaperVideoStore is a single-slot (maxSlots=1) store — always slot 1
 
 const CENTER_Y = 28        // matches VoidBoundary / RootSpace
 const BASE_SIZE = 1050     // 5x — the space should feel genuinely massive; same scale as before
@@ -108,6 +110,7 @@ function readWallpaperSettings () {
     position: { x: 0, y: 0, z: 0 },
     rotationOffset: { x: 0, y: 0, z: 0 },
     scale: { x: 1, y: 1, z: 1 },
+    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0,
   }
   try { localStorage.setItem(STORE_KEY, JSON.stringify(migrated)) } catch (_) {}
   return migrated
@@ -122,6 +125,22 @@ export default class WallpaperSphere {
     this._loader = new THREE.TextureLoader()
     this._imgUrl = ''
     this._imgUrlIsObjectUrl = false
+
+    // Video wallpaper — separate from the image texture above; when
+    // active, its texture takes priority as material.map (mutual
+    // exclusivity, same rule BACKLOG.md already calls for on
+    // ObjectPanel's video/image toggle). The image URL/texture is kept
+    // around, not torn down, so clearing the video falls straight back
+    // to whatever image or color was set before it.
+    this._videoEl = null
+    this._videoTexture = null
+    this._videoUrl = ''
+    this._videoUrlIsObjectUrl = false
+    this._videoActive = false
+    this._videoLoop = true
+    this._videoMuted = true
+    this._videoVolume = 0
+
     this._onSettingsSet = null
     this._onSpinDirection = null
 
@@ -163,6 +182,11 @@ export default class WallpaperSphere {
       if (!saved.imgUrl) this._mesh.material.color.set(saved.color ?? DEFAULT_COLOR)
     }
 
+    this._videoLoop = saved.videoLoop ?? true
+    this._videoMuted = saved.videoMuted ?? true
+    this._videoVolume = saved.videoVolume ?? 0
+    if (saved.videoActive) this._loadVideoFromStore()
+
     this._onSettingsSet = (e) => {
       const w = e.detail ?? {}
       if (w.shape !== undefined && w.shape !== this._shape) this._changeShape(w.shape)
@@ -178,6 +202,26 @@ export default class WallpaperSphere {
       else if (w.imgUrl === '') this._clearImage(w.color ?? DEFAULT_COLOR)
       else if (w.color !== undefined && !this._texture) this._mesh.material.color.set(w.color)
       if (w.activeSlot) this._applyFromSlot(w.activeSlot)
+
+      // ── Video wallpaper ──────────────────────────────────────────
+      if (w.videoUrl) this._applyVideo(w.videoUrl, !!w.videoUrlIsObjectUrl)
+      else if (w.videoUrl === '') this._clearVideo()
+      if (w.videoLoop !== undefined) {
+        this._videoLoop = w.videoLoop
+        if (this._videoEl) this._videoEl.loop = w.videoLoop
+      }
+      if (w.videoMuted !== undefined) {
+        this._videoMuted = w.videoMuted
+        if (this._videoEl) this._videoEl.muted = w.videoMuted
+      }
+      if (w.videoVolume !== undefined) {
+        this._videoVolume = w.videoVolume
+        if (this._videoEl) this._videoEl.volume = w.videoVolume
+      }
+      if (w.videoPlaying !== undefined && this._videoEl) {
+        if (w.videoPlaying) this._videoEl.play().catch(() => {})
+        else this._videoEl.pause()
+      }
     }
     window.addEventListener('omni:wallpaper-settings-set', this._onSettingsSet)
 
@@ -265,20 +309,43 @@ export default class WallpaperSphere {
     }
   }
 
+  /** Real fix, applies to every texture this module ever shows (image
+   *  or video): this sphere is rendered THREE.BackSide — visible from
+   *  inside, not outside. A standard sphere UV unwrap looks correct
+   *  from outside, but the same UVs read mirrored left-right once
+   *  you're looking at the geometry from the inside instead (the same
+   *  reason text printed on a flag reads backwards from behind it).
+   *  Negative-repeat on U is the standard fix — flips sampling
+   *  horizontally without touching geometry/winding. Unnoticeable on
+   *  most photos, which is why this went uncaught until video (where
+   *  motion/on-screen text/faces make a mirrored image obvious). */
+  _flipForInteriorView (texture) {
+    texture.wrapS = THREE.RepeatWrapping
+    texture.repeat.x = -1
+    return texture
+  }
+
   /** Loads and applies an image texture — used for the default asset,
    *  a regular URL, a data: URI, or an Object URL from the IndexedDB
-   *  wallpaper browser (all handled the same way by TextureLoader). */
+   *  wallpaper browser (all handled the same way by TextureLoader).
+   *  Still loads/stores the texture even while a video is active (so
+   *  it's ready the instant the video is cleared) — it just doesn't
+   *  touch the live material.map until then, since video takes
+   *  priority per the same mutual-exclusivity rule BACKLOG.md already
+   *  calls for on ObjectPanel's video/image toggle. */
   _applyImage (url, isObjectUrl = false) {
     if (!url || url === this._imgUrl) return
     this._loader.load(
       url,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace
+        this._flipForInteriorView(texture)
         this._texture?.dispose()
         if (this._imgUrlIsObjectUrl) URL.revokeObjectURL(this._imgUrl)
         this._texture = texture
         this._imgUrl = url
         this._imgUrlIsObjectUrl = isObjectUrl
+        if (this._videoActive) return   // video stays on top — texture is ready for when it's cleared
         this._mesh.material.map = texture
         this._mesh.material.color.set(0xffffff)   // true color — don't tint the photo
         this._mesh.material.needsUpdate = true
@@ -293,8 +360,119 @@ export default class WallpaperSphere {
     if (this._imgUrlIsObjectUrl) URL.revokeObjectURL(this._imgUrl)
     this._texture = null
     this._imgUrl = ''
+    if (this._videoActive) return   // don't touch the live material — video owns it right now
     this._mesh.material.map = null
     this._mesh.material.color.set(fallbackColor)
+    this._mesh.material.needsUpdate = true
+  }
+
+  // ── Video wallpaper ────────────────────────────────────────────────────
+
+  /** Boot-time restore — mirrors _applyFromSlot's image equivalent,
+   *  reading the single-slot IndexedDB store rather than a data URI
+   *  (a real video is far too large for localStorage/data: URIs, same
+   *  reasoning WallpaperStorage.js documents for the image browser). */
+  async _loadVideoFromStore () {
+    try {
+      const record = await wallpaperVideoStore.loadWallpaper(VIDEO_SLOT)
+      if (!record) {
+        console.warn('⟐WallpaperSphere — videoActive was true but no video is stored in slot', VIDEO_SLOT, '— clearing the flag.')
+        this._commitVideoActive(false)
+        return
+      }
+      this._applyVideo(URL.createObjectURL(record.blob), /* isObjectUrl */ true)
+    } catch (err) {
+      console.warn('⟐WallpaperSphere — failed to load stored video wallpaper:', err)
+    }
+  }
+
+  _commitVideoActive (active) {
+    try {
+      const raw = localStorage.getItem(STORE_KEY)
+      const s = raw ? JSON.parse(raw) : {}
+      s.videoActive = active
+      localStorage.setItem(STORE_KEY, JSON.stringify(s))
+    } catch (_) { /* non-fatal — worst case it re-prompts next boot */ }
+  }
+
+  /**
+   * Builds a real HTMLVideoElement + THREE.VideoTexture — same
+   * loop/muted/playsInline/crossOrigin setup ui/OmniExpression.js's
+   * `_loadMedia('video')` already established elsewhere in this app,
+   * kept consistent rather than reinvented here. `muted` starts true
+   * unconditionally on first load regardless of the saved preference —
+   * every browser blocks autoplay-with-sound outright, so an unmuted
+   * `.play()` would silently fail to start at all; the saved
+   * `_videoMuted`/`_videoVolume` are applied right after, once the
+   * element already exists and playback has actually begun.
+   */
+  _applyVideo (url, isObjectUrl = false) {
+    if (!url) return
+    this._disposeVideo(/* keepFlagged */ true)
+
+    const video = document.createElement('video')
+    video.src = url
+    video.loop = this._videoLoop
+    video.muted = true
+    video.playsInline = true
+    video.crossOrigin = 'anonymous'
+    video.play().catch(() => {})   // ignore autoplay-blocked errors — still loads, just paused until a user gesture
+
+    video.addEventListener('loadedmetadata', () => {
+      video.muted = this._videoMuted
+      video.volume = this._videoVolume
+      if (video.videoWidth && video.videoHeight) {
+        const ratio = video.videoWidth / video.videoHeight
+        if (Math.abs(ratio - 2) > 0.1) {
+          console.warn(`⟐WallpaperSphere — this video is ${video.videoWidth}×${video.videoHeight} (${ratio.toFixed(2)}:1). This sphere's UV unwrap is equirectangular, so a 2:1 width:height video maps without stretching — this one will look vertically stretched or squished. See ui/WallpaperSettingsPanel.js's Video section note.`)
+        }
+      }
+    }, { once: true })
+
+    this._videoEl = video
+    this._videoUrl = url
+    this._videoUrlIsObjectUrl = isObjectUrl
+    this._videoActive = true
+    this._commitVideoActive(true)
+
+    const texture = new THREE.VideoTexture(video)
+    texture.colorSpace = THREE.SRGBColorSpace
+    this._flipForInteriorView(texture)
+    this._videoTexture = texture
+    this._mesh.material.map = texture
+    this._mesh.material.color.set(0xffffff)
+    this._mesh.material.needsUpdate = true
+  }
+
+  /** @param {boolean} keepFlagged — true while _applyVideo is about to
+   *  immediately replace the video (avoids a one-frame flash back to
+   *  the underlying image/color); false for a real, user-requested clear. */
+  _disposeVideo (keepFlagged = false) {
+    if (this._videoEl) {
+      this._videoEl.pause()
+      this._videoEl.src = ''
+      this._videoEl.load()
+      this._videoEl = null
+    }
+    this._videoTexture?.dispose()
+    this._videoTexture = null
+    if (this._videoUrlIsObjectUrl) URL.revokeObjectURL(this._videoUrl)
+    this._videoUrl = ''
+    if (!keepFlagged) this._videoActive = false
+  }
+
+  _clearVideo () {
+    this._disposeVideo(false)
+    this._commitVideoActive(false)
+    // Fall back to whatever image/color was already loaded — same
+    // texture _applyImage kept ready in the background the whole time.
+    if (this._texture) {
+      this._mesh.material.map = this._texture
+      this._mesh.material.color.set(0xffffff)
+    } else {
+      this._mesh.material.map = null
+      this._mesh.material.color.set(DEFAULT_COLOR)
+    }
     this._mesh.material.needsUpdate = true
   }
 
@@ -313,6 +491,7 @@ export default class WallpaperSphere {
     window.removeEventListener('omni:wallpaper-spin-direction', this._onSpinDirection)
     this._texture?.dispose()
     if (this._imgUrlIsObjectUrl) URL.revokeObjectURL(this._imgUrl)
+    this._disposeVideo(false)
     if (!this._mesh) return
     this.ctx.scene.remove(this._mesh)
     this._mesh.geometry.dispose()

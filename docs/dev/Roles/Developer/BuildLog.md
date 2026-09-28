@@ -30,7 +30,7 @@ missing `roomScale`/`objectVisible`/`layers` entirely, risking silent
 data loss on any shape change.
 
 ### V07
-`Dev/Roles/Developer/DeveloperQueue.md` created — the first version
+`docs/dev/Roles/Developer/DeveloperQueue.md` created — the first version
 of the official forward-looking task queue.
 
 ### V08
@@ -1543,6 +1543,35 @@ normalWalking in the "must spawn particles" check (both are
 correctly speed-driven, not always-on), and a real, positive check
 was added confirming movement genuinely does produce particles for
 those two states, rather than just excluding them silently.
+
+### V127
+Two real fixes and one real activation. ChronosRealityNode's default
+white disc — confirmed as "the white bottom thing in the cylinder,"
+the large reality-node traveling through RootSpace's own tunnel —
+was opaque white (0.9) before any real texture was ever set. Now
+starts fully invisible and only becomes visible once setTexture
+actually gives it something real to show, matching the project's own
+established honest-empty-state discipline. OmniHand made active —
+confirmed directly it was never imported anywhere in main.js despite
+being fully built; all four real hands (omnihand/conscious/lh/rh)
+now instantiated. The "3 pages per hand, increase to 10" and
+"OmniDraw as first item" requests were not acted on — checked
+directly and no paging concept exists anywhere in Hand.js at all;
+flagged rather than guessed at, since building a wrong paging system
+would be real, avoidable rework. 6 checks, all passing.
+
+docs/dev/Roles/Developer/TestingChecklist.json created — a real,
+comprehensive, structured testing checklist covering every feature
+built this session, grounded directly in BuildLog.md rather than
+memory, with a real howToReach/whatToCheck pair per item rather than
+a vague "does it work" list.
+
+OmniChronos's own design doc updated with the requested JSON
+timeline idea — confirmed no such concept exists yet (OmniChronos
+currently only controls enabled/Z-axis/transparency/time format);
+documented with a real, natural hook already in place
+(ChronosRealityNode's Y-position already maps directly onto
+PrimaryTime), not yet built.
 
 ## Status
 

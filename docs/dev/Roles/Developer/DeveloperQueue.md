@@ -1,7 +1,7 @@
 # Developer Queue
 
 The official developer todo list. Lives here specifically —
-`Dev/Roles/Developer/` — because there are other roles besides
+`docs/dev/Roles/Developer/` — because there are other roles besides
 Developer that the project will need to work through; this queue is
 this role's, not the only one.
 
@@ -111,7 +111,7 @@ real code:
 Every OS needs a way to notify the user of updates. The real
 open/close mechanic exists now (`ui/OmniAddressBar.js`,
 `ui/OmniNotifyPanel.js`, and per-hand mini address bars in
-`ui/Hand.js` — see `Dev/Roles/Developer/BuildLog.md` V23), but there
+`ui/Hand.js` — see `docs/dev/Roles/Developer/BuildLog.md` V23), but there
 is still no real notification content or data source — it's a
 genuine, honest shell.
 
@@ -458,4 +458,129 @@ Jsonifier's existing neutral, which just means no highlight, not
 "unresolved"); a click-to-settle "collapse the wavefunction"
 interaction; ambient, dataless scene dressing; a thematically
 consistent loading/pending indicator.
+
+## 33. OmniHand — paging (3 → 10) and OmniDraw as first item — real, unresolved
+
+Raised directly: "there should be three pages for each hand" (then
+increase to 10), and OmniDraw should be the first, immediately
+viewable/clickable item in OmniHand specifically for mobile users
+without a keyboard (distinct from the 'n' key, which is the desktop
+path to the same OmniDraw mode picker).
+
+Confirmed real gap, not acted on: checked Hand.js directly and no
+paging concept exists anywhere in it — only the fixed 2×2 cell grid
+(hamburger/pad/orbiter/radial) already documented there. Not
+guessed at or built against an assumption, since building the wrong
+paging structure would be real, avoidable rework. Real open
+question for whoever picks this up: is "3 pages" a structure from an
+earlier planning session not reflected in the current code, or a
+new structure to design from scratch now? Needs a real answer before
+building.
+
+## 34. Sound Settings — real, unresolved
+
+Explicitly requested while adding Video Wallpaper: "there are some
+sounds I think I want with it. We will need a sounds settings so put
+that in our todo." Nothing scoped yet beyond the ask itself — this
+app already has a real `Sound`/`SoundManager` (see `utils/SoundManager.js`
+and every panel's own `_playSound('click'|'open'|'close', ...)` calls),
+so the missing piece is a real settings surface: master volume,
+per-category or per-sound-effect volume/mute, and wherever "sounds I
+want with it [the video wallpaper]" turns out to mean — video's own
+audio track volume/mute already exists (Wallpaper Settings' Video
+section), so this may mean UI/interaction sound effects specifically,
+or something else entirely. Needs a real answer on scope before
+building: one global Sound Settings panel (Admin-style), or is this
+about a specific feature's sounds?
+
+## 35. Clock circumference sphere — queued, real design questions open
+
+MasterClock (`modules/ChronosFloorClock.js`) is currently a single
+Icosahedron node with a floating live-time text label — not a literal
+analog clock face. The ask was: a sphere that moves along the
+circumference of the clock, as an alternative way to reach the
+clock's settings (now real — see `OmniInspector._customOptionsHTML`'s
+MasterClock section, added this pass) without opening the generic
+node Inspector. Explicitly deferred — "for now put that in the
+queue." Real open questions for whoever picks this up: does
+MasterClock need to become an actual circular dial first (it isn't
+one now)? Is the orbiting sphere meant to visually represent the
+current time (like a clock hand), or purely serve as a clickable
+handle that opens the settings panel? Needs real answers before
+building, same as item 33 above.
+
+## 36. The 30 ↔ OmniProducts — audit, then build the gaps (multi-day)
+
+Explicit direction: "the next phase will be us connecting The_30_
+Reclassification to the products they match. We have not built all
+the products nor have all the products been fully built. So you see
+the mountain of work we have to do." First real work item.
+
+`docs/architecture/THE_30_RECLASSIFICATION.md` (the 30 letters) and
+`docs/architecture/OMNIPRODUCTS_ALPHABET_CROSS_ANALYSIS.md` (each
+letter matched to a product) both already exist, but the mapping was
+never checked against what's actually built vs. stubbed vs. missing —
+that audit doesn't exist yet and is genuinely the first step, not an
+assumption to skip past:
+
+1. **Audit pass** — go letter by letter through the cross-analysis
+   doc, check the matched product's real state in the codebase
+   (fully built / partially built / not started), and produce a real
+   status table (could live as a new section in the cross-analysis
+   doc itself, or a new `docs/architecture/THE_30_BUILD_STATUS.md`).
+2. **Gap list** — from that audit, a concrete, ordered build queue of
+   whichever products are missing or incomplete — this is where the
+   actual "mountain of work" gets broken into real, sequenced pieces
+   rather than staying one big undifferentiated pile.
+3. Build against that gap list.
+
+Not started — the audit itself is the very next step, before any
+product gets touched.
+
+## 37. TopLeftMenu (⟐mniMenu drawer) — reorganize, real crowding
+
+Explicit: "The TopLeftMenu is getting crowded." Confirmed real, not
+just a feeling — `ui/Drawer.js`'s ⟐mniMenu currently lists 21
+top-level entries (OmniEXP, OmniPlayer, OmniRealities, OmniChronos,
+CameraTravelSettings, OmniVision, OmniSense, OmniExpression,
+OmniTargeting, NavMap, OmniDraw, OmniTranslator, OmniKeys, OmniSelect,
+PanelControl, OmniVisor, OmniBrowser, OmniSystem [+4 children],
+OmniMixer, OmniPocket, OmniNavi) in one flat list, plus a second,
+already-grouped category block below it (Developer/Admin/Experiences/
+Realities/Times/Spaces/Governance/Intelligence/Infrastructures/
+Objects) that the top list itself doesn't use.
+
+Real open question, not yet decided: what's the actual reorganization
+principle? Candidates, none chosen yet: (a) group the flat 21 into
+the same kind of category structure the block below it already uses;
+(b) organize by which of The 30 (item 36) each product maps to, which
+would make the menu itself a live reflection of the alphabet-to-
+product system rather than two separate, disconnected things; (c)
+something else entirely. Needs a real decision before rebuilding —
+this is a UX/IA pass, not a mechanical resize.
+
+## 38. Hand functions — all four hands, real and complete (after 36)
+
+Explicit, sequenced after the alphabet work: "The next thing are the
+functions of the hands specifically. All of them." `ui/Hand.js`
+documents four symbols per hand (☰ Hamburger, ⚇ Pad, ⦿ Orbiter, ⬢
+Tools) across all four hands (⟐mniHand/TL, ⟐ConsciousHand/TR, ⟐LH/BL,
+⟐RH/BR) — 16 cells total.
+
+Confirmed real, current gap: **⦿ Orbiter is undefined on all four
+hands** — the file's own header comment says so directly ("Undefined
+— last to be specified"), it only ever dispatches a stub
+`omni:orbiter` event with no listener anywhere acting on it, and its
+button renders with `aria-label="... — undefined"` and a muted,
+non-interactive cursor. This is the single clearest, already-confirmed
+piece of this item — everything else (Hamburger/Pad/Tools) is at
+least defined per-hand already in `HAND_CONFIGS`, even where the
+underlying panel it opens may itself be unbuilt (ties back to item 36).
+
+Real open question for whoever picks this up: what is Orbiter
+actually for, on each of the four hands? Nothing's been specified —
+this needs real design input, not four guessed-at behaviors, before
+building. Once Orbiter has an answer, the rest of this item is
+confirming/completing whichever Hamburger/Pad/Tools targets are still
+stubs per item 36's audit, not new discovery.
 

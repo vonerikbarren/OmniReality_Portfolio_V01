@@ -37,7 +37,7 @@ export default class ChronosRealityNode {
 
   init () {
     const geo = new THREE.CircleGeometry(NODE_RADIUS, 48)
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0 })
     this.mesh = new THREE.Mesh(geo, mat)
     this.mesh.rotation.x = Math.PI / 2   // lies flat, matching the tunnel's own horizontal cross-sections
     this._updatePosition()
@@ -68,6 +68,7 @@ export default class ChronosRealityNode {
     this.mesh.material.map?.dispose()
     this._videoEl?.pause()
     this._isVideoTexture = isVideo
+    this.mesh.material.opacity = 0.9   // real content is being set now — the disc has something honest to show
 
     if (isVideo) {
       const video = document.createElement('video')

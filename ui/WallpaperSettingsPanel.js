@@ -23,7 +23,9 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { WALLPAPER_SHAPES } from '../modules/WallpaperSphere.js'
-import { MAX_SLOTS, saveWallpaper, listWallpapers, deleteWallpaper } from '../utils/WallpaperStorage.js'
+import { MAX_SLOTS, saveWallpaper, listWallpapers, deleteWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
+
+const VIDEO_SLOT = 1
 
 const STYLES = /* css */`
 
@@ -180,6 +182,24 @@ const STYLES = /* css */`
 .ws-note { font-size: 9px; color: var(--ws-text-muted); line-height: 1.5; margin-top: 6px; }
 .ws-file-input { display: none; }
 
+.ws-mini-btn {
+  padding: 5px 10px;
+  background: rgba(201, 163, 255, 0.12);
+  border: 1px solid rgba(201, 163, 255, 0.3);
+  border-radius: 5px;
+  color: var(--ws-accent);
+  font-family: var(--mono); font-size: 9.5px;
+  cursor: pointer;
+}
+.ws-mini-btn:hover { background: rgba(201, 163, 255, 0.22); }
+.ws-mini-btn--danger {
+  width: 100%; margin-top: 4px;
+  background: rgba(255, 100, 100, 0.1);
+  border-color: rgba(255, 100, 100, 0.3);
+  color: rgba(255, 160, 160, 0.9);
+}
+.ws-mini-btn--danger:hover { background: rgba(255, 100, 100, 0.2); }
+
 .ws-resize-handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
 .ws-resize-handle::before {
   content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px;
@@ -203,6 +223,7 @@ function loadSettings () {
     shape: 'SphereGeometry', color: '#445566', alpha: 0.9, imgUrl: './assets/images/wallpaper-default.jpg',
     activeSlot: null, rotationSpeed: 0.05, autoSpinX: false, autoSpinY: true, autoSpinZ: true,
     position: { x: 0, y: 0, z: 0 }, rotationOffset: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
+    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0,
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -367,6 +388,32 @@ export default class WallpaperSettingsPanel {
           survives reload.
         </div>
         <input type="file" accept="image/*" class="ws-file-input" id="ws-file-input">
+
+        <div class="ws-section-title">Video Wallpaper</div>
+        <div class="ws-row">
+          <span class="ws-row-label" id="ws-video-status">${s.videoActive ? 'Video active' : 'No video set'}</span>
+          <button class="ws-mini-btn" id="ws-video-upload">${s.videoActive ? 'Replace…' : 'Upload…'}</button>
+        </div>
+        <div class="ws-row"><span class="ws-row-label">Playing</span><button class="ws-toggle is-on" id="ws-video-playing" data-video-toggle="playing"></button></div>
+        <div class="ws-row"><span class="ws-row-label">Loop</span><button class="ws-toggle ${s.videoLoop ? 'is-on' : ''}" id="ws-video-loop" data-video-toggle="loop"></button></div>
+        <div class="ws-row"><span class="ws-row-label">Muted</span><button class="ws-toggle ${s.videoMuted ? 'is-on' : ''}" id="ws-video-muted" data-video-toggle="muted"></button></div>
+        <div class="ws-row">
+          <span class="ws-row-label">Volume</span>
+          <input type="range" class="ws-num-input" id="ws-video-volume" min="0" max="1" step="0.05" value="${s.videoVolume}" ${s.videoMuted ? 'disabled' : ''}>
+        </div>
+        <button class="ws-mini-btn ws-mini-btn--danger" id="ws-video-clear" ${s.videoActive ? '' : 'style="display:none"'}>Clear video</button>
+        <div class="ws-note">
+          For smooth, undistorted playback: this sphere's UV unwrap is
+          equirectangular, so a <strong>2:1 width:height</strong> video
+          (e.g. 1920×960) maps correctly — a square 1:1 clip will look
+          vertically stretched. H.264 MP4, muted+loop for guaranteed
+          autoplay (unmute after — browsers block autoplay with sound).
+          Keep it under ~1080p wide; a real 4K loop is a lot of GPU
+          decode for a background element. Stored in this browser
+          (IndexedDB) — one video at a time, not a 20-slot browser like
+          the images above, since a video is much heavier to store.
+        </div>
+        <input type="file" accept="video/*" class="ws-file-input" id="ws-video-file-input">
       </div>
       <div class="ws-resize-handle" aria-hidden="true"></div>
     `
@@ -444,6 +491,76 @@ export default class WallpaperSettingsPanel {
         fileInput.click()
       }
     })
+
+    // ── Video wallpaper ────────────────────────────────────────────────────
+
+    const videoFileInput = el.querySelector('#ws-video-file-input')
+    el.querySelector('#ws-video-upload').addEventListener('click', () => videoFileInput.click())
+    videoFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]
+      e.target.value = ''
+      if (!file) return
+      try {
+        await wallpaperVideoStore.saveWallpaper(VIDEO_SLOT, file, file.name)
+        const objectUrl = URL.createObjectURL(file)
+        // videoUrl is dispatched directly (not through _commit) — it's
+        // an ephemeral blob: URL, worthless after reload, so it never
+        // belongs in persisted state. videoActive is what actually
+        // gets saved; on boot, WallpaperSphere re-derives the real
+        // video from IndexedDB using that flag, same as the image
+        // slot browser does for activeSlot.
+        window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', {
+          detail: { videoUrl: objectUrl, videoUrlIsObjectUrl: true }
+        }))
+        this._commit({ videoActive: true })
+        this._refreshVideoStatus(true)
+      } catch (err) {
+        window.alert(`Could not save video: ${err?.message ?? err}`)
+      }
+    })
+
+    el.querySelector('#ws-video-clear').addEventListener('click', async () => {
+      window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', { detail: { videoUrl: '' } }))
+      this._commit({ videoActive: false })
+      try { await wallpaperVideoStore.deleteWallpaper(VIDEO_SLOT) } catch (_) { /* non-fatal */ }
+      this._refreshVideoStatus(false)
+    })
+
+    el.querySelectorAll('[data-video-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.videoToggle
+        const nowOn = !btn.classList.contains('is-on')
+        btn.classList.toggle('is-on', nowOn)
+
+        if (key === 'playing') {
+          window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', { detail: { videoPlaying: nowOn } }))
+          return   // transient — not persisted, matches "no saved play/pause state" note above
+        }
+        if (key === 'loop') this._commit({ videoLoop: nowOn })
+        if (key === 'muted') {
+          this._commit({ videoMuted: nowOn })
+          const volumeInput = el.querySelector('#ws-video-volume')
+          if (volumeInput) volumeInput.disabled = nowOn
+        }
+      })
+    })
+
+    el.querySelector('#ws-video-volume').addEventListener('input', (e) => {
+      this._commit({ videoVolume: Number(e.target.value) })
+    })
+  }
+
+  /** Reflects whether a video wallpaper is currently active in the
+   *  status label / Upload-vs-Replace button / Clear button visibility —
+   *  called right after a real change, and on open() so a panel closed
+   *  before a video finished saving still shows correctly next time. */
+  _refreshVideoStatus (active) {
+    const status = this._el?.querySelector('#ws-video-status')
+    const uploadBtn = this._el?.querySelector('#ws-video-upload')
+    const clearBtn = this._el?.querySelector('#ws-video-clear')
+    if (status) status.textContent = active ? 'Video active' : 'No video set'
+    if (uploadBtn) uploadBtn.textContent = active ? 'Replace…' : 'Upload…'
+    if (clearBtn) clearBtn.style.display = active ? '' : 'none'
   }
 
   _applySlot (slot) {

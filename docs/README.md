@@ -151,6 +151,13 @@ still purely conceptual. Check each doc's own Status section.
   matched to the real product whose actual function embodies it,
   with genuine double-uses and open gaps stated plainly rather than
   forced.
+- [`architecture/DRAWER_TO_30_MAPPING.md`](architecture/DRAWER_TO_30_MAPPING.md)
+  — a second, distinct pass matching every entry in the ⟐mniMenu
+  drawer itself (`ui/Drawer.js`) to the 30, not just the products
+  behind them — surfaces Operate as a six-way overloaded letter, the
+  real unresolved OmniVision/OmniVisor naming question, and a few
+  drawer entries (OmniEXP, Experiences, Intelligence) that don't
+  cleanly match anything yet. Feeds DeveloperQueue item 37.
 - [`omniproducts/OMNIBRAND_DESIGN.md`](omniproducts/OMNIBRAND_DESIGN.md)
   — root-object-equivalent brand identity as a Tree Building System,
   serving as both a map for simple users and navigation for complex
@@ -182,6 +189,32 @@ still purely conceptual. Check each doc's own Status section.
   evolving the existing `Dock.js` into a tab-strip-like system with
   titles, close buttons, continuous scroll, ordering, and a switchable
   3D/2D context.
+
+## Dev
+
+Role-based working docs, not design docs — moved here from a
+top-level `Dev/` folder so every real piece of project documentation
+lives under `docs/`. `dev/Roles/Developer/` specifically (there may be
+other roles besides Developer eventually):
+
+- [`dev/Roles/Developer/DeveloperQueue.md`](dev/Roles/Developer/DeveloperQueue.md)
+  — the numbered, ongoing build queue — the single best place to see
+  what's confirmed-but-not-built right now.
+- [`dev/Roles/Developer/BuildLog.md`](dev/Roles/Developer/BuildLog.md)
+  — version-by-version build history.
+- [`dev/Roles/Developer/CarryOverLog.md`](dev/Roles/Developer/CarryOverLog.md)
+  — context handed from one Claude session to the next.
+- [`dev/Roles/Developer/TestingChecklist.json`](dev/Roles/Developer/TestingChecklist.json)
+  and [`BugFixSchematic.json`](dev/Roles/Developer/BugFixSchematic.json)
+  — the structured bug-tracking pair used for deep-dive testing passes.
+
+## Business Strategy
+
+Client-facing/pricing planning — moved here from a top-level
+`BusinessStrategy/` folder for the same reason as `Dev/` above.
+`business_strategy/03_PreExecutionNotes/hosting-costs-and-client-pricing.md`
+has the real pricing-model and hosting-cost work; `00_ToBeSorted/`,
+`01_Admin/`, and `02_Templates/` are scaffolded but not yet filled in.
 
 ## A note on how these docs are written
 

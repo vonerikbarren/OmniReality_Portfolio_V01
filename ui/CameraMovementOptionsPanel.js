@@ -239,6 +239,7 @@ export default class CameraMovementOptionsPanel {
     this._el.querySelector('[data-field="px"]').value = steps.px
     this._el.querySelector('[data-field="py"]').value = steps.py
     this._el.querySelector('[data-field="pz"]').value = steps.pz
+    this._el.querySelector('[data-field="dashMultiplier"]').value = s.dashMultiplier ?? 2
     this._el.querySelector('[data-field="altitudeUp"]').value = steps.altitudeUp
     this._el.querySelector('[data-field="altitudeDown"]').value = steps.altitudeDown
     this._el.querySelector('[data-field="orbitVertical"]').value = steps.orbitVertical
@@ -264,6 +265,7 @@ export default class CameraMovementOptionsPanel {
     const px = parseFloat(this._el.querySelector('[data-field="px"]').value)
     const py = parseFloat(this._el.querySelector('[data-field="py"]').value)
     const pz = parseFloat(this._el.querySelector('[data-field="pz"]').value)
+    const dashMultiplier = parseFloat(this._el.querySelector('[data-field="dashMultiplier"]').value) || 2
     const altitudeUp = parseFloat(this._el.querySelector('[data-field="altitudeUp"]').value)
     const altitudeDown = parseFloat(this._el.querySelector('[data-field="altitudeDown"]').value)
     const orbitVertical = parseFloat(this._el.querySelector('[data-field="orbitVertical"]').value)
@@ -277,6 +279,7 @@ export default class CameraMovementOptionsPanel {
     const merged = {
       ...current,
       steps: { ...(current.steps ?? {}), px, py, pz, altitudeUp, altitudeDown, orbitVertical, orbitHorizontal, globalSpeed, globalValue },
+      dashMultiplier,
       autoRotate, autoRotateSpeed,
     }
 
@@ -306,6 +309,10 @@ export default class CameraMovementOptionsPanel {
         <div class="cm-row"><span class="cm-row-label">px step</span><input class="cm-num" type="number" step="0.01" data-field="px"></div>
         <div class="cm-row"><span class="cm-row-label">py step</span><input class="cm-num" type="number" step="0.01" data-field="py"></div>
         <div class="cm-row"><span class="cm-row-label">pz step</span><input class="cm-num" type="number" step="0.01" data-field="pz"></div>
+
+        <div class="cm-group-title">DashMovementSettings</div>
+        <div class="cm-row"><span class="cm-row-label">Dash speed multiplier</span><input class="cm-num" type="number" step="0.1" min="1" data-field="dashMultiplier"></div>
+        <div class="cm-note">The ⟫⟫ button beside the LH movement pad doubles step speed by default — adjust the exact multiplier here.</div>
 
         <div class="cm-group-title">Orbit &amp; Altitude Speed</div>
         <div class="cm-row"><span class="cm-row-label">Altitude-up (R) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="altitudeUp"></div>

@@ -624,6 +624,20 @@ const STYLES = /* css */`
   border-color  : rgba(190, 160, 255, 0.5);
 }
 
+.oi-ctrl--snap-right {
+  color         : rgba(160, 210, 255, 0.85);
+  border-color  : rgba(160, 210, 255, 0.22);
+}
+.oi-ctrl--snap-right:hover {
+  background    : rgba(160, 210, 255, 0.14);
+  border-color  : rgba(160, 210, 255, 0.35);
+  color         : rgba(190, 225, 255, 1);
+}
+.oi-ctrl--snap-right.is-active {
+  background    : rgba(160, 210, 255, 0.22);
+  border-color  : rgba(160, 210, 255, 0.5);
+}
+
 .oi-ctrl--delete {
   color         : rgba(255, 140, 140, 0.7);
   border-color  : rgba(255, 140, 140, 0.18);
@@ -847,6 +861,30 @@ const STYLES = /* css */`
 .oi-label--full {
   width             : auto;
   flex              : 1 1 auto;
+}
+
+/* ── Custom per-node-type options (see _customOptionsHTML) ─────────────────── */
+
+.oi-custom-section {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 8px;
+  padding           : 10px;
+  margin            : 2px 0 4px;
+  background        : rgba(255, 179, 71, 0.06);
+  border             : 1px solid rgba(255, 179, 71, 0.22);
+  border-radius     : 8px;
+}
+.oi-custom-title {
+  font-size         : 10px;
+  letter-spacing    : 0.10em;
+  text-transform    : uppercase;
+  color             : rgba(255, 179, 71, 0.9);
+}
+.oi-custom-note {
+  font-size         : 9.5px;
+  line-height       : 1.4;
+  color             : var(--oi-text-muted);
 }
 
 /* ── Text inputs ──────────────────────────────────────────────────────────── */
@@ -1583,6 +1621,18 @@ export default class OmniInspector {
       }
     }
     window.addEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
+
+    // Real fix — flush any still-debounced rotation/scale edit before the
+    // page can actually go away. _wireAppearance() (where the debounced
+    // handlers above live) re-runs on every node selection, so a listener
+    // placed there directly would pile up one per node ever inspected.
+    // Storing the CURRENT node's pending-commit functions on `this` and
+    // registering exactly one class-level listener here avoids that.
+    this._onForceSaveFlush = () => {
+      this._pendingCommitRotation?.()
+      this._pendingCommitScale?.()
+    }
+    window.addEventListener('omni:force-save', this._onForceSaveFlush)
   }
 
   update (delta) {
@@ -1624,6 +1674,7 @@ export default class OmniInspector {
     window.removeEventListener('omni:system-toggle', this._onToggle)
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
+    window.removeEventListener('omni:force-save', this._onForceSaveFlush)
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('omni:node-restored', this._onNodeRestored)
     window.removeEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
@@ -1703,6 +1754,18 @@ export default class OmniInspector {
    *  method's own caller (loadNode) already ran. */
   _reapplyExtToMesh (mesh, ext) {
     if ('wireframe' in mesh.material) mesh.material.wireframe = !!ext.wireframe
+    // Only ever upgrades to DoubleSide here, never forces back to
+    // FrontSide — "Is Domain" nodes (see OmniNode._setDomain/restore)
+    // set DoubleSide independently of this ext flag, for their own
+    // reason (camera ends up inside them), and this generic restore
+    // path has no way to tell a domain node from here. Forcing
+    // FrontSide when ext.doubleSide is merely unset/false would stomp
+    // that. The explicit Inspector toggle (below) still turns it off
+    // correctly for the live, non-domain case the user is looking at.
+    if ('side' in mesh.material && ext.doubleSide) {
+      mesh.material.side = THREE.DoubleSide
+      mesh.material.needsUpdate = true
+    }
     const currentType = mesh.material.constructor?.name
     if (ext.material && ext.material !== currentType) {
       const prevMesh = this._currentMesh
@@ -1818,6 +1881,7 @@ export default class OmniInspector {
           <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">💾</button>
           <button class="oi-ctrl oi-ctrl--genealogy" data-action="genealogy" title="Select whole genealogy tree">Ξ</button>
           <button class="oi-ctrl oi-ctrl--delete" data-action="delete" title="Delete this node">🗑</button>
+          <button class="oi-ctrl oi-ctrl--snap-right" data-action="snap-right" title="⇥ Snap to right edge">⇥</button>
           <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
         </div>
         <span class="oi-title">OmniInspector ⟐i</span>
@@ -1873,6 +1937,7 @@ export default class OmniInspector {
         case 'attach':     this._attach();   break
         case 'genealogy':  this._selectGenealogy(btn); break
         case 'delete':     this._confirmDelete(btn); break
+        case 'snap-right': this._snapToRight(btn); break
       }
     })
 
@@ -2048,6 +2113,25 @@ export default class OmniInspector {
     if (!btn) return
     btn.classList.add('is-active')
     setTimeout(() => btn.classList.remove('is-active'), 900)
+  }
+
+  /**
+   * ⇥ button — docks the panel against the right edge of the viewport.
+   * The panel loads left-docked by default (see .oi-panel's `left: 0`
+   * and _bindDrag's comment above), and once dragged anywhere it stays
+   * exactly where it was left — there was never a way back to either
+   * edge without a page reload. This gives the right edge explicitly,
+   * on demand, without changing the left-docked default.
+   */
+  _snapToRight (btn) {
+    const width = this._el?.getBoundingClientRect().width || PANEL_W
+    gsap.set(this._el, { left: `calc(100vw - ${width}px)`, top: BAR_H, right: 'auto' })
+    this._playSound('click')
+
+    const target = btn ?? this._el?.querySelector('.oi-ctrl--snap-right')
+    if (!target) return
+    target.classList.add('is-active')
+    setTimeout(() => target.classList.remove('is-active'), 400)
   }
 
   /** Deletes immediately on click — a confirm-then-click pattern was
@@ -2436,6 +2520,101 @@ export default class OmniInspector {
     } catch (_) { return fallback }
   }
 
+  /**
+   * Per-node-type custom options — a small, deliberately open-ended
+   * registry keyed by node label. Most nodes match nothing and render
+   * an empty string (the section simply doesn't appear). A node type
+   * that needs its own real controls — not generic shape/material/
+   * transform fields — adds an entry here instead of a one-off special
+   * case scattered through the rest of this file.
+   *
+   * MasterClock (modules/ChronosFloorClock.js) is the first real
+   * entry: its actual settings (time format, tunnel enabled, Z-axis
+   * mode) live in `omni:chronos:settings` / ui/OmniChronos.js, which
+   * used to be the only way to reach them — this surfaces the same
+   * settings right where the clock node itself is already open, so
+   * opening OmniChronos separately is no longer required for the
+   * common case of just wanting to check/change them.
+   */
+  _customOptionsHTML (data) {
+    if (data?.label !== 'MasterClock') return ''
+
+    let chronos = { enabled: true, zAxis: false, timeFormat: 'military' }
+    try {
+      const raw = localStorage.getItem('omni:chronos:settings')
+      if (raw) chronos = { ...chronos, ...JSON.parse(raw) }
+    } catch (_) { /* falls back to the defaults above */ }
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-masterclock">
+        <div class="oi-custom-title">⏱ Clock Settings</div>
+        <div class="oi-row">
+          <span class="oi-label">Tunnel enabled</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-clock-enabled" ${chronos.enabled ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label">Z-axis mode</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-clock-zaxis" ${chronos.zAxis ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label">Time format</span>
+          <select class="oi-select" id="oi-clock-format">
+            <option value="military" ${chronos.timeFormat === 'military' ? 'selected' : ''}>Military (24h)</option>
+            <option value="ampm"     ${chronos.timeFormat === 'ampm'     ? 'selected' : ''}>AM / PM</option>
+          </select>
+        </div>
+        <div class="oi-custom-note">The full ⟐Chronos panel still has the tunnel's transparency option and teleport transition — this covers the settings that belong to the clock itself.</div>
+      </div>
+    `
+  }
+
+  /** Wires whatever _customOptionsHTML rendered for this node's type.
+   *  Mirrors OmniChronos's own event contract exactly (see
+   *  modules/RootSpace.js's listeners) rather than duplicating it —
+   *  this is a second surface for the same settings, not a second
+   *  source of truth. */
+  _wireCustomOptions (body, data) {
+    if (data?.label !== 'MasterClock') return
+
+    const readChronos = () => {
+      try {
+        const raw = localStorage.getItem('omni:chronos:settings')
+        return raw ? JSON.parse(raw) : {}
+      } catch (_) { return {} }
+    }
+    const writeChronos = (patch) => {
+      const merged = { ...readChronos(), ...patch }
+      try { localStorage.setItem('omni:chronos:settings', JSON.stringify(merged)) } catch (_) { /* ignore */ }
+      return merged
+    }
+
+    body.querySelector('#oi-clock-enabled')?.addEventListener('change', (e) => {
+      writeChronos({ enabled: e.target.checked })
+      window.dispatchEvent(new CustomEvent('omni:chronos-toggle', { detail: { enabled: e.target.checked } }))
+    })
+    body.querySelector('#oi-clock-zaxis')?.addEventListener('change', (e) => {
+      writeChronos({ zAxis: e.target.checked })
+      window.dispatchEvent(new CustomEvent('omni:chronos-axis-set', { detail: { axis: e.target.checked ? 'z' : 'y' } }))
+    })
+    body.querySelector('#oi-clock-format')?.addEventListener('change', (e) => {
+      // No live-broadcast event needed — ChronosFloorClock's own
+      // readTimeFormatPreference() re-reads this key from localStorage
+      // on every label update (every frame), same as OmniChronos's
+      // panel itself does on open.
+      writeChronos({ timeFormat: e.target.value })
+    })
+  }
+
   _appearanceHTML (data, ext) {
     const isSprite = data.geometry === 'DimensionalText'
     const { r, g, b, a } = this._color
@@ -2463,6 +2642,7 @@ export default class OmniInspector {
 
     const scl = ext?.scale ?? { x: 1, y: 1, z: 1 }
     const wf  = ext?.wireframe ?? false
+    const ds  = ext?.doubleSide ?? false
     const pos = data?.position
       ? { x: data.position[0], y: data.position[1], z: data.position[2] }
       : { x: 0, y: 0, z: 0 }
@@ -2522,6 +2702,15 @@ export default class OmniInspector {
            type is selected above -->
       <div id="oi-material-props">${isSprite ? '<div class="oi-material-props-empty">Dimensional Text renders via a canvas texture, not a swappable material — color is set above.</div>' : this._materialPropsHTML(ext?.material ?? 'MeshStandardMaterial', ext)}</div>
 
+      <!-- Custom, per-node-type options — only rendered for node types
+           that register something here (see _customOptionsHTML); an
+           ordinary node renders nothing and this whole block collapses
+           to nothing visible. Placed before Geometry, per explicit
+           request, so a node's own special controls read as "about
+           this specific node" rather than buried under its generic
+           shape/material fields. -->
+      ${this._customOptionsHTML(data)}
+
       <!-- Geometry selector -->
       <div class="oi-row">
         <span class="oi-label">Geometry</span>
@@ -2538,6 +2727,24 @@ export default class OmniInspector {
             <div class="oi-toggle-thumb"></div>
           </label>
           <span class="oi-toggle-label">Wireframe</span>
+        </div>
+      </div>
+
+      <!-- Double-sided toggle — THREE.DoubleSide vs the material's
+           default THREE.FrontSide. Useful for anything meant to be
+           seen from the inside (a wallpaper-style shell around the
+           camera) or a thin/open geometry (Plane, Ring, an
+           ExtrudeGeometry with open ends) that otherwise culls away
+           to nothing from the "wrong" side. -->
+      <div class="oi-row">
+        <span class="oi-label">Sides</span>
+        <div class="oi-toggle-wrap">
+          <label class="oi-toggle">
+            <input type="checkbox" id="oi-double-side" ${ds ? 'checked' : ''} ${isSprite ? 'disabled title="Not applicable to Dimensional Text"' : ''}>
+            <div class="oi-toggle-track"></div>
+            <div class="oi-toggle-thumb"></div>
+          </label>
+          <span class="oi-toggle-label">Double-Sided</span>
         </div>
       </div>
 
@@ -3310,6 +3517,7 @@ export default class OmniInspector {
 
   _wireAppearance (body, data, ext) {
     this._wireMaterialProps(body, ext)
+    this._wireCustomOptions(body, data)
     // ── Color picker ─────────────────────────────────────────────────
 
     // Native color input (triggered by swatch click via z-stacked input)
@@ -3397,6 +3605,21 @@ export default class OmniInspector {
       this._playSound('click')
     })
 
+    // ── Double-Sided toggle ─────────────────────────────────────────────
+
+    body.querySelector('#oi-double-side')?.addEventListener('change', (e) => {
+      ext.doubleSide = e.target.checked
+      if (this._currentMesh?.material) {
+        const mat = this._currentMesh.material
+        if ('side' in mat) {
+          mat.side = e.target.checked ? THREE.DoubleSide : THREE.FrontSide
+          mat.needsUpdate = true
+        }
+      }
+      this._saveExt()
+      this._playSound('click')
+    })
+
     // ── Position XYZ ──────────────────────────────────────────────────
 
     let posTimer = null
@@ -3447,25 +3670,34 @@ export default class OmniInspector {
 
     // ── Rotation XYZ (radians) ───────────────────────────────────────
 
+    // Named + stored on `this` (not just a local closure) so a global,
+    // class-level omni:force-save listener (wired once in init(), see
+    // below) can flush whichever node's debounced edit is pending when
+    // the tab closes/refreshes/hides — that race is the real cause of
+    // "rotation/scale sometimes doesn't persist": the 200ms debounce
+    // below is what actually commits the value to data/ext and dispatches
+    // the omni:node-*-set event OmniNode._save() depends on, and closing
+    // within that window used to drop the edit silently.
     let rotTimer = null
+    const commitRotation = this._pendingCommitRotation = () => {
+      const x = parseFloat(body.querySelector('#oi-rx')?.value) || 0
+      const y = parseFloat(body.querySelector('#oi-ry')?.value) || 0
+      const z = parseFloat(body.querySelector('#oi-rz')?.value) || 0
+      const rotation = [x, y, z]
+
+      if (this._currentMesh) {
+        this._currentMesh.rotation.set(x, y, z)
+      }
+      data.rotation = rotation
+
+      window.dispatchEvent(new CustomEvent('omni:node-rotation-set', {
+        detail: { id: data.id, rotation }
+      }))
+      this._flashBanner('✓ Saved', 'saved')
+    }
     const rotHandler = () => {
       clearTimeout(rotTimer)
-      rotTimer = setTimeout(() => {
-        const x = parseFloat(body.querySelector('#oi-rx')?.value) || 0
-        const y = parseFloat(body.querySelector('#oi-ry')?.value) || 0
-        const z = parseFloat(body.querySelector('#oi-rz')?.value) || 0
-        const rotation = [x, y, z]
-
-        if (this._currentMesh) {
-          this._currentMesh.rotation.set(x, y, z)
-        }
-        data.rotation = rotation
-
-        window.dispatchEvent(new CustomEvent('omni:node-rotation-set', {
-          detail: { id: data.id, rotation }
-        }))
-        this._flashBanner('✓ Saved', 'saved')
-      }, 200)
+      rotTimer = setTimeout(commitRotation, 200)
     }
 
     body.querySelector('#oi-rx')?.addEventListener('input', rotHandler)
@@ -3475,38 +3707,39 @@ export default class OmniInspector {
     // ── Scale XYZ ─────────────────────────────────────────────────────
 
     let scaleTimer = null
+    const commitScale = this._pendingCommitScale = () => {
+      const x = parseFloat(body.querySelector('#oi-sx')?.value) || 1
+      const y = parseFloat(body.querySelector('#oi-sy')?.value) || 1
+      const z = parseFloat(body.querySelector('#oi-sz')?.value) || 1
+      const scale = {
+        x: clamp(x, 0.001, 1000),
+        y: clamp(y, 0.001, 1000),
+        z: clamp(z, 0.001, 1000),
+      }
+
+      if (this._currentMesh) {
+        this._currentMesh.scale.set(scale.x, scale.y, scale.z)
+      }
+
+      ext.scale = scale
+      this._saveExt()
+
+      // Dispatched as an array, not the {x,y,z} object above — every
+      // other consumer of data.scale (OmniNode's _baseScale, _load,
+      // mesh.scale.set(...data.scale) via spread) expects the array
+      // shape posHandler/rotHandler already use correctly. Sending an
+      // object here made _baseScale throw the next time hover/select/
+      // deselect ran (array-destructuring a plain object throws) —
+      // which is what caused the scale to appear to revert AND made
+      // the object stop responding to clicks afterward, since the
+      // throw interrupted the deselect flow's own cleanup.
+      window.dispatchEvent(new CustomEvent('omni:node-scale-set', {
+        detail: { id: data.id, scale: [scale.x, scale.y, scale.z] }
+      }))
+    }
     const scaleHandler = () => {
       clearTimeout(scaleTimer)
-      scaleTimer = setTimeout(() => {
-        const x = parseFloat(body.querySelector('#oi-sx')?.value) || 1
-        const y = parseFloat(body.querySelector('#oi-sy')?.value) || 1
-        const z = parseFloat(body.querySelector('#oi-sz')?.value) || 1
-        const scale = {
-          x: clamp(x, 0.001, 1000),
-          y: clamp(y, 0.001, 1000),
-          z: clamp(z, 0.001, 1000),
-        }
-
-        if (this._currentMesh) {
-          this._currentMesh.scale.set(scale.x, scale.y, scale.z)
-        }
-
-        ext.scale = scale
-        this._saveExt()
-
-        // Dispatched as an array, not the {x,y,z} object above — every
-        // other consumer of data.scale (OmniNode's _baseScale, _load,
-        // mesh.scale.set(...data.scale) via spread) expects the array
-        // shape posHandler/rotHandler already use correctly. Sending an
-        // object here made _baseScale throw the next time hover/select/
-        // deselect ran (array-destructuring a plain object throws) —
-        // which is what caused the scale to appear to revert AND made
-        // the object stop responding to clicks afterward, since the
-        // throw interrupted the deselect flow's own cleanup.
-        window.dispatchEvent(new CustomEvent('omni:node-scale-set', {
-          detail: { id: data.id, scale: [scale.x, scale.y, scale.z] }
-        }))
-      }, 200)
+      scaleTimer = setTimeout(commitScale, 200)
     }
 
     body.querySelector('#oi-sx')?.addEventListener('input', scaleHandler)

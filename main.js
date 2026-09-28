@@ -86,6 +86,7 @@ import OmniProgramPanel from './ui/OmniProgramPanel.js'
 import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
 import OmniEmotionParticles from './modules/OmniEmotionParticles.js'
 import Dev_FPS_Exp_ListOfEmotions from './ui/Dev_FPS_Exp_ListOfEmotions.js'
+import Hand from './ui/Hand.js'
 import { registerOmniCommandTerminalCommands } from './systems/OmniCommandTerminalCommands.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
@@ -334,6 +335,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniEmotionParticles = new OmniEmotionParticles(base.context)
   base.addModule(omniEmotionParticles)
   base.addModule(new Dev_FPS_Exp_ListOfEmotions(omniEmotionParticles))
+  base.addModule(new Hand(base.context, 'omnihand'))
+  base.addModule(new Hand(base.context, 'conscious'))
+  base.addModule(new Hand(base.context, 'lh'))
+  base.addModule(new Hand(base.context, 'rh'))
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -626,6 +631,19 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         _syncOrbitTarget()
         orbitMod.enable()
       }
+    }
+  })
+
+  // ── Real fix — force a final save before the page can actually go
+  // away, closing the race where a debounced change (e.g. OmniInspector's
+  // own 200ms rotation/scale-slider debounce) never reaches
+  // OmniNode._save() at all because the tab closed/refreshed/hid first.
+  window.addEventListener('beforeunload', () => {
+    window.dispatchEvent(new CustomEvent('omni:force-save'))
+  })
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      window.dispatchEvent(new CustomEvent('omni:force-save'))
     }
   })
 
