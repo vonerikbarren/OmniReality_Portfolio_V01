@@ -108,6 +108,12 @@ import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as GridWidgets   from '../ui/GridWidgets.js'
 import { goToObject } from '../utils/CameraTravel.js'
+import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram } from './OmniProgramCommands.js'
+// this._programTimeline (per-Inspector, not per-node — only one node's
+// Program section can be open at a time) tracks a currently-running
+// gsap timeline so the Begin button can flip to Stop and actually
+// kill an 'infinite' run instead of leaving it looping forever with
+// no way to cancel from the UI.
 
 // ── Layout constants (must match OmniNode.js and GlobalBar.js) ────────────────
 
@@ -942,6 +948,42 @@ const STYLES = /* css */`
 }
 .oi-btn-small--danger:hover { background: rgba(255, 90, 90, 0.2); }
 
+/* Program section — shared visual language with ui/OmniProgramEditorPanel.js
+   (same class names, each file injects its own copy of these rules,
+   matching this project's existing per-file STYLES convention). */
+.oi-program-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.oi-program-empty { font-size: 9.5px; color: rgba(255,255,255,0.35); padding: 8px 2px; text-align: center; }
+.op-step {
+  background       : rgba(255,255,255,0.04);
+  border           : 1px solid rgba(255,255,255,0.10);
+  border-radius    : 8px;
+  padding          : 7px 8px;
+}
+.op-step-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.op-step-num { font-size: 9px; color: rgba(255,255,255,0.4); width: 14px; }
+.op-step-cmd {
+  flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 5px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 4px;
+}
+.op-step-del { background: none; border: none; color: rgba(255,255,255,0.3); font-size: 10.5px; cursor: pointer; padding: 0 2px; }
+.op-step-del:hover { color: rgba(255,120,120,0.85); }
+.op-step-fields { display: flex; flex-wrap: wrap; gap: 6px; }
+.op-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 60px; min-width: 56px; }
+.op-field-label { font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.op-field-input {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 4px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 5px; width: 100%;
+  box-sizing: border-box;
+}
+.oi-program-begin {
+  width: 100%; margin-top: 2px; text-align: center; font-size: 10px; padding: 7px;
+  background: rgba(255, 238, 0, 0.12); border-color: rgba(255, 238, 0, 0.35); color: #ffee00;
+}
+.oi-program-begin:hover { background: rgba(255, 238, 0, 0.2); }
+.oi-program-begin:disabled { opacity: 0.35; cursor: not-allowed; }
+.oi-program-begin.is-running { background: rgba(255, 90, 90, 0.14); border-color: rgba(255, 90, 90, 0.4); color: rgba(255, 140, 140, 0.95); }
+.oi-program-begin.is-running:hover { background: rgba(255, 90, 90, 0.22); }
+
 .oi-data-field {
   display           : flex;
   flex-direction    : column;
@@ -1673,6 +1715,7 @@ export default class OmniInspector {
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+    window.removeEventListener('omni:node-program-set', this._onProgramSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
     window.removeEventListener('omni:force-save', this._onForceSaveFlush)
     window.removeEventListener('omni:node-selected', this._onSelected)
@@ -2207,6 +2250,7 @@ export default class OmniInspector {
       ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
       ${this._sectionHTML('automation', '▶ Automation', this._automationHTML(data))}
+      ${this._sectionHTML('program',    '▶ Program',    this._programHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
       ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
       ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
@@ -2237,6 +2281,7 @@ export default class OmniInspector {
     this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
     this._wireAutomation(body, data)
+    this._wireProgram(body, data, ext)
     this._wireMedia(body, ext)
     this._wireData(body, data, ext)
     this._wireCreateSection(body)
@@ -2470,6 +2515,184 @@ export default class OmniInspector {
         coord[idx] = Number(input.value)
         dispatch({ lookAtCoordinate: coord })
       })
+    })
+  }
+
+  // ── PROGRAM section — real, per-object step sequence. Applies to
+  // any OmniDraw object (not gated to a specific data.label the way
+  // _customOptionsHTML's MasterClock block is), per direct request.
+  // See systems/OmniProgramCommands.js for the shared command
+  // definitions, step-row markup and the actual gsap-timeline runner.
+
+  _programHTML (data, ext) {
+    const prog = ext?.program ?? { enabled: false, steps: [], autoPersist: false, repeat: 'once' }
+    const steps = prog.steps ?? []
+    const repeat = prog.repeat ?? 'once'
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Program</span>
+        <div class="oi-toggle-wrap">
+          <label class="oi-toggle">
+            <input type="checkbox" id="oi-program-enabled" ${prog.enabled ? 'checked' : ''}>
+            <div class="oi-toggle-track"></div>
+            <div class="oi-toggle-thumb"></div>
+          </label>
+          <span class="oi-toggle-label">Enabled</span>
+        </div>
+      </div>
+      <div class="oi-data-note">
+        A real step sequence for this object — Move / Rotate / Scale
+        genuinely tween it; Communicate / Notify push through the real
+        ⟐OmniNotify pipeline. Works on any OmniDraw object. Running a
+        program plays it live — it doesn't overwrite this object's
+        saved position/rotation/scale.
+      </div>
+      <div id="oi-program-body" style="${prog.enabled ? '' : 'display:none'}">
+        <div class="oi-program-steps" id="oi-program-steps">
+          ${steps.length ? steps.map((s, i) => stepRowHTML(s, i)).join('') : '<div class="oi-program-empty">No steps yet — add one below.</div>'}
+        </div>
+        <div class="oi-row">
+          <button class="oi-btn-small" id="oi-program-add-step">+ Add Step</button>
+          <button class="oi-btn-small" id="oi-program-open-editor">Open Full Editor ⟐</button>
+        </div>
+
+        <div class="oi-row">
+          <span class="oi-label" style="width:auto">Run Mode</span>
+          <select class="oi-select" id="oi-program-repeat">
+            <option value="once" ${repeat === 'once' ? 'selected' : ''}>Once</option>
+            <option value="infinite" ${repeat === 'infinite' ? 'selected' : ''}>Infinite (loop)</option>
+          </select>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label" style="width:auto">Auto-Persist</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-program-autopersist" ${prog.autoPersist ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+              <div class="oi-toggle-thumb"></div>
+            </label>
+            <span class="oi-toggle-label">Save end state</span>
+          </div>
+        </div>
+        <div class="oi-data-note">
+          Auto-Persist writes the object's position/rotation/scale back
+          to its saved data — once, when a "Once" run finishes, or
+          after every lap when Run Mode is "Infinite". Off by default:
+          without it, a run is a live animation only.
+        </div>
+
+        <button class="oi-btn-small oi-program-begin" id="oi-program-begin" ${steps.length ? '' : 'disabled'}>⟐OmniBegin(Program)</button>
+      </div>
+    `
+  }
+
+  _wireProgram (body, data, ext) {
+    ext.program = { enabled: false, steps: [], autoPersist: false, repeat: 'once', ...ext.program }
+    const prog = ext.program
+
+    const wireStepRows = () => {
+      body.querySelectorAll('.op-step-cmd').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const idx = Number(sel.dataset.idx)
+          prog.steps[idx] = defaultStep(e.target.value)
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-field-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const idx = Number(input.dataset.idx)
+          const field = input.dataset.field
+          const step = prog.steps[idx]
+          if (!step) return
+          step[field] = input.type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value
+          this._saveExt()
+        })
+      })
+      body.querySelectorAll('.op-step-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.dataset.idx)
+          prog.steps.splice(idx, 1)
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+    }
+
+    const rerenderSteps = () => {
+      const container = body.querySelector('#oi-program-steps')
+      if (container) {
+        container.innerHTML = prog.steps.length
+          ? prog.steps.map((s, i) => stepRowHTML(s, i)).join('')
+          : '<div class="oi-program-empty">No steps yet — add one below.</div>'
+      }
+      const beginBtn = body.querySelector('#oi-program-begin')
+      if (beginBtn) beginBtn.disabled = prog.steps.length === 0
+      wireStepRows()
+    }
+    wireStepRows()
+
+    body.querySelector('#oi-program-enabled')?.addEventListener('change', (e) => {
+      prog.enabled = e.target.checked
+      const progBody = body.querySelector('#oi-program-body')
+      if (progBody) progBody.style.display = prog.enabled ? '' : 'none'
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-add-step')?.addEventListener('click', () => {
+      prog.steps.push(defaultStep('move'))
+      this._saveExt()
+      rerenderSteps()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-repeat')?.addEventListener('change', (e) => {
+      prog.repeat = e.target.value
+      this._saveExt()
+    })
+
+    body.querySelector('#oi-program-autopersist')?.addEventListener('change', (e) => {
+      prog.autoPersist = e.target.checked
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    const beginBtnEl = body.querySelector('#oi-program-begin')
+    beginBtnEl?.addEventListener('click', () => {
+      // Second click while a program is running stops it — the only
+      // real way to cancel an 'infinite' run, which otherwise loops
+      // forever with no UI to cancel it from.
+      if (this._programTimeline && this._programTimeline.isActive()) {
+        this._programTimeline.kill()
+        this._programTimeline = null
+        beginBtnEl.textContent = '⟐OmniBegin(Program)'
+        beginBtnEl.classList.remove('is-running')
+        this._playSound('click')
+        return
+      }
+      if (!this._currentMesh || prog.steps.length === 0) return
+      this._programTimeline = runProgram(this._currentMesh, prog.steps, data.label ?? data.id, {
+        repeat: prog.repeat, autoPersist: prog.autoPersist, nodeId: data.id,
+      })
+      beginBtnEl.textContent = '⟐ Stop'
+      beginBtnEl.classList.add('is-running')
+      this._programTimeline.eventCallback('onComplete', () => {
+        this._programTimeline = null
+        beginBtnEl.textContent = '⟐OmniBegin(Program)'
+        beginBtnEl.classList.remove('is-running')
+      })
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-open-editor')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:program-panel-open-request', {
+        detail: {
+          id: data.id,
+          label: data.label ?? data.id,
+          program: structuredClone(prog),
+        }
+      }))
     })
   }
 
@@ -4578,6 +4801,10 @@ export default class OmniInspector {
       planeTextColor  : { r: 220, g: 230, b: 255, a: 0.9 },
       planeAutoSize   : false,
       planeScrollable : false,
+      // Real, per-object step-sequence program — see
+      // systems/OmniProgramCommands.js. Applies to any OmniDraw
+      // object, not just OmniNavi/OmniBotProgram bots.
+      program         : { enabled: false, steps: [], autoPersist: false, repeat: 'once' },
     }
   }
 
@@ -4766,6 +4993,45 @@ export default class OmniInspector {
       }
     }
     window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+
+    // ui/OmniProgramEditorPanel.js's Save — same real, unconditional-
+    // persist pattern as Internal Data above: this Inspector owns the
+    // actual localStorage write, and keeps its own in-memory copy (and
+    // the visible step list, if this same node's Program section is
+    // currently open) in sync rather than going stale.
+    this._onProgramSet = (e) => {
+      const { id, program } = e.detail ?? {}
+      if (!id || !program) return
+
+      const existing = this._loadExt(id) ?? {}
+      const merged = { ...existing, program }
+      try {
+        localStorage.setItem(STORE_PREFIX + id, JSON.stringify(merged))
+      } catch (err) {
+        console.warn('⟐i — Program save failed:', err)
+      }
+
+      if (id === this._currentId && this._ext) {
+        this._ext.program = program
+        const container = this._el?.querySelector('#oi-program-steps')
+        if (container) {
+          container.innerHTML = program.steps?.length
+            ? program.steps.map((s, i) => stepRowHTML(s, i)).join('')
+            : '<div class="oi-program-empty">No steps yet — add one below.</div>'
+        }
+        const enabledBox = this._el?.querySelector('#oi-program-enabled')
+        if (enabledBox) enabledBox.checked = !!program.enabled
+        const progBody = this._el?.querySelector('#oi-program-body')
+        if (progBody) progBody.style.display = program.enabled ? '' : 'none'
+        const beginBtn = this._el?.querySelector('#oi-program-begin')
+        if (beginBtn) beginBtn.disabled = !(program.steps?.length)
+        const repeatSel = this._el?.querySelector('#oi-program-repeat')
+        if (repeatSel) repeatSel.value = program.repeat ?? 'once'
+        const autoPersistBox = this._el?.querySelector('#oi-program-autopersist')
+        if (autoPersistBox) autoPersistBox.checked = !!program.autoPersist
+      }
+    }
+    window.addEventListener('omni:node-program-set', this._onProgramSet)
 
     window.addEventListener('omni:node-selected', this._onSelected)
 

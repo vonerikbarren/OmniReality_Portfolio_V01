@@ -27,6 +27,8 @@ import OmniUserPanel     from './ui/OmniUserPanel.js'
 import NavMapPanel       from './ui/NavMapPanel.js'
 import OmniNotifyPanel   from './ui/OmniNotifyPanel.js'
 import OmniFloor         from './modules/OmniFloor.js'
+import OmniFloorManager  from './modules/OmniFloorManager.js'
+import FloorManagerPanel from './ui/FloorManagerPanel.js'
 import OmniTargeting     from './modules/OmniTargeting.js'
 import OmniTargetingSettingsPanel from './ui/OmniTargetingSettingsPanel.js'
 import FloorSettingsPanel from './ui/FloorSettingsPanel.js'
@@ -65,6 +67,7 @@ import PortfolioXD       from './modules/PortfolioXD.js'
 // ── Sound ─────────────────────────────────────────────────
 import SoundManager      from './utils/SoundManager.js'
 import MiniMap           from './ui/MiniMap.js'
+import MiniMapSettingsPanel from './ui/MiniMapSettingsPanel.js'
 import TreeView          from './ui/TreeView.js'
 import RadialMenu from './ui/RadialMenu.js'
 import OmniDraw          from './ui/OmniDraw.js'
@@ -86,6 +89,7 @@ import OmniProgramPanel from './ui/OmniProgramPanel.js'
 import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
 import OmniEmotionParticles from './modules/OmniEmotionParticles.js'
 import Dev_FPS_Exp_ListOfEmotions from './ui/Dev_FPS_Exp_ListOfEmotions.js'
+import TestCallStackPanel from './ui/TestCallStackPanel.js'
 import Hand from './ui/Hand.js'
 import { registerOmniCommandTerminalCommands } from './systems/OmniCommandTerminalCommands.js'
 import OmniTranslator from './ui/OmniTranslator.js'
@@ -107,6 +111,7 @@ import OmniStructurePanel from './ui/OmniStructurePanel.js'
 import ChronosRealityNode from './modules/ChronosRealityNode.js'
 import StateTransitionParticles from './modules/StateTransitionParticles.js'
 import OmniInternalPanel from './ui/OmniInternalPanel.js'
+import OmniProgramEditorPanel from './ui/OmniProgramEditorPanel.js'
 import PanelControl from './ui/PanelControl.js'
 import OmniInspection from './ui/OmniInspection.js'
 import OmniInspectionHUD from './ui/OmniInspectionHUD.js'
@@ -168,6 +173,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
                    base.addModule(new NavMapPanel(base.context, omniLandingRoom, '⟐NavMap'))
                    base.addModule(new OmniNotifyPanel(base.context))
                    base.addModule(new OmniFloor(base.context))
+                   const omniFloorManager = new OmniFloorManager(base.context)
+                   base.addModule(omniFloorManager)
+                   base.addModule(new FloorManagerPanel(omniFloorManager))
                    base.addModule(new OmniTargeting(base.context))
                    base.addModule(new OmniTargetingSettingsPanel(base.context))
                    base.addModule(new FloorSettingsPanel(base.context))
@@ -301,6 +309,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const miniMap = new MiniMap(base.context)
   miniMap.init()
   base.addModule(miniMap)
+  base.addModule(new MiniMapSettingsPanel())
 
   const treeView = new TreeView(base.context)
   treeView.init()
@@ -335,6 +344,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniEmotionParticles = new OmniEmotionParticles(base.context)
   base.addModule(omniEmotionParticles)
   base.addModule(new Dev_FPS_Exp_ListOfEmotions(omniEmotionParticles))
+  base.addModule(new TestCallStackPanel())
   base.addModule(new Hand(base.context, 'omnihand'))
   base.addModule(new Hand(base.context, 'conscious'))
   base.addModule(new Hand(base.context, 'lh'))
@@ -424,6 +434,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniInternalPanel = new OmniInternalPanel(base.context)
   base.addModule(omniInternalPanel)
 
+  base.addModule(new OmniProgramEditorPanel(base.context, omniNode))
+
   const panelControl = new PanelControl(base.context)
   base.addModule(panelControl)
 
@@ -489,6 +501,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         2: { label: 'OmniProgram', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniProgram' } })) },
         3: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
         4: { label: 'Dev_FPS_Exp_ListOfEmotions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐Dev_FPS_Exp_ListOfEmotions' } })) },
+        5: { label: 'TestCallStack', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TestCallStack' } })) },
       },
     },
     {
@@ -497,6 +510,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         1: { label: 'OmniAdminSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐mniAdminSettings' } })) },
         2: { label: 'OmniParticleSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniParticleSettings' } })) },
         3: { label: 'OmniWallpaperSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniWallpaperSettings' } })) },
+        4: { label: 'MiniMapSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐MiniMapSettings' } })) },
         5: { label: 'OmniCameraMovementOptions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐CameraMovementOptions' } })) },
         6: { label: 'UserTime', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐UserTime' } })) },
         7: { label: 'WindowInspector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐WindowInspector' } })) },
@@ -517,6 +531,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
         13: { label: 'OmniVerticalMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniVerticalMeter' } })) },
         14: { label: 'OmniRealityGridPointSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridPointSelector' } })) },
+        15: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -839,9 +854,12 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     window.dispatchEvent(new CustomEvent('omni:translator-toggle'))
   })
 
-  // ── 'm' — toggle OmniMixer ─────────────────────────────────
+  // ── 'k' — toggle OmniMixer ─────────────────────────────────
+  // Moved off 'm' per direct request — 'm' now toggles the mini map,
+  // Zelda BotW/TotK-style. Real, honest reassignment, not a silent
+  // conflict: OmniMixer keeps a real, working hotkey, just on 'k'.
   window.addEventListener('keydown', (e) => {
-    if (e.key !== 'm' || e.repeat) return
+    if (e.key !== 'k' || e.repeat) return
     const active = document.activeElement
     const isTyping = active && (
       active.tagName === 'INPUT' ||
@@ -851,6 +869,19 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     if (isTyping) return
     if (omniMixerPanel._isOpen) omniMixerPanel.close()
     else omniMixerPanel.open()
+  })
+
+  // ── 'm' — toggle the mini map (Zelda BotW/TotK-style) ───────
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'm' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    miniMap.toggle()
   })
 
   // ── 'F2' — refresh the page ─────────────────────────────────

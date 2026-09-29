@@ -127,14 +127,16 @@ export const KNOWN_NAMESPACES = [
   'omnimixer-skin',         // OmniMixerPanel's background skin image
   'omniexpression-video',   // OmniExpressionVideoPlayer's main video
   'omniexpression-circles', // OmniExpressionVideoPlayer's backing circle images
-  'wallpaper-video',        // WallpaperSphere's single video-wallpaper slot
+  'wallpaper-video',        // WallpaperSphere's video-wallpaper slots
 ]
 
 /**
- * WallpaperSphere's video wallpaper — a single slot (unlike the 20-slot
- * image browser above): one video applied at a time, and a real video
- * file is heavy enough that a 20-slot browser for them would be a lot
- * of IndexedDB storage for little benefit. Same namespaced store
- * mechanism as everything else here, just with maxSlots=1.
+ * WallpaperSphere's video wallpaper — now the same 20 slots as the
+ * image browser above, per direct request ("save videos like you do
+ * the images and the same amount"). Only one video ever decodes/plays
+ * at a time regardless of how many are saved — switching slots
+ * disposes the previous <video>/VideoTexture first (see
+ * modules/WallpaperSphere.js's _disposeVideo) — so this is real
+ * additional storage, not additional simultaneous decode cost.
  */
-export const wallpaperVideoStore = createWallpaperStore('wallpaper-video', 1)
+export const wallpaperVideoStore = createWallpaperStore('wallpaper-video', 20)

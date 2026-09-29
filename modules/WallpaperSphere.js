@@ -55,7 +55,11 @@
 import * as THREE from 'three'
 import { loadWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
 
-const VIDEO_SLOT = 1   // wallpaperVideoStore is a single-slot (maxSlots=1) store — always slot 1
+// wallpaperVideoStore now has the same 20 slots as the image browser
+// (previously a single-slot, maxSlots=1 store, always slot 1) — see
+// utils/WallpaperStorage.js. this._activeVideoSlot (default 1) tracks
+// which one is currently active, same role activeSlot plays for images.
+const DEFAULT_VIDEO_SLOT = 1
 
 const CENTER_Y = 28        // matches VoidBoundary / RootSpace
 const BASE_SIZE = 1050     // 5x — the space should feel genuinely massive; same scale as before
@@ -110,7 +114,7 @@ function readWallpaperSettings () {
     position: { x: 0, y: 0, z: 0 },
     rotationOffset: { x: 0, y: 0, z: 0 },
     scale: { x: 1, y: 1, z: 1 },
-    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0,
+    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0, activeVideoSlot: null,
   }
   try { localStorage.setItem(STORE_KEY, JSON.stringify(migrated)) } catch (_) {}
   return migrated
@@ -140,6 +144,7 @@ export default class WallpaperSphere {
     this._videoLoop = true
     this._videoMuted = true
     this._videoVolume = 0
+    this._activeVideoSlot = null
 
     this._onSettingsSet = null
     this._onSpinDirection = null
@@ -185,6 +190,10 @@ export default class WallpaperSphere {
     this._videoLoop = saved.videoLoop ?? true
     this._videoMuted = saved.videoMuted ?? true
     this._videoVolume = saved.videoVolume ?? 0
+    // Migration: an install saved before slots existed has
+    // videoActive:true with no activeVideoSlot at all — that video is
+    // really sitting in slot 1 (the old single-slot store's only slot).
+    this._activeVideoSlot = saved.activeVideoSlot ?? (saved.videoActive ? DEFAULT_VIDEO_SLOT : null)
     if (saved.videoActive) this._loadVideoFromStore()
 
     this._onSettingsSet = (e) => {
@@ -204,7 +213,8 @@ export default class WallpaperSphere {
       if (w.activeSlot) this._applyFromSlot(w.activeSlot)
 
       // ── Video wallpaper ──────────────────────────────────────────
-      if (w.videoUrl) this._applyVideo(w.videoUrl, !!w.videoUrlIsObjectUrl)
+      if (w.activeVideoSlot) this._applyVideoFromSlot(w.activeVideoSlot)
+      else if (w.videoUrl) this._applyVideo(w.videoUrl, !!w.videoUrlIsObjectUrl)
       else if (w.videoUrl === '') this._clearVideo()
       if (w.videoLoop !== undefined) {
         this._videoLoop = w.videoLoop
@@ -369,14 +379,16 @@ export default class WallpaperSphere {
   // ── Video wallpaper ────────────────────────────────────────────────────
 
   /** Boot-time restore — mirrors _applyFromSlot's image equivalent,
-   *  reading the single-slot IndexedDB store rather than a data URI
-   *  (a real video is far too large for localStorage/data: URIs, same
-   *  reasoning WallpaperStorage.js documents for the image browser). */
+   *  reading whichever slot this._activeVideoSlot points at from the
+   *  IndexedDB video store rather than a data URI (a real video is far
+   *  too large for localStorage/data: URIs, same reasoning
+   *  WallpaperStorage.js documents for the image browser). */
   async _loadVideoFromStore () {
+    const slot = this._activeVideoSlot ?? DEFAULT_VIDEO_SLOT
     try {
-      const record = await wallpaperVideoStore.loadWallpaper(VIDEO_SLOT)
+      const record = await wallpaperVideoStore.loadWallpaper(slot)
       if (!record) {
-        console.warn('⟐WallpaperSphere — videoActive was true but no video is stored in slot', VIDEO_SLOT, '— clearing the flag.')
+        console.warn('⟐WallpaperSphere — videoActive was true but no video is stored in slot', slot, '— clearing the flag.')
         this._commitVideoActive(false)
         return
       }
@@ -386,11 +398,30 @@ export default class WallpaperSphere {
     }
   }
 
-  _commitVideoActive (active) {
+  /** Live slot switch — dispatched by ui/WallpaperSettingsPanel.js's
+   *  video slot grid exactly the way `activeSlot` triggers
+   *  `_applyFromSlot` for images. */
+  async _applyVideoFromSlot (slot) {
+    this._activeVideoSlot = slot
+    try {
+      const record = await wallpaperVideoStore.loadWallpaper(slot)
+      if (!record) {
+        console.warn('⟐WallpaperSphere — video slot', slot, 'was requested but came back empty.')
+        return
+      }
+      this._applyVideo(URL.createObjectURL(record.blob), /* isObjectUrl */ true)
+      this._commitVideoActive(true, slot)
+    } catch (err) {
+      console.warn('⟐WallpaperSphere — failed to load video slot', slot, err)
+    }
+  }
+
+  _commitVideoActive (active, slot = this._activeVideoSlot) {
     try {
       const raw = localStorage.getItem(STORE_KEY)
       const s = raw ? JSON.parse(raw) : {}
       s.videoActive = active
+      if (slot != null) s.activeVideoSlot = slot
       localStorage.setItem(STORE_KEY, JSON.stringify(s))
     } catch (_) { /* non-fatal — worst case it re-prompts next boot */ }
   }

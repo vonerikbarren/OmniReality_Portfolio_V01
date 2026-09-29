@@ -29,6 +29,7 @@
 import gsap from 'gsap'
 import * as THREE from 'three'
 import { findOwnerOf } from '../utils/JsonifierRegistry.js'
+import { getDefaultPortals } from './OmniMapPortals.js'
 
 const STYLES = /* css */`
 
@@ -510,11 +511,19 @@ export default class OmniStartHUD {
 
     const nodes = this.omniNode?.getAllNodes() ?? []
     const contexts = this.omniRealityGridSelector?.getContexts() ?? {}
+    // The same real portal markers ui/MiniMap.js draws — merged in
+    // here per direct request ("merge functions with Q4"), so this
+    // is genuinely the fuller version of the same map, not a second,
+    // divergent one.
+    const portals = getDefaultPortals()
+    const cam = this.ctx?.camera
+    const camPos = cam ? { x: cam.position.x, z: cam.position.z } : null
 
     // Real, current bounding box across every real thing that
-    // exists — nodes, every staged context's own real cells, and
-    // the real landing point — with a real, sensible fallback range
-    // when nothing exists yet, so the minimap never divides by zero.
+    // exists — nodes, every staged context's own real cells, the
+    // real landing point, the portal ring, and the live camera
+    // position — with a real, sensible fallback range when nothing
+    // exists yet, so the minimap never divides by zero.
     let minX = LANDING.x, maxX = LANDING.x, minZ = LANDING.z, maxZ = LANDING.z
     nodes.forEach(n => {
       const [x, , z] = n.position ?? [0, 0, 0]
@@ -529,6 +538,14 @@ export default class OmniStartHUD {
         minZ = Math.min(minZ, z0); maxZ = Math.max(maxZ, z1)
       })
     })
+    portals.forEach(p => {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
+      minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z)
+    })
+    if (camPos) {
+      minX = Math.min(minX, camPos.x); maxX = Math.max(maxX, camPos.x)
+      minZ = Math.min(minZ, camPos.z); maxZ = Math.max(maxZ, camPos.z)
+    }
     const rangeX = Math.max(maxX - minX, CELL_SIZE * 4)
     const rangeZ = Math.max(maxZ - minZ, CELL_SIZE * 4)
     const pad = 0.2
@@ -583,6 +600,15 @@ export default class OmniStartHUD {
       c.beginPath(); c.arc(px, py, 2.5, 0, Math.PI * 2); c.fill()
     })
 
+    // Real portal markers — same real defs ui/MiniMap.js uses
+    portals.forEach(p => {
+      const [px, py] = worldToCanvas(p.x, p.z)
+      c.beginPath(); c.arc(px, py, 4, 0, Math.PI * 2)
+      c.fillStyle = `${p.color}30`; c.fill()
+      c.beginPath(); c.arc(px, py, 2.5, 0, Math.PI * 2)
+      c.fillStyle = p.color; c.fill()
+    })
+
     // The real landing point — a distinct marker
     const [lpx, lpy] = worldToCanvas(LANDING.x, LANDING.z)
     c.strokeStyle = '#ffffff'
@@ -591,6 +617,35 @@ export default class OmniStartHUD {
     c.moveTo(lpx - 5, lpy); c.lineTo(lpx + 5, lpy)
     c.moveTo(lpx, lpy - 5); c.lineTo(lpx, lpy + 5)
     c.stroke()
+
+    // The real, live camera position + heading — the same signal
+    // ui/MiniMap.js's corner HUD shows, drawn here too so Q4 is
+    // genuinely the fuller map, not a second map missing "where am I".
+    if (camPos && cam) {
+      const [cpx, cpy] = worldToCanvas(camPos.x, camPos.z)
+      const dir = new THREE.Vector3()
+      cam.getWorldDirection(dir)
+      const len = Math.sqrt(dir.x * dir.x + dir.z * dir.z)
+      if (len > 0.001) {
+        const ndx = dir.x / len, ndz = dir.z / len
+        const LINE_LEN = 14
+        c.beginPath()
+        c.moveTo(cpx, cpy)
+        c.lineTo(cpx + ndx * LINE_LEN, cpy + ndz * LINE_LEN)
+        c.strokeStyle = 'rgba(255,255,255,0.65)'
+        c.lineWidth = 1.5
+        c.lineCap = 'round'
+        c.stroke()
+        c.lineCap = 'butt'
+      }
+      c.shadowBlur = 8
+      c.shadowColor = 'rgba(255,255,255,0.7)'
+      c.beginPath(); c.arc(cpx, cpy, 3.5, 0, Math.PI * 2)
+      c.fillStyle = '#ffffff'
+      c.fill()
+      c.shadowBlur = 0
+      c.shadowColor = 'transparent'
+    }
   }
 
   /** Real click-to-fast-travel — reverses the same real mapping
@@ -613,10 +668,24 @@ export default class OmniStartHUD {
   }
 
   update (delta) {
-    if (!this._preview) return
-    this._preview.mesh.rotation.x += delta * 0.3
-    this._preview.mesh.rotation.y += delta * 0.5
-    this._preview.renderer.render(this._preview.scene, this._preview.camera)
+    if (this._preview) {
+      this._preview.mesh.rotation.x += delta * 0.3
+      this._preview.mesh.rotation.y += delta * 0.5
+      this._preview.renderer.render(this._preview.scene, this._preview.camera)
+    }
+
+    // Q4's real map now shows the live camera position/heading too —
+    // throttled to ~10fps rather than every frame, since it's only
+    // ever visible while this menu is open, and a plain canvas redraw
+    // of a few dozen markers doesn't need full framerate to read as
+    // live. Real, deliberate performance choice, not a missed one.
+    if (this._isOpen) {
+      this._minimapFrameAccum = (this._minimapFrameAccum ?? 0) + delta
+      if (this._minimapFrameAccum >= 0.1) {
+        this._minimapFrameAccum = 0
+        this._renderMinimap()
+      }
+    }
   }
 
   onResize () {}

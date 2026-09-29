@@ -584,3 +584,125 @@ building. Once Orbiter has an answer, the rest of this item is
 confirming/completing whichever Hamburger/Pad/Tools targets are still
 stubs per item 36's audit, not new discovery.
 
+## 39. TestCallStack (Dev05) — RESOLVED, built in V136
+
+Requested directly: a place in the Developer menu to track "the
+latest updates to the OS" as a tappable checklist, organized by
+class/id, persisted so progress survives a reload.
+
+Built as `ui/TestCallStackPanel.js`, wired as Developer specialSlot 5
+in `main.js` (`⟐TestCallStack`). Items are grouped by class (a free-
+text category, e.g. "Persistence", "Movement", "Wallpaper") with a
+checkbox per row; state is stored in
+`localStorage['omni:dev:testcallstack:items']` keyed by a stable
+per-item id, so checking things off persists across reloads and
+future rebuilds of the panel. New rows can be added from the panel
+itself (existing class or a new one), and removed with the ✕ on each
+row — this is meant to be a living list the person updates as new
+work lands, not a fixed one requiring a code edit each time.
+
+Seeded on first open with the real changes delivered in V131–V135
+(persistence force-save fix, dash movement, Inspector snap-to-right,
+per-node custom options, video wallpaper + the image-mirror fix,
+DoubleSide toggle, the docs/business_strategy and docs/dev moves) —
+seeding only happens once (`omni:dev:testcallstack:seeded` flag), so
+deleting a seeded row won't bring it back on the next open.
+
+## 40. Program — real, per-object step sequence — built in V137
+
+Requested directly: a toggle in the Inspector for a "Program"
+capability, applied to any OmniDraw object (not just OmniNavi), with
+real commands — move(to), communicate(message), notify(item), plus
+rotate/scale — run via GSAP, and a dedicated, growing panel version
+of the same editor alongside the Inspector's own quick version. Both
+carry a `⟐OmniBegin(Program)` run button.
+
+Built as:
+- `systems/OmniProgramCommands.js` — the shared command registry
+  (move/rotate/scale/communicate/notify), the step-row HTML generator,
+  and `runProgram(mesh, steps, label)`, a real gsap timeline: move/
+  rotate/scale genuinely tween the mesh's own transform; communicate/
+  notify push through the real, already-wired ⟐OmniNotify pipeline
+  (`omni:notify-push`) rather than a new, fake chat system — labeled
+  differently ("X says: ..." vs a plain item) so they read distinctly
+  even though both land in the same real inbox.
+- `systems/OmniInspector.js` — new "▶ Program" accordion section
+  (Enabled toggle, step list, + Add Step, Open Full Editor ⟐, and the
+  Begin button), stored in the same per-node `ext` object as every
+  other Inspector field (`ext.program = { enabled, steps }`), so it
+  persists and debounce/force-save the same way everything else here
+  already does. Works on any node — not gated to a specific
+  `data.label` the way `_customOptionsHTML`'s MasterClock block is.
+- `ui/OmniProgramEditorPanel.js` — the dedicated panel, opened via the
+  Inspector's "Open Full Editor ⟐" button (`omni:program-panel-open-
+  request`), same real save-through-Inspector pattern already proven
+  by `ui/OmniInternalPanel.js` (`omni:node-program-set`, no second,
+  competing write path). Looks its mesh up live via
+  `omniNode.getMeshById(id)` so its own Begin button still works even
+  if the Inspector's selection has since moved to a different node.
+  No drawer/nav slot yet — reached only from the Inspector, same as
+  Internal Data — intentionally minimal for now, meant to grow.
+
+Real, honest gap: running a program is a live animation only — it
+does not write the tweened end position/rotation/scale back to the
+node's saved transform, so a reload reverts to whatever was last
+actually saved via the normal fields. Making it auto-persist would
+silently rewrite saved data on every re-run, which felt like the
+wrong default without being asked for it directly — flagging this
+rather than deciding it silently.
+
+## 41. Auto-Persist + Run Mode, Mini Map overhaul, real map merge,
+## video wallpaper slots, FloorManager — built in V138
+
+Five real, separate changes requested together:
+
+**Program Auto-Persist + Run Mode** (`systems/OmniProgramCommands.js`,
+Inspector's Program section, `ui/OmniProgramEditorPanel.js`): Run Mode
+is Once or Infinite (`gsap.timeline({ repeat: -1 })`); Auto-Persist
+writes the tweened end transform back via the real
+`omni:node-pos/-rotation/-scale-set` events — once at the end of a
+"Once" run, or after every lap for "Infinite" (`onRepeat`, since
+`repeat:-1` never fires `onComplete`). The Begin button now tracks its
+running timeline and turns into a real Stop button — the only way to
+cancel an Infinite run.
+
+**Mini Map, Zelda BotW/TotK-style** (`ui/MiniMap.js`,
+`utils/MiniMapSettings.js`, `ui/MiniMapSettingsPanel.js` at Admin04):
+default corner moved from bottom-center to top-right, corner is now a
+real per-account setting (all 4 corners), toggled with **M**.
+Real, honest conflict caught before shipping: 'm' was already
+OmniMixer's hotkey — moved OmniMixer to **K** rather than silently
+double-binding 'm' (`main.js`, `ui/OmniKeyboardShortcutsPanel.js`
+both updated).
+
+**Real map / Q4 merge** (`ui/OmniMapPortals.js` new shared module,
+`ui/OmniStartHUD.js`): pulled the portal marker defs out of MiniMap.js
+into a shared file so Q4's already-real, bounding-box-fitted map
+draws the exact same portal markers plus the live camera position +
+heading arrow MiniMap.js shows — genuinely the fuller version of the
+same map now, not two maps that could drift apart. Throttled to
+~10fps while the Start HUD is open (`update(delta)`), not full
+framerate, since it's a simple canvas redraw only ever visible there.
+
+**Video wallpaper — 20 slots** (`utils/WallpaperStorage.js`,
+`modules/WallpaperSphere.js`, `ui/WallpaperSettingsPanel.js`):
+`wallpaperVideoStore` now has the same 20 slots as the image browser,
+with the same click-empty-to-upload/click-filled-to-apply/× grid.
+Only one video ever decodes/plays at a time no matter how many are
+saved — switching slots disposes the previous `<video>`/VideoTexture
+first — so this is more storage, not more simultaneous decode cost. A
+real migration path handles an install that saved `videoActive:true`
+before slots existed (treated as slot 1).
+
+**FloorManager, Admin15** (`modules/OmniFloorManager.js` new module,
+`ui/FloorManagerPanel.js`): create additional floors at any height
+(each a `THREE.GridHelper`, not OmniFloor.js's own windowed-tiling
+system — deliberately simpler, since this manages a handful of
+reference floors, not one at massive scale) and adjust their height
+live. A toggleable indicator sits just below screen center (clear of
+`ui/OmniAimReticle.js`) and reports whichever floor — ground included
+— the camera is currently closest to, live, with the current Y. The
+real ground floor (OmniFloor.js, y=0) is listed read-only for
+reference; it isn't one of OmniFloorManager's own floors and can't be
+edited or removed from here.
+

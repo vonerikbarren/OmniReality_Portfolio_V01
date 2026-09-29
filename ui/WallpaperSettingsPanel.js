@@ -25,7 +25,11 @@ import * as WindowManager from './WindowManager.js'
 import { WALLPAPER_SHAPES } from '../modules/WallpaperSphere.js'
 import { MAX_SLOTS, saveWallpaper, listWallpapers, deleteWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
 
-const VIDEO_SLOT = 1
+// Video wallpaper now gets the same slot count as the image browser
+// (VIDEO_MAX_SLOTS === MAX_SLOTS, both 20) — see
+// utils/WallpaperStorage.js's wallpaperVideoStore, per direct request
+// ("save videos like you do the images and the same amount").
+const VIDEO_MAX_SLOTS = wallpaperVideoStore.MAX_SLOTS
 
 const STYLES = /* css */`
 
@@ -223,7 +227,7 @@ function loadSettings () {
     shape: 'SphereGeometry', color: '#445566', alpha: 0.9, imgUrl: './assets/images/wallpaper-default.jpg',
     activeSlot: null, rotationSpeed: 0.05, autoSpinX: false, autoSpinY: true, autoSpinZ: true,
     position: { x: 0, y: 0, z: 0 }, rotationOffset: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
-    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0,
+    videoActive: false, videoLoop: true, videoMuted: true, videoVolume: 0, activeVideoSlot: null,
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
@@ -243,6 +247,8 @@ export default class WallpaperSettingsPanel {
     this._state = loadSettings()
     this._filledSlots = new Set()
     this._pendingSlot = null   // which slot a file-picker click is for
+    this._filledVideoSlots = new Set()
+    this._pendingVideoSlot = null   // which video slot a file-picker click is for
     this._onNavSelect = null
   }
 
@@ -275,6 +281,7 @@ export default class WallpaperSettingsPanel {
     this._isOpen = true
     this._playSound('open')
     this._refreshSlots()
+    this._refreshVideoSlots()
   }
 
   close () {
@@ -339,6 +346,17 @@ export default class WallpaperSettingsPanel {
       `
     }
 
+    let videoSlotButtons = ''
+    for (let i = 1; i <= VIDEO_MAX_SLOTS; i++) {
+      videoSlotButtons += `
+        <button class="ws-slot-btn" data-video-slot="${i}">
+          <button class="ws-slot-remove" data-remove-video-slot="${i}" title="Remove">×</button>
+          <span class="ws-slot-num">${i}</span>
+          <span class="ws-slot-status">Empty</span>
+        </button>
+      `
+    }
+
     el.innerHTML = /* html */`
       <div class="ws-header">
         <span class="ws-title">⟐Wallpaper Settings</span>
@@ -389,10 +407,17 @@ export default class WallpaperSettingsPanel {
         </div>
         <input type="file" accept="image/*" class="ws-file-input" id="ws-file-input">
 
-        <div class="ws-section-title">Video Wallpaper</div>
+        <div class="ws-section-title">Video Wallpaper (${VIDEO_MAX_SLOTS} slots)</div>
+        <div class="ws-slot-grid" id="ws-video-slot-grid">${videoSlotButtons}</div>
+        <div class="ws-note">
+          Click an empty slot to upload a video. Click a filled slot to
+          make it the active wallpaper. Only one ever decodes/plays at
+          a time no matter how many slots are filled.
+        </div>
+        <input type="file" accept="video/*" class="ws-file-input" id="ws-video-file-input">
+
         <div class="ws-row">
-          <span class="ws-row-label" id="ws-video-status">${s.videoActive ? 'Video active' : 'No video set'}</span>
-          <button class="ws-mini-btn" id="ws-video-upload">${s.videoActive ? 'Replace…' : 'Upload…'}</button>
+          <span class="ws-row-label" id="ws-video-status">${s.videoActive ? `Video active — slot ${s.activeVideoSlot ?? 1}` : 'No video active'}</span>
         </div>
         <div class="ws-row"><span class="ws-row-label">Playing</span><button class="ws-toggle is-on" id="ws-video-playing" data-video-toggle="playing"></button></div>
         <div class="ws-row"><span class="ws-row-label">Loop</span><button class="ws-toggle ${s.videoLoop ? 'is-on' : ''}" id="ws-video-loop" data-video-toggle="loop"></button></div>
@@ -401,7 +426,7 @@ export default class WallpaperSettingsPanel {
           <span class="ws-row-label">Volume</span>
           <input type="range" class="ws-num-input" id="ws-video-volume" min="0" max="1" step="0.05" value="${s.videoVolume}" ${s.videoMuted ? 'disabled' : ''}>
         </div>
-        <button class="ws-mini-btn ws-mini-btn--danger" id="ws-video-clear" ${s.videoActive ? '' : 'style="display:none"'}>Clear video</button>
+        <button class="ws-mini-btn ws-mini-btn--danger" id="ws-video-clear" ${s.videoActive ? '' : 'style="display:none"'}>Deactivate video</button>
         <div class="ws-note">
           For smooth, undistorted playback: this sphere's UV unwrap is
           equirectangular, so a <strong>2:1 width:height</strong> video
@@ -409,11 +434,10 @@ export default class WallpaperSettingsPanel {
           vertically stretched. H.264 MP4, muted+loop for guaranteed
           autoplay (unmute after — browsers block autoplay with sound).
           Keep it under ~1080p wide; a real 4K loop is a lot of GPU
-          decode for a background element. Stored in this browser
-          (IndexedDB) — one video at a time, not a 20-slot browser like
-          the images above, since a video is much heavier to store.
+          decode for a background element. "Deactivate" only stops the
+          active one from playing — it doesn't delete any saved slot;
+          use each slot's × to actually remove a saved video.
         </div>
-        <input type="file" accept="video/*" class="ws-file-input" id="ws-video-file-input">
       </div>
       <div class="ws-resize-handle" aria-hidden="true"></div>
     `
@@ -492,37 +516,51 @@ export default class WallpaperSettingsPanel {
       }
     })
 
-    // ── Video wallpaper ────────────────────────────────────────────────────
+    // ── Video wallpaper — same slot-grid pattern as the image browser
+    // above, just backed by wallpaperVideoStore instead of the default
+    // image store, and with an extra "Deactivate" button since (unlike
+    // images) there's a real notion of "no video active right now"
+    // distinct from "no slots saved". ─────────────────────────────────
 
     const videoFileInput = el.querySelector('#ws-video-file-input')
-    el.querySelector('#ws-video-upload').addEventListener('click', () => videoFileInput.click())
     videoFileInput.addEventListener('change', async (e) => {
       const file = e.target.files?.[0]
+      const slot = this._pendingVideoSlot
       e.target.value = ''
-      if (!file) return
+      if (!file || !slot) return
       try {
-        await wallpaperVideoStore.saveWallpaper(VIDEO_SLOT, file, file.name)
-        const objectUrl = URL.createObjectURL(file)
-        // videoUrl is dispatched directly (not through _commit) — it's
-        // an ephemeral blob: URL, worthless after reload, so it never
-        // belongs in persisted state. videoActive is what actually
-        // gets saved; on boot, WallpaperSphere re-derives the real
-        // video from IndexedDB using that flag, same as the image
-        // slot browser does for activeSlot.
-        window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', {
-          detail: { videoUrl: objectUrl, videoUrlIsObjectUrl: true }
-        }))
-        this._commit({ videoActive: true })
-        this._refreshVideoStatus(true)
+        await wallpaperVideoStore.saveWallpaper(slot, file, file.name)
+        await this._refreshVideoSlots()
+        this._applyVideoSlot(slot)
       } catch (err) {
         window.alert(`Could not save video: ${err?.message ?? err}`)
       }
     })
 
-    el.querySelector('#ws-video-clear').addEventListener('click', async () => {
+    el.querySelector('#ws-video-slot-grid').addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('[data-remove-video-slot]')
+      if (removeBtn) {
+        e.stopPropagation()
+        const slot = Number(removeBtn.dataset.removeVideoSlot)
+        wallpaperVideoStore.deleteWallpaper(slot).then(() => this._refreshVideoSlots())
+        return
+      }
+      const slotBtn = e.target.closest('[data-video-slot]')
+      if (!slotBtn) return
+      const slot = Number(slotBtn.dataset.videoSlot)
+      if (this._filledVideoSlots.has(slot)) {
+        this._applyVideoSlot(slot)
+      } else {
+        this._pendingVideoSlot = slot
+        videoFileInput.click()
+      }
+    })
+
+    el.querySelector('#ws-video-clear').addEventListener('click', () => {
+      // Deactivate only — does not delete the saved slot, so it can
+      // be reapplied later. See the note in the markup above.
       window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', { detail: { videoUrl: '' } }))
       this._commit({ videoActive: false })
-      try { await wallpaperVideoStore.deleteWallpaper(VIDEO_SLOT) } catch (_) { /* non-fatal */ }
       this._refreshVideoStatus(false)
     })
 
@@ -554,13 +592,40 @@ export default class WallpaperSettingsPanel {
    *  status label / Upload-vs-Replace button / Clear button visibility —
    *  called right after a real change, and on open() so a panel closed
    *  before a video finished saving still shows correctly next time. */
-  _refreshVideoStatus (active) {
+  _refreshVideoStatus (active, slot = this._state.activeVideoSlot) {
     const status = this._el?.querySelector('#ws-video-status')
-    const uploadBtn = this._el?.querySelector('#ws-video-upload')
     const clearBtn = this._el?.querySelector('#ws-video-clear')
-    if (status) status.textContent = active ? 'Video active' : 'No video set'
-    if (uploadBtn) uploadBtn.textContent = active ? 'Replace…' : 'Upload…'
+    if (status) status.textContent = active ? `Video active — slot ${slot ?? 1}` : 'No video active'
     if (clearBtn) clearBtn.style.display = active ? '' : 'none'
+  }
+
+  /** Makes `slot` the active video wallpaper — dispatched exactly like
+   *  `_applySlot` dispatches `activeSlot` for images: WallpaperSphere's
+   *  own `_onSettingsSet` reacts to `activeVideoSlot` by loading that
+   *  slot from IndexedDB itself, so this panel never needs to touch
+   *  the blob/object-URL directly. */
+  _applyVideoSlot (slot) {
+    this._commit({ activeVideoSlot: slot, videoActive: true })
+    this._refreshVideoStatus(true, slot)
+    this._el?.querySelectorAll('[data-video-slot]').forEach(btn => {
+      btn.classList.toggle('is-active', Number(btn.dataset.videoSlot) === slot)
+    })
+  }
+
+  async _refreshVideoSlots () {
+    if (!this._el) return
+    let list = []
+    try { list = await wallpaperVideoStore.listWallpapers() } catch (_) { /* IndexedDB unavailable — leave all slots empty */ }
+    this._filledVideoSlots = new Set(list.map(w => w.slot))
+
+    this._el.querySelectorAll('[data-video-slot]').forEach(btn => {
+      const slot = Number(btn.dataset.videoSlot)
+      const filled = this._filledVideoSlots.has(slot)
+      btn.classList.toggle('is-filled', filled)
+      btn.classList.toggle('is-active', !!this._state.videoActive && this._state.activeVideoSlot === slot)
+      const status = btn.querySelector('.ws-slot-status')
+      if (status) status.textContent = filled ? 'Set' : 'Empty'
+    })
   }
 
   _applySlot (slot) {

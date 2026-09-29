@@ -74,6 +74,8 @@
 
 import gsap       from 'gsap'
 import * as THREE from 'three'
+import { getDefaultPortals } from './OmniMapPortals.js'
+import { getSettings as getMiniMapSettings } from '../utils/MiniMapSettings.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layout constants
@@ -92,34 +94,16 @@ const MAP_HALF  = MAP_SIZE / 2   // 77
 const OUTER_R        = 38
 const MIDDLE_R       = 30
 const INNER_R        = 22
-const PORTAL_RING_R  = 14
-const PORTAL_COUNT   = 5
-
 const WORLD_HALF_DEFAULT = OUTER_R + 2   // 40 world units
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Default portal definitions
-// ─────────────────────────────────────────────────────────────────────────────
+// Default portal markers now live in ./OmniMapPortals.js, shared with
+// OmniStartHUD.js's Q4 real map — see getDefaultPortals import above.
 
-function buildDefaultPortals () {
-  const defs = [
-    { id: 'portfolio', label: '⟐Portfolio', color: '#aaddff' },
-    { id: 'about',     label: '⟐About',     color: '#ffffff' },
-    { id: 'work',      label: '⟐Work',      color: '#ffd0ff' },
-    { id: 'omninode',  label: '⟐N',         color: '#ffffff' },
-    { id: 'undefined', label: '⟐Undefined', color: '#888888' },
-  ]
-  return defs.map((def, i) => {
-    const angle = (i / PORTAL_COUNT) * Math.PI * 2
-    return {
-      id   : def.id,
-      label: def.label,
-      color: def.color,
-      x    : Math.cos(angle) * PORTAL_RING_R,
-      z    : Math.sin(angle) * PORTAL_RING_R,
-    }
-  })
-}
+// Corner-anchoring offsets — below GlobalBar (48px) up top, above
+// Dock (52px) down low, matching this project's own real header/dock
+// heights rather than a guessed value.
+const TOP_OFFSET  = 60
+const SIDE_OFFSET = 16
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Canvas helpers
@@ -152,9 +136,12 @@ const STYLES = /* css */`
 
 .omni-minimap {
   position        : fixed;
-  bottom          : ${DOCK_H + GAP}px;
-  left            : 50%;
-  transform       : translateX(-50%);
+  /* Default corner (top-right, Zelda-style) — _applyCorner() sets the
+     real position immediately on init from saved settings; these are
+     just a same-corner fallback so there's no flash at the old
+     bottom-center spot before JS runs. */
+  top             : ${TOP_OFFSET}px;
+  right           : ${SIDE_OFFSET}px;
   z-index         : 42;
   pointer-events  : auto;
   user-select     : none;
@@ -299,8 +286,12 @@ export default class MiniMap {
     this._tooltip    = null
     this._miniBtn    = null
 
+    // Settings — corner, portal visibility, start-visible (see
+    // utils/MiniMapSettings.js, editable from Admin04's own panel)
+    this._settings   = getMiniMapSettings()
+
     // State
-    this._visible    = true
+    this._visible    = this._settings.startVisible
     this._minimized  = false
     this._spaceName  = 'Root'
 
@@ -309,7 +300,7 @@ export default class MiniMap {
     this._scale      = MAP_HALF / WORLD_HALF_DEFAULT
 
     // Portals
-    this._portals    = buildDefaultPortals()
+    this._portals    = getDefaultPortals()
     this._flashState = {}         // portalId → { alpha, ringRadius }
 
     // Hover
@@ -335,6 +326,8 @@ export default class MiniMap {
     this._onPointerDown     = e => this._handlePointerDown(e)
     this._onPointerMove     = e => this._handlePointerMove(e)
     this._onPointerUp       = e => this._handlePointerUp(e)
+    this._onSettingsSet     = e => this._applySettings(e.detail)
+    this._onResetPosition   = () => this.resetPosition()
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -344,6 +337,10 @@ export default class MiniMap {
     this._dpr = Math.min(window.devicePixelRatio || 1, 2)
     this._buildDOM()
     this._bindEvents()
+    this._applyCorner(this._settings.corner)
+    if (!this._visible) gsap.set(this._el, { opacity: 0, scale: 0.88 })
+    window.addEventListener('omni:minimap-settings-set', this._onSettingsSet)
+    window.addEventListener('omni:minimap-reset-position', this._onResetPosition)
     console.log('⟐ MiniMap: initialized.')
   }
 
@@ -372,6 +369,8 @@ export default class MiniMap {
     this._el?.removeEventListener('pointerdown', this._onPointerDown)
     window.removeEventListener('pointermove', this._onPointerMove)
     window.removeEventListener('pointerup',   this._onPointerUp)
+    window.removeEventListener('omni:minimap-settings-set', this._onSettingsSet)
+    window.removeEventListener('omni:minimap-reset-position', this._onResetPosition)
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -410,6 +409,52 @@ export default class MiniMap {
   setWorldBounds (radius) {
     this._worldHalf = radius + 2
     this._scale     = MAP_HALF / this._worldHalf
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Settings — corner anchor, portal visibility, start-visible
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Anchors the (not-currently-dragged) widget to one of the four
+   *  screen corners — Zelda BotW/TotK-style default is top-right.
+   *  Clears any inline left/top/bottom/right/transform a previous
+   *  drag may have left behind first, so switching corners in the
+   *  settings panel always actually moves it. */
+  _applyCorner (corner) {
+    if (!this._el) return
+    const el = this._el
+    el.style.transform = 'none'
+    el.style.left = el.style.right = el.style.top = el.style.bottom = 'auto'
+    switch (corner) {
+      case 'top-left':
+        el.style.top = `${TOP_OFFSET}px`; el.style.left = `${SIDE_OFFSET}px`
+        break
+      case 'bottom-left':
+        el.style.bottom = `${DOCK_H + GAP}px`; el.style.left = `${SIDE_OFFSET}px`
+        break
+      case 'bottom-right':
+        el.style.bottom = `${DOCK_H + GAP}px`; el.style.right = `${SIDE_OFFSET}px`
+        break
+      case 'top-right':
+      default:
+        el.style.top = `${TOP_OFFSET}px`; el.style.right = `${SIDE_OFFSET}px`
+        break
+    }
+  }
+
+  /** Live-applies a settings change dispatched by
+   *  ui/MiniMapSettingsPanel.js (Admin04) without needing a reload. */
+  _applySettings (patch) {
+    if (!patch) return
+    this._settings = { ...this._settings, ...patch }
+    if ('corner' in patch) this._applyCorner(this._settings.corner)
+    if ('showPortals' in patch) { /* read live in _draw() via this._settings.showPortals */ }
+  }
+
+  /** Re-anchors to the saved corner, discarding any manual drag —
+   *  called by the settings panel's "Reset Position" button. */
+  resetPosition () {
+    this._applyCorner(this._settings.corner)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -543,6 +588,7 @@ export default class MiniMap {
     this._dragOrigT = rect.top
 
     this._el.style.bottom    = 'auto'
+    this._el.style.right     = 'auto'
     this._el.style.transform = 'none'
     this._el.style.left      = `${rect.left}px`
     this._el.style.top       = `${rect.top}px`
@@ -600,7 +646,7 @@ export default class MiniMap {
     ctx.stroke()
 
     // Portal markers
-    this._portals.forEach(portal => {
+    if (this._settings.showPortals !== false) this._portals.forEach(portal => {
       const px = cx + portal.x * scale
       const pz = cy + portal.z * scale
 
@@ -689,7 +735,7 @@ export default class MiniMap {
     ctx.fillText(coordText, cx, MAP_SIZE - 10)
 
     // Portal hover check
-    this._checkPortalHover(cx, cy, scale)
+    if (this._settings.showPortals !== false) this._checkPortalHover(cx, cy, scale)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
