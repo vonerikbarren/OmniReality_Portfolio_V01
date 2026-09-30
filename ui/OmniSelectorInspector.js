@@ -123,6 +123,16 @@ const STYLES = /* css */`
 .osi-grouped-empty { font-size: 9.5px; color: var(--osi-text-muted); font-style: italic; }
 .osi-grouped-count { font-size: 9px; color: var(--osi-accent); margin-bottom: 6px; }
 
+.osi-group-btn {
+  width: 100%; margin-top: 10px; padding: 7px 10px;
+  font-size: 10.5px; letter-spacing: 0.03em; font-weight: 600;
+  color: #0c1418; background: var(--osi-accent, #66ccff);
+  border: none; border-radius: 5px; cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.osi-group-btn:hover { filter: brightness(1.12); }
+.osi-group-btn:active { filter: brightness(0.9); }
+
 .osi-resize-handle { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
 .osi-resize-handle::before {
   content: ''; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px;
@@ -150,6 +160,8 @@ export default class OmniSelectorInspector {
     this._color = null
     this._wireframe = true
     this._groupedLabels = []
+    this._groupedIds = []
+    this._geometry = null
     this._saveTimer = null
     this._bannerTimer = null
     this._onInspectRequest = null
@@ -159,13 +171,15 @@ export default class OmniSelectorInspector {
   init () {
     injectStyles()
     this._onInspectRequest = (e) => {
-      const { volumeId, transform, color, wireframe, groupedLabels } = e.detail ?? {}
+      const { volumeId, transform, color, wireframe, groupedLabels, groupedIds, geometry } = e.detail ?? {}
       if (!volumeId) return
       this._volumeId = volumeId
       this._transform = { ...transform }
       this._color = { ...color }
       this._wireframe = wireframe
       this._groupedLabels = groupedLabels ?? []
+      this._groupedIds = groupedIds ?? []
+      this._geometry = geometry ?? null
       this.open()
       this._render()
     }
@@ -177,6 +191,7 @@ export default class OmniSelectorInspector {
       const { volumeId, containedIds } = e.detail ?? {}
       if (volumeId !== this._volumeId) return
       this._groupedLabels = containedIds
+      this._groupedIds = containedIds
       this._renderGroupedList()
     }
     window.addEventListener('omni:selector-volume-grouped', this._onGrouped)
@@ -290,7 +305,10 @@ export default class OmniSelectorInspector {
       <div class="osi-group-title">Grouped — nodes currently inside this volume</div>
       <div class="osi-grouped-count" id="osi-grouped-count"></div>
       <div class="osi-grouped-list" id="osi-grouped-list"></div>
+      <button class="osi-group-btn" id="osi-group-btn" style="display:none;">⟐ Group These</button>
     `
+
+    body.querySelector('#osi-group-btn').addEventListener('click', () => this._groupSelected())
 
     body.querySelectorAll('[data-key]').forEach(input => {
       input.addEventListener('input', (e) => {
@@ -317,6 +335,28 @@ export default class OmniSelectorInspector {
     list.innerHTML = this._groupedLabels.length
       ? this._groupedLabels.map(l => `<div class="osi-grouped-item">${l}</div>`).join('')
       : `<div class="osi-grouped-empty">Nothing inside the volume yet — try scaling it up.</div>`
+
+    const btn = this._el?.querySelector('#osi-group-btn')
+    if (btn) btn.style.display = (this._groupedIds?.length ?? 0) >= 2 ? 'block' : 'none'
+  }
+
+  /** Dispatches the actual "make these into a GroupNode" request —
+   *  systems/OmniNode.js's _createGroup() does the real work. Reuses
+   *  this volume's own geometry/color/wireframe so the resulting group
+   *  shell visually matches the selector that made it. */
+  _groupSelected () {
+    if ((this._groupedIds?.length ?? 0) < 2) return
+    const c = this._color
+    const hex = ((c.r & 255) << 16) | ((c.g & 255) << 8) | (c.b & 255)
+    window.dispatchEvent(new CustomEvent('omni:group-create-request', {
+      detail: {
+        ids: [...this._groupedIds],
+        geometry: this._geometry,
+        color: `#${hex.toString(16).padStart(6, '0')}`,
+        wireframe: this._wireframe,
+      }
+    }))
+    this._flashBanner('⟐ Grouped')
   }
 
   /** Debounced — pushes edits back to ui/OmniSelector.js, which owns

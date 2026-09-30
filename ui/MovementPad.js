@@ -226,7 +226,7 @@ const STYLES = `
   letter-spacing   : 0.02em;
   cursor           : pointer;
   pointer-events   : auto;
-  z-index          : 55;
+  z-index          : 40;   /* matches ui/Hand.js's .omni-hand z-index — same plane as the LH Menu it docks beside */
   transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 .omni-dash-btn:hover   { background: rgba(255, 255, 255, 0.13); }
@@ -503,12 +503,13 @@ export default class MovementPad {
     this._orbitHorizontalMultiplier = 1
 
     // Dash — a manual on/off modifier layered ON TOP of the step-based
-    // _moveSpeedMultiplier above, LH (WASD) movement only. Doubles by
-    // default; the exact multiplier is admin-configurable under
-    // DashMovementSettings in ui/CameraMovementOptionsPanel.js, same
-    // storage key/broadcast every other Admin-driven value here uses.
+    // _moveSpeedMultiplier above, LH (WASD) movement only. Triples by
+    // default (raised from 2x per direct request); the exact multiplier
+    // is admin-configurable under DashMovementSettings in
+    // ui/CameraMovementOptionsPanel.js, same storage key/broadcast
+    // every other Admin-driven value here uses.
     this._dashActive     = false
-    this._dashMultiplier = 2
+    this._dashMultiplier = 3
     this._dashButtonEl   = null
 
     // Rotation pivot for OmniKeys' center-pad camera rotation —

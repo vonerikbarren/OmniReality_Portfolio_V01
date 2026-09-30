@@ -22,7 +22,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { WALLPAPER_SHAPES } from '../modules/WallpaperSphere.js'
+import { WALLPAPER_SHAPES, CUBEMAP_SHAPE } from '../modules/WallpaperSphere.js'
 import { MAX_SLOTS, saveWallpaper, listWallpapers, deleteWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
 
 // Video wallpaper now gets the same slot count as the image browser
@@ -368,12 +368,21 @@ export default class WallpaperSettingsPanel {
       <div class="ws-body">
         <div class="ws-section-title">Shape</div>
         <select class="ws-select" id="ws-shape">
-          ${WALLPAPER_SHAPES.map(sh => `<option value="${sh}" ${s.shape === sh ? 'selected' : ''}>${sh.replace('Geometry', '')}</option>`).join('')}
+          ${WALLPAPER_SHAPES.map(sh => `<option value="${sh}" ${s.shape === sh ? 'selected' : ''}>${sh === CUBEMAP_SHAPE ? '360° Cubemap (Box)' : sh.replace('Geometry', '')}</option>`).join('')}
         </select>
         <div class="ws-note">
           Only closed shapes you can stand inside are listed — flat
           shapes (Plane/Circle/Ring) and a few hand-authored ones
-          (Lathe/Tube/Extrude) aren't, so they're left out.
+          (Lathe/Tube/Extrude) aren't, so they're left out. "Box"
+          shows the same image on all 6 faces; "360° Cubemap" slices
+          ONE cross-layout image (the classic skybox cross — 4 side
+          faces across the middle, top face above the front one,
+          bottom below it) into 6 pieces so the walls line up
+          edge-to-edge into one continuous space instead of repeating.
+        </div>
+        <div class="ws-note" id="ws-cubemap-note" style="${s.shape === CUBEMAP_SHAPE ? '' : 'display:none'}">
+          Cubemap mode is images only — video wallpaper needs the
+          shape set to something else first.
         </div>
 
         <div class="ws-section-title">Position / Rotation / Scale</div>
@@ -459,6 +468,8 @@ export default class WallpaperSettingsPanel {
   _bindControls (el) {
     el.querySelector('#ws-shape').addEventListener('change', (e) => {
       this._commit({ shape: e.target.value })
+      const note = el.querySelector('#ws-cubemap-note')
+      if (note) note.style.display = e.target.value === CUBEMAP_SHAPE ? '' : 'none'
     })
 
     el.querySelectorAll('[data-transform]').forEach(input => {

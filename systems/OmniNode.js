@@ -124,8 +124,31 @@ const EDGE_BASE_RADIUS = 0.05    // radius at depth 0 (root-level connections)
 const EDGE_MIN_RADIUS  = 0.012   // floor — thinnest an edge can ever get
 const EDGE_TAPER       = 0.72    // multiplier applied per additional depth level
 const GENEALOGY_HIGHLIGHT_COLOR = 0xb99cff   // persistent Ξ selection highlight
+const GROUP_HIGHLIGHT_COLOR = 0x66ccff       // "these are together" halo — distinct from Ξ's purple, own meaning
 const CLASSIFICATION_TRUTH_COLOR = 0x4caf50   // real, verifiable, reference-style data
 const CLASSIFICATION_FALSE_COLOR = 0xff4444   // false/biased/fictional data
+
+// ── Essence Data — ⟐OmniDraw's provable-claim node type ─────────────────────
+// An Essence Data node holds an "Omni Claim": a Domain (the declared
+// perspective/story the claim is being made from) plus a set of
+// question -> answer evidence entries, each tagged with a stance. The
+// node's own truth/false/undefined state is COMPUTED from that evidence
+// tally — never hand-set — same reuse of the real/false colors above,
+// since this is the same honest three-state idea, just backed by real
+// attached evidence instead of a single flag. Deliberately NOT an
+// objective verification system: this doesn't adjudicate universal
+// fact, it makes a claim's forthcomingness (how much of it is actually
+// backed) visible and checkable relative to its own declared Domain.
+const ESSENCE_UNDEFINED_COLOR  = 0x8899aa   // neutral slate — an honest unresolved state, not "no highlight"
+const ESSENCE_STUD_ANSWERED    = { truth: CLASSIFICATION_TRUTH_COLOR, false: CLASSIFICATION_FALSE_COLOR, neutral: 0xcccccc }
+const ESSENCE_STUD_UNANSWERED  = 0x333844   // dim/hollow — a visibly missing piece of evidence
+const ESSENCE_DEFAULT_QUESTIONS = [
+  'What is this claiming?',
+  'What would make this false?',
+  "What's the source or basis for this?",
+  'What perspective is this from?',
+  "What isn't being said here — anything omitted?",
+]
 
 // ── Primitive color map ───────────────────────────────────────────────────────
 
@@ -191,6 +214,11 @@ const GEOMETRY_DEFS = {
   // Line-segment types — rendered as THREE.LineSegments instead of Mesh
   EdgesGeometry        : () => new THREE.EdgesGeometry(new THREE.BoxGeometry(0.9, 0.9, 0.9)),
   WireframeGeometry    : () => new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(0.55, 1)),
+  // Essence Data — a claim-bearing node, not just a shape (see
+  // _onPlaceClick/_createNode/_rebuildEssenceVisual). Subdivided
+  // (detail 1) so its own faceted surface already reads as "made of
+  // many small provable things" before any evidence studs are added.
+  EssenceData          : () => new THREE.IcosahedronGeometry(0.7, 1),
 }
 
 // Which types use LineSegments instead of Mesh
@@ -218,6 +246,7 @@ const GEO_LABELS = {
   ShapeGeometry        : 'Shape',
   EdgesGeometry        : 'Edges',
   WireframeGeometry    : 'Wireframe',
+  EssenceData          : 'Essence Data',
 }
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -579,8 +608,25 @@ const STYLES = /* css */`
   flex-shrink       : 0;
 }
 
-.on-edges-delete {
+.on-edges-style {
   margin-left       : auto;
+  flex-shrink       : 0;
+  width             : 18px;
+  height            : 18px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  background        : none;
+  border            : none;
+  border-radius     : 3px;
+  font-size         : 10px;
+  color             : rgba(255,255,255,0.14);
+  cursor            : pointer;
+  transition        : background 0.10s, color 0.10s;
+}
+.on-edges-style:hover { background: rgba(102,204,255,0.14); color: rgba(150,220,255,0.85); }
+
+.on-edges-delete {
   flex-shrink       : 0;
   width             : 18px;
   height            : 18px;
@@ -817,12 +863,56 @@ const GEO_ICONS = {
   ShapeGeometry        : '⭐',
   EdgesGeometry        : '⬕',
   WireframeGeometry    : '⊹',
+  EssenceData          : '◈',
 }
 
 // ── ID generator ──────────────────────────────────────────────────────────────
 
 function generateId () {
   return 'omni_' + Math.random().toString(36).slice(2, 8)
+}
+
+// ── Edge style persistence ──────────────────────────────────────────────────
+// Per-edge visual overrides (kind/color/thickness/dashed/highlight), keyed
+// by the same stable from__to pair the edge itself is keyed by — separate
+// from STORE_EDGES (which only ever stores the connection, not its look),
+// the same way omni:floormanager:floors stays separate from the node store.
+
+const STORE_EDGE_STYLES = 'omni:edge:styles'
+
+// kind: 'cylinder' (the original, tapered-by-depth default) | 'line' (a
+// real thin cylinder, not a native GL Line — see _buildEdgeLine for why)
+// | 'double' (two thin parallel strands). color: null means "use the
+// depth-taper default (white)", not black. thickness is a multiplier on
+// the depth-based radius, not an absolute unit.
+const EDGE_STYLE_DEFAULTS = {
+  kind: 'cylinder', color: null, thickness: 1,
+  dashed: false, highlight: false, highlightColor: '#66ccff',
+}
+
+function edgeStyleKey (from, to) { return `${from}__${to}` }
+
+function loadEdgeStyles () {
+  try {
+    const raw = localStorage.getItem(STORE_EDGE_STYLES)
+    return raw ? JSON.parse(raw) : {}
+  } catch (_) { return {} }
+}
+
+function saveEdgeStyle (from, to, style) {
+  try {
+    const all = loadEdgeStyles()
+    all[edgeStyleKey(from, to)] = style
+    localStorage.setItem(STORE_EDGE_STYLES, JSON.stringify(all))
+  } catch (_) { /* non-fatal */ }
+}
+
+function deleteEdgeStyle (from, to) {
+  try {
+    const all = loadEdgeStyles()
+    delete all[edgeStyleKey(from, to)]
+    localStorage.setItem(STORE_EDGE_STYLES, JSON.stringify(all))
+  } catch (_) { /* non-fatal */ }
 }
 
 // ── Glitch helper ─────────────────────────────────────────────────────────────
@@ -880,6 +970,16 @@ export default class OmniNode {
     this._genealogyOutlines    = new Map()   // nodeId -> outline mesh, for cleanup
     this._pathStart  = null   // id of first node in PATH mode click
 
+    // ── Group state — ⟐OmniSelect's "Group" action and on (see
+    // _createGroup/_ungroupNode/_mergeGroups/_duplicateGroup) ───────
+    this._groupHighlightedId  = null      // which group's members are currently lit up, if any
+    this._groupHighlightedIds = new Set() // every node id (container + members) the current highlight touched
+    this._groupOutlines       = new Map() // nodeId -> outline mesh, mirrors _genealogyOutlines' own technique
+
+    // ── Essence Data state (see _rebuildEssenceVisual/_computeEssenceState) ──
+    this._essenceStuds = new Map()   // nodeId -> [stud meshes], one per evidence question
+    this._essenceHalos = new Map()   // nodeId -> state-color halo mesh (backface duplicate, same technique as classification)
+
     // ── Pending node creation ──────────────────────────────────────
     this._pendingGeo       = null   // geometry type chosen in picker
     this._pendingPrimitive = 'objective'   // selected primitive type
@@ -900,6 +1000,7 @@ export default class OmniNode {
     this._onScaleSet    = null
     this._onRotationSet = null
     this._onDeleteRequest = null
+    this._onDuplicateRequest = null
     this._onTextSet = null
     this._onSequenceSet = null
     this._onMediaSet    = null
@@ -910,8 +1011,15 @@ export default class OmniNode {
     this._onForceSave     = null
     this._onParentSet     = null
     this._onGenealogySelect = null
+    this._onGroupCreateRequest    = null
+    this._onGroupUngroupRequest   = null
+    this._onGroupMergeRequest     = null
+    this._onGroupDuplicateRequest = null
+    this._onEdgeStyleSet          = null
+    this._onEssenceEvidenceSet    = null
     this._onMouseMove   = null
     this._onMouseClick  = null
+    this._onCanvasContextMenu = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -973,6 +1081,25 @@ export default class OmniNode {
     return [...this._nodes.values()].map(n => n.mesh).filter(Boolean)
   }
 
+  /** Meshes eligible for hover/select/path clicking in the 3D scene —
+   *  every real mesh EXCEPT structural nodes (skipAutoSelect: true,
+   *  e.g. ChronosFloorClock's MasterClock icosahedron). Those nodes
+   *  were already meant to stay out of the user's way ("a structural
+   *  node, not user content — shouldn't force-open the Inspector"),
+   *  but that comment only covered the moment of creation: an
+   *  incidental click on one later in the scene could still raycast-
+   *  select it and pop its Inspector open. Excluding them here closes
+   *  that gap — their real settings stay reachable the deliberate way
+   *  (⟐Chronos's own panel, or the node list), just not via a stray
+   *  click. getAllMeshes() above is untouched, since dragging/grabbing
+   *  a structural node is still a legitimate, separate action. */
+  _selectableMeshes () {
+    return [...this._nodes.values()]
+      .filter(n => !n.data?.skipAutoSelect)
+      .map(n => n.mesh)
+      .filter(Boolean)
+  }
+
   /** A direct, single-node lookup — the real mechanism Jsonifier's
    *  own list-view row clicks need to dispatch a real, proper
    *  omni:node-selected event (with a genuine mesh, safe for every
@@ -1019,6 +1146,7 @@ export default class OmniNode {
     window.removeEventListener('omni:node-scale-set',    this._onScaleSet)
     window.removeEventListener('omni:node-rotation-set', this._onRotationSet)
     window.removeEventListener('omni:node-delete-request', this._onDeleteRequest)
+    window.removeEventListener('omni:node-duplicate-request', this._onDuplicateRequest)
     window.removeEventListener('omni:node-text-set', this._onTextSet)
     window.removeEventListener('omni:node-sequence-set', this._onSequenceSet)
     window.removeEventListener('omni:node-media-set',    this._onMediaSet)
@@ -1034,11 +1162,18 @@ export default class OmniNode {
     window.removeEventListener('omni:node-position-set', this._onPositionSet)
     window.removeEventListener('omni:nodes-request', this._onNodesRequest)
     window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
+    window.removeEventListener('omni:group-create-request', this._onGroupCreateRequest)
+    window.removeEventListener('omni:group-ungroup-request', this._onGroupUngroupRequest)
+    window.removeEventListener('omni:group-merge-request', this._onGroupMergeRequest)
+    window.removeEventListener('omni:group-duplicate-request', this._onGroupDuplicateRequest)
+    window.removeEventListener('omni:edge-style-set', this._onEdgeStyleSet)
+    window.removeEventListener('omni:essence-evidence-set', this._onEssenceEvidenceSet)
 
     const canvas = this.ctx.renderer?.domElement
     if (canvas) {
       canvas.removeEventListener('mousemove', this._onMouseMove)
       canvas.removeEventListener('click',     this._onMouseClick)
+      canvas.removeEventListener('contextmenu', this._onCanvasContextMenu)
     }
 
     document.body.classList.remove('on-place-mode')
@@ -1361,9 +1496,26 @@ export default class OmniNode {
 
     this._onMouseMove = (e) => this._updateMouse(e)
     this._onMouseClick = (e) => this._handleClick(e)
+    // Real right-click context menu on a 3D object (Developer Queue
+    // item 5) — same raycast, same _selectableMeshes() hit-test the
+    // ordinary click already uses, just surfaced as an event for
+    // ui/ToolTipMenu.js to open its own quick menu at the cursor,
+    // rather than building a second, competing menu system.
+    this._onCanvasContextMenu = (e) => {
+      e.preventDefault()
+      this._updateMouse(e)
+      this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
+      const hits = this._raycaster.intersectObjects(this._selectableMeshes(), false)
+      if (hits.length === 0) return
+      const id = hits[0].object.userData.nodeId
+      window.dispatchEvent(new CustomEvent('omni:node-contextmenu-request', {
+        detail: { id, x: e.clientX, y: e.clientY }
+      }))
+    }
 
     canvas.addEventListener('mousemove', this._onMouseMove,  { passive: true })
     canvas.addEventListener('click',     this._onMouseClick)
+    canvas.addEventListener('contextmenu', this._onCanvasContextMenu)
   }
 
   _updateMouse (e) {
@@ -1377,9 +1529,7 @@ export default class OmniNode {
   _detectHover () {
     this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
 
-    const meshes = [...this._nodes.values()]
-      .map(n => n.mesh)
-      .filter(Boolean)
+    const meshes = this._selectableMeshes()
 
     if (meshes.length === 0) {
       if (this._hovered) this._clearHover()
@@ -1476,15 +1626,35 @@ export default class OmniNode {
   _onSelectClick () {
     this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
 
-    const meshes = [...this._nodes.values()].map(n => n.mesh).filter(Boolean)
+    const meshes = this._selectableMeshes()
     const hits   = this._raycaster.intersectObjects(meshes, false)
 
     if (hits.length > 0) {
       const id = hits[0].object.userData.nodeId
       this._selectNode(id)
-    } else {
-      this._deselectAll()
+      return
     }
+
+    // No node hit — try edges (⟐OmniSelect edge styling: click a
+    // connector to open ui/OmniEdgeInspector.js). Non-recursive so a
+    // highlight halo (added as edge.line's child) doesn't intercept
+    // the ray meant for its parent.
+    const edgeMeshes = this._edges.map(e => e.line).filter(Boolean)
+    const edgeHits = edgeMeshes.length ? this._raycaster.intersectObjects(edgeMeshes, false) : []
+    if (edgeHits.length > 0) {
+      const line = edgeHits[0].object
+      const edge = this._edges.find(e => e.line === line)
+      if (edge) {
+        const fromLabel = this._nodes.get(edge.from)?.data?.label ?? edge.from
+        const toLabel   = this._nodes.get(edge.to)?.data?.label ?? edge.to
+        window.dispatchEvent(new CustomEvent('omni:edge-inspect-request', {
+          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style } }
+        }))
+        return
+      }
+    }
+
+    this._deselectAll()
   }
 
   // ── PATH mode click ───────────────────────────────────────────────────────
@@ -1492,7 +1662,7 @@ export default class OmniNode {
   _onPathClick () {
     this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
 
-    const meshes = [...this._nodes.values()].map(n => n.mesh).filter(Boolean)
+    const meshes = this._selectableMeshes()
     const hits   = this._raycaster.intersectObjects(meshes, false)
 
     if (hits.length === 0) return
@@ -1546,16 +1716,27 @@ export default class OmniNode {
 
     const geoType  = this._pendingGeo
     const prim     = this._pendingPrimitive
+    const isEssence = geoType === 'EssenceData'
 
     this._createNode({
       id        : generateId(),
-      label     : geoType.replace('Geometry', '') + '_' + Date.now().toString(36).slice(-4),
+      label     : isEssence ? 'Claim_' + Date.now().toString(36).slice(-4) : geoType.replace('Geometry', '') + '_' + Date.now().toString(36).slice(-4),
       geometry  : geoType,
       primitive : prim,
       color     : '#' + PRIMITIVE_COLORS[prim].toString(16).padStart(6, '0'),
       position,
       parentId  : this._selected ?? null,
       createdAt : new Date().toISOString(),
+      // Essence Data seed — an Omni Claim starts Undefined with no
+      // evidence at all; state only ever moves once real evidence is
+      // attached (see _computeEssenceState), never hand-set.
+      ...(isEssence ? {
+        isEssenceNode    : true,
+        domain           : { name: '', story: '' },
+        essenceQuestions : [...ESSENCE_DEFAULT_QUESTIONS],
+        evidence         : new Array(ESSENCE_DEFAULT_QUESTIONS.length).fill(null),
+        essenceState     : 'undefined',
+      } : {}),
     })
 
     this._cancelPlace()
@@ -1617,6 +1798,13 @@ export default class OmniNode {
       mesh.add(highlight)
     }
 
+    // Essence Data — evidence studs + computed-state halo, built fresh
+    // for every new claim (starts all-hollow/Undefined, since a brand
+    // new node has no evidence yet).
+    if (data.isEssenceNode) {
+      this._rebuildEssenceVisual(data.id)
+    }
+
     // If a space/domain is currently "entered", new objects belong to it —
     // re-parent into that space's container mesh. .attach() (rather than
     // .add()) preserves the mesh's current WORLD position by adjusting its
@@ -1668,11 +1856,44 @@ export default class OmniNode {
     const entry = this._nodes.get(id)
     if (!entry) return
 
+    // A GroupNode's members are REAL children of its mesh (see
+    // _createGroup's .attach() call) — removing that mesh from the
+    // scene the normal way below would take every member down with it,
+    // visually, even though their own node/data entries would still
+    // exist. Re-parent them back out first, exactly like an explicit
+    // Ungroup would, so deleting a group never silently disappears
+    // its members.
+    if (entry.data.isGroupNode && (entry.data.groupMemberIds ?? []).length) {
+      this._ungroupMembersOnly(id)
+    }
+
     // Drop any Ξ genealogy outline this node was carrying
     if (this._genealogyOutlines.has(id)) {
       this._genealogyOutlines.get(id).material.dispose()
       this._genealogyOutlines.delete(id)
       this._genealogyHighlighted.delete(id)
+    }
+
+    // Drop any group outline this node was carrying (it may be a member
+    // of a DIFFERENT group being highlighted right now, not necessarily
+    // one being deleted itself)
+    if (this._groupOutlines.has(id)) {
+      const n = this._nodes.get(id)
+      n?.mesh?.remove(this._groupOutlines.get(id))
+      this._groupOutlines.get(id).material.dispose()
+      this._groupOutlines.delete(id)
+      this._groupHighlightedIds.delete(id)
+    }
+    if (this._groupHighlightedId === id) this._clearGroupHighlight()
+
+    // Drop any Essence Data studs/halo this node was carrying
+    if (this._essenceStuds.has(id)) {
+      this._essenceStuds.get(id).forEach(stud => { stud.geometry.dispose(); stud.material.dispose() })
+      this._essenceStuds.delete(id)
+    }
+    if (this._essenceHalos.has(id)) {
+      this._essenceHalos.get(id).material.dispose()
+      this._essenceHalos.delete(id)
     }
 
     // Remove edges connected to this node
@@ -1705,6 +1926,44 @@ export default class OmniNode {
     window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
   }
 
+  /** Generic "⧉ Duplicate" — clones a node's own data with a small
+   *  position offset so the copy is never stacked exactly on top of
+   *  the original. A group node has its own, more correct duplicate
+   *  path (its members need cloning too, not just its shell), so this
+   *  defers to _duplicateGroup for those rather than half-cloning a
+   *  group container with no members. Array/object fields (Essence
+   *  Data's domain/essenceQuestions/evidence, if present) are deep-
+   *  copied, not shared by reference, so editing the copy can never
+   *  silently edit the original too. */
+  _duplicateNode (id) {
+    const entry = this._nodes.get(id)
+    if (!entry) return null
+    if (entry.data.isGroupNode) return this._duplicateGroup(id)
+
+    const worldPos = entry.mesh.getWorldPosition(new THREE.Vector3())
+    const newId = generateId()
+    const cloned = {
+      ...entry.data,
+      id        : newId,
+      label     : `${entry.data.label} copy`,
+      position  : [worldPos.x + 1.2, worldPos.y, worldPos.z + 1.2],
+      parentId  : null,
+      groupId   : null,
+      preGroupSpaceId: null,
+      spaceId   : null,   // _createNode sets this fresh based on whatever domain is actually entered right now, if any — never carry over a stale reference
+      createdAt : new Date().toISOString(),
+      timeData  : undefined,
+    }
+    if (entry.data.isEssenceNode) {
+      cloned.domain = { ...(entry.data.domain ?? {}) }
+      cloned.essenceQuestions = [...(entry.data.essenceQuestions ?? [])]
+      cloned.evidence = (entry.data.evidence ?? []).map(ev => ev ? { ...ev } : null)
+    }
+
+    this._createNode(cloned)
+    return newId
+  }
+
   /**
    * Select a node — highlight mesh, update panel, dispatch event.
    * @param {string} id
@@ -1731,6 +1990,19 @@ export default class OmniNode {
       gsap.to(mesh.scale, { x: base.x * 1.04, y: base.y * 1.04, z: base.z * 1.04, duration: 0.15 })
     }
 
+    // Group highlight — selecting a group's own container OR any one of
+    // its members lights up every real member at once, so "these are
+    // together" is obvious without opening a list. "If you click on
+    // one, you're actually [seeing] all of them." Always clears first:
+    // a fresh selection anywhere shouldn't leave a stale halo behind
+    // from whatever was highlighted a moment ago.
+    const groupId = data.isGroupNode ? id : data.groupId
+    if (groupId && this._nodes.get(groupId)?.data?.isGroupNode) {
+      this._highlightGroup(groupId)
+    } else {
+      this._clearGroupHighlight()
+    }
+
     this._updateNodeList()
     this._updateFooter()
 
@@ -1739,6 +2011,7 @@ export default class OmniNode {
 
   /** Deselect all nodes — fires omni:node-deselected. */
   _deselectAll () {
+    this._clearGroupHighlight()
     if (!this._selected) return
 
     const entry = this._nodes.get(this._selected)
@@ -1783,10 +2056,14 @@ export default class OmniNode {
     // already set on its data by the time _connectNodes runs) determines
     // how thick/thin this edge renders.
     const childDepth = this._computeAncestry(toId).depth
-    const line = this._buildEdgeLine(posA, posB, childDepth)
+    // A style may already exist for this exact pair — e.g. Duplicate
+    // Group copies the original connectors' look onto the new ones
+    // before calling this. Falls back to plain defaults otherwise.
+    const style = loadEdgeStyles()[edgeStyleKey(fromId, toId)] ?? { ...EDGE_STYLE_DEFAULTS }
+    const line = this._buildEdgeLine(posA, posB, childDepth, style)
     this.ctx.scene.add(line)
 
-    const edgeRecord = { from: fromId, to: toId, line }
+    const edgeRecord = { from: fromId, to: toId, line, style }
     this._edges.push(edgeRecord)
 
     this._save()
@@ -1819,6 +2096,8 @@ export default class OmniNode {
 
     const edge = this._edges[idx]
     this.ctx.scene.remove(edge.line)
+    edge.line.userData.halo?.geometry?.dispose()
+    edge.line.userData.halo?.material?.dispose()
     edge.line.geometry?.dispose()
     edge.line.material?.dispose()
 
@@ -2018,6 +2297,326 @@ export default class OmniNode {
     this._genealogyHighlighted = new Set()
   }
 
+  // ── Group actions — ⟐OmniSelect's "Group These" button and the
+  // GroupNode custom Inspector section (Ungroup/Merge/Duplicate) ──────
+  // A group is a REAL node (isGroupNode: true) whose mesh is the actual
+  // Object3D parent of every member mesh (via .attach(), which reparents
+  // while preserving each member's world transform). This mirrors the
+  // existing Domain/Space container mechanism directly. Highlighting a
+  // group on select mirrors the Ξ genealogy-highlight technique.
+  _createGroup (memberIds, opts = {}) {
+    const members = memberIds.map(id => this._nodes.get(id)).filter(Boolean)
+    if (members.length < 2) {
+      console.warn('⟐N — a group needs at least 2 real, existing nodes.')
+      return null
+    }
+    const centroid = members.reduce(
+      (acc, m) => acc.add(m.mesh.getWorldPosition(new THREE.Vector3())),
+      new THREE.Vector3()
+    ).multiplyScalar(1 / members.length)
+
+    const id = generateId()
+    const scale = opts.scale ?? [4, 4, 4]
+    const data = {
+      id,
+      label: opts.label ?? `Group (${members.length})`,
+      geometry: opts.geometry ?? 'IcosahedronGeometry',
+      primitive: 'objective',
+      color: opts.color ?? '#66ccff',
+      position: [centroid.x, centroid.y, centroid.z],
+      rotation: [0, 0, 0],
+      scale,
+      parentId: null,
+      createdAt: new Date().toISOString(),
+      isGroupNode: true,
+      groupMemberIds: members.map(m => m.data.id),
+    }
+
+    this._createNode(data)
+    const entry = this._nodes.get(id)
+    if (!entry) return null
+
+    // Kill the internal "materialize from zero" tween BEFORE attaching
+    // any member — attaching a child to a parent at scale (0,0,0) is a
+    // singular transform (inverting a zero-scale matrix), which would
+    // leave every member's local transform NaN.
+    gsap.killTweensOf(entry.mesh.scale)
+    entry.mesh.scale.set(scale[0], scale[1], scale[2])
+
+    entry.mesh.material.wireframe = opts.wireframe ?? true
+    entry.mesh.material.transparent = true
+    entry.mesh.material.opacity = 0.3
+    entry.mesh.material.depthWrite = false
+    entry.mesh.material.needsUpdate = true
+
+    members.forEach(m => {
+      m.data.preGroupSpaceId = m.data.spaceId ?? null
+      m.data.groupId = id
+      entry.mesh.attach(m.mesh)
+    })
+
+    gsap.fromTo(entry.mesh.scale,
+      { x: scale[0] * 0.7, y: scale[1] * 0.7, z: scale[2] * 0.7 },
+      { x: scale[0], y: scale[1], z: scale[2], duration: 0.35, ease: 'back.out(2)' }
+    )
+
+    this._save()
+    this._updateNodeList()
+    window.dispatchEvent(new CustomEvent('omni:group-created', { detail: { groupId: id, memberIds: data.groupMemberIds } }))
+    window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    return id
+  }
+
+  /** Reparents every member of a group back out to its pre-group home
+   *  (a domain/space, or the top-level scene) WITHOUT deleting the
+   *  group node itself. Used both by _ungroupNode and as a safety step
+   *  before deleting a group node outright (so members aren't hidden
+   *  along with it — see _deleteNode). */
+  _ungroupMembersOnly (groupId) {
+    const group = this._nodes.get(groupId)
+    if (!group) return []
+    const memberIds = [...(group.data.groupMemberIds ?? [])]
+    memberIds.forEach(mid => {
+      const m = this._nodes.get(mid)
+      if (!m) return
+      const targetSpaceId = m.data.preGroupSpaceId ?? null
+      const targetContainer = targetSpaceId ? this._nodes.get(targetSpaceId)?.mesh : null
+      ;(targetContainer ?? this.ctx.scene).attach(m.mesh)
+      m.data.spaceId = targetSpaceId
+      delete m.data.groupId
+      delete m.data.preGroupSpaceId
+    })
+    group.data.groupMemberIds = []
+    if (this._groupHighlightedId === groupId) this._clearGroupHighlight()
+    return memberIds
+  }
+
+  /** Full "Ungroup"/"Disperse" — releases every member, then removes
+   *  the now-empty group shell. */
+  _ungroupNode (groupId) {
+    const group = this._nodes.get(groupId)
+    if (!group?.data?.isGroupNode) return
+    const memberIds = this._ungroupMembersOnly(groupId)
+    this._deleteNode(groupId)
+    window.dispatchEvent(new CustomEvent('omni:group-ungrouped', { detail: { groupId, memberIds } }))
+  }
+
+  /** Combines 2+ existing groups into a single new flat group —
+   *  deliberately flattens (dissolves each source group to its real
+   *  leaf members, then re-groups the union) rather than nesting
+   *  empty group-of-group shells. */
+  _mergeGroups (groupIds) {
+    const groups = groupIds.map(id => this._nodes.get(id)).filter(g => g?.data?.isGroupNode)
+    if (groups.length < 2) return null
+    const allMemberIds = new Set()
+    groups.forEach(g => (g.data.groupMemberIds ?? []).forEach(mid => allMemberIds.add(mid)))
+    const template = groups[0]
+    const opts = {
+      label: `Group (${allMemberIds.size})`,
+      geometry: template.data.geometry,
+      color: template.data.color,
+      wireframe: !!template.mesh.material.wireframe,
+      scale: template.data.scale,
+    }
+    groupIds.forEach(id => this._ungroupNode(id))
+    const newId = this._createGroup([...allMemberIds], opts)
+    window.dispatchEvent(new CustomEvent('omni:group-merged', { detail: { groupId: newId, sourceGroupIds: groupIds } }))
+    return newId
+  }
+
+  /** Duplicates a group: clones every member node (offset in space),
+   *  re-creates any edges that existed between cloned members, then
+   *  wraps the clones in a brand-new group shell. */
+  _duplicateGroup (groupId) {
+    const group = this._nodes.get(groupId)
+    if (!group?.data?.isGroupNode) return null
+    const OFFSET = 2
+    const idMap = new Map()
+    const clonedMemberIds = (group.data.groupMemberIds ?? []).map(mid => {
+      const m = this._nodes.get(mid)
+      if (!m) return null
+      const worldPos = m.mesh.getWorldPosition(new THREE.Vector3())
+      const newId = generateId()
+      idMap.set(mid, newId)
+      this._createNode({
+        ...m.data,
+        id: newId,
+        label: `${m.data.label} copy`,
+        position: [worldPos.x + OFFSET, worldPos.y, worldPos.z + OFFSET],
+        parentId: null,
+        groupId: null,
+        preGroupSpaceId: null,
+        spaceId: null,
+        timeData: undefined,
+        createdAt: new Date().toISOString(),
+      })
+      return newId
+    }).filter(Boolean)
+
+    this._edges.forEach(edge => {
+      if (idMap.has(edge.from) && idMap.has(edge.to)) {
+        this._connectNodes(idMap.get(edge.from), idMap.get(edge.to))
+        if (edge.style) saveEdgeStyle(idMap.get(edge.from), idMap.get(edge.to), edge.style)
+      }
+    })
+
+    const newGroupId = this._createGroup(clonedMemberIds, {
+      label: `${group.data.label} copy`,
+      geometry: group.data.geometry,
+      color: group.data.color,
+      wireframe: !!group.mesh.material.wireframe,
+      scale: group.data.scale,
+    })
+    window.dispatchEvent(new CustomEvent('omni:group-duplicated', { detail: { groupId: newGroupId, sourceGroupId: groupId } }))
+    return newGroupId
+  }
+
+  /** Toggleable "this group is selected" highlight — direct structural
+   *  mirror of _clearGenealogyHighlight/the Ξ outline technique above,
+   *  using a distinct color/scale so the two never look identical. */
+  _highlightGroup (groupId) {
+    const group = this._nodes.get(groupId)
+    if (!group?.data?.isGroupNode) return
+    const memberIds = group.data.groupMemberIds ?? []
+    const sameGroup = this._groupHighlightedId === groupId
+    this._clearGroupHighlight()
+    if (sameGroup) return
+
+    const allIds = [groupId, ...memberIds]
+    allIds.forEach(nid => {
+      const n = this._nodes.get(nid)
+      if (!n?.mesh) return
+      if (n.mesh.material?.emissive) {
+        n.mesh.material.emissive.setHex(GROUP_HIGHLIGHT_COLOR)
+        n.mesh.material.emissiveIntensity = 0.9
+        n.mesh.material.needsUpdate = true
+      }
+      const outline = new THREE.Mesh(
+        n.mesh.geometry,
+        new THREE.MeshBasicMaterial({ color: GROUP_HIGHLIGHT_COLOR, side: THREE.BackSide, transparent: true, opacity: 0.6 })
+      )
+      outline.scale.setScalar(1.16)
+      n.mesh.add(outline)
+      this._groupOutlines.set(nid, outline)
+    })
+    this._groupHighlightedId = groupId
+    this._groupHighlightedIds = new Set(allIds)
+    window.dispatchEvent(new CustomEvent('omni:group-highlighted', { detail: { groupId, memberIds } }))
+  }
+
+  _clearGroupHighlight () {
+    for (const [nid, outline] of this._groupOutlines) {
+      const n = this._nodes.get(nid)
+      n?.mesh?.remove(outline)
+      outline.material.dispose()   // never dispose outline.geometry — it's shared with the real mesh
+    }
+    this._groupOutlines.clear()
+    for (const nid of (this._groupHighlightedIds ?? [])) {
+      const n = this._nodes.get(nid)
+      if (n?.mesh?.material?.emissive) {
+        n.mesh.material.emissive.setHex(0x000000)
+        n.mesh.material.emissiveIntensity = 0
+        n.mesh.material.needsUpdate = true
+      }
+    }
+    this._groupHighlightedIds = new Set()
+    this._groupHighlightedId = null
+  }
+
+  // ── Essence Data — Omni Claim evidence tally + visual ───────────────────────
+
+  /** Tallies evidence stances into the node's own state. Never hand-set —
+   *  Undefined until there's at least one real piece of evidence, and a
+   *  tie stays Undefined rather than arbitrarily picking a side. This is
+   *  the entire "verification protocol" v1 implements: a real tally of
+   *  attached evidence relative to this claim's own Domain, not an
+   *  objective oracle. */
+  _computeEssenceState (data) {
+    const evidence = data.evidence ?? []
+    let truthCount = 0, falseCount = 0
+    evidence.forEach(ev => {
+      if (!ev) return
+      if (ev.stance === 'truth') truthCount++
+      else if (ev.stance === 'false') falseCount++
+    })
+    if (truthCount === 0 && falseCount === 0) return 'undefined'
+    if (truthCount > falseCount) return 'truth'
+    if (falseCount > truthCount) return 'false'
+    return 'undefined'
+  }
+
+  /** Rebuilds an Essence Data node's visible evidence — one small stud
+   *  per question, filled and colored by stance when answered, dim and
+   *  hollow when not, spread evenly over the node's surface via a
+   *  fibonacci-sphere distribution (stays even no matter how many
+   *  questions a Domain ends up with). Missing evidence is meant to be
+   *  visible on the shape itself, not just buried in a panel — a claim
+   *  with gaps in it should visibly have gaps in it.
+   *
+   *  Also rebuilds a persistent state-color halo (the same backface-
+   *  duplicate technique as the classification highlight above) rather
+   *  than tinting the mesh's own emissive property, because emissive is
+   *  already owned by node selection (_selectNode resets it to black on
+   *  deselect) — a halo survives selection changes, emissive wouldn't. */
+  _rebuildEssenceVisual (id) {
+    const entry = this._nodes.get(id)
+    if (!entry?.data?.isEssenceNode) return
+
+    const existingStuds = this._essenceStuds.get(id)
+    existingStuds?.forEach(stud => {
+      entry.mesh.remove(stud)
+      stud.geometry.dispose()
+      stud.material.dispose()
+    })
+    const existingHalo = this._essenceHalos.get(id)
+    if (existingHalo) {
+      entry.mesh.remove(existingHalo)
+      existingHalo.material.dispose()   // never dispose .geometry — shared with the real mesh
+    }
+
+    const questions = entry.data.essenceQuestions ?? []
+    const evidence  = entry.data.evidence ?? []
+    const studs = []
+    const n = questions.length
+    const radius = 1.05
+    for (let i = 0; i < n; i++) {
+      const answer = evidence[i]
+      const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0
+      const r = Math.sqrt(Math.max(0, 1 - y * y))
+      const theta = (Math.PI * (3 - Math.sqrt(5))) * i   // golden angle — even spread regardless of n
+      const x = Math.cos(theta) * r
+      const z = Math.sin(theta) * r
+
+      const filled = !!answer
+      const color = filled
+        ? (ESSENCE_STUD_ANSWERED[answer.stance] ?? ESSENCE_STUD_ANSWERED.neutral)
+        : ESSENCE_STUD_UNANSWERED
+
+      const studGeo = new THREE.SphereGeometry(0.07, 8, 8)
+      const studMat = filled
+        ? new THREE.MeshBasicMaterial({ color })
+        : new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.5 })
+      const stud = new THREE.Mesh(studGeo, studMat)
+      stud.position.set(x * radius, y * radius, z * radius)
+      stud.userData.essenceQuestionIndex = i
+      entry.mesh.add(stud)
+      studs.push(stud)
+    }
+    this._essenceStuds.set(id, studs)
+
+    const state = entry.data.essenceState ?? 'undefined'
+    const stateColor = state === 'truth' ? CLASSIFICATION_TRUTH_COLOR
+      : state === 'false' ? CLASSIFICATION_FALSE_COLOR
+      : ESSENCE_UNDEFINED_COLOR
+    const halo = new THREE.Mesh(
+      entry.mesh.geometry,
+      new THREE.MeshBasicMaterial({ color: stateColor, side: THREE.BackSide, transparent: true, opacity: state === 'undefined' ? 0.35 : 0.6 })
+    )
+    halo.scale.setScalar(1.2)
+    entry.mesh.add(halo)
+    this._essenceHalos.set(id, halo)
+  }
+
   /** Real fix for stale connecting cylinders after a node moves —
    *  disposes every edge touching this node and rebuilds each one
    *  fresh at the current, real world positions. A cylinder's own
@@ -2034,32 +2633,55 @@ export default class OmniNode {
       if (!entryA || !entryB) return
 
       this.ctx.scene.remove(edge.line)
+      edge.line.userData.halo?.geometry?.dispose()
+      edge.line.userData.halo?.material?.dispose()
       edge.line.geometry?.dispose()
       edge.line.material?.dispose()
 
       const posA = entryA.mesh.getWorldPosition(new THREE.Vector3())
       const posB = entryB.mesh.getWorldPosition(new THREE.Vector3())
       const childDepth = this._computeAncestry(edge.to).depth
-      const newLine = this._buildEdgeLine(posA, posB, childDepth)
+      const newLine = this._buildEdgeLine(posA, posB, childDepth, edge.style)
       newLine.material.opacity = 0.45   // real, immediately visible — no re-fade-in needed for a rebuild, only a fresh connection
       this.ctx.scene.add(newLine)
       edge.line = newLine
     })
   }
 
-  _buildEdgeLine (posA, posB, depth = 0) {
-    const radius = Math.max(
-      EDGE_MIN_RADIUS,
-      EDGE_BASE_RADIUS * Math.pow(EDGE_TAPER, depth)
-    )
+  /** Builds one edge's real mesh. `style` (see EDGE_STYLE_DEFAULTS) picks
+   *  what it actually looks like — every kind still comes back as ONE
+   *  Mesh with ONE BufferGeometry, on purpose: every rebuild path in
+   *  this file (move, geometry-swap, restore) disposes/replaces
+   *  `edge.line.geometry` directly and expects exactly that shape, so
+   *  a Group or multi-object edge would silently break all three. */
+  _buildEdgeLine (posA, posB, depth = 0, style = null) {
+    const s = { ...EDGE_STYLE_DEFAULTS, ...(style ?? {}) }
+    const baseRadius = Math.max(EDGE_MIN_RADIUS, EDGE_BASE_RADIUS * Math.pow(EDGE_TAPER, depth))
+    const radius = baseRadius * (s.thickness ?? 1)
 
     const direction = new THREE.Vector3().subVectors(posB, posA)
     const length    = direction.length()
     const midpoint  = new THREE.Vector3().addVectors(posA, posB).multiplyScalar(0.5)
 
-    const geo = new THREE.CylinderGeometry(radius, radius, length, 8, 1)
+    let geo
+    if (s.kind === 'line') {
+      // A native WebGL Line's width is unreliable across browsers (this
+      // file's own EDGE_BASE_RADIUS note above is why edges are
+      // cylinders at all) — a genuinely thin cylinder gives a true,
+      // consistent "line" look instead, without needing a second
+      // object type every rebuild path would have to special-case.
+      const thinRadius = Math.max(EDGE_MIN_RADIUS * 0.6, radius * 0.22)
+      geo = s.dashed ? this._buildDashedCylinderGeometry(thinRadius, length) : new THREE.CylinderGeometry(thinRadius, thinRadius, length, 6, 1)
+    } else if (s.kind === 'double') {
+      // Dashed + double isn't supported together (combinatorial corner
+      // nobody asked for) — double always renders solid.
+      geo = this._buildDoubleEdgeGeometry(radius * 0.55, length)
+    } else {
+      geo = s.dashed ? this._buildDashedCylinderGeometry(radius, length) : new THREE.CylinderGeometry(radius, radius, length, 8, 1)
+    }
+
     const mat = new THREE.MeshBasicMaterial({
-      color       : 0xffffff,
+      color       : s.color ? new THREE.Color(s.color) : 0xffffff,
       transparent : true,
       opacity     : 0,    // animated in after add
     })
@@ -2071,7 +2693,110 @@ export default class OmniNode {
       new THREE.Vector3(0, 1, 0),
       direction.clone().normalize()
     )
+    mesh.userData.edgeStyle = s
+
+    // Highlight — same backface-duplicate halo technique as every other
+    // highlight in this file (Ξ genealogy, group), just applied to an
+    // edge instead of a node. A plain .clone() of whatever geometry was
+    // just built above, so it works identically for a plain cylinder, a
+    // dashed one, or the merged double-strand geometry.
+    if (s.highlight) {
+      const halo = new THREE.Mesh(
+        geo.clone(),
+        new THREE.MeshBasicMaterial({
+          color: s.highlightColor ?? '#66ccff', transparent: true, opacity: 0.32, depthWrite: false,
+        })
+      )
+      halo.scale.set(2.4, 1.02, 2.4)   // fatten radius only — stretching length would poke past the real endpoints
+      mesh.add(halo)
+      mesh.userData.halo = halo
+    }
+
     return mesh
+  }
+
+  /** Concatenates several non-indexed BufferGeometries' position/normal
+   *  arrays into one — no addon import needed, just plain Float32Array
+   *  math. Used to build the 'double' and dashed edge looks as a single
+   *  real geometry (see _buildEdgeLine's own comment on why that matters). */
+  _mergeNonIndexed (geometries) {
+    const positions = []
+    const normals = []
+    let total = 0
+    geometries.forEach(g => {
+      const ng = g.index ? g.toNonIndexed() : g
+      positions.push(ng.attributes.position.array)
+      normals.push(ng.attributes.normal.array)
+      total += ng.attributes.position.array.length
+      if (ng !== g) g.dispose()
+    })
+    const posArr  = new Float32Array(total)
+    const normArr = new Float32Array(total)
+    let offset = 0
+    positions.forEach(p => { posArr.set(p, offset); offset += p.length })
+    offset = 0
+    normals.forEach(n => { normArr.set(n, offset); offset += n.length })
+
+    const merged = new THREE.BufferGeometry()
+    merged.setAttribute('position', new THREE.BufferAttribute(posArr, 3))
+    merged.setAttribute('normal', new THREE.BufferAttribute(normArr, 3))
+    geometries.forEach(g => g.dispose())
+    return merged
+  }
+
+  /** Two thin parallel strands, offset perpendicular to the edge's own
+   *  length axis (still pre-rotation, so "perpendicular" here just
+   *  means the X axis — CylinderGeometry's own height runs along Y). */
+  _buildDoubleEdgeGeometry (radius, length) {
+    const offset = radius * 2.6
+    const a = new THREE.CylinderGeometry(radius, radius, length, 6, 1)
+    a.translate(offset, 0, 0)
+    const b = new THREE.CylinderGeometry(radius, radius, length, 6, 1)
+    b.translate(-offset, 0, 0)
+    return this._mergeNonIndexed([a, b])
+  }
+
+  /** A row of short cylinder segments along the edge's own length axis,
+   *  with real gaps between them — the "dashed" look, built as one
+   *  real geometry rather than a native dashed-line material (which
+   *  only ever applies to THREE.Line, not a Mesh). */
+  _buildDashedCylinderGeometry (radius, length, segments = 8, dutyCycle = 0.55) {
+    const segLen = length / segments
+    const visibleLen = segLen * dutyCycle
+    const geos = []
+    for (let i = 0; i < segments; i++) {
+      const g = new THREE.CylinderGeometry(radius, radius, visibleLen, 6, 1)
+      const y = -length / 2 + segLen * (i + 0.5)
+      g.translate(0, y, 0)
+      geos.push(g)
+    }
+    return this._mergeNonIndexed(geos)
+  }
+
+  /** Disposes and rebuilds one edge in place at its current style —
+   *  used after an edit from ui/OmniEdgeInspector.js. Keeps the same
+   *  `edge` record object (and its position in this._edges) rather
+   *  than removing/re-adding, so nothing else has to re-sync. */
+  _rebuildSingleEdge (edge) {
+    const entryA = this._nodes.get(edge.from)
+    const entryB = this._nodes.get(edge.to)
+    if (!entryA || !entryB) return
+
+    this.ctx.scene.remove(edge.line)
+    edge.line.userData.halo?.geometry?.dispose()
+    edge.line.userData.halo?.material?.dispose()
+    edge.line.geometry?.dispose()
+    edge.line.material?.dispose()
+
+    const posA = entryA.mesh.getWorldPosition(new THREE.Vector3())
+    const posB = entryB.mesh.getWorldPosition(new THREE.Vector3())
+    const depth = this._computeAncestry(edge.to).depth
+    const fresh = this._buildEdgeLine(posA, posB, depth, edge.style)
+    fresh.material.opacity = 0.45
+    this.ctx.scene.add(fresh)
+    edge.line = fresh
+
+    this._updateEdgeList()
   }
 
   // ── Panel UI — node list ──────────────────────────────────────────────────
@@ -2166,6 +2891,7 @@ export default class OmniNode {
           <span>${fromLabel}</span>
           <span class="on-edges-arrow">→</span>
           <span>${toLabel}</span>
+          <button class="on-edges-style" data-edge-idx="${idx}" title="Edit line style">✎</button>
           <button class="on-edges-delete" data-edge-idx="${idx}" title="Remove edge">✕</button>
         </div>
       `
@@ -2179,6 +2905,19 @@ export default class OmniNode {
           this._removeEdge(edge.from, edge.to)
           this._playSound('close')
         }
+      })
+    })
+
+    edgeList.querySelectorAll('.on-edges-style').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx  = parseInt(btn.dataset.edgeIdx, 10)
+        const edge = this._edges[idx]
+        if (!edge) return
+        const fromLabel = this._nodes.get(edge.from)?.data?.label ?? edge.from
+        const toLabel   = this._nodes.get(edge.to)?.data?.label ?? edge.to
+        window.dispatchEvent(new CustomEvent('omni:edge-inspect-request', {
+          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style } }
+        }))
       })
     })
   }
@@ -2657,11 +3396,22 @@ export default class OmniNode {
           const posB  = entryB.mesh.getWorldPosition(new THREE.Vector3())
           const depth = this._computeAncestry(edge.to).depth
 
-          const fresh = this._buildEdgeLine(posA, posB, depth)
+          const fresh = this._buildEdgeLine(posA, posB, depth, edge.style)
           edge.line.geometry.dispose()
           edge.line.geometry = fresh.geometry
           edge.line.position.copy(fresh.position)
           edge.line.quaternion.copy(fresh.quaternion)
+          // Halo (if this edge is styled highlighted) needs its own
+          // geometry refreshed too, same reason as the main geometry —
+          // its length/orientation is baked in, not just its transform.
+          if (edge.line.userData.halo && fresh.userData.halo) {
+            edge.line.userData.halo.geometry.dispose()
+            edge.line.userData.halo.geometry = fresh.userData.halo.geometry
+            fresh.userData.halo.material.dispose()   // edge.line's halo keeps its own material
+          } else if (fresh.userData.halo) {
+            fresh.userData.halo.geometry.dispose()
+            fresh.userData.halo.material.dispose()
+          }
           fresh.material.dispose()   // throwaway — edge.line keeps its own material
         })
 
@@ -2678,11 +3428,88 @@ export default class OmniNode {
     window.addEventListener('omni:node-scale-set',    this._onScaleSet)
     window.addEventListener('omni:node-rotation-set', this._onRotationSet)
     window.addEventListener('omni:node-delete-request', this._onDeleteRequest)
+
+    // Duplicate — from ui/ToolTipMenu.js's new "⧉ Duplicate" button,
+    // real and generic for every node type. A group node routes through
+    // _duplicateGroup instead (it needs its members cloned too, not
+    // just its own shell), everything else gets a plain offset clone.
+    this._onDuplicateRequest = (e) => {
+      const { id } = e.detail ?? {}
+      if (id) this._duplicateNode(id)
+    }
+    window.addEventListener('omni:node-duplicate-request', this._onDuplicateRequest)
     window.addEventListener('omni:node-text-set', this._onTextSet)
     window.addEventListener('omni:node-sequence-set', this._onSequenceSet)
     window.addEventListener('omni:node-media-set',    this._onMediaSet)
     window.addEventListener('omni:node-create-request', this._onCreateRequest)
     window.addEventListener('omni:node-set-domain', this._onSetDomain)
+
+    // ── Group actions — from ui/OmniSelectorInspector.js's "Group These"
+    // button and systems/OmniInspector.js's GroupNode custom section
+    // (Ungroup/Merge/Duplicate) ─────────────────────────────────────
+    this._onGroupCreateRequest = (e) => {
+      const { ids, geometry, color, wireframe, label } = e.detail ?? {}
+      if (!Array.isArray(ids) || ids.length < 2) {
+        console.warn('⟐N — a group needs at least 2 real, existing nodes; got', ids?.length ?? 0)
+        return
+      }
+      this._createGroup(ids, { geometry, color, wireframe, label })
+    }
+    window.addEventListener('omni:group-create-request', this._onGroupCreateRequest)
+
+    this._onGroupUngroupRequest = (e) => {
+      const { groupId } = e.detail ?? {}
+      if (groupId) this._ungroupNode(groupId)
+    }
+    window.addEventListener('omni:group-ungroup-request', this._onGroupUngroupRequest)
+
+    this._onGroupMergeRequest = (e) => {
+      const { groupIds } = e.detail ?? {}
+      if (Array.isArray(groupIds) && groupIds.length >= 2) this._mergeGroups(groupIds)
+    }
+    window.addEventListener('omni:group-merge-request', this._onGroupMergeRequest)
+
+    this._onGroupDuplicateRequest = (e) => {
+      const { groupId } = e.detail ?? {}
+      if (groupId) this._duplicateGroup(groupId)
+    }
+    window.addEventListener('omni:group-duplicate-request', this._onGroupDuplicateRequest)
+
+    // Edge style edits — from ui/OmniEdgeInspector.js. Applies live and
+    // persists under its own from__to key (see saveEdgeStyle) so a
+    // reload restores the same look, same pattern as every other
+    // "external panel writes through the owner module" settings flow
+    // in this app.
+    this._onEdgeStyleSet = (e) => {
+      const { from, to, style } = e.detail ?? {}
+      const edge = this._edges.find(ed =>
+        (ed.from === from && ed.to === to) || (ed.from === to && ed.to === from))
+      if (!edge) return
+      edge.style = { ...EDGE_STYLE_DEFAULTS, ...edge.style, ...style }
+      saveEdgeStyle(edge.from, edge.to, edge.style)
+      this._rebuildSingleEdge(edge)
+    }
+    window.addEventListener('omni:edge-style-set', this._onEdgeStyleSet)
+
+    // Essence Data evidence edits — from systems/OmniInspector.js's
+    // Omni Claim section. State is always recomputed here, never taken
+    // from the panel directly — "provable" means the tool derives the
+    // verdict from the tally, the panel only ever supplies raw evidence.
+    this._onEssenceEvidenceSet = (e) => {
+      const { id, domain, questions, evidence } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry?.data?.isEssenceNode) return
+      if (domain !== undefined) entry.data.domain = domain
+      if (questions !== undefined) entry.data.essenceQuestions = questions
+      if (evidence !== undefined) entry.data.evidence = evidence
+      entry.data.essenceState = this._computeEssenceState(entry.data)
+      this._rebuildEssenceVisual(id)
+      this._save()
+      this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:essence-updated', { detail: { id, state: entry.data.essenceState } }))
+      window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    }
+    window.addEventListener('omni:essence-evidence-set', this._onEssenceEvidenceSet)
 
     // Rotation automation — previously only ever set once, at
     // creation time, via ui/OmniDraw.js's schema, with no way to
@@ -2819,25 +3646,32 @@ export default class OmniNode {
           lockToRuler(data.id, timeData)
           this.ctx.scene.add(mesh)
           this._nodes.set(data.id, { data, mesh })
+          // Essence Data's studs/halo are runtime child meshes, not part
+          // of the saved geometry — same reason edges/groups need their
+          // own restore step instead of surviving through the mesh alone.
+          if (data.isEssenceNode) this._rebuildEssenceVisual(data.id)
           window.dispatchEvent(new CustomEvent('omni:node-restored', { detail: { node: data, mesh } }))
         })
       }
 
       if (rawEdges) {
         const edges = JSON.parse(rawEdges)
+        const savedStyles = loadEdgeStyles()
         edges.forEach(({ from, to }) => {
           const entryA = this._nodes.get(from)
           const entryB = this._nodes.get(to)
           if (!entryA || !entryB) return
 
+          const style = savedStyles[edgeStyleKey(from, to)] ?? { ...EDGE_STYLE_DEFAULTS }
           const line = this._buildEdgeLine(
             entryA.mesh.getWorldPosition(new THREE.Vector3()),
             entryB.mesh.getWorldPosition(new THREE.Vector3()),
-            this._computeAncestry(to).depth
+            this._computeAncestry(to).depth,
+            style
           )
           line.material.opacity = 0.45
           this.ctx.scene.add(line)
-          this._edges.push({ from, to, line })
+          this._edges.push({ from, to, line, style })
         })
       }
 

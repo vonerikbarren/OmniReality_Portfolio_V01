@@ -239,7 +239,7 @@ export default class CameraMovementOptionsPanel {
     this._el.querySelector('[data-field="px"]').value = steps.px
     this._el.querySelector('[data-field="py"]').value = steps.py
     this._el.querySelector('[data-field="pz"]').value = steps.pz
-    this._el.querySelector('[data-field="dashMultiplier"]').value = s.dashMultiplier ?? 2
+    this._el.querySelector('[data-field="dashMultiplier"]').value = s.dashMultiplier ?? 3
     this._el.querySelector('[data-field="altitudeUp"]').value = steps.altitudeUp
     this._el.querySelector('[data-field="altitudeDown"]').value = steps.altitudeDown
     this._el.querySelector('[data-field="orbitVertical"]').value = steps.orbitVertical
@@ -265,7 +265,7 @@ export default class CameraMovementOptionsPanel {
     const px = parseFloat(this._el.querySelector('[data-field="px"]').value)
     const py = parseFloat(this._el.querySelector('[data-field="py"]').value)
     const pz = parseFloat(this._el.querySelector('[data-field="pz"]').value)
-    const dashMultiplier = parseFloat(this._el.querySelector('[data-field="dashMultiplier"]').value) || 2
+    const dashMultiplier = parseFloat(this._el.querySelector('[data-field="dashMultiplier"]').value) || 3
     const altitudeUp = parseFloat(this._el.querySelector('[data-field="altitudeUp"]').value)
     const altitudeDown = parseFloat(this._el.querySelector('[data-field="altitudeDown"]').value)
     const orbitVertical = parseFloat(this._el.querySelector('[data-field="orbitVertical"]').value)

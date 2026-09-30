@@ -658,6 +658,8 @@ export default class OmniSelector {
         },
         wireframe: v.mesh.material.wireframe,
         groupedLabels,
+        groupedIds: v.containedIds,
+        geometry: this._data.geometry,
       }
     }))
   }

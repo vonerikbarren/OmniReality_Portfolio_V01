@@ -48,6 +48,8 @@ const STYLES = `
   padding: 5px 10px; text-align: left; cursor: pointer; border-radius: 4px; white-space: nowrap;
 }
 .ttm-action-btn:hover { background: rgba(255,255,255,0.12); }
+.ttm-action-btn--danger { color: rgba(255,140,140,0.95); }
+.ttm-action-btn--danger:hover { background: rgba(255,80,80,0.16); }
 .ttm-editor-row {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 5px 10px; font-size: 10px; color: #fff;
@@ -84,6 +86,8 @@ export default class ToolTipMenu {
     this._openMenuMesh = null
     this._menuEl = null
     this._onDocClick = null
+    this._onNodeContextMenu = null
+    this._pinnedPoint = null   // {x,y} screen coords when opened via right-click on the 3D object, instead of the node's own header tooltip
   }
 
   /** Wired in after both modules exist, since OmniJsonifier is
@@ -109,6 +113,20 @@ export default class ToolTipMenu {
       this._closeQuickMenu()
     }
     document.addEventListener('click', this._onDocClick)
+
+    // Real right-click/context-menu on the 3D object itself (Developer
+    // Queue item 5) — systems/OmniNode.js raycasts on 'contextmenu' the
+    // same way it does on 'click' and dispatches this with the hit
+    // node's id + cursor position. Reuses this same quick menu (now
+    // with Duplicate/Delete) rather than building a second, competing
+    // menu system for what's functionally the same set of actions.
+    this._onNodeContextMenu = (e) => {
+      const { id, x, y } = e.detail ?? {}
+      const mesh = id ? this.omniNode?.getMeshById?.(id) : null
+      if (!mesh) return
+      this._toggleQuickMenu(mesh, { x, y })
+    }
+    window.addEventListener('omni:node-contextmenu-request', this._onNodeContextMenu)
   }
 
   update () {
@@ -137,6 +155,7 @@ export default class ToolTipMenu {
 
   destroy () {
     document.removeEventListener('click', this._onDocClick)
+    window.removeEventListener('omni:node-contextmenu-request', this._onNodeContextMenu)
     this._headers.forEach(entry => entry.el.remove())
     this._headers.clear()
     this._menuEl?.remove()
@@ -175,10 +194,11 @@ export default class ToolTipMenu {
     entry.el.style.top = `${screen.y}px`
   }
 
-  _toggleQuickMenu (mesh) {
-    if (this._openMenuMesh === mesh) { this._closeQuickMenu(); return }
+  _toggleQuickMenu (mesh, atPoint = null) {
+    if (this._openMenuMesh === mesh && !atPoint) { this._closeQuickMenu(); return }
     this._closeQuickMenu()
     this._openMenuMesh = mesh
+    this._pinnedPoint = atPoint
     this._menuEl = document.createElement('div')
     this._menuEl.className = 'ttm-quickmenu'
     document.body.appendChild(this._menuEl)
@@ -216,6 +236,8 @@ export default class ToolTipMenu {
       ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
       ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
       <button class="ttm-action-btn" data-action="edit-tooltip">🎨 Edit Tooltip</button>
+      <button class="ttm-action-btn" data-action="duplicate">⧉ Duplicate</button>
+      <button class="ttm-action-btn ttm-action-btn--danger" data-action="delete">🗑 Delete</button>
     `
     this._menuEl.querySelector('[data-action="take-me-there"]').addEventListener('click', () => {
       goToObject(this.ctx, mesh)
@@ -236,6 +258,20 @@ export default class ToolTipMenu {
     })
 
     this._menuEl.querySelector('[data-action="edit-tooltip"]').addEventListener('click', () => this._renderTooltipEditor(mesh))
+
+    // Duplicate/Delete — real, unconditional for every node type (there
+    // was no such button anywhere before this, for anything). Delete
+    // reuses the existing omni:node-delete-request event Inspector's own
+    // delete button already dispatches; Duplicate is a new, generic
+    // clone-with-offset request handled in systems/OmniNode.js.
+    this._menuEl.querySelector('[data-action="duplicate"]').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:node-duplicate-request', { detail: { id: nodeId } }))
+      this._closeQuickMenu()
+    })
+    this._menuEl.querySelector('[data-action="delete"]').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: nodeId } }))
+      this._closeQuickMenu()
+    })
 
     if (isJsonLeaf) {
       this._menuEl.querySelector('[data-action="show-value"]').addEventListener('click', () => this._renderValueViewer(mesh, jsonNode))
@@ -392,11 +428,21 @@ export default class ToolTipMenu {
     this._menuEl?.remove()
     this._menuEl = null
     this._openMenuMesh = null
+    this._pinnedPoint = null
   }
 
   _positionQuickMenu (mesh) {
+    if (!this._menuEl) return
+    // Opened via right-click on the 3D object — anchor to the cursor,
+    // not the node's own floating header (which may be far from where
+    // the user actually clicked, or off-screen entirely).
+    if (this._pinnedPoint) {
+      this._menuEl.style.left = `${this._pinnedPoint.x}px`
+      this._menuEl.style.top = `${this._pinnedPoint.y}px`
+      return
+    }
     const entry = this._headers.get(mesh)
-    if (!entry || !this._menuEl) return
+    if (!entry) return
     const rect = entry.el.getBoundingClientRect()
     this._menuEl.style.left = `${rect.left + rect.width / 2}px`
     this._menuEl.style.top = `${rect.bottom}px`

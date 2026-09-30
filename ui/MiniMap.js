@@ -43,8 +43,10 @@
  *      └─ Active flash ring       pulse circle on omni:portal-activated
  *   6. Camera heading line        direction camera faces (XZ projected)
  *   7. Camera dot                 bright white dot with glow
- *   8. Space name                 top-center canvas text
- *   9. Coordinates                bottom-center canvas text
+ *   8. Space name                 top-center canvas text (N)
+ *   9. Compass coordinates        live X / Z / Y readout spread around
+ *      the circumference at E / S / W, Zelda BotW/TotK-style, instead
+ *      of one cramped line — see _drawCompassCoords()
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Events consumed (window)
@@ -717,25 +719,58 @@ export default class MiniMap {
     ctx.shadowBlur  = 0
     ctx.shadowColor = 'transparent'
 
-    // Space name — top-center text inside circle
+    // Space name — top-center text inside circle (the map's own "N")
     ctx.font         = '6px "Courier New", monospace'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'top'
     ctx.fillStyle    = 'rgba(255,255,255,0.38)'
     ctx.fillText(this._spaceName, cx, 10)
 
-    // Coordinates — bottom-center text inside circle
-    const coordText = isOut
-      ? `OUT  x${camX.toFixed(1)} z${camZ.toFixed(1)}`
-      : `x ${camX.toFixed(1)}  z ${camZ.toFixed(1)}`
-    ctx.font      = '5.5px "Courier New", monospace'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'bottom'
-    ctx.fillStyle = isOut ? 'rgba(255,180,100,0.55)' : 'rgba(255,255,255,0.22)'
-    ctx.fillText(coordText, cx, MAP_SIZE - 10)
+    // Live coordinates, spread around the circumference at E / S / W —
+    // Zelda BotW/TotK-style, rather than one cramped bottom-center
+    // line. Each axis sits at the compass point its motion reads
+    // naturally against: X (left/right) at E, Z (toward/away) at S,
+    // Y (elevation — genuinely meaningful now that FloorManager lets
+    // the camera actually change height) at W.
+    this._drawCompassCoords(cx, cy, camX, camera.position.y, camZ, isOut)
 
     // Portal hover check
     if (this._settings.showPortals !== false) this._checkPortalHover(cx, cy, scale)
+  }
+
+  /** Live X / Z / Y readout at the E / S / W compass points, just
+   *  inside the outer ring so it stays inside the circle's own
+   *  circular clip mask. Small "E"/"S"/"W" tags above each value tie
+   *  it back to the cardinal ring, the way BotW/TotK's own map reads
+   *  coordinates off its compass rather than a single overlay line. */
+  _drawCompassCoords (cx, cy, camX, camY, camZ, isOut) {
+    const ctx = this._ctx2d
+    const r = MAP_HALF - 12   // just inside the outer ring / clip mask
+    const valueColor = isOut ? 'rgba(255,180,100,0.62)' : 'rgba(255,255,255,0.42)'
+    const tagColor   = isOut ? 'rgba(255,180,100,0.40)' : 'rgba(255,255,255,0.24)'
+
+    const point = (label, value, px, py, align) => {
+      ctx.textAlign    = align
+      ctx.textBaseline = 'middle'
+      ctx.font         = '5px "Courier New", monospace'
+      ctx.fillStyle    = tagColor
+      ctx.fillText(label, px, py - 5)
+      ctx.font         = '5.5px "Courier New", monospace'
+      ctx.fillStyle    = valueColor
+      ctx.fillText(value.toFixed(1), px, py + 4)
+    }
+
+    point('E · X', camX, cx + r, cy, 'center')
+    point('S · Z', camZ, cx, cy + r, 'center')
+    point('W · Y', camY, cx - r, cy, 'center')
+
+    if (isOut) {
+      ctx.textAlign    = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.font         = '5px "Courier New", monospace'
+      ctx.fillStyle    = 'rgba(255,180,100,0.65)'
+      ctx.fillText('OUT', cx + r, cy - r + 4)
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

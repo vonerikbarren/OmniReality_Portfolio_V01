@@ -88,9 +88,9 @@ Not yet designed in detail (line style, whether toggleable per
 system, whether tied into the existing Group Lock / OmniCore Origin
 mechanics) — real next design pass, not decided here.
 
-## 5. OmniDraw — right-click options on a geometry (the hand-grab half is now built)
+## 5. OmniDraw — right-click options on a geometry — RESOLVED, built in V143
 
-Two related but distinct questions were raised here. One is now
+Two related but distinct questions were raised here. Both are now
 real code:
 
 - **Placing an object "in one of the user's hands" — built.**
@@ -98,13 +98,13 @@ real code:
   while held, drag toward a hand, and only a genuinely *open* hand
   (its own hamburger menu active) is a valid drop target. 20 checks,
   verified.
-- **Right-click-style options on a geometry — still not built.**
-  A single click on a node still only ever dispatches
-  `omni:node-selected`, opening the Inspector. No secondary/context
-  menu exists for 3D objects. `PanelIcon.js` has a real `contextmenu`
-  listener, but only for 2D panel icons, not 3D scene objects.
-  Technically straightforward to add — the same real, already-proven
-  pattern, just extended to 3D raycasts.
+- **Right-click-style options on a geometry — built.**
+  `systems/OmniNode.js`'s `_bindRaycast()` now binds a real
+  `contextmenu` listener extending the exact same raycast pattern
+  `PanelIcon.js` proved for 2D icons out to 3D scene objects — a hit
+  dispatches `omni:node-contextmenu-request`, and `ui/ToolTipMenu.js`
+  opens its existing quick menu (now also carrying Duplicate/Delete)
+  pinned to the cursor. See BuildLog.md V143.
 
 ## 6. OmniNotify — new OmniProduct, now partially real
 
@@ -705,4 +705,114 @@ live. A toggleable indicator sits just below screen center (clear of
 real ground floor (OmniFloor.js, y=0) is listed read-only for
 reference; it isn't one of OmniFloorManager's own floors and can't be
 edited or removed from here.
+
+## 42. MiniMap circumference coordinates + stop MasterClock stealing the
+Inspector — built in V139
+
+**MiniMap circumference coordinates** (`ui/MiniMap.js`): the single
+cramped bottom-center coordinate line is gone. Live X / Z / Y now sit
+at the E / S / W points of the ring itself (`_drawCompassCoords()`),
+each tagged with its compass letter — "E · X", "S · Z", "W · Y" — the
+same way BotW/TotK reads a coordinate off its own compass rather than
+a single overlay string. Y (elevation) gets its own real reading now
+that FloorManager lets the camera's height actually change. Still
+clamped inside the circle's own clip mask (`MAP_HALF - 12`), so
+nothing gets cut off at the rim; the "OUT" flag (outside
+`_worldHalf`) now shows near the NE corner instead of colliding with
+the coordinate text.
+
+**MasterClock no longer steals the Inspector** (`systems/OmniNode.js`):
+real gap found, not a cosmetic one — `skipAutoSelect: true`
+(`modules/ChronosFloorClock.js`) only ever stopped the clock's
+Inspector from force-opening at the moment it's *created*; nothing
+stopped a later, ordinary raycast click on its small floating
+icosahedron from selecting it and popping the Inspector's "⏱ Clock
+Settings" section open anyway, which is what was actually happening.
+Fixed at the source: `_selectableMeshes()` filters any node whose
+`data.skipAutoSelect` is true out of hover, click-select, and
+path-click raycasting entirely, so a structural node genuinely never
+grabs the Inspector by accident again. `getAllMeshes()` (used by
+OmniGrab for dragging) is untouched — grabbing the clock physically is
+still allowed, only accidental *selection* is closed off. The clock's
+real settings stay reachable the deliberate way: the dedicated
+⟐Chronos panel, unaffected by this change.
+
+## 43. Wallpaper — 360° Cubemap shape mode — built in V140
+
+**Real gap identified first, then closed:** every existing wallpaper
+shape (Box included) shows the SAME loaded image on every face —
+THREE's default box UVs give each face its own full 0-1 range, so a
+photo appears whole and repeated 6 times, not as one continuous
+space. Direct question from the person: is a bespoke cube-texturing
+system smarter than just adding another entry to the existing
+shape/texture pipeline? Answer: no — Box already lived in that
+pipeline for free. What was actually missing was a *second, distinct*
+shape mode built for one continuous 360° space rather than 6 repeats
+of one picture.
+
+**`modules/WallpaperSphere.js`** — new `CubemapCross` shape,
+alongside the existing curated 11 (not one of `SHAPE_BUILDERS`' real
+THREE geometries — a deliberately separate mode). Picking it in the
+Shape dropdown still builds a `THREE.BoxGeometry`, but with a
+**6-material array** instead of one shared material. One uploaded
+image — laid out as the classic skybox "cross" (4 side faces across
+the middle row, top face above the front one, bottom below it) — gets
+sliced with `sliceCrossImage()` (plain canvas cropping, no library)
+into 6 face canvases, each turned into its own `THREE.CanvasTexture`
+and assigned to its matching box face in THREE's own material-array
+order (+x/-x/+y/-y/+z/-z). The 4 side faces line up edge-to-edge
+around the horizon instead of repeating — a real, continuous
+360°-on-a-box, not a skinned cube.
+
+**Real, stated limitation — video isn't supported in Cubemap mode.**
+Re-slicing a *playing* video into 6 canvases every single frame is a
+genuine, avoidable performance cost, so it's blocked outright
+(`_applyVideo`/`_applyVideoFromSlot`/`_loadVideoFromStore` all guard
+on `this._isCubemap` and warn rather than silently doing nothing).
+Switching shape into Cubemap while a video wallpaper is active drops
+back to the last image. Images only, for now — a real gap, not
+hidden.
+
+**`ui/WallpaperSettingsPanel.js`** — labeled "360° Cubemap (Box)" in
+the Shape dropdown (rather than the raw internal key), with a note
+explaining the cross-layout requirement and, only while Cubemap is
+selected, a second note stating the video limitation above.
+
+**`modules/OmniBrowserSpace.js`** — real cross-module leak caught
+before shipping: `BROWSERSPACE_SHAPES` derives from
+`WALLPAPER_SHAPES`, which now includes `CubemapCross` — but
+OmniBrowserSpace's own, separate `SHAPE_BUILDERS` has no matching
+entry (a live browser view is one texture, not a sliced skybox
+image), so it would have shown up as a dropdown option that silently
+did nothing when picked. Filtered back out at the source
+(`REAL_WALLPAPER_SHAPES`) rather than patched over in the panel.
+
+## 44. Event-triggered wallpaper — swap on event, revert after — not built
+
+Raised directly, framed as a real test the person wants to run, not a
+finished spec: a user-triggered event should swap the active wallpaper
+(image or video) to a specific one for the duration of that event,
+then automatically revert to whatever wallpaper was active before it
+fired — same shape as Tears of the Kingdom's "ability" transitions
+(pass through an object, a specific animation always plays, then
+control returns to the normal scene). The reference is the *transient
+override-then-restore* pattern, not the specific visual of passing
+through an object.
+
+Nothing built yet. Real open questions before this is buildable:
+- What counts as "an event" here — a specific node's Program
+  step (item 40/41, `communicate`/`notify` already exist as Program
+  actions; a new `setWallpaper` action could fit the same registry),
+  a proximity/enter trigger, a manual button, something else?
+- Does the reverted wallpaper need to be the literal previous
+  slot/state (image vs video, which slot), or just "whatever the
+  saved default is" — matters for `utils/WallpaperStorage.js`'s
+  existing slot system, since "previous" isn't currently tracked
+  anywhere, only "currently active."
+- Duration: does it revert after a fixed time, after the triggering
+  animation/program finishes, or does it stay until a second explicit
+  "revert" event fires?
+- Movement tests mentioned alongside this are the person's own,
+  separate from this feature — noted here only as context for why
+  this was raised, not additional scope to build.
 

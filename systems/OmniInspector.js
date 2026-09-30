@@ -893,6 +893,28 @@ const STYLES = /* css */`
   color             : var(--oi-text-muted);
 }
 
+.oi-essence-state {
+  display           : inline-block;
+  font-size         : 10px;
+  font-weight       : 700;
+  letter-spacing    : 0.08em;
+  padding           : 3px 10px;
+  border-radius     : 4px;
+  border            : 1px solid;
+  margin-bottom     : 8px;
+}
+.oi-essence-list { display: flex; flex-direction: column; gap: 10px; }
+.oi-essence-row {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 4px;
+  padding           : 8px;
+  background        : rgba(255,255,255,0.03);
+  border            : 1px solid rgba(255,255,255,0.06);
+  border-radius     : 6px;
+}
+.oi-essence-question { font-size: 10px; color: var(--oi-text-dim); font-weight: 600; }
+
 /* ── Text inputs ──────────────────────────────────────────────────────────── */
 
 .oi-input {
@@ -947,6 +969,8 @@ const STYLES = /* css */`
   color            : rgba(255, 140, 140, 0.95);
 }
 .oi-btn-small--danger:hover { background: rgba(255, 90, 90, 0.2); }
+.oi-btn-small--full { width: 100%; text-align: center; box-sizing: border-box; }
+.oi-btn-small:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Program section — shared visual language with ui/OmniProgramEditorPanel.js
    (same class names, each file injects its own copy of these rules,
@@ -2760,6 +2784,8 @@ export default class OmniInspector {
    * common case of just wanting to check/change them.
    */
   _customOptionsHTML (data) {
+    if (data?.isGroupNode) return this._groupOptionsHTML(data)
+    if (data?.isEssenceNode) return this._essenceOptionsHTML(data)
     if (data?.label !== 'MasterClock') return ''
 
     let chronos = { enabled: true, zAxis: false, timeFormat: 'military' }
@@ -2801,12 +2827,207 @@ export default class OmniInspector {
     `
   }
 
+  /** GroupNode section — member list plus Ungroup/Merge/Duplicate, the
+   *  CRUD set from the ⟐OmniSelect "Group These" feature. A group is a
+   *  real node (systems/OmniNode.js's _createGroup et al.) whose mesh
+   *  is the actual parent of every member mesh, so this is genuinely
+   *  editing structure, not just a label. */
+  _groupOptionsHTML (data) {
+    const memberIds = data.groupMemberIds ?? []
+    const members = memberIds.map(id => (this._allNodes ?? []).find(n => n.id === id)).filter(Boolean)
+    const otherGroups = (this._allNodes ?? []).filter(n => n.isGroupNode && n.id !== data.id)
+
+    const memberRows = members.length
+      ? members.map(m => `<div class="oi-custom-note" style="margin:0 0 4px;">• ${m.label ?? m.id}</div>`).join('')
+      : `<div class="oi-custom-note">No members — this group is empty.</div>`
+
+    const mergeOptions = otherGroups.length
+      ? otherGroups.map(g => `<option value="${g.id}">${g.label ?? g.id}</option>`).join('')
+      : `<option value="" disabled selected>No other groups yet</option>`
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-group">
+        <div class="oi-custom-title">⟐ Group (${members.length})</div>
+        ${memberRows}
+
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-ungroup" style="margin-top:8px;">Ungroup</button>
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-duplicate" style="margin-top:6px;">Duplicate Group</button>
+
+        <div class="oi-row" style="margin-top:10px;">
+          <span class="oi-label">Merge with</span>
+          <select class="oi-select" id="oi-group-merge-target" ${otherGroups.length ? '' : 'disabled'}>
+            ${mergeOptions}
+          </select>
+        </div>
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-merge" ${otherGroups.length ? '' : 'disabled'}>Merge</button>
+
+        <div class="oi-custom-note">Ungroup releases every member back to where it was before grouping. Merge dissolves both groups and re-groups everything into one. Duplicate clones the whole group, members included.</div>
+      </div>
+    `
+  }
+
+  _wireGroupOptions (body, data) {
+    body.querySelector('#oi-group-ungroup')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:group-ungroup-request', { detail: { groupId: data.id } }))
+    })
+    body.querySelector('#oi-group-duplicate')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:group-duplicate-request', { detail: { groupId: data.id } }))
+    })
+    body.querySelector('#oi-group-merge')?.addEventListener('click', () => {
+      const targetId = body.querySelector('#oi-group-merge-target')?.value
+      if (!targetId) return
+      window.dispatchEvent(new CustomEvent('omni:group-merge-request', { detail: { groupIds: [data.id, targetId] } }))
+    })
+  }
+
+  /** Essence Data — the Omni Claim section. Domain (the declared
+   *  perspective/story) plus one row per evidence question: an answer
+   *  and a stance (Truth/False/Neutral). State is a read-only computed
+   *  badge — never an input — because it's a tally of the evidence
+   *  below, not something the user sets directly (see
+   *  systems/OmniNode.js's _computeEssenceState). */
+  _essenceOptionsHTML (data) {
+    const domain = data.domain ?? { name: '', story: '' }
+    const questions = data.essenceQuestions ?? []
+    const evidence  = data.evidence ?? []
+    const state = data.essenceState ?? 'undefined'
+    const stateLabel = state === 'truth' ? 'TRUTH' : state === 'false' ? 'FALSE' : 'UNDEFINED'
+    const stateColor = state === 'truth' ? '#4caf50' : state === 'false' ? '#ff4444' : '#8899aa'
+
+    const rows = questions.map((q, i) => {
+      const ev = evidence[i]
+      const answer = ev?.answer ?? ''
+      const stance = ev?.stance ?? 'neutral'
+      return /* html */`
+        <div class="oi-essence-row" data-q-idx="${i}">
+          <div class="oi-essence-question">${q}</div>
+          <textarea class="oi-textarea" data-essence-answer="${i}" placeholder="Answer…">${answer}</textarea>
+          <div class="oi-row">
+            <select class="oi-select" data-essence-stance="${i}">
+              <option value="neutral" ${stance === 'neutral' ? 'selected' : ''}>Neutral / context</option>
+              <option value="truth"   ${stance === 'truth'   ? 'selected' : ''}>Supports Truth</option>
+              <option value="false"   ${stance === 'false'   ? 'selected' : ''}>Supports False</option>
+            </select>
+            <button class="oi-btn-small oi-btn-small--danger" data-essence-remove="${i}" title="Remove this question">✕</button>
+          </div>
+        </div>
+      `
+    }).join('')
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-essence">
+        <div class="oi-custom-title">◈ Omni Claim</div>
+        <div class="oi-essence-state" style="color:${stateColor}; border-color:${stateColor}88;">${stateLabel}</div>
+
+        <div class="oi-row">
+          <span class="oi-label">Domain</span>
+          <input class="oi-input" id="oi-essence-domain-name" type="text" value="${domain.name ?? ''}" placeholder="Perspective / domain name">
+        </div>
+        <textarea class="oi-textarea" id="oi-essence-domain-story" placeholder="The story — what perspective is this claim being made from?">${domain.story ?? ''}</textarea>
+
+        <div class="oi-custom-title" style="margin-top:10px;">Evidence</div>
+        <div class="oi-essence-list" id="oi-essence-list">${rows}</div>
+
+        <div class="oi-row" style="margin-top:8px;">
+          <input class="oi-input" id="oi-essence-new-question" type="text" placeholder="Add a question…">
+          <button class="oi-btn-small" id="oi-essence-add-question">+ Add</button>
+        </div>
+
+        <div class="oi-custom-note">State is computed, not set — it's the tally of every answer's stance below. Undefined until there's evidence; a tie stays Undefined rather than guessing a side.</div>
+      </div>
+    `
+  }
+
+  _wireEssenceOptions (body, data) {
+    const questions = [...(data.essenceQuestions ?? [])]
+    const evidence  = [...(data.evidence ?? [])]
+    let domain = { ...(data.domain ?? { name: '', story: '' }) }
+
+    const computeState = () => {
+      let t = 0, f = 0
+      evidence.forEach(e => { if (e?.stance === 'truth') t++; else if (e?.stance === 'false') f++ })
+      if (t === 0 && f === 0) return 'undefined'
+      if (t > f) return 'truth'
+      if (f > t) return 'false'
+      return 'undefined'
+    }
+
+    const commit = () => {
+      window.dispatchEvent(new CustomEvent('omni:essence-evidence-set', {
+        detail: { id: data.id, domain, questions: [...questions], evidence: [...evidence] }
+      }))
+    }
+
+    const rerenderSection = () => {
+      const section = body.querySelector('#oi-custom-essence')
+      if (!section) return
+      const pseudo = { ...data, domain, essenceQuestions: questions, evidence, essenceState: computeState() }
+      section.outerHTML = this._essenceOptionsHTML(pseudo)
+      this._wireEssenceOptions(body, pseudo)
+    }
+
+    let domainTimer = null
+    body.querySelector('#oi-essence-domain-name')?.addEventListener('input', (e) => {
+      domain = { ...domain, name: e.target.value }
+      clearTimeout(domainTimer)
+      domainTimer = setTimeout(commit, 250)
+    })
+    body.querySelector('#oi-essence-domain-story')?.addEventListener('input', (e) => {
+      domain = { ...domain, story: e.target.value }
+      clearTimeout(domainTimer)
+      domainTimer = setTimeout(commit, 250)
+    })
+
+    let evidenceTimer = null
+    const scheduleEvidenceCommit = () => {
+      clearTimeout(evidenceTimer)
+      evidenceTimer = setTimeout(commit, 250)
+    }
+
+    body.querySelectorAll('[data-essence-answer]').forEach(ta => {
+      ta.addEventListener('input', () => {
+        const i = Number(ta.dataset.essenceAnswer)
+        const stance = body.querySelector(`[data-essence-stance="${i}"]`)?.value ?? 'neutral'
+        evidence[i] = ta.value.trim() ? { answer: ta.value, stance, ts: new Date().toISOString() } : null
+        scheduleEvidenceCommit()
+      })
+    })
+    body.querySelectorAll('[data-essence-stance]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const i = Number(sel.dataset.essenceStance)
+        const answerVal = body.querySelector(`[data-essence-answer="${i}"]`)?.value ?? ''
+        evidence[i] = answerVal.trim() ? { answer: answerVal, stance: sel.value, ts: new Date().toISOString() } : null
+        commit()
+      })
+    })
+    body.querySelectorAll('[data-essence-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.essenceRemove)
+        questions.splice(i, 1)
+        evidence.splice(i, 1)
+        commit()
+        rerenderSection()
+      })
+    })
+    body.querySelector('#oi-essence-add-question')?.addEventListener('click', () => {
+      const input = body.querySelector('#oi-essence-new-question')
+      const text = input?.value?.trim()
+      if (!text) return
+      questions.push(text)
+      evidence.push(null)
+      commit()
+      rerenderSection()
+    })
+  }
+
   /** Wires whatever _customOptionsHTML rendered for this node's type.
    *  Mirrors OmniChronos's own event contract exactly (see
    *  modules/RootSpace.js's listeners) rather than duplicating it —
    *  this is a second surface for the same settings, not a second
    *  source of truth. */
   _wireCustomOptions (body, data) {
+    if (data?.isGroupNode) return this._wireGroupOptions(body, data)
+    if (data?.isEssenceNode) return this._wireEssenceOptions(body, data)
     if (data?.label !== 'MasterClock') return
 
     const readChronos = () => {

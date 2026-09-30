@@ -37,18 +37,25 @@
  */
 
 import * as THREE from 'three'
-import { WALLPAPER_SHAPES } from './WallpaperSphere.js'
+import { WALLPAPER_SHAPES, CUBEMAP_SHAPE } from './WallpaperSphere.js'
 import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
 // A local list, not a direct re-export — Grid is exclusive to
 // OmniBrowserSpace's own dropdown, inserted right after Box. The
 // shared WALLPAPER_SHAPES itself stays completely untouched, so
 // WallpaperSphere and its own settings panel never see Grid at all.
+// CUBEMAP_SHAPE is filtered back out for the same reason in reverse:
+// it's WallpaperSphere-exclusive (needs its 6-material slicing logic,
+// which this module's own, separate SHAPE_BUILDERS below doesn't
+// have — a live browser view is one texture, not a sliced skybox
+// image), so it's excluded here rather than showing up as a
+// dropdown option that silently does nothing when picked.
 const boxIndex = WALLPAPER_SHAPES.indexOf('BoxGeometry')
+const REAL_WALLPAPER_SHAPES = WALLPAPER_SHAPES.filter(sh => sh !== CUBEMAP_SHAPE)
 export const BROWSERSPACE_SHAPES = [
-  ...WALLPAPER_SHAPES.slice(0, boxIndex + 1),
+  ...REAL_WALLPAPER_SHAPES.slice(0, boxIndex + 1),
   'Grid',
-  ...WALLPAPER_SHAPES.slice(boxIndex + 1),
+  ...REAL_WALLPAPER_SHAPES.slice(boxIndex + 1),
 ]
 
 const ROOM_Y = 15               // lifted above the platform, not sitting inside it

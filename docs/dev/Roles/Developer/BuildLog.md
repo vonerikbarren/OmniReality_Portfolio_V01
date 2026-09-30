@@ -1573,6 +1573,171 @@ documented with a real, natural hook already in place
 (ChronosRealityNode's Y-position already maps directly onto
 PrimaryTime), not yet built.
 
+### V141
+⟐OmniSelect Group/Ungroup/Merge/Duplicate and a real edge-style system
+built, from a detailed multi-round scoping conversation. Groups are
+REAL nodes (`isGroupNode: true`) whose mesh is the actual Object3D
+parent of every member mesh (via `.attach()`, reusing the exact same
+reparenting mechanism the Domain/Space container system already
+used) — not a display-only list. Selecting a group, or any one of its
+members, highlights the whole set at once (emissive + a backface
+outline mesh, a direct structural mirror of the existing Ξ genealogy-
+highlight technique, using its own distinct color/scale so the two
+never look identical).
+
+New in `systems/OmniNode.js`: `_createGroup`, `_ungroupMembersOnly`,
+`_ungroupNode`, `_mergeGroups`, `_duplicateGroup`, `_highlightGroup`,
+`_clearGroupHighlight`. Ungroup releases members back to their real
+pre-group home (a domain/space, or the top-level scene — tracked via
+a new `preGroupSpaceId` field) rather than losing that information.
+Merge dissolves every source group down to its real leaf members
+first, then re-groups the union into one new flat group — deliberately
+flattening rather than nesting empty group-of-group shells. Deleting
+a group node now reparents its members back out first, so they can
+never be silently hidden along with the group's own mesh (three.js
+removes a mesh's entire child subtree when it's removed from the
+scene — this was caught and fixed before it ever shipped, not after).
+A real zero-scale `.attach()` hazard was caught the same way:
+`_createNode()`'s own materialize animation sets the mesh to scale
+(0,0,0) before a deferred tween grows it, and attaching a child to a
+zero-scale parent is a singular transform that would corrupt every
+member's local transform — `_createGroup` kills that tween and sets
+the real target scale synchronously before attaching anything.
+
+UI: `ui/OmniSelector.js`'s Inspector request now carries `groupedIds`
+(not just display labels) and the volume's own `geometry`.
+`ui/OmniSelectorInspector.js` gets a "⟐ Group These" button (shown
+once 2+ nodes are inside the volume), reusing the volume's own
+geometry/color/wireframe for the resulting group shell.
+`systems/OmniInspector.js`'s per-node-type custom-options registry
+(previously MasterClock-only) now also renders a GroupNode section:
+member list, Ungroup, Duplicate Group, and a Merge-with-another-group
+dropdown.
+
+Edge styling: edges stay real tapered cylinder meshes, per this
+file's own existing cross-browser-consistency rationale (native
+WebGL line width is unreliable — most browsers ignore `linewidth`
+entirely) — but every edge now carries a real, persisted style
+(`localStorage['omni:edge:styles']`, keyed by `from__to`): kind
+(cylinder / a genuinely thin cylinder called "line" / double),
+per-edge color, thickness, dashed on/off, and an optional highlight
+halo + color. 'double' and 'dashed' are built via manual
+`BufferGeometry` merging rather than `THREE.Group` or multiple
+objects, specifically so every edge kind still resolves to exactly
+one `Mesh`/one geometry — required to avoid breaking the three
+existing call sites that rebuild edges in place
+(`_rebuildEdgesFor`, the node-move handler, and the storage-restore
+loader) and all assume exactly that shape. Clicking an edge directly
+in SELECT mode (when no node is hit) now opens the new
+`ui/OmniEdgeInspector.js` panel; a "✎" button was also added to each
+row of ⟐OmniNode's own existing edge list for direct discoverability
+without needing to aim a click at a thin mesh in 3D. The panel writes
+through `omni:edge-style-set`, following the same "external panel
+writes through the owner module" pattern already used for MiniMap/
+Floor settings.
+
+Honest gap carried forward, not fixed this pass: the original,
+separately-agreed "true per-shape containment" for ⟐OmniSelect
+(a real per-geometry math test for Sphere/Octahedron/etc., replacing
+today's identical AABB-only test regardless of which shape is
+picked) was explicitly agreed to but not built — the conversation
+pivoted to Group/Edge instead once the actual, more detailed request
+took shape. Still open, not forgotten.
+
+### V142
+"Essence Data" — the first Omni Claim node type — built as a new
+pickable entry in ⟐OmniNode's existing geometry picker grid (added to
+`GEOMETRY_DEFS`/`GEO_LABELS`/`GEO_ICONS`, same as any other shape; the
+grid auto-generates from those keys, so no separate UI was needed).
+Placing one seeds it as `isEssenceNode: true` with a Domain (the
+declared perspective/story a claim is made from), a default set of 5
+evidence questions ("What is this claiming?", "What would make this
+false?", etc, freely extendable), and an evidence array that starts
+all-`null` — Undefined, by design, until real evidence exists.
+
+Deliberately NOT an objective truth-verification system — there's no
+attempt here to adjudicate universal fact, and that's an intentional,
+discussed scope boundary, not a shortcut. What's real: each evidence
+entry is a question answered with a stance (Supports Truth / Supports
+False / Neutral), and the node's own state — Truth / False / Undefined
+— is COMPUTED from a tally of those stances (`_computeEssenceState`),
+never hand-set. A tie stays Undefined rather than guessing a side.
+
+The node's own geometry (a subdivided icosahedron) grows small evidence
+"studs" over its surface — one per question, spread evenly via a
+fibonacci-sphere distribution regardless of how many questions a Domain
+ends up with. Filled and colored by stance when a question's answered,
+dim and hollow when it's not — so an incomplete claim is visibly
+incomplete on the shape itself, not just buried in a panel. A
+persistent state-color halo (the exact same backface-duplicate
+technique as the existing truth/false classification highlight)
+reads the claim's resolved state at a glance; it's a real separate
+mesh rather than an emissive tint specifically because emissive is
+already owned by node selection (`_selectNode` resets it to black on
+deselect) — a halo survives selection changes cleanly, emissive
+wouldn't have.
+
+`systems/OmniInspector.js` gets a new "◈ Omni Claim" section (same
+per-node-type custom-options registry the GroupNode section already
+uses): Domain name/story fields, one row per evidence question with
+an answer field and a stance dropdown, a computed (read-only) state
+badge, and an "+ Add" control for appending custom questions beyond
+the default 5. Edits flow through a new `omni:essence-evidence-set`
+event, same "external panel writes through the owner module" pattern
+as edges and groups — the Inspector never computes or sets state
+itself, only ever submits raw evidence.
+
+Real gaps, flagged rather than built around: there is no live/external
+evidence feed (a real review API, a real supply-chain integration) —
+evidence is only ever user-entered for now, appendable over time but
+not automatically sourced. And there is no cross-referencing between
+a claim's Domain and other Omni products/perspectives yet — the
+Domain is a freeform name+story today, not yet a structured link into
+the rest of the system. Both were discussed as genuinely open, bigger
+pieces ("I'm probably in the middle of building that," re: an actual
+verification protocol) rather than promised for this pass.
+
+### V143
+Four real, separate changes, plus one Developer Queue addition
+(item 44, event-triggered wallpaper — documented, not built, see
+DeveloperQueue.md).
+
+**Duplicate + Delete on every node type** (`ui/ToolTipMenu.js`): real
+gap closed — neither button existed anywhere before this, for any node
+type (not a gating bug, a genuine absence). "⧉ Duplicate" and "🗑
+Delete" now sit in the same quick menu every node already gets.
+Delete reuses the existing `omni:node-delete-request` event Inspector's
+own delete already dispatches. Duplicate is new:
+`systems/OmniNode.js`'s `_duplicateNode(id)` clones a node's data with
+a small world-space position offset so the copy never stacks exactly
+on the original; a group node defers to the existing `_duplicateGroup`
+instead (it needs its members cloned too, not just its shell); Essence
+Data's domain/questions/evidence are deep-copied, not shared by
+reference, so editing the copy can't silently edit the original.
+
+**Right-click context menu on 3D nodes** (Developer Queue item 5,
+now resolved): `systems/OmniNode.js`'s `_bindRaycast()` gets a real
+`contextmenu` listener alongside its existing click/mousemove ones —
+same raycast, same `_selectableMeshes()` hit-test the ordinary click
+already uses — dispatching `omni:node-contextmenu-request { id, x, y }`
+on a hit. `ui/ToolTipMenu.js` listens for it and opens its own
+existing quick menu (the same one now carrying Duplicate/Delete)
+pinned to the cursor position instead of the node's own floating
+header — one real menu system serving both trigger paths, not a
+second, competing one.
+
+**Dash speed 2x → 3x** (`ui/MovementPad.js`, `ui/CameraMovementOptionsPanel.js`):
+`_dashMultiplier` default raised from 2 to 3, plus both of its stored/
+saved-settings fallback defaults (`?? 2` → `?? 3`, `|| 2` → `|| 3`) so
+a fresh install and the Admin panel's own fallback agree with the new
+default rather than silently disagreeing with it.
+
+**Dash button z-index matched to the LH Menu** (`ui/MovementPad.js`):
+was `z-index: 55` (rendering above the hand matrix it docks beside);
+now `z-index: 40`, matching `ui/Hand.js`'s `.omni-hand` container
+exactly, so the dash button and the LH hand it sits next to now share
+the same stacking plane.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

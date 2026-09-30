@@ -71,6 +71,56 @@ const DEFAULT_SHAPE   = 'SphereGeometry'
 
 const STORE_KEY = 'omni:wallpaper:settings'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cubemap ("360 on a box") — a real, distinct shape mode, not one of
+// SHAPE_BUILDERS' plain geometries. Every other shape here shows the
+// SAME loaded image on every face (Box included) — one full copy per
+// face, since THREE's default box UVs give each face its own 0-1
+// range. Cubemap mode is the actual "one continuous space" version:
+// ONE source image, already laid out as the classic skybox "cross"
+// (four side faces across the middle row, the top face above the
+// front face, the bottom face below it), gets sliced into 6 pieces
+// and each piece assigned to its matching box face — so the four
+// side faces line up edge-to-edge around the horizon instead of
+// repeating. This is the real technique game skyboxes use
+// (THREE.CubeTextureLoader's manual equivalent, minus needing 6
+// separate uploaded files — one cross image is enough).
+const CUBEMAP_SHAPE = 'CubemapCross'
+
+/** Slices a single cross-layout image into the 6 face canvases a
+ *  THREE.BoxGeometry material array expects, in THREE's own face
+ *  order: [+x, -x, +y, -y, +z, -z].
+ *
+ *  Cross layout (4 columns × 3 rows — only 6 of the 12 cells used):
+ *
+ *          [ up  ]
+ *  [left] [front] [right] [back]
+ *          [down ]
+ */
+function sliceCrossImage (image) {
+  const iw = image.naturalWidth || image.width
+  const ih = image.naturalHeight || image.height
+  const cw = iw / 4
+  const ch = ih / 3
+
+  const crop = (sx, sy) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = cw
+    canvas.height = ch
+    canvas.getContext('2d').drawImage(image, sx, sy, cw, ch, 0, 0, cw, ch)
+    return canvas
+  }
+
+  return [
+    crop(cw * 2, ch * 1),   // 0: +x — right
+    crop(cw * 0, ch * 1),   // 1: -x — left
+    crop(cw * 1, ch * 0),   // 2: +y — up
+    crop(cw * 1, ch * 2),   // 3: -y — down
+    crop(cw * 1, ch * 1),   // 4: +z — front
+    crop(cw * 3, ch * 1),   // 5: -z — back
+  ]
+}
+
 const SHAPE_BUILDERS = {
   BoxGeometry:          (s) => new THREE.BoxGeometry(s * 1.7, s * 1.7, s * 1.7),
   SphereGeometry:       (s) => new THREE.SphereGeometry(s, 32, 32),
@@ -84,7 +134,8 @@ const SHAPE_BUILDERS = {
   DodecahedronGeometry: (s) => new THREE.DodecahedronGeometry(s),
   CapsuleGeometry:      (s) => new THREE.CapsuleGeometry(s * 0.6, s, 16, 32),
 }
-export const WALLPAPER_SHAPES = Object.keys(SHAPE_BUILDERS)
+export const WALLPAPER_SHAPES = [...Object.keys(SHAPE_BUILDERS), CUBEMAP_SHAPE]
+export { CUBEMAP_SHAPE }
 
 function readAdminSettings () {
   try {
@@ -125,6 +176,7 @@ export default class WallpaperSphere {
     this.ctx = context
     this._mesh = null
     this._shape = DEFAULT_SHAPE
+    this._isCubemap = false   // set by _buildMesh — true only when this._shape === CUBEMAP_SHAPE
     this._texture = null
     this._loader = new THREE.TextureLoader()
     this._imgUrl = ''
@@ -184,7 +236,7 @@ export default class WallpaperSphere {
       // null/undefined — this was the actual bug behind the starfield
       // never appearing, from before this file's last rewrite.
       this._applyImage(saved.imgUrl || DEFAULT_IMG_URL)
-      if (!saved.imgUrl) this._mesh.material.color.set(saved.color ?? DEFAULT_COLOR)
+      if (!saved.imgUrl) this._eachMaterial(m => m.color.set(saved.color ?? DEFAULT_COLOR))
     }
 
     this._videoLoop = saved.videoLoop ?? true
@@ -199,7 +251,7 @@ export default class WallpaperSphere {
     this._onSettingsSet = (e) => {
       const w = e.detail ?? {}
       if (w.shape !== undefined && w.shape !== this._shape) this._changeShape(w.shape)
-      if (w.alpha !== undefined) this._mesh.material.opacity = w.alpha
+      if (w.alpha !== undefined) this._eachMaterial(m => { m.opacity = w.alpha })
       if (w.rotationSpeed !== undefined) this._rotationSpeed = w.rotationSpeed
       if (w.autoSpinX !== undefined) this._spinX = w.autoSpinX
       if (w.autoSpinY !== undefined) this._spinY = w.autoSpinY
@@ -209,7 +261,7 @@ export default class WallpaperSphere {
       if (w.scale) { this._scale = { ...this._scale, ...w.scale }; this._applyTransform() }
       if (w.imgUrl) this._applyImage(w.imgUrl)
       else if (w.imgUrl === '') this._clearImage(w.color ?? DEFAULT_COLOR)
-      else if (w.color !== undefined && !this._texture) this._mesh.material.color.set(w.color)
+      else if (w.color !== undefined && !this._texture) this._eachMaterial(m => m.color.set(w.color))
       if (w.activeSlot) this._applyFromSlot(w.activeSlot)
 
       // ── Video wallpaper ──────────────────────────────────────────
@@ -248,40 +300,97 @@ export default class WallpaperSphere {
    *  whenever the shape changes, since geometry type can't be swapped
    *  in place the way a texture or color can. */
   _buildMesh (shape, alpha) {
-    const builder = SHAPE_BUILDERS[shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE]
+    this._isCubemap = shape === CUBEMAP_SHAPE
+    const builder = this._isCubemap ? SHAPE_BUILDERS.BoxGeometry : (SHAPE_BUILDERS[shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE])
     const geo = builder(BASE_SIZE)
-    const mat = new THREE.MeshBasicMaterial({
+    const matParams = {
       color: DEFAULT_COLOR,
       transparent: true,
       opacity: alpha,
       side: THREE.BackSide,
       depthWrite: false,
-    })
+    }
+    // Cubemap mode needs its own material PER face (a THREE box takes
+    // an array of 6 in its own +x/-x/+y/-y/+z/-z order) so each face
+    // can carry a different sliced texture — every other shape keeps
+    // the original single shared material.
+    const mat = this._isCubemap
+      ? Array.from({ length: 6 }, () => new THREE.MeshBasicMaterial({ ...matParams }))
+      : new THREE.MeshBasicMaterial(matParams)
     this._mesh = new THREE.Mesh(geo, mat)
     this._mesh.renderOrder = -2   // between the cube (-3) and domain grid (-1)
     this.ctx.scene.add(this._mesh)
   }
 
   _changeShape (shape) {
-    if (!SHAPE_BUILDERS[shape]) return
-    const prevAlpha = this._mesh.material.opacity
-    const prevTexture = this._texture
-    const prevColor = this._mesh.material.color.clone()
+    if (!SHAPE_BUILDERS[shape] && shape !== CUBEMAP_SHAPE) return
+
+    const wasCubemap = this._isCubemap
+    const prevMat = this._mesh.material
+    const prevAlpha = wasCubemap ? prevMat[0].opacity : prevMat.opacity
+    const prevColor = (wasCubemap ? prevMat[0] : prevMat).color.clone()
+    const prevTexture = this._texture   // always the whole, un-sliced image — see _applyImage
+
+    // Cubemap slicing can't track a live video frame-by-frame without
+    // genuinely re-slicing a playing video into 6 canvases every
+    // frame — a real perf cost, skipped on purpose. Moving into
+    // Cubemap mode while a video wallpaper is active drops back to
+    // the last image instead of silently doing nothing.
+    if (!wasCubemap && shape === CUBEMAP_SHAPE && this._videoActive) {
+      console.warn('⟐WallpaperSphere — Cubemap mode doesn\'t support a live video wallpaper. Falling back to the last image.')
+      this._disposeVideo(false)
+      this._commitVideoActive(false)
+    }
 
     this.ctx.scene.remove(this._mesh)
     this._mesh.geometry.dispose()
-    this._mesh.material.dispose()
+    if (Array.isArray(prevMat)) prevMat.forEach(m => { m.map?.dispose(); m.dispose() })
+    else prevMat.dispose()
 
     this._shape = shape
     this._buildMesh(shape, prevAlpha)
-    if (prevTexture) {
+
+    if (this._isCubemap) {
+      if (prevTexture?.image) this._applyCubemapFaces(prevTexture.image)
+      else this._mesh.material.forEach(m => m.color.copy(prevColor))
+    } else if (prevTexture) {
+      this._flipForInteriorView(prevTexture)
       this._mesh.material.map = prevTexture
       this._mesh.material.color.set(0xffffff)
+      this._mesh.material.needsUpdate = true
     } else {
       this._mesh.material.color.copy(prevColor)
+      this._mesh.material.needsUpdate = true
     }
-    this._mesh.material.needsUpdate = true
     this._applyTransform()
+  }
+
+  /** Runs fn against every real material this mesh currently has —
+   *  one, normally, or 6 in Cubemap mode — so callers (the settings
+   *  listener above especially) don't need their own Array.isArray
+   *  branch every time they touch opacity/color. */
+  _eachMaterial (fn) {
+    if (!this._mesh) return
+    if (Array.isArray(this._mesh.material)) this._mesh.material.forEach(fn)
+    else fn(this._mesh.material)
+  }
+
+  /** Slices the given raw image (the ORIGINAL, un-sliced image this._texture
+   *  wraps — never a previously-sliced face canvas) into 6 face
+   *  textures and assigns them across the box's material array. A
+   *  no-op outside Cubemap mode, or before any image has loaded yet. */
+  _applyCubemapFaces (image) {
+    if (!this._isCubemap || !image || !Array.isArray(this._mesh?.material)) return
+    const canvases = sliceCrossImage(image)
+    this._mesh.material.forEach((mat, i) => {
+      const tex = new THREE.CanvasTexture(canvases[i])
+      tex.colorSpace = THREE.SRGBColorSpace
+      this._flipForInteriorView(tex)
+      mat.map?.dispose()
+      mat.map = tex
+      mat.color.set(0xffffff)
+      mat.needsUpdate = true
+    })
   }
 
   /** Position/rotation offset/scale are all applied on top of the
@@ -349,16 +458,23 @@ export default class WallpaperSphere {
       url,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace
-        this._flipForInteriorView(texture)
         this._texture?.dispose()
         if (this._imgUrlIsObjectUrl) URL.revokeObjectURL(this._imgUrl)
+        // Kept as the whole, un-sliced image always — Cubemap mode
+        // reads texture.image straight off this to slice into faces;
+        // every other shape uses it directly as material.map.
         this._texture = texture
         this._imgUrl = url
         this._imgUrlIsObjectUrl = isObjectUrl
         if (this._videoActive) return   // video stays on top — texture is ready for when it's cleared
-        this._mesh.material.map = texture
-        this._mesh.material.color.set(0xffffff)   // true color — don't tint the photo
-        this._mesh.material.needsUpdate = true
+        if (this._isCubemap) {
+          this._applyCubemapFaces(texture.image)
+        } else {
+          this._flipForInteriorView(texture)
+          this._mesh.material.map = texture
+          this._mesh.material.color.set(0xffffff)   // true color — don't tint the photo
+          this._mesh.material.needsUpdate = true
+        }
       },
       undefined,
       (err) => console.warn('⟐WallpaperSphere — failed to load image:', url, err)
@@ -371,9 +487,18 @@ export default class WallpaperSphere {
     this._texture = null
     this._imgUrl = ''
     if (this._videoActive) return   // don't touch the live material — video owns it right now
-    this._mesh.material.map = null
-    this._mesh.material.color.set(fallbackColor)
-    this._mesh.material.needsUpdate = true
+    if (this._isCubemap) {
+      this._mesh.material.forEach(mat => {
+        mat.map?.dispose()
+        mat.map = null
+        mat.color.set(fallbackColor)
+        mat.needsUpdate = true
+      })
+    } else {
+      this._mesh.material.map = null
+      this._mesh.material.color.set(fallbackColor)
+      this._mesh.material.needsUpdate = true
+    }
   }
 
   // ── Video wallpaper ────────────────────────────────────────────────────
@@ -384,6 +509,7 @@ export default class WallpaperSphere {
    *  too large for localStorage/data: URIs, same reasoning
    *  WallpaperStorage.js documents for the image browser). */
   async _loadVideoFromStore () {
+    if (this._isCubemap) return   // see _applyVideo's own guard — cubemap + live video isn't supported
     const slot = this._activeVideoSlot ?? DEFAULT_VIDEO_SLOT
     try {
       const record = await wallpaperVideoStore.loadWallpaper(slot)
@@ -402,6 +528,10 @@ export default class WallpaperSphere {
    *  video slot grid exactly the way `activeSlot` triggers
    *  `_applyFromSlot` for images. */
   async _applyVideoFromSlot (slot) {
+    if (this._isCubemap) {
+      console.warn('⟐WallpaperSphere — video wallpaper isn\'t supported in Cubemap mode. Switch the shape away from Cubemap first.')
+      return
+    }
     this._activeVideoSlot = slot
     try {
       const record = await wallpaperVideoStore.loadWallpaper(slot)
@@ -439,6 +569,13 @@ export default class WallpaperSphere {
    */
   _applyVideo (url, isObjectUrl = false) {
     if (!url) return
+    if (this._isCubemap) {
+      // Re-slicing a playing video into 6 face canvases every frame is
+      // a real, deliberately-avoided perf cost — Cubemap mode is
+      // images-only for now. Documented, not silently dropped.
+      console.warn('⟐WallpaperSphere — video wallpaper isn\'t supported in Cubemap mode. Switch the shape away from Cubemap first.')
+      return
+    }
     this._disposeVideo(/* keepFlagged */ true)
 
     const video = document.createElement('video')
@@ -497,7 +634,16 @@ export default class WallpaperSphere {
     this._commitVideoActive(false)
     // Fall back to whatever image/color was already loaded — same
     // texture _applyImage kept ready in the background the whole time.
+    // (Video can't be active in Cubemap mode at all — see _applyVideo
+    // — but this stays defensive rather than assuming a single
+    // material, in case that ever changes.)
+    if (this._isCubemap) {
+      if (this._texture?.image) this._applyCubemapFaces(this._texture.image)
+      else this._mesh.material.forEach(m => { m.map = null; m.color.set(DEFAULT_COLOR); m.needsUpdate = true })
+      return
+    }
     if (this._texture) {
+      this._flipForInteriorView(this._texture)
       this._mesh.material.map = this._texture
       this._mesh.material.color.set(0xffffff)
     } else {
@@ -526,6 +672,10 @@ export default class WallpaperSphere {
     if (!this._mesh) return
     this.ctx.scene.remove(this._mesh)
     this._mesh.geometry.dispose()
-    this._mesh.material.dispose()
+    if (Array.isArray(this._mesh.material)) {
+      this._mesh.material.forEach(m => { m.map?.dispose(); m.dispose() })
+    } else {
+      this._mesh.material.dispose()
+    }
   }
 }

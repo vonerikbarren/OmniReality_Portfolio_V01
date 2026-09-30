@@ -104,6 +104,7 @@ import OmniKeys          from './ui/OmniKeys.js'
 import OmniKeysInspector from './ui/OmniKeysInspector.js'
 import OmniSelector      from './ui/OmniSelector.js'
 import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
+import OmniEdgeInspector from './ui/OmniEdgeInspector.js'
 import OmniChronos from './ui/OmniChronos.js'
 import ChronosFloorClock from './modules/ChronosFloorClock.js'
 import CameraTravelSettingsPanel from './ui/CameraTravelSettingsPanel.js'
@@ -422,6 +423,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniSelectorInspector = new OmniSelectorInspector(base.context)
   base.addModule(omniSelectorInspector)
+
+  const omniEdgeInspector = new OmniEdgeInspector(base.context)
+  base.addModule(omniEdgeInspector)
 
   const omniChronos = new OmniChronos(base.context)
   base.addModule(omniChronos)
