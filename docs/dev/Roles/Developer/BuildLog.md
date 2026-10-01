@@ -1738,6 +1738,46 @@ now `z-index: 40`, matching `ui/Hand.js`'s `.omni-hand` container
 exactly, so the dash button and the LH hand it sits next to now share
 the same stacking plane.
 
+### V144
+MiniMap position options — real gap closed: the settings panel only
+ever offered the 4 corner combinations (Top Left/Top Right/Bottom
+Left/Bottom Right); a genuine ask for plain standalone Top/Bottom/
+Left/Right edge-center anchors, distinct from the corners, had no way
+to be satisfied. `ui/MiniMap.js`'s `_applyCorner()` now handles 8
+positions total — the original 4 corners plus 4 edge-centers (each
+horizontally or vertically centered via `left/top: 50%` +
+`translate(-50%)`, cleared the same way the corner cases already
+were). `ui/MiniMapSettingsPanel.js`'s position grid lists all 8; field
+label changed from "Corner" to "Position" since it's no longer
+corner-only. `utils/MiniMapSettings.js`'s stale comment (only 4 values
+listed) corrected — no actual validation logic existed to update,
+just a comment describing fewer options than were real.
+
+OmniNode had no way to open — real gap found and closed. Its panel
+(`systems/OmniNode.js`, holding the "+ Add Node" geometry picker,
+Essence Data included) only ever listened for
+`omni:system-toggle { system: 'omninode' }`. Audited the whole
+codebase for anything that dispatches that event with `omninode` and
+found nothing: no menu entry, no keybind, no working portal. A "⟐N"
+portal sphere exists in `modules/PortalSpheres.js` / mirrored in
+`ui/OmniMapPortals.js` (so it shows on the MiniMap), but its click
+handler only plays an expand/shrink animation — the code's own
+comment says "Phase 5 will intercept here for actual traversal," i.e.
+it was stubbed and never finished. So there was genuinely no way to
+open OmniNode from the running UI.
+
+Fixed for now the direct way: `ui/OmniDrawModePicker.js` (opened by
+'n' or clicking ⟐OmniDraw) gets a 7th button, "OmniNode — the real
+node registry, Essence Data and every other type." Unlike the other
+six modes (which all dispatch `omni:nav-select` with a label),
+`_choose('omninode')` dispatches the real
+`omni:system-toggle { system: 'omninode' }` event directly, since
+OmniNode doesn't listen for nav-select at all. This is a stopgap
+placement, not a structural fix — OmniNode is a full node-type
+registry, not one more "draw mode" alongside Static/Dynamic/
+Jsonifier/etc., and it still doesn't touch the unfinished ⟐N portal
+sphere. Both are worth a real decision later.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

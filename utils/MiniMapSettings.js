@@ -16,7 +16,7 @@ const STORE_KEY = 'omni:minimap:settings'
 // top-right matches the BotW/TotK corner-minimap convention, per
 // direct request — the previous default was bottom-center.
 const DEFAULTS = {
-  corner: 'top-right',   // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+  corner: 'top-right',   // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top' | 'bottom' | 'left' | 'right'
   showPortals: true,
   startVisible: true,
 }

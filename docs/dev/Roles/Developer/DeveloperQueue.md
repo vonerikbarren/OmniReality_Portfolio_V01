@@ -816,3 +816,17 @@ Nothing built yet. Real open questions before this is buildable:
   separate from this feature — noted here only as context for why
   this was raised, not additional scope to build.
 
+**Refinement, added after the first pass above — still a note, explicitly
+not to be built yet.** A new section inside `ui/WallpaperSettingsPanel.js`
+called **ProgrammedWallpaper**, separate from the existing user-facing
+image/video slot browser: **5 sections of 5 rows each (25 total)**.
+These are explicitly **static to the files, not user-controllable** —
+no upload UI, no slot-click-to-apply like the regular 20-slot browser
+has. The person will supply the actual files directly (upload them to
+Claude) rather than adding them through the app; what "5 sections"
+each represent (5 categories of trigger? 5 groups of events?) hasn't
+been specified yet and needs the files themselves before that's
+answerable. **Explicit instruction: do not build any of this — this
+entry is a note only, waiting on the person's files.** Testing the
+V143 build first; will return to this once that's done.
+

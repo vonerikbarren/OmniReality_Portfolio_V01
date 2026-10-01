@@ -63,6 +63,7 @@ export default class OmniDrawModePicker {
       <button class="odmp-btn" data-mode="omnicell">OmniCell<span class="odmp-btn-sub">numerical data, straight to a real D3 chart</span></button>
       <button class="odmp-btn" data-mode="chat">Chat<span class="odmp-btn-sub">a live message/terminal build tool</span></button>
       <button class="odmp-btn" data-mode="log">Log<span class="odmp-btn-sub">a blog post, genuinely paginated into real, in-scene pages</span></button>
+      <button class="odmp-btn" data-mode="omninode">OmniNode<span class="odmp-btn-sub">the real node registry — Essence Data and every other type</span></button>
     `
     document.body.appendChild(this._el)
 
@@ -72,6 +73,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="omnicell"]').addEventListener('click', () => this._choose('omnicell'))
     this._el.querySelector('[data-mode="chat"]').addEventListener('click', () => this._choose('chat'))
     this._el.querySelector('[data-mode="log"]').addEventListener('click', () => this._choose('log'))
+    this._el.querySelector('[data-mode="omninode"]').addEventListener('click', () => this._choose('omninode'))
 
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐OmniDraw') return
@@ -112,6 +114,19 @@ export default class OmniDrawModePicker {
 
   _choose (mode) {
     declareDesire(`open-omnidraw-${mode}`, { mode })
+
+    // OmniNode is a real, separate registry system (systems/OmniNode.js) —
+    // it never listens for 'omni:nav-select' like the other five modes do,
+    // only for 'omni:system-toggle' { system: 'omninode' }. Before this,
+    // nothing anywhere actually dispatched that event, so its panel (with
+    // the "+ Add Node" picker — Essence Data included) had no way to open
+    // from the UI at all. This is the fix: real dispatch, real open.
+    if (mode === 'omninode') {
+      window.dispatchEvent(new CustomEvent('omni:system-toggle', { detail: { system: 'omninode' } }))
+      this.close()
+      return
+    }
+
     const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell', chat: '⟐OmniDrawChat', log: '⟐OmniDrawLog' }
     window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: labels[mode] } }))
     this.close()

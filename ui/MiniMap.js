@@ -417,10 +417,13 @@ export default class MiniMap {
   // Settings — corner anchor, portal visibility, start-visible
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Anchors the (not-currently-dragged) widget to one of the four
-   *  screen corners — Zelda BotW/TotK-style default is top-right.
+  /** Anchors the (not-currently-dragged) widget to one of 8 screen
+   *  positions — the 4 corners plus plain top/bottom/left/right
+   *  edge-centers as their own standalone anchors, per direct request
+   *  ("top bottom left right" as real options, distinct from the
+   *  corner combinations). Zelda BotW/TotK-style default is top-right.
    *  Clears any inline left/top/bottom/right/transform a previous
-   *  drag may have left behind first, so switching corners in the
+   *  drag may have left behind first, so switching position in the
    *  settings panel always actually moves it. */
   _applyCorner (corner) {
     if (!this._el) return
@@ -431,8 +434,24 @@ export default class MiniMap {
       case 'top-left':
         el.style.top = `${TOP_OFFSET}px`; el.style.left = `${SIDE_OFFSET}px`
         break
+      case 'top':
+        el.style.top = `${TOP_OFFSET}px`; el.style.left = '50%'
+        el.style.transform = 'translateX(-50%)'
+        break
       case 'bottom-left':
         el.style.bottom = `${DOCK_H + GAP}px`; el.style.left = `${SIDE_OFFSET}px`
+        break
+      case 'bottom':
+        el.style.bottom = `${DOCK_H + GAP}px`; el.style.left = '50%'
+        el.style.transform = 'translateX(-50%)'
+        break
+      case 'left':
+        el.style.left = `${SIDE_OFFSET}px`; el.style.top = '50%'
+        el.style.transform = 'translateY(-50%)'
+        break
+      case 'right':
+        el.style.right = `${SIDE_OFFSET}px`; el.style.top = '50%'
+        el.style.transform = 'translateY(-50%)'
         break
       case 'bottom-right':
         el.style.bottom = `${DOCK_H + GAP}px`; el.style.right = `${SIDE_OFFSET}px`

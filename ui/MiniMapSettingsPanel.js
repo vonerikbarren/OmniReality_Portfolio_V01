@@ -129,10 +129,17 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
+// The 4 corners plus 4 plain edge-centers — "top/bottom/left/right" as
+// their own standalone anchors, distinct from the corner combinations,
+// per direct request.
 const CORNERS = [
   { key: 'top-left',     label: '◤ Top Left' },
+  { key: 'top',          label: '⬒ Top' },
   { key: 'top-right',    label: '◥ Top Right' },
+  { key: 'left',         label: '◧ Left' },
+  { key: 'right',        label: '◨ Right' },
   { key: 'bottom-left',  label: '◣ Bottom Left' },
+  { key: 'bottom',       label: '⬓ Bottom' },
   { key: 'bottom-right', label: '◢ Bottom Right' },
 ]
 
@@ -202,7 +209,7 @@ export default class MiniMapSettingsPanel {
       </div>
       <div class="mms-body">
         <div>
-          <div class="mms-field-label">Corner</div>
+          <div class="mms-field-label">Position</div>
           <div class="mms-corner-grid" id="mms-corner-grid">
             ${CORNERS.map(c => `<button class="mms-corner-btn ${s.corner === c.key ? 'is-active' : ''}" data-corner="${c.key}">${c.label}</button>`).join('')}
           </div>

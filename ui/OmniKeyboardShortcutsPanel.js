@@ -127,7 +127,7 @@ const SHORTCUTS = [
   { key: 'o',        desc: 'User Space sphere quick toggles' },
   { key: '0 / 9',    desc: "Toggle the domain grid sphere's visibility" },
   { key: 'b',        desc: 'Toggle OmniBrowser (window 1)' },
-  { key: 'n',        desc: 'Open the OmniDraw mode picker' },
+  { key: 'n',        desc: 'Open the OmniDraw mode picker (now also opens OmniNode)' },
   { key: 'm',        desc: 'Toggle the mini map' },
   { key: 'k',        desc: 'Toggle OmniMixer' },
   { key: 't',        desc: 'Toggle OmniTranslator' },
