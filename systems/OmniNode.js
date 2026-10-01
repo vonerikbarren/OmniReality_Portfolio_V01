@@ -890,6 +890,16 @@ const EDGE_STYLE_DEFAULTS = {
   dashed: false, highlight: false, highlightColor: '#66ccff',
 }
 
+// Sequence Node transitions ("changes to") render distinctly from a plain
+// edge on sight — amber/dashed, matching OmniPresenter's own playing-state
+// glow color — so the presentation path reads visually as its own thing
+// the moment it's drawn, not just metadata. Applied automatically in
+// _connectNodes when both endpoints are Sequence Nodes; never hand-picked.
+const SEQUENCE_EDGE_STYLE = {
+  kind: 'cylinder', color: '#ffdc64', thickness: 1.15,
+  dashed: true, highlight: false, highlightColor: '#66ccff',
+}
+
 function edgeStyleKey (from, to) { return `${from}__${to}` }
 
 function loadEdgeStyles () {
@@ -1017,6 +1027,7 @@ export default class OmniNode {
     this._onGroupDuplicateRequest = null
     this._onEdgeStyleSet          = null
     this._onEssenceEvidenceSet    = null
+    this._onSequenceNodeSet       = null
     this._onMouseMove   = null
     this._onMouseClick  = null
     this._onCanvasContextMenu = null
@@ -1168,6 +1179,7 @@ export default class OmniNode {
     window.removeEventListener('omni:group-duplicate-request', this._onGroupDuplicateRequest)
     window.removeEventListener('omni:edge-style-set', this._onEdgeStyleSet)
     window.removeEventListener('omni:essence-evidence-set', this._onEssenceEvidenceSet)
+    window.removeEventListener('omni:sequence-node-set', this._onSequenceNodeSet)
 
     const canvas = this.ctx.renderer?.domElement
     if (canvas) {
@@ -2049,6 +2061,17 @@ export default class OmniNode {
     const entryB = this._nodes.get(toId)
     if (!entryA || !entryB) return
 
+    // Sequence Node — "it can only change to one other node, for now"
+    // (direct request). A Sequence Node gets at most one outgoing
+    // sequence edge: drawing a new one from it replaces its old target
+    // rather than branching. Only the *outgoing* side is constrained —
+    // nothing stops other edges from pointing *into* a Sequence Node.
+    const isSequenceEdge = !!(entryA.data.isSequenceNode && entryB.data.isSequenceNode)
+    if (entryA.data.isSequenceNode) {
+      const oldNext = this._edges.find(e => e.from === fromId && e.isSequenceEdge)
+      if (oldNext) this._removeEdge(oldNext.from, oldNext.to)
+    }
+
     const posA = entryA.mesh.getWorldPosition(new THREE.Vector3())
     const posB = entryB.mesh.getWorldPosition(new THREE.Vector3())
 
@@ -2058,12 +2081,16 @@ export default class OmniNode {
     const childDepth = this._computeAncestry(toId).depth
     // A style may already exist for this exact pair — e.g. Duplicate
     // Group copies the original connectors' look onto the new ones
-    // before calling this. Falls back to plain defaults otherwise.
-    const style = loadEdgeStyles()[edgeStyleKey(fromId, toId)] ?? { ...EDGE_STYLE_DEFAULTS }
+    // before calling this. A Sequence Node transition always gets its
+    // own distinct look so the presentation path reads as itself on
+    // sight, never hand-picked, never overridden by a saved style.
+    const style = isSequenceEdge
+      ? { ...SEQUENCE_EDGE_STYLE }
+      : (loadEdgeStyles()[edgeStyleKey(fromId, toId)] ?? { ...EDGE_STYLE_DEFAULTS })
     const line = this._buildEdgeLine(posA, posB, childDepth, style)
     this.ctx.scene.add(line)
 
-    const edgeRecord = { from: fromId, to: toId, line, style }
+    const edgeRecord = { from: fromId, to: toId, line, style, isSequenceEdge }
     this._edges.push(edgeRecord)
 
     this._save()
@@ -2080,6 +2107,24 @@ export default class OmniNode {
       }
     }))
     window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+
+    // Dedicated event for OmniPresenter — only the sequence-flagged edge
+    // chain, kept separate from the generic path/edge events above so an
+    // unrelated edge drawn anywhere else in the scene can never be
+    // mistaken for part of a presentation sequence.
+    if (isSequenceEdge) this._dispatchSequenceUpdate()
+  }
+
+  /**
+   * Broadcasts the current full set of Sequence Node edges (⟐→⟐ only),
+   * for OmniPresenter to walk into an ordered chain. Called whenever a
+   * sequence edge is added or removed.
+   */
+  _dispatchSequenceUpdate () {
+    const edges = this._edges
+      .filter(e => e.isSequenceEdge)
+      .map(e => ({ from: e.from, to: e.to }))
+    window.dispatchEvent(new CustomEvent('omni:sequence-updated', { detail: { edges } }))
   }
 
   /**
@@ -2104,6 +2149,8 @@ export default class OmniNode {
     this._edges.splice(idx, 1)
     this._save()
     this._updateEdgeList()
+
+    if (edge.isSequenceEdge) this._dispatchSequenceUpdate()
   }
 
   _highlightPathStart (id) {
@@ -3113,13 +3160,16 @@ export default class OmniNode {
       const entry = this._nodes.get(id)
       if (!entry) return
 
+      let removedSequenceEdge = false
       this._edges = this._edges.filter(edge => {
         if (edge.from !== id && edge.to !== id) return true
+        if (edge.isSequenceEdge) removedSequenceEdge = true
         this.ctx.scene.remove(edge.line)
         edge.line.geometry?.dispose()
         edge.line.material?.dispose()
         return false
       })
+      if (removedSequenceEdge) this._dispatchSequenceUpdate()
 
       this._nodes.forEach(childEntry => {
         if (childEntry.data.parentId === id) {
@@ -3511,6 +3561,44 @@ export default class OmniNode {
     }
     window.addEventListener('omni:essence-evidence-set', this._onEssenceEvidenceSet)
 
+    // Sequence Node toggle + camera mode — from OmniInspector's Sequence
+    // section. Any node, any geometry, can become a Sequence Node; this
+    // only ever touches that flag and cameraMode, never geometry/color/
+    // position. Turning it OFF also removes any outgoing sequence edge
+    // the node was carrying — it can't "change to" anything once it's
+    // no longer a Sequence Node itself.
+    this._onSequenceNodeSet = (e) => {
+      const { id, isSequenceNode, cameraMode } = e.detail ?? {}
+      const entry = this._nodes.get(id)
+      if (!entry) return
+
+      const wasSequenceNode = !!entry.data.isSequenceNode
+      if (isSequenceNode !== undefined) entry.data.isSequenceNode = isSequenceNode
+      if (cameraMode !== undefined) entry.data.cameraMode = cameraMode
+
+      // "Utilize a wireframe for the initial build" (direct request) —
+      // applied once, the first time a node becomes a Sequence Node, so
+      // an unbuilt sequence stop reads visually as unresolved. Never
+      // re-applied on later toggles, so it doesn't fight a look the
+      // user has since set on purpose.
+      if (!wasSequenceNode && entry.data.isSequenceNode && !entry.data.wireframe) {
+        entry.data.wireframe = true
+        if (entry.mesh.material && !Array.isArray(entry.mesh.material)) {
+          entry.mesh.material.wireframe = true
+        }
+      }
+
+      if (wasSequenceNode && !entry.data.isSequenceNode) {
+        const outgoing = this._edges.find(ed => ed.from === id && ed.isSequenceEdge)
+        if (outgoing) this._removeEdge(outgoing.from, outgoing.to)
+      }
+
+      this._save()
+      this._updateNodeList()
+      window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    }
+    window.addEventListener('omni:sequence-node-set', this._onSequenceNodeSet)
+
     // Rotation automation — previously only ever set once, at
     // creation time, via ui/OmniDraw.js's schema, with no way to
     // adjust it afterward on an already-placed object. Mirrors
@@ -3564,6 +3652,7 @@ export default class OmniNode {
       localStorage.removeItem(STORE_NODES)
       localStorage.removeItem(STORE_EDGES)
       window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: { nodes: [], edges: [] } }))
+      window.dispatchEvent(new CustomEvent('omni:sequence-updated', { detail: { edges: [] } }))
       this._updateNodeList()
       this._updateEdgeList()
       console.log('⟐N — scene cleared.')
@@ -3634,6 +3723,13 @@ export default class OmniNode {
           // applied live, at the moment "Is Domain" was toggled. It
           // never got reapplied on restore, so a domain-marked object
           // silently came back single-sided after a page reload.
+          // Same bug once more — a Sequence Node's wireframe default
+          // (applied live when the toggle is first switched on) was
+          // never reapplied on restore either, so it silently came back
+          // solid after a page reload.
+          if (data.wireframe && mesh.material && !Array.isArray(mesh.material)) {
+            mesh.material.wireframe = true
+          }
           if (data.isDomain && mesh.material) {
             mesh.material.side = THREE.DoubleSide
             mesh.material.needsUpdate = true
@@ -3662,7 +3758,14 @@ export default class OmniNode {
           const entryB = this._nodes.get(to)
           if (!entryA || !entryB) return
 
-          const style = savedStyles[edgeStyleKey(from, to)] ?? { ...EDGE_STYLE_DEFAULTS }
+          // isSequenceEdge is derived, not persisted — recomputed here from
+          // the (already-restored) node flags, same as it's computed fresh
+          // in _connectNodes. Keeps a restored sequence path visually and
+          // functionally identical to one just drawn.
+          const isSequenceEdge = !!(entryA.data.isSequenceNode && entryB.data.isSequenceNode)
+          const style = isSequenceEdge
+            ? { ...SEQUENCE_EDGE_STYLE }
+            : (savedStyles[edgeStyleKey(from, to)] ?? { ...EDGE_STYLE_DEFAULTS })
           const line = this._buildEdgeLine(
             entryA.mesh.getWorldPosition(new THREE.Vector3()),
             entryB.mesh.getWorldPosition(new THREE.Vector3()),
@@ -3671,8 +3774,12 @@ export default class OmniNode {
           )
           line.material.opacity = 0.45
           this.ctx.scene.add(line)
-          this._edges.push({ from, to, line, style })
+          this._edges.push({ from, to, line, style, isSequenceEdge })
         })
+
+        // Let OmniPresenter pick up any restored sequence chain too, not
+        // just freshly-drawn ones.
+        if (this._edges.some(e => e.isSequenceEdge)) this._dispatchSequenceUpdate()
       }
 
       if (this._nodes.size > 0) {

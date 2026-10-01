@@ -311,8 +311,9 @@ const STYLES = /* css */`
   letter-spacing    : 0.08em;
   flex-shrink       : 0;
 }
-.op-source-badge.is-path   { color: rgba(255,180,60,0.70);  border-color: rgba(255,180,60,0.20); }
-.op-source-badge.is-manual { color: rgba(100,180,255,0.70); border-color: rgba(100,180,255,0.20); }
+.op-source-badge.is-path     { color: rgba(255,180,60,0.70);  border-color: rgba(255,180,60,0.20); }
+.op-source-badge.is-manual   { color: rgba(100,180,255,0.70); border-color: rgba(100,180,255,0.20); }
+.op-source-badge.is-sequence { color: rgba(255,220,100,0.80); border-color: rgba(255,220,100,0.28); }
 
 .op-btn {
   flex-shrink       : 0;
@@ -871,6 +872,7 @@ export default class OmniPresenter {
     this._onToggle      = null
     this._onNodesUp     = null
     this._onPathStep    = null
+    this._onSequenceUpdated = null
     this._onNodeSel     = null
     this._onNodeDel     = null
     this._onKeyDown     = null
@@ -889,6 +891,7 @@ export default class OmniPresenter {
     this._bindRaycast()
     this._load()
     this._refreshNodeMap()
+    this._bootstrapSequenceChain()
     this._renderList()
     this._syncTransport()
     this._updateFooter()
@@ -903,11 +906,12 @@ export default class OmniPresenter {
     this._el?.parentNode?.removeChild(this._el)
     this._flyBadge?.parentNode?.removeChild(this._flyBadge)
 
-    window.removeEventListener('omni:system-toggle', this._onToggle)
-    window.removeEventListener('omni:nodes-updated', this._onNodesUp)
-    window.removeEventListener('omni:path-step',     this._onPathStep)
-    window.removeEventListener('omni:node-selected', this._onNodeSel)
-    window.removeEventListener('omni:node-deleted',  this._onNodeDel)
+    window.removeEventListener('omni:system-toggle',    this._onToggle)
+    window.removeEventListener('omni:nodes-updated',    this._onNodesUp)
+    window.removeEventListener('omni:path-step',        this._onPathStep)
+    window.removeEventListener('omni:sequence-updated', this._onSequenceUpdated)
+    window.removeEventListener('omni:node-selected',    this._onNodeSel)
+    window.removeEventListener('omni:node-deleted',     this._onNodeDel)
     document.removeEventListener('keydown',          this._onKeyDown)
 
     const canvas = this.ctx.renderer?.domElement
@@ -1133,7 +1137,10 @@ export default class OmniPresenter {
 
     if (srcBadge) {
       srcBadge.textContent = this._source
-      srcBadge.className   = `op-source-badge ${this._source === 'path' ? 'is-path' : 'is-manual'}`
+      srcBadge.className   = `op-source-badge ${
+        this._source === 'path'     ? 'is-path' :
+        this._source === 'sequence' ? 'is-sequence' : 'is-manual'
+      }`
     }
 
     if (this._sequence.length === 0) {
@@ -1436,6 +1443,53 @@ export default class OmniPresenter {
     this._updateFooter()
   }
 
+  /**
+   * Load a sequence from Sequence Node → Sequence Node edges
+   * (systems/OmniNode.js's isSequenceNode / 'omni:sequence-updated').
+   * Same chain-walk as _loadPathSequence, kept as its own method and its
+   * own source label ('sequence') so a Sequence Node chain is never
+   * confused with an ordinary PATH-mode sequence someone else is using
+   * for an unrelated purpose, even though the walk itself is identical.
+   *
+   * @param {{ from: string, to: string }[]} edges
+   */
+  _loadSequenceChain (edges) {
+    if (!edges || edges.length === 0) {
+      // Chain was cleared (last sequence edge removed, node deleted,
+      // scene cleared) — only clear the presenter if it was actually
+      // showing a sequence chain, not someone's unrelated manual list.
+      if (this._source === 'sequence') this._clearSequence()
+      return
+    }
+
+    // Find the true chain head — the one 'from' that never appears as a
+    // 'to' — rather than assuming edges[0] is first. Sequence edges can
+    // arrive in storage/restore order, not necessarily build order.
+    const toIds = new Set(edges.map(e => e.to))
+    const head  = edges.find(e => !toIds.has(e.from))?.from ?? edges[0].from
+
+    const orderedIds = [head]
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const next = edges.find(e => e.from === orderedIds[orderedIds.length - 1])
+      if (!next || orderedIds.includes(next.to)) break   // end of chain, or a cycle — stop rather than loop forever
+      orderedIds.push(next.to)
+    }
+
+    const nodes = orderedIds.map(id => this._nodeMap.get(id)).filter(Boolean)
+    if (nodes.length === 0) return
+
+    this._sequence = nodes
+    this._source   = 'sequence'
+    this._index    = -1
+
+    this._save()
+    this._renderList()
+    this._syncTransport()
+    this._updateCurrentReadout()
+    this._updateFooter()
+  }
+
   _reorderSequence (fromIdx, toIdx) {
     if (fromIdx === toIdx) return
     const [moved] = this._sequence.splice(fromIdx, 1)
@@ -1633,10 +1687,16 @@ export default class OmniPresenter {
     this._flying = false
     this._showFlyBadge(false)
     this._syncTransport()
-    this._enableOrbit()
 
     const node  = this._sequence[this._index]
     const total = this._sequence.length
+
+    // Sequence Node camera mode — "Focus" (the default once a node is a
+    // Sequence Node) keeps orbit suspended on arrival, the scripted
+    // "presenter talking directly to camera" framing from the tutorial
+    // use case. "Free" hands orbit back immediately, same as every
+    // non-sequence node already did before this feature existed.
+    if (node?.cameraMode !== 'focus') this._enableOrbit()
 
     window.dispatchEvent(new CustomEvent('omni:presenter-step', {
       detail: { index: this._index, total, node }
@@ -1809,6 +1869,14 @@ export default class OmniPresenter {
       }
     }
 
+    // Sequence Node chain changed in ⟐N (edge drawn/removed, node
+    // deleted, scene cleared, or restored from storage) → reload.
+    // Always called, even with an empty array, so a cleared chain
+    // actually clears the presenter too (see _loadSequenceChain).
+    this._onSequenceUpdated = (e) => {
+      this._loadSequenceChain(e.detail?.edges ?? [])
+    }
+
     // Node selected in scene while in ADD mode → append
     this._onNodeSel = (e) => {
       if (!this._addMode) return
@@ -1824,11 +1892,12 @@ export default class OmniPresenter {
       if (idx !== -1) this._removeAt(idx)
     }
 
-    window.addEventListener('omni:system-toggle', this._onToggle)
-    window.addEventListener('omni:nodes-updated', this._onNodesUp)
-    window.addEventListener('omni:path-step',     this._onPathStep)
-    window.addEventListener('omni:node-selected', this._onNodeSel)
-    window.addEventListener('omni:node-deleted',  this._onNodeDel)
+    window.addEventListener('omni:system-toggle',    this._onToggle)
+    window.addEventListener('omni:nodes-updated',    this._onNodesUp)
+    window.addEventListener('omni:path-step',        this._onPathStep)
+    window.addEventListener('omni:sequence-updated', this._onSequenceUpdated)
+    window.addEventListener('omni:node-selected',    this._onNodeSel)
+    window.addEventListener('omni:node-deleted',     this._onNodeDel)
   }
 
   // ── Node map bootstrap ────────────────────────────────────────────────────
@@ -1841,6 +1910,27 @@ export default class OmniPresenter {
       const nodes = JSON.parse(raw)
       this._nodeMap.clear()
       nodes.forEach(n => this._nodeMap.set(n.id, n))
+    } catch { /* silent */ }
+  }
+
+  /**
+   * Bootstrap any already-saved Sequence Node chain at startup, without
+   * waiting for OmniNode to dispatch 'omni:sequence-updated' (module init
+   * order between the two isn't guaranteed). isSequenceEdge isn't itself
+   * persisted — recomputed here from each saved edge's two endpoints,
+   * same derivation OmniNode.js does on its own restore.
+   */
+  _bootstrapSequenceChain () {
+    try {
+      const rawEdges = localStorage.getItem('omni:edges')
+      if (!rawEdges) return
+      const edges = JSON.parse(rawEdges)
+      const seqEdges = edges.filter(({ from, to }) => {
+        const a = this._nodeMap.get(from)
+        const b = this._nodeMap.get(to)
+        return !!(a?.isSequenceNode && b?.isSequenceNode)
+      })
+      if (seqEdges.length > 0) this._loadSequenceChain(seqEdges)
     } catch { /* silent */ }
   }
 

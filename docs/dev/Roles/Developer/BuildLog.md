@@ -1778,6 +1778,74 @@ registry, not one more "draw mode" alongside Static/Dynamic/
 Jsonifier/etc., and it still doesn't touch the unfinished ⟐N portal
 sphere. Both are worth a real decision later.
 
+### V145
+Hand radial menus — apps moved from page 1 to page 2, all four hands.
+`ui/RadialMenu.js`'s `TOOLS` table had every hand's 10-item app list
+sitting on `⟐1`, with `⟐2`/`⟐3` both null — per direct request, swapped:
+`⟐1` is now null (blank) and the real lists live on `⟐2`, for
+omnihand, conscious, lh, and rh alike.
+
+Real wrinkle caught and fixed, not just a data swap: page availability
+was hardcoded (`available = (page === '⟐1')`), so page 1 was the only
+clickable page and the other two were locked (red "locked" flash on
+click, no switch) — moving the data alone would have made the apps
+permanently unreachable. Flipped the lock to page 2 instead (now the
+real, usable page) and changed each hand's default `page` state from
+`'⟐1'` to `'⟐2'` so the menu opens where the content actually is.
+`_buildOuterRing`'s initial tool render (previously hardcoded to read
+`TOOLS[handId]['⟐1']`) updated to read `'⟐2'` to match.
+
+This lines up with an existing note in `docs/planning/BACKLOG.md`:
+page 1 is planned as a future search + Metroid-Prime-style scan
+feature, page 3 as an OmniKeyboard launcher — neither built yet, both
+still correctly empty/locked after this change, now for the right
+reason (reserved for a specific planned feature, not just unfinished).
+
+### V146
+Sequence Node — the first real piece of "a presentation in 3D, every
+slide a node, every transition a drawn connection" (direct request).
+Scope deliberately kept to the single-chain Presentation tier tonight;
+nesting/branching/Expression are documented, not built (see
+`docs/architecture/SEQUENCE_NODE.md`).
+
+What's new, concretely:
+- `systems/OmniNode.js` — `isSequenceNode` + `cameraMode` ('focus' |
+  'free') added to node data. Any existing geometry can become a
+  Sequence Node via a new Inspector toggle; nothing about placement or
+  geometry changed.
+- Drawing an edge between two Sequence Nodes in ⟐N's existing PATH
+  mode is how "it changes to" gets set — reused rather than building a
+  second picker. That edge renders in a dedicated amber/dashed style
+  (`SEQUENCE_EDGE_STYLE`) so a presentation path reads as itself on
+  sight. `_connectNodes` now enforces "only one, for now": drawing a
+  new outgoing sequence edge from a Sequence Node replaces its old
+  target instead of branching.
+- Turning the toggle on for the first time sets `wireframe: true` once
+  (never re-forced after) — the "wireframe for the initial build" look
+  — and that now correctly survives a page reload (it previously
+  wasn't in the node-restore path at all for ordinary nodes; fixed in
+  the same pass).
+- A new `omni:sequence-updated` event carries just the Sequence-Node
+  edge chain, kept deliberately separate from the existing generic
+  `omni:path-step` so an unrelated edge drawn anywhere else in the
+  scene can never be mistaken for part of a presentation.
+- `systems/OmniPresenter.js` — `_loadSequenceChain()` walks that chain
+  the same way `_loadPathSequence()` already walked PATH-mode edges
+  (found, not built new — the algorithm already existed). Bootstraps
+  from storage at startup too, so a saved Sequence Node chain is live
+  the moment the page loads, not only after the next edit.
+- Per-node camera mode is respected on arrival: Focus (the default
+  once a node becomes a Sequence Node) keeps orbit suspended — the
+  scripted "presenter talking to camera" framing for tutorials; Free
+  hands orbit back immediately. Every node that was never a Sequence
+  Node keeps today's existing behavior (orbit always returns),
+  unchanged.
+
+Inspector section follows the same per-type pattern Essence Data set
+in V142 (`_customOptionsHTML`/`_wireCustomOptions`), generalized
+slightly so it can show up for ordinary nodes too, not just one
+special type.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

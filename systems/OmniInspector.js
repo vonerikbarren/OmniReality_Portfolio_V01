@@ -2785,8 +2785,8 @@ export default class OmniInspector {
    */
   _customOptionsHTML (data) {
     if (data?.isGroupNode) return this._groupOptionsHTML(data)
-    if (data?.isEssenceNode) return this._essenceOptionsHTML(data)
-    if (data?.label !== 'MasterClock') return ''
+    if (data?.isEssenceNode) return this._essenceOptionsHTML(data) + this._sequenceOptionsHTML(data)
+    if (data?.label !== 'MasterClock') return this._sequenceOptionsHTML(data)
 
     let chronos = { enabled: true, zAxis: false, timeFormat: 'military' }
     try {
@@ -2825,6 +2825,70 @@ export default class OmniInspector {
         <div class="oi-custom-note">The full ⟐Chronos panel still has the tunnel's transparency option and teleport transition — this covers the settings that belong to the clock itself.</div>
       </div>
     `
+  }
+
+  /** Sequence Node — "the spatial equivalent of a slide/keyframe"
+   *  (direct request). Any node, any geometry, can carry this flag.
+   *  cameraMode decides what the camera does once OmniPresenter arrives
+   *  here: Focus keeps orbit controls suspended (the scripted "presenter
+   *  talking to camera" framing, right for tutorials), Free hands orbit
+   *  back to the user immediately (look around while still at this
+   *  step). What it "changes to" isn't set here — it's drawn as an edge
+   *  in ⟐N's PATH mode, same as any connection; this section just
+   *  explains that rather than duplicating the picker.
+   */
+  _sequenceOptionsHTML (data) {
+    if (data?.isGroupNode) return ''
+    const on = !!data.isSequenceNode
+    const cameraMode = data.cameraMode ?? 'focus'
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-sequence">
+        <div class="oi-custom-title">⟐p Sequence Node</div>
+        <div class="oi-row">
+          <span class="oi-label">Sequence Node</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-seq-enabled" ${on ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        ${on ? /* html */`
+          <div class="oi-row">
+            <span class="oi-label">Camera on arrival</span>
+            <select class="oi-select" id="oi-seq-camera">
+              <option value="focus" ${cameraMode === 'focus' ? 'selected' : ''}>Focus (scripted)</option>
+              <option value="free"  ${cameraMode === 'free'  ? 'selected' : ''}>Free (user looks around)</option>
+            </select>
+          </div>
+          <div class="oi-custom-note">Draw an edge from this node in ⟐N's PATH mode to set what it changes to — only one at a time; drawing a new one replaces the old target. ⟐OmniPresenter walks the chain automatically.</div>
+        ` : /* html */`
+          <div class="oi-custom-note">A Sequence Node is one stop in a spatial presentation — any geometry, ⟐OmniPresenter walks a chain of them in order.</div>
+        `}
+      </div>
+    `
+  }
+
+  _wireSequenceOptions (body, data) {
+    body.querySelector('#oi-seq-enabled')?.addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:sequence-node-set', {
+        detail: { id: data.id, isSequenceNode: e.target.checked, cameraMode: data.cameraMode ?? 'focus' }
+      }))
+      // Re-render this section in place so the camera-mode row appears/
+      // disappears immediately, same pattern Essence Data uses.
+      const section = body.querySelector('#oi-custom-sequence')
+      if (section) {
+        const pseudo = { ...data, isSequenceNode: e.target.checked }
+        section.outerHTML = this._sequenceOptionsHTML(pseudo)
+        this._wireSequenceOptions(body, pseudo)
+      }
+    })
+    body.querySelector('#oi-seq-camera')?.addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:sequence-node-set', {
+        detail: { id: data.id, isSequenceNode: true, cameraMode: e.target.value }
+      }))
+    })
   }
 
   /** GroupNode section — member list plus Ungroup/Merge/Duplicate, the
@@ -3027,8 +3091,8 @@ export default class OmniInspector {
    *  source of truth. */
   _wireCustomOptions (body, data) {
     if (data?.isGroupNode) return this._wireGroupOptions(body, data)
-    if (data?.isEssenceNode) return this._wireEssenceOptions(body, data)
-    if (data?.label !== 'MasterClock') return
+    if (data?.isEssenceNode) { this._wireEssenceOptions(body, data); this._wireSequenceOptions(body, data); return }
+    if (data?.label !== 'MasterClock') return this._wireSequenceOptions(body, data)
 
     const readChronos = () => {
       try {

@@ -52,37 +52,42 @@ const TOOL_ANGLES = Array.from({ length: 10 }, (_, i) => -90 + i * 36)
 
 // ── Tool data ─────────────────────────────────────────────────────────────────
 
+// Page 1 is reserved — planned as a search + Metroid-Prime-style scan
+// function (docs/planning/BACKLOG.md), not built yet, so it stays null/
+// blank here on purpose for all four hands. The real per-hand app lists
+// live on page 2 instead, per direct request. Page 3 remains the planned
+// OmniKeyboard launcher (same doc), also not built yet.
 const TOOLS = {
   omnihand: {
     abbr : '⟐mH',
     color: 'rgba(255, 255, 255, 0.90)',
-    '⟐1' : ['OmniTime','OmniIdentity','OmniMemory','OmniMap','OmniFlow',
+    '⟐1' : null,
+    '⟐2' : ['OmniTime','OmniIdentity','OmniMemory','OmniMap','OmniFlow',
              'OmniTask','OmniRitual','OmniLaw','OmniArchive','OmniActualize'],
-    '⟐2' : null,
     '⟐3' : null,
   },
   conscious: {
     abbr : '⟐CH',
     color: 'rgba(180, 210, 255, 0.90)',
-    '⟐1' : ['SpatialVisor','ThermalVisor','EnergeticVisor','StructuralVisor','SemanticVisor',
+    '⟐1' : null,
+    '⟐2' : ['SpatialVisor','ThermalVisor','EnergeticVisor','StructuralVisor','SemanticVisor',
              'IdentityVisor','TemporalVisor','RelationalVisor','MythicVisor','OmniPerspective'],
-    '⟐2' : null,
     '⟐3' : null,
   },
   lh: {
     abbr : '⟐LH',
     color: 'rgba(200, 255, 220, 0.90)',
-    '⟐1' : ['Translate3D','Rotate3D','Scale3D','OrbitControl','PathfindingStep',
+    '⟐1' : null,
+    '⟐2' : ['Translate3D','Rotate3D','Scale3D','OrbitControl','PathfindingStep',
              'SnapToGrid','PhysicsImpulse','CollisionCheck','AnchorPointSet','StateToggle'],
-    '⟐2' : null,
     '⟐3' : null,
   },
   rh: {
     abbr : '⟐RH',
     color: 'rgba(255, 200, 240, 0.90)',
-    '⟐1' : ['ColorShift','MaterialMorph','ShapeBlend','ParticleEmote','AuraField',
+    '⟐1' : null,
+    '⟐2' : ['ColorShift','MaterialMorph','ShapeBlend','ParticleEmote','AuraField',
              'SymbolStamp','GestureTrail','SoundResonance','TextureWeave','MoodLighting'],
-    '⟐2' : null,
     '⟐3' : null,
   },
 }
@@ -463,10 +468,10 @@ export default class RadialMenu {
     this._rotOffset = { omnihand: 0, conscious: 0, lh: 0, rh: 0 }
 
     this._state = {
-      omnihand : { visible: false, page: '⟐1', activeTool: null },
-      conscious: { visible: false, page: '⟐1', activeTool: null },
-      lh       : { visible: false, page: '⟐1', activeTool: null },
-      rh       : { visible: false, page: '⟐1', activeTool: null },
+      omnihand : { visible: false, page: '⟐2', activeTool: null },
+      conscious: { visible: false, page: '⟐2', activeTool: null },
+      lh       : { visible: false, page: '⟐2', activeTool: null },
+      rh       : { visible: false, page: '⟐2', activeTool: null },
     }
 
     this._onResize = this._handleResize.bind(this)
@@ -640,10 +645,14 @@ export default class RadialMenu {
     PAGES.forEach((page, i) => {
       const angleDeg  = PAGE_ANGLES[i]
       const { x, y } = polar(angleDeg, INNER_R)
-      const available = (page === '⟐1')
+      // Page 2 is the real, usable page (the per-hand app lists live
+      // there now); page 1 is reserved/locked for the planned search +
+      // scan feature, page 3 for the planned OmniKeyboard launcher —
+      // see the TOOLS comment above and docs/planning/BACKLOG.md.
+      const available = (page === '⟐2')
 
       const btn = document.createElement('div')
-      btn.className = ['radial-item','radial-page', available ? '' : 'is-locked', (page === '⟐1') ? 'is-active' : ''].filter(Boolean).join(' ')
+      btn.className = ['radial-item','radial-page', available ? '' : 'is-locked', (page === '⟐2') ? 'is-active' : ''].filter(Boolean).join(' ')
       btn.dataset.page = page
       btn.dataset.hand = handId
       btn.style.transform = placeAt(x, y)
@@ -677,7 +686,7 @@ export default class RadialMenu {
   _buildOuterRing (handId, container) {
     this._toolEls[handId] = []
 
-    const tools      = TOOLS[handId]['⟐1']
+    const tools      = TOOLS[handId]['⟐2']
     const accentColor = TOOLS[handId].color
 
     TOOL_ANGLES.forEach((angleDeg, i) => {
