@@ -164,6 +164,7 @@ export default class MiniMapSettingsPanel {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:minimap-toggle', this._onMinimapToggle)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('minimapsettings')
   }
@@ -216,6 +217,14 @@ export default class MiniMapSettingsPanel {
         </div>
 
         <div class="mms-row">
+          <span class="mms-row-label">MiniMap Visible</span>
+          <label class="mms-toggle">
+            <input type="checkbox" id="mms-visible-now" ${s.startVisible ? 'checked' : ''}>
+            <div class="mms-toggle-track"></div>
+          </label>
+        </div>
+
+        <div class="mms-row">
           <span class="mms-row-label">Show Portal Markers</span>
           <label class="mms-toggle">
             <input type="checkbox" id="mms-portals" ${s.showPortals ? 'checked' : ''}>
@@ -248,6 +257,21 @@ export default class MiniMapSettingsPanel {
         setSettings({ corner: btn.dataset.corner })
       })
     })
+
+    // Live now/hidden-now — separate from "Visible on Start" below, which
+    // only takes effect on next launch. Dispatches to main.js, the only
+    // place holding the real MiniMap instance (see 'm' key handler there).
+    el.querySelector('#mms-visible-now').addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:minimap-visibility-set', { detail: { visible: e.target.checked } }))
+    })
+    // Keep that checkbox honest if visibility changes some other way
+    // while this panel is open (the 'm' key, or this same event from
+    // elsewhere) — MiniMap.js already broadcasts every real change.
+    this._onMinimapToggle = (e) => {
+      const cb = this._el?.querySelector('#mms-visible-now')
+      if (cb) cb.checked = !!e.detail?.visible
+    }
+    window.addEventListener('omni:minimap-toggle', this._onMinimapToggle)
 
     el.querySelector('#mms-portals').addEventListener('change', (e) => setSettings({ showPortals: e.target.checked }))
     el.querySelector('#mms-start-visible').addEventListener('change', (e) => setSettings({ startVisible: e.target.checked }))

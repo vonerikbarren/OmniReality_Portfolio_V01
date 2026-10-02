@@ -89,6 +89,14 @@ const SCHEMA = [
   { group: 'Core', key: 'rootIsGroup', label: 'ID_RootIsGroup', type: 'bool', default: false },
   { group: 'Core', key: 'numParents', label: 'ID_NumOfParents', type: 'number', default: 0, min: 0, step: 1 },
 
+  // Sequence Node — settable at creation now (⟐OmniPresenter walks a
+  // chain of these). "What it changes to" still isn't set here, same as
+  // the Inspector: drawn as an edge in ⟐N's PATH mode once the node
+  // actually exists in the scene — there's nothing to connect it to yet
+  // at build time.
+  { group: 'Sequence', key: 'isSequenceNode', label: 'Sequence Node', type: 'bool', default: false },
+  { group: 'Sequence', key: 'cameraMode', label: 'Camera on Arrival', type: 'select', options: ['focus', 'free'], default: 'focus' },
+
   { group: 'Cycles / Orbits', key: 'numExternalCycles', label: 'ID_NumOfExternalCycles', type: 'number', default: 0, min: 0, step: 1 },
   { group: 'Cycles / Orbits', key: 'numInternalCycles', label: 'ID_NumOfInternalCycles', type: 'number', default: 0, min: 0, step: 1 },
   { group: 'Cycles / Orbits', key: 'cycleOrbitSize', label: 'ID_CycleOrbitSize', type: 'vec', default: [0.45, 0.18, 10, 28], sublabels: ['radius', 'tube', 'radialSeg', 'tubularSeg'] },
@@ -1243,6 +1251,14 @@ export default class OmniDraw {
         autoRotationSpeedZ: this._data.autoRotationSpeedZ,
         lookAtMode: this._data.lookAtMode,
         lookAtCoordinate: [this._data.lookAtX, this._data.lookAtY, this._data.lookAtZ],
+        isSequenceNode: this._data.isSequenceNode,
+        cameraMode: this._data.cameraMode,
+        // Previously dropped on export — see BuildLog V146. These three
+        // already drove the panel's own live preview; now they reach the
+        // real, scene-spawned node too.
+        wireframe: this._data.wireFrameChannel,
+        alpha    : this._data.alphaChannel,
+        material : this._data.meshTypeChannel,
       }
     }))
 

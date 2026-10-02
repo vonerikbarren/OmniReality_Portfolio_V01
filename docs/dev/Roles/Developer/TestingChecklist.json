@@ -108,6 +108,82 @@
       "items": [
         { "feature": "WallpaperSettings / TerminalSettings / reset action", "howToReach": "Admin panel, various slots", "whatToCheck": "Each opens its real panel", "tested": false }
       ]
+    },
+    {
+      "category": "Sequence Node (V146)",
+      "items": [
+        { "feature": "Sequence toggle + camera mode", "howToReach": "Select any non-group node, open Inspector", "whatToCheck": "A Sequence Node toggle and a Focus/Free camera-mode select appear; toggling on wireframes the node once as a first-time default", "tested": false },
+        { "feature": "Single outgoing sequence edge", "howToReach": "Connect a Sequence Node to a second target node via a new sequence edge", "whatToCheck": "The old outgoing sequence edge is automatically removed — a Sequence Node never has two", "tested": false },
+        { "feature": "OmniPresenter auto-chain-walk", "howToReach": "Build a short chain of Sequence Nodes, open OmniPresenter", "whatToCheck": "It finds the true head of the chain and walks it in order, matching the amber/dashed sequence edges, not the generic path system", "tested": false },
+        { "feature": "Focus vs Free camera mode on arrival", "howToReach": "Set one chain node to Focus, another to Free, run the Presenter through both", "whatToCheck": "Focus mode does NOT re-enable orbit on arrival (camera stays locked on the node); Free mode does", "tested": false },
+        { "feature": "OmniDraw export carries Sequence fields", "howToReach": "OmniDraw, set isSequenceNode + cameraMode, Export to Scene", "whatToCheck": "The spawned real node has both fields set correctly, not defaulted", "tested": false }
+      ]
+    },
+    {
+      "category": "MiniMap Settings toggle",
+      "items": [
+        { "feature": "Live MiniMap Visible toggle", "howToReach": "Map Settings panel, new 'MiniMap Visible' row (above 'Visible on Start')", "whatToCheck": "Toggling it immediately shows/hides the live minimap, distinct from 'Visible on Start' which only affects next launch", "tested": false },
+        { "feature": "Checkbox stays synced", "howToReach": "With Map Settings open, toggle the minimap via the 'm' key instead of the panel", "whatToCheck": "The panel's checkbox updates to match, not left stale", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniDraw appearance-flags export fix",
+      "items": [
+        { "feature": "Wireframe/alpha/material survive export", "howToReach": "OmniDraw, set Wireframe on, Alpha below 1, a non-default Material type, then Export to Scene", "whatToCheck": "The real spawned node reflects all three — previously these were silently dropped on export (preview-only bug), only the embedded preview mesh showed them", "tested": false },
+        { "feature": "Survives a reload", "howToReach": "Reload the page after exporting a node with those flags set", "whatToCheck": "Restore path re-applies the same flags via the shared _applyAppearanceFlags helper — no drift between fresh creation and restore", "tested": false }
+      ]
+    },
+    {
+      "category": "OmniPanelTray (replaces the old minimize orb)",
+      "items": [
+        { "feature": "Dock toggle opens/closes the Tray", "howToReach": "Click the ▲ button in the Dock's right wing", "whatToCheck": "Tray slides open/closed; button shows an active state while open", "tested": false },
+        { "feature": "Minimize lands in the Tray", "howToReach": "Minimize any panel", "whatToCheck": "A titled tab appears in the Tray's row 1", "tested": false },
+        { "feature": "Restore actually works (real bug fix)", "howToReach": "Minimize OmniChronos, OmniKeys, or AdminPanel specifically — these never had a working restore before this build — then click their Tray tab", "whatToCheck": "The panel genuinely reappears and comes to front; previously only ~5 of 40+ panels could be restored at all", "tested": false },
+        { "feature": "Orientation docking", "howToReach": "Header toolbar orientation buttons", "whatToCheck": "Tray re-docks cleanly to bottom/top/left/right with no inverted row order; below 560px width, left/right auto-fall back to bottom", "tested": false },
+        { "feature": "Expand/Collapse rows", "howToReach": "Header toolbar Expand/Collapse", "whatToCheck": "Reveals/hides row 2 then row 3 in order", "tested": false },
+        { "feature": "Drag-and-drop reorder (desktop)", "howToReach": "Drag a tab within or between rows", "whatToCheck": "Tab moves to the new position/row and stays there", "tested": false },
+        { "feature": "Context menu (mobile-equivalent path)", "howToReach": "Right-click (or long-press) a tab", "whatToCheck": "Maximize / Close / Move Left / Move Right / Move to Row N all work; 'Close' is non-destructive, same as the old orb's Dismiss, not a delete", "tested": false },
+        { "feature": "Filter / Sort / Search", "howToReach": "Header toolbar", "whatToCheck": "Filter cycles present ⟐ categories; Sort (Manual/Alphabetical/By Date/By ⟐) actually redistributes tabs across rows, row 1 filling first; Search matches by label substring", "tested": false },
+        { "feature": "Persistence across reload", "howToReach": "Set a non-default orientation/sort/header-visible state, reload the page", "whatToCheck": "Those three persist; the actual minimized-tab list intentionally does NOT persist (no panel tracks that as its own state yet) — stale tabs after reload would be the wrong behavior, not a bug", "tested": false }
+      ]
+    },
+    {
+      "category": "Orbit right-click panning (V147)",
+      "items": [
+        { "feature": "Right-click-drag pans the camera", "howToReach": "Hold right mouse button on the 3D canvas and drag", "whatToCheck": "Camera pans (shifts what's centered), doesn't just rotate", "tested": false },
+        { "feature": "No stray node context menu after a pan", "howToReach": "Right-click-drag starting or ending over a node mesh", "whatToCheck": "The node's quick menu does NOT pop open just because the release happened to land on it — only a right-click with no real drag (<~6px) should open it", "tested": false }
+      ]
+    },
+    {
+      "category": "Detachable LH/RH movement pads (V147)",
+      "items": [
+        { "feature": "Satellite cluster visible", "howToReach": "Look at the LH (bottom-left) and RH (bottom-right) movement pads", "whatToCheck": "3 small buttons on each pad's own rim — Release, Dash (⟫⟫), and a dimmed TBD slot; LH cluster in the lower-right arc of its circle, RH mirrored in the lower-left arc of its circle", "tested": false },
+        { "feature": "Release detaches the whole group", "howToReach": "Click Release on either pad", "whatToCheck": "The pad's cross AND its 3 satellites all become draggable together, dragged by the pad's own header text", "tested": false },
+        { "feature": "Release again re-docks it", "howToReach": "With a pad detached and dragged somewhere, click Release again", "whatToCheck": "The whole group animates back to its original corner", "tested": false },
+        { "feature": "Dash still works from its new spot", "howToReach": "Click the Dash button inside the LH satellite cluster", "whatToCheck": "LH (WASD) movement speed multiplies, same as before — only its position changed", "tested": false },
+        { "feature": "Detached position persists on reload", "howToReach": "Detach a pad, drag it, reload the page (same browser)", "whatToCheck": "It comes back detached, at the same position", "tested": false }
+      ]
+    },
+    {
+      "category": "⟐ Quick Launcher (V147)",
+      "items": [
+        { "feature": "Draggable anywhere", "howToReach": "Drag the ⟐ icon (default: top-center)", "whatToCheck": "Moves freely, stays where dropped, persists across reload", "tested": false },
+        { "feature": "Click opens radial popup", "howToReach": "Click (don't drag) the ⟐ icon", "whatToCheck": "A small radial popup fans out near it with a '⌨ Keyboard' option", "tested": false },
+        { "feature": "⌨ Keyboard opens CryptxMode", "howToReach": "Click the Keyboard option in the popup", "whatToCheck": "The CryptxMode panel appears docked at the right edge, collapsed to its header", "tested": false }
+      ]
+    },
+    {
+      "category": "CryptxMode presentation keyboard (V147)",
+      "items": [
+        { "feature": "Opens collapsed", "howToReach": "Open via the ⟐ Quick Launcher's Keyboard option", "whatToCheck": "Only the meta header is visible against the right edge, no columns yet", "tested": false },
+        { "feature": "MX Ergo top/bottom arrow reveals/retracts a column (keyboard open)", "howToReach": "With CryptxMode open, press the MX Ergo's dedicated top arrow button", "whatToCheck": "One more vertical column appears (Control first, then letter rows, then digits, then symbols), pulling the panel further left; the other arrow button retracts the most recent one", "tested": false },
+        { "feature": "Same buttons control height when keyboard is closed", "howToReach": "With CryptxMode closed, press the MX Ergo's top/bottom arrow buttons", "whatToCheck": "Camera rises/falls (same as pressing R/F), confirming the mode-scoped mapping actually switches", "tested": false },
+        { "feature": "Scroll wheel moves selection within the active column", "howToReach": "With at least one column revealed, scroll over the panel", "whatToCheck": "Highlight moves up/down within the most-recently-revealed column only, wrapping at the ends; the column auto-scrolls if the highlight goes off-screen", "tested": false },
+        { "feature": "Left click commits the character", "howToReach": "Click a highlighted or any character cell, with a real text input focused somewhere", "whatToCheck": "That character is actually typed into the focused input", "tested": false },
+        { "feature": "Right click retracts a column", "howToReach": "Right-click anywhere on the CryptxMode panel", "whatToCheck": "Retracts the most recently revealed column, same as the MX Ergo's retract button", "tested": false },
+        { "feature": "Middle click closes it", "howToReach": "Middle-click the CryptxMode panel", "whatToCheck": "Panel closes entirely", "tested": false },
+        { "feature": "Independent per-column scroll", "howToReach": "Reveal the Symbols column (6th reveal) on a short browser window", "whatToCheck": "That column scrolls on its own if taller than the panel, without affecting other revealed columns", "tested": false }
+      ]
     }
   ]
 }

@@ -106,6 +106,36 @@ export function getRegisteredWindows () {
   }))
 }
 
+/**
+ * Universal restore — unhides a registered panel's element directly and
+ * brings it to front, regardless of whether that panel has its own
+ * `omni:panel-restore` listener.
+ *
+ * Real gap found while building OmniPanelTray: minimize is dispatched
+ * consistently by every panel (`omni:panel-minimized`), but the restore
+ * side never was — only `ui/Panel.js`'s base class (the generic lh/rh
+ * Panels) and a couple of others actually listen for `omni:panel-restore`
+ * and call their own `restore()`. Every other standalone system (⟐Chronos,
+ * ⟐Keys, Admin, ⟐p, and most of the rest) minimizes but was never
+ * reachable again from the old floating-orb click — a real, pre-existing
+ * dead end this ran into directly, not something introduced here.
+ *
+ * This still dispatches `omni:panel-restore` (for the handful of panels
+ * that do listen and need their own internal state — e.g. Panel.js's
+ * `_state` — kept in sync, not just the DOM), but no longer depends on it:
+ * directly toggling the registered element's visibility here means every
+ * panel is reachable again after minimizing, not only the few that
+ * happened to implement the other half of the contract.
+ */
+export function restorePanel (id) {
+  const entry = registry.get(id)
+  if (!entry) return false
+  entry.el.style.visibility = 'visible'
+  bringToFront(id)
+  window.dispatchEvent(new CustomEvent('omni:panel-restore', { detail: { id } }))
+  return true
+}
+
 // ── Cascade positioning — "windows within windows," offset in the same
 // direction consecutive opens always come out in, so each new one stays
 // reachable without fully hiding whatever's behind it ────────────────

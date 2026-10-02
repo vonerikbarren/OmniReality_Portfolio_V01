@@ -122,6 +122,26 @@ const STYLES = /* css */`
   pointer-events     : none;
 }
 
+/* OmniPanelTray toggle — small arrow, always on the Dock regardless of
+   which edge the Tray itself is currently docked to. */
+.dock-tray-toggle {
+  width              : 28px;
+  height             : 28px;
+  display            : flex;
+  align-items        : center;
+  justify-content    : center;
+  background         : var(--dock-icon-bg);
+  border             : 1px solid var(--dock-border);
+  border-radius      : 5px;
+  color              : var(--dock-text-dim);
+  font-size          : 11px;
+  cursor             : pointer;
+  transition         : background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
+}
+.dock-tray-toggle:hover  { background: var(--dock-icon-hover); color: var(--dock-accent); border-color: rgba(255,255,255,0.18); }
+.dock-tray-toggle:active { background: var(--dock-icon-active); }
+.dock-tray-toggle.is-active { color: var(--dock-accent); box-shadow: var(--dock-glow); transform: rotate(180deg); }
+
 /* ── Centre tray ─────────────────────────────────────────────────────────── */
 
 #dock-tray {
@@ -299,12 +319,23 @@ export default class Dock {
     injectStyles()
     this._buildDOM()
     this._bindDragEvents()
+
+    // OmniPanelTray echoes its own open/closed state back here so the
+    // toggle arrow reflects it — Dock never assumes the Tray's state,
+    // since the Tray itself owns that (and can be opened/closed by
+    // other means too, e.g. a context-menu action, later).
+    this._onTrayState = (e) => {
+      const btn = this._el?.querySelector('#dock-tray-toggle')
+      btn?.classList.toggle('is-active', !!e.detail?.open)
+    }
+    window.addEventListener('omni:paneltray-state', this._onTrayState)
   }
 
   /** No per-frame work needed yet — reserved for future badge animations. */
   update (_delta) {}
 
   destroy () {
+    window.removeEventListener('omni:paneltray-state', this._onTrayState)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
     const style = document.getElementById('omni-dock-styles')
     if (style) style.remove()
@@ -414,9 +445,11 @@ export default class Dock {
         <span id="dock-tray-hint">no docked panels</span>
       </div>
 
-      <!-- Right wing — reserved -->
-      <div class="dock-wing dock-wing--right" aria-hidden="true">
-        <span class="dock-wing-label">⟐</span>
+      <!-- Right wing — OmniPanelTray toggle. The ONE place this opens
+           from, regardless of which edge the Tray itself is currently
+           oriented to (left/right/top/bottom) — per direct request. -->
+      <div class="dock-wing dock-wing--right">
+        <button class="dock-tray-toggle" id="dock-tray-toggle" title="⟐ Panel Tray" aria-label="Toggle Panel Tray">▲</button>
       </div>
 
     `
@@ -424,6 +457,10 @@ export default class Dock {
     this._el   = el
     this._tray = el.querySelector('#dock-tray')
     this._hint = el.querySelector('#dock-tray-hint')
+
+    el.querySelector('#dock-tray-toggle')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:paneltray-toggle', { detail: {} }))
+    })
 
     const shell = document.getElementById('omni-ui')
     if (shell) shell.appendChild(el)

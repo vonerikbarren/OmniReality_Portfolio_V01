@@ -332,6 +332,14 @@ export default class PanelIcon {
   }
 
   // ── Listener — spawn on panel-minimized ──────────────────────────────────
+  //
+  // SUPERSEDED by ui/OmniPanelTray.js — minimized panels now land there
+  // directly (a titled tab in a real tray) instead of this free-floating
+  // orb. Left not-listening rather than deleted, since the rest of this
+  // file (drag, dock-handoff, context menu) is real, working code that
+  // might be reused later; it just never fires anymore because nothing
+  // calls _listen() for this event. See OmniPanelTray.js's header comment
+  // for the full handoff.
 
   _listen () {
     this._onMinimized = (e) => {
@@ -341,7 +349,8 @@ export default class PanelIcon {
       if (this._icons.has(id)) return
       this._spawnIcon({ id, label, iconLabel, fromRect, variant })
     }
-    window.addEventListener('omni:panel-minimized', this._onMinimized)
+    // Intentionally not registered — see note above.
+    // window.addEventListener('omni:panel-minimized', this._onMinimized)
   }
 
   // ── Spawn ─────────────────────────────────────────────────────────────────

@@ -11,7 +11,9 @@
  *   3. Hands ×4      z-40  — four corners, above canvas, below drawers
  *   4. Drawers ×2    z-45  — left / right top-level sliding panels
  *   5. Panels ×2     z-45  — left / right bottom-level sliding panels
- *   6. PanelIcon     z-70  — freeform floating icons, above everything
+ *   6. PanelIcon     z-70  — freeform floating icons (dormant — see its
+ *                            own header note; superseded by OmniPanelTray)
+ *   7. OmniPanelTray z-55  — minimize destination, docks to any edge
  *
  * Context augmentation:
  *   BaseScene.context is `{ scene, camera, renderer, sizes, ticker }`.
@@ -60,7 +62,8 @@
  *   ui.hands     — { omnihand, conscious, lh, rh }
  *   ui.drawers   — { left, right }
  *   ui.panels    — { lh, rh }
- *   ui.panelIcon — PanelIcon manager instance
+ *   ui.panelIcon — PanelIcon manager instance (dormant)
+ *   ui.panelTray — OmniPanelTray instance
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Events bridged here
@@ -92,6 +95,7 @@ import { createAllHands }       from './Hand.js'
 import { createDrawers }        from './Drawer.js'
 import { createPanels }         from './Panel.js'
 import PanelIcon                from './PanelIcon.js'
+import OmniPanelTray            from './OmniPanelTray.js'
 
 // ── Radians → degrees ─────────────────────────────────────────────────────────
 const R2D = 180 / Math.PI
@@ -164,8 +168,14 @@ export default class UI {
     this.panels.rh.init()
 
     // ── 6. PanelIcon manager ───────────────────────────────────────────
+    // Dormant — see ui/PanelIcon.js's own note. Kept mounted (harmless,
+    // nothing reaches it anymore) rather than removed outright.
     this.panelIcon = new PanelIcon(this._ctx)
     this.panelIcon.init()
+
+    // ── 7. OmniPanelTray — the real minimize destination now ───────────
+    this.panelTray = new OmniPanelTray(this._ctx)
+    this.panelTray.init()
 
     // ── Wire cross-component events ────────────────────────────────────
     this._bridgeEvents()
@@ -214,6 +224,7 @@ export default class UI {
 
   /** Tear down every component cleanly. */
   destroy () {
+    this.panelTray?.destroy()
     this.panelIcon?.destroy()
     this.panels?.lh.destroy()
     this.panels?.rh.destroy()

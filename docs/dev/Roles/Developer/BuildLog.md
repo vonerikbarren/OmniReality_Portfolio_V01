@@ -1846,6 +1846,147 @@ in V142 (`_customOptionsHTML`/`_wireCustomOptions`), generalized
 slightly so it can show up for ordinary nodes too, not just one
 special type.
 
+**Same-day follow-up** — Sequence Node is now also in `ui/OmniDraw.js`'s
+own schema (the dat.GUI-style `SCHEMA` array every container object is
+built from), not just the post-creation Inspector. A new "Sequence"
+group — `isSequenceNode` toggle + `cameraMode` select — right after
+Core, and `_exportToScene()` now carries both through to
+`omni:node-create-request`. `systems/OmniNode.js`'s `_onCreateRequest`
+reads them with the same defaults as everywhere else
+(`isSequenceNode ?? false`, `cameraMode ?? 'focus'`), and `_createNode`
+applies the same one-time wireframe default when a node is born already
+flagged, not only when toggled on afterward. Nothing else in SCHEMA
+needed touching — `_data`, `_persist`/`_loadPersisted`, and row
+rendering are all already fully generic over whatever's in the array.
+
+**Next-morning follow-up** — two small, real fixes:
+
+1. **OmniDraw's wireframe/alpha/material-type gap, actually fixed now.**
+   `_exportToScene()` now includes `wireframe`/`alpha`/`material` in its
+   `omni:node-create-request` payload; `_onCreateRequest` passes them to
+   `_createNode`; a new shared `_applyAppearanceFlags(mesh, data)` applies
+   wireframe/transparency/material-type-swap to the real mesh, called from
+   both `_createNode` (fresh) and `_load` (restore) so the two can't drift
+   — the exact bug class already found twice before in this file
+   (rotation/scale, domain double-sided material) for the same restore
+   path. Sequence Node's own wireframe default now runs through this same
+   shared helper instead of its own separate inline patch.
+
+2. **MiniMap Visible toggle, in Map Settings.** `ui/MiniMapSettingsPanel.js`
+   had "Visible on Start" (next-launch only) and the 'm' key (live, but
+   not in any panel) — no live on/off *in the settings panel itself*. Added
+   a "MiniMap Visible" row above it; dispatches `omni:minimap-visibility-set`,
+   picked up in `main.js` (the only place holding the real `MiniMap`
+   instance) which calls its existing `setVisible()`. The checkbox also
+   listens to `omni:minimap-toggle` (already broadcast on every real
+   change) so it stays honest if visibility changes some other way — the
+   'm' key, or this same control — while the panel's open.
+
+**Same-day, third pass** — OmniPanelTray, the new universal minimize
+destination (full design discussion + this build in `docs/architecture/
+OMNIPANELTRAY.md`). Replaces `ui/PanelIcon.js`'s free-floating orb +
+Dock's old center-tray pipeline — confirmed first that all 40+ panels
+already dispatch the identical `omni:panel-minimized` event, so this
+could be a single-consumer swap rather than a per-panel migration.
+
+- New `ui/OmniPanelTray.js`: Flat form (1–3 rows, row 1 always on),
+  Expand/Collapse, Filter/Sort/Search header toolbar, drag-and-drop +
+  context menu (Maximize/Close/Move) per tab, orientation (bottom/top/
+  left/right — same idea as relocating VS Code's terminal panel).
+- `ui/Dock.js` gets a small ▲ toggle in its right wing — the one place
+  the Tray opens/closes from, regardless of its own orientation.
+- `ui/PanelIcon.js`'s `omni:panel-minimized` listener is disabled (not
+  deleted) — see its own header note.
+- **Real bug found and fixed**: `ui/WindowManager.js`'s new
+  `restorePanel(id)`. Checked how many panels actually listen for
+  `omni:panel-restore` (the old orb's restore event) — only 5 of 40+
+  that dispatch `omni:panel-minimized`. Most standalone panels had no
+  way back after minimizing through the old orb at all. `restorePanel()`
+  fixes this for every panel at once by working directly off
+  WindowManager's own registry, not the spotty per-panel contract.
+- File-cabinet (grouped, Z-depth) form and the full style pass (cyber
+  tab shape, edge-fade quick-settings cluster) are deferred by direct
+  agreement — see `OMNIPANELTRAY.md` for exactly what and why.
+
+**Same-day, fourth pass** — documentation only, no code:
+`docs/architecture/SOUND_DESIGN_ARCHITECTURE.md` written, prompted by
+two commercial sound packs ("Boom" mechanical + modern UI) being
+brought in and the real stated stakes ("this isn't a toy ... next-gen
+software for communicating way more efficiently"). Confirmed first
+what exists today: a flat 3-ID sound namespace (`click`/`open`/
+`close`) hardcoded in `main.js`, a thin Howler.js wrapper
+(`utils/SoundManager.js`) with only global volume/mute, no manifest,
+no settings panel. That shape doesn't survive what's coming, so the
+doc lays out the target architecture before any file gets touched:
+four classes (Ambience/Field, Earcons, Event SFX/Stingers, Entity
+Signatures — the last an emergent composite of the other two, not its
+own sound set), a `semantic`/`decorative` role tag cutting across all
+four, and a hard, non-stylistic complexity ceiling specifically for
+the Earcons class, grounded in real earcon/accessibility research (a
+few dozen distinct sounds is the real limit humans can reliably parse
+under pressure) — direct consequence of accessibility now being an
+explicit design pillar, not an afterthought, since a rigorous enough
+system means someone could navigate by sound alone. Also records the
+borrowed-trope idea (reverse/static/pitch-bend sounds given one fixed
+permanent meaning each), the open question of whether Earcons should
+map onto The 32, and the performance direction for whenever this is
+actually built (manifest-driven, theme-swappable, lazy-loaded,
+variation pools, per-category volume) so those constraints don't have
+to be re-derived later. Explicitly design-stage only — no manifest, no
+SoundManager changes, no file reorganization yet.
+
+### V147
+Four real pieces, all for one stated use case — presenting on a
+classroom TV through a Logitech MX Ergo as the only input device in
+reach. Full design in `docs/architecture/CRYPTXMODE_AND_PRESENTATION_
+CONTROLS.md`.
+
+- **Orbit right-click-drag panning**: `modules/OrbitModule.js`'s
+  `enablePan` flipped on. **Real bug caught in the same pass**:
+  `systems/OmniNode.js`'s canvas `contextmenu` listener fires on
+  mouse-up regardless of drag distance, so a right-drag pan ending
+  over a node would also pop that node's quick menu. Fixed with a
+  drag-distance guard (tracks the real right-button-down point,
+  skips opening the menu if the release moved more than ~6px).
+- **Detachable LH/RH movement pads**: `ui/MovementPad.js` — a 3-button
+  satellite cluster (Release / Dash, moved in from its old standalone
+  spot / an inert TBD slot) on each movable pad's own rim, LH at
+  3–6 o'clock, RH mirrored at 6–9 o'clock. Release detaches the whole
+  group (cross + satellites, one shared GSAP offset) into a
+  draggable floating panel; pressing it again snaps it back. Position
+  persists per-browser across reload, resets for a different user/
+  machine (plain localStorage, as requested) — OmniCustomLayout is the
+  real cross-everything answer, noted for later.
+- **⟐ Quick Launcher**: new `ui/OmniQuickLauncher.js` — a draggable ⟐
+  icon anywhere on screen; clicking (not dragging) it opens a small
+  radial popup, built fresh rather than extending `ui/RadialMenu.js`
+  (that file is hardcoded to 4 corner-anchored hand menus, not an
+  arbitrary dragged point). One entry today, ⟐Keyboard, in a plain
+  array so a second tool later is one entry, not a refactor. Found
+  along the way: `RadialMenu.js` already reserves a page for "the
+  planned OmniKeyboard launcher," unbuilt — not used here (this is a
+  different, 5th menu), but worth knowing it was anticipated once.
+- **CryptxMode**: new `ui/OmniKeyCryptxReveal.js` — a genuinely new
+  keyboard, not a third view of `OmniKeys.js`'s existing QWERTY/
+  OmniKryptx toggle, confirmed directly ("completely new and different
+  idea... from scratch"). Docks at the right edge, starts collapsed to
+  a meta header, each reveal press exposes one more vertical column
+  (Control first — Space/Backspace/Enter are the highest-frequency
+  presentation actions — then the letter rows, then digits, then
+  symbols), each column scrolling independently if taller than the
+  panel. Typing reuses `OmniKeys.js`'s own exported `classifyChar()`/
+  `computeCode()` so committed characters dispatch the identical
+  synthetic-`KeyboardEvent` shape OmniKeys already uses. Lowercase
+  only in this pass — a stated scope decision, not an oversight.
+  MX Ergo's native back/forward buttons are mode-scoped: R/F height
+  control (reusing MovementPad's existing keydown path untouched)
+  when CryptxMode is closed, reveal/retract a column when it's open;
+  scroll wheel moves the column selection, left click commits, right
+  click retracts, middle click closes. Documented, known limitation:
+  some browser/OS combinations intercept those buttons as real page
+  navigation before JS sees them outside fullscreen — worth confirming
+  live on the actual classroom setup.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

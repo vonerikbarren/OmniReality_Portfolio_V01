@@ -104,6 +104,50 @@ const PAD_CONFIGS = {
 const DIRS       = ['up', 'down', 'left', 'right']
 const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 
+// ── Satellite cluster geometry ─────────────────────────────────────────────────
+//
+// Three buttons (Release / Dash / an inert TBD slot) sit on each movable
+// pad's own circular rim, not inside its 3×3 cross. LH spans the 3–6 o'clock
+// arc of its own circle; RH spans 6–9 o'clock, mirrored — both clusters face
+// inward-and-down (toward screen-bottom-center), just reflected left/right,
+// per direct request ("to mirror the other hand"). Clock angle θ is measured
+// clockwise from 12 o'clock; (dx, dy) is the screen offset from the pad's own
+// center (dx: +right, dy: +down), at radius R from that center.
+
+function _clockOffset (clockDeg, r) {
+  const rad = (clockDeg * Math.PI) / 180
+  return { dx: r * Math.sin(rad), dy: -r * Math.cos(rad) }
+}
+
+// LH: Release @ 3 o'clock (90°, nearest screen-center), Dash @ 135°,
+// TBD @ 6 o'clock (180°, straight down). RH mirrors across the vertical
+// axis: same roles, angles reflected (360 − θ), landing in the 180–270° arc.
+const _SAT_ANGLES = {
+  lh: { release: 90, dash: 135, undefined: 180 },
+  rh: { release: 270, dash: 225, undefined: 180 },
+}
+
+function _buildSatGeom (padHalf, satHalf) {
+  const R = padHalf + PAD_OFFSET + satHalf
+  const center = padHalf + 4 // pad's own left/right CSS offset is 4px
+  const bottomBase = DOCK_H + HAND_WH + PAD_OFFSET + padHalf
+  const out = { lh: {}, rh: {} }
+  ;['lh', 'rh'].forEach(hand => {
+    Object.entries(_SAT_ANGLES[hand]).forEach(([role, clockDeg]) => {
+      const { dx, dy } = _clockOffset(clockDeg, R)
+      // LH is left-anchored (dx>0 moves right → larger `left`); RH is
+      // right-anchored (dx>0 moves right → SMALLER `right`, so subtract).
+      const d = hand === 'lh' ? (center + dx - satHalf) : (center - dx - satHalf)
+      const b = bottomBase - dy - satHalf
+      out[hand][role] = { d: Math.round(d), b: Math.round(b) }
+    })
+  })
+  return out
+}
+
+const _SAT_GEOM        = _buildSatGeom(110, 20) // desktop: 220px pad, 40px satellite buttons
+const _SAT_GEOM_MOBILE = _buildSatGeom(90, 17)  // mobile:  180px pad, 34px satellite buttons
+
 // ── Stylesheet ────────────────────────────────────────────────────────────────
 
 const STYLES = `
@@ -206,13 +250,29 @@ const STYLES = `
 .omni-pad--tl { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: top left; }
 .omni-pad--tr { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: top right; }
 .omni-pad--bl { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: bottom left; }
+.omni-pad--br { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: bottom right; }
 
-/* ── Dash button — docked to the outside edge of the LH (bl) pad ────────────── */
+/* ── Released / detached pad — floats, draggable by its own header ─────────── */
 
-.omni-dash-btn {
+.omni-pad.is-detached {
+  box-shadow       : 0 0 16px rgba(255, 255, 255, 0.35), inset 0 0 8px rgba(255, 255, 255, 0.06);
+}
+.omni-pad.is-detached .pad-header {
+  cursor           : grab;
+}
+.omni-pad.is-detached .pad-header:active {
+  cursor           : grabbing;
+}
+
+/* ── Satellite cluster — Release / Dash / TBD, sitting on each pad's own rim ──
+   Position math (see MovementPad.js's _SAT_GEOM): LH spans the 3–6 o'clock
+   arc of its own circle (the quadrant facing inward/down, toward screen
+   center), RH mirrors it across 6–9 o'clock — both clusters face the same
+   inward-and-down direction, just mirrored left/right, so they read as one
+   consistent idea on either side rather than two unrelated layouts.        */
+
+.omni-pad-sat {
   position         : fixed;
-  bottom           : ${DOCK_H + HAND_WH + PAD_OFFSET}px;
-  left             : ${4 + PAD_INNER * 2 + PAD_CELL * 3 + PAD_GAP * 2 + 8}px;
   width            : 40px;
   height           : 40px;
   display          : flex;
@@ -226,28 +286,40 @@ const STYLES = `
   letter-spacing   : 0.02em;
   cursor           : pointer;
   pointer-events   : auto;
-  z-index          : 40;   /* matches ui/Hand.js's .omni-hand z-index — same plane as the LH Menu it docks beside */
-  transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  z-index          : 40;
+  transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
-.omni-dash-btn:hover   { background: rgba(255, 255, 255, 0.13); }
-.omni-dash-btn:active  { background: rgba(255, 255, 255, 0.26); }
-.omni-dash-btn.is-active {
+.omni-pad-sat:hover   { background: rgba(255, 255, 255, 0.13); }
+.omni-pad-sat:active  { background: rgba(255, 255, 255, 0.26); }
+.omni-pad-sat.is-active {
   background       : rgba(255, 255, 255, 0.26);
   color            : rgba(255, 255, 255, 0.96);
   box-shadow       : 0 0 14px rgba(255, 255, 255, 0.40);
   text-shadow      : 0 0 10px rgba(255, 255, 255, 0.22);
 }
-.omni-dash-btn .dash-glyph { pointer-events: none; }
+.omni-pad-sat .sat-glyph { pointer-events: none; }
 
-@media (max-width: 560px) {
-  .omni-dash-btn {
-    left           : ${4 + 8 * 2 + 36 * 3 + 3 * 2 + 8}px;
-    width          : 34px;
-    height         : 34px;
-    font-size      : 11px;
-  }
+.omni-pad-sat--undefined {
+  opacity          : 0.30;
+  cursor           : default;
+  pointer-events   : none;
+  border-style     : dashed;
 }
-.omni-pad--br { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: bottom right; }
+
+${['lh', 'rh'].map(hand => ['release', 'dash', 'undefined'].map(role => {
+    const g = _SAT_GEOM[hand][role]
+    const side = hand === 'lh' ? 'left' : 'right'
+    return `.omni-pad-sat--${hand}-${role} { ${side}: ${g.d}px; bottom: ${g.b}px; }`
+  }).join('\n')).join('\n')}
+
+@media (max-width: 460px) {
+  .omni-pad-sat { width: 34px; height: 34px; font-size: 11px; }
+  ${['lh', 'rh'].map(hand => ['release', 'dash', 'undefined'].map(role => {
+      const g = _SAT_GEOM_MOBILE[hand][role]
+      const side = hand === 'lh' ? 'left' : 'right'
+      return `.omni-pad-sat--${hand}-${role} { ${side}: ${g.d}px; bottom: ${g.b}px; }`
+    }).join('\n')).join('\n')}
+}
 
 /* ── Header — compact and centered so it reads inside the circle ───────────── */
 
@@ -510,7 +582,21 @@ export default class MovementPad {
     // every other Admin-driven value here uses.
     this._dashActive     = false
     this._dashMultiplier = 3
-    this._dashButtonEl   = null
+    this._satEls         = { lh: {}, rh: {} }
+
+    // Released/detached pads — "released from its location so we can
+    // move it around the space," one toggle per movable hand. The whole
+    // cluster (cross + all 3 satellites) moves as one group via a shared
+    // GSAP x/y offset from its docked position, not a re-parented DOM
+    // container — simplest way to keep every element's own corner-anchor
+    // CSS as the "home" position while still moving them together.
+    // Persists across a reload (same browser/profile) by direct request;
+    // a different user/machine starts docked, which is just ordinary
+    // localStorage scoping, nothing extra needed. OmniCustomLayout is the
+    // real cross-everything answer, noted for later, not built here.
+    this._detached = { lh: false, rh: false }
+    this._detachOffset = { lh: { x: 0, y: 0 }, rh: { x: 0, y: 0 } }
+    this._dragState = null
 
     // Rotation pivot for OmniKeys' center-pad camera rotation —
     // defaults to the same point OrbitControls itself defaults to
@@ -530,12 +616,14 @@ export default class MovementPad {
     this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
     this._onKeyUp      = this._handleKeyUp.bind(this)
+    this._onDragMove   = this._handleDragMove.bind(this)
+    this._onDragEnd    = this._handleDragEnd.bind(this)
   }
 
   init () {
     injectStyles()
     this._buildAllPads()
-    this._buildDashButton()
+    this._buildAllSatelliteClusters()
     this._bindGlobalEvents()
     this._bindKeyboard()
     const initialAll = this._computeAllMultipliers(this._readAdminSteps())
@@ -545,6 +633,7 @@ export default class MovementPad {
     this._orbitVerticalMultiplier = initialAll.orbitVertical
     this._orbitHorizontalMultiplier = initialAll.orbitHorizontal
     this._readDashMultiplierFromStorage()
+    this._restoreDetachState()
     console.log('⟐ MovementPad: initialized.')
   }
 
@@ -566,7 +655,8 @@ export default class MovementPad {
 
   destroy () {
     Object.values(this._els).forEach(el => el?.parentNode?.removeChild(el))
-    this._dashButtonEl?.parentNode?.removeChild(this._dashButtonEl)
+    Object.values(this._satEls).forEach(group =>
+      Object.values(group).forEach(el => el?.parentNode?.removeChild(el)))
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
     window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
@@ -575,6 +665,8 @@ export default class MovementPad {
     window.removeEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
+    window.removeEventListener('pointermove', this._onDragMove)
+    window.removeEventListener('pointerup',   this._onDragEnd)
   }
 
   setVisible (handId, visible) {
@@ -600,29 +692,152 @@ export default class MovementPad {
     })
   }
 
-  /** ⟫⟫ — dash toggle, docked to the outside edge of the LH (bl-corner)
-   *  pad. Own top-level fixed element rather than a pad child, same
-   *  double-init guard as _buildAllPads above. */
-  _buildDashButton () {
-    if (this._dashButtonEl) return
+  /** The 3-button satellite cluster (Release / Dash / TBD) on each
+   *  movable pad's own rim — see _SAT_GEOM above for the arc math.
+   *  Own top-level fixed elements, same sibling-of-the-pad approach
+   *  MovementPad already used for the old standalone dash button, so
+   *  moving them together with the pad (see _setDetached) is just
+   *  applying the same GSAP offset to all of them, no DOM nesting. */
+  _buildAllSatelliteClusters () {
+    ;['lh', 'rh'].forEach(handId => {
+      if (Object.keys(this._satEls[handId]).length) return // double-init guard, matches _buildAllPads
+      this._buildSatelliteCluster(handId)
+    })
+  }
+
+  _buildSatelliteCluster (handId) {
     const shell = document.getElementById('omni-ui') ?? document.body
-    const el = document.createElement('button')
-    el.id        = 'omni-dash-btn'
-    el.className = 'omni-dash-btn'
-    el.type      = 'button'
-    el.title     = 'Dash (doubles LH movement speed)'
-    el.setAttribute('aria-label', 'Toggle dash — doubles LH movement speed')
-    el.setAttribute('aria-pressed', 'false')
-    el.innerHTML = `<span class="dash-glyph">⟫⟫</span>`
-    el.addEventListener('click', () => this.toggleDash())
-    shell.appendChild(el)
-    this._dashButtonEl = el
+    const specs = {
+      release: { glyph: '⏏', title: 'Release — detach this pad into a free-floating panel', label: 'Release pad from its docked position' },
+      dash:    { glyph: '⟫⟫', title: 'Dash (multiplies LH movement speed)', label: 'Toggle dash' },
+      undefined: { glyph: '—', title: 'Reserved — not yet assigned', label: 'Reserved, not yet assigned' },
+    }
+    Object.entries(specs).forEach(([role, spec]) => {
+      const el = document.createElement('button')
+      el.id        = `omni-pad-sat-${handId}-${role}`
+      el.className = `omni-pad-sat omni-pad-sat--${handId}-${role}`
+      el.type      = 'button'
+      el.title     = spec.title
+      el.setAttribute('aria-label', spec.label)
+      if (role !== 'undefined') el.setAttribute('aria-pressed', 'false')
+      el.innerHTML = `<span class="sat-glyph">${spec.glyph}</span>`
+      if (role === 'release') el.addEventListener('click', () => this._toggleDetach(handId))
+      if (role === 'dash' && handId === 'lh') el.addEventListener('click', () => this.toggleDash())
+      // RH's own Dash slot exists for visual mirror symmetry only — dash
+      // is specifically an LH (WASD) speed modifier, not a real RH
+      // control, so it stays inert there (no handler, reads as reserved).
+      shell.appendChild(el)
+      this._satEls[handId][role] = el
+      if (role === 'dash' && handId === 'lh') this._dashButtonEl = el
+    })
   }
 
   toggleDash (force) {
     this._dashActive = typeof force === 'boolean' ? force : !this._dashActive
     this._dashButtonEl?.classList.toggle('is-active', this._dashActive)
     this._dashButtonEl?.setAttribute('aria-pressed', String(this._dashActive))
+  }
+
+  // ── Detach / release ─────────────────────────────────────────────────────────
+
+  /** All elements belonging to one pad's group — the cross itself plus
+   *  its 3 satellites — moved together as a unit whenever it's dragged
+   *  or snapped back. */
+  _groupEls (handId) {
+    return [this._els[handId], ...Object.values(this._satEls[handId] ?? {})].filter(Boolean)
+  }
+
+  _toggleDetach (handId) {
+    this._setDetached(handId, !this._detached[handId], true)
+  }
+
+  _setDetached (handId, detached, animate) {
+    this._detached[handId] = detached
+    const padEl = this._els[handId]
+    const satEls = this._satEls[handId]
+    padEl?.classList.toggle('is-detached', detached)
+    Object.values(satEls ?? {}).forEach(el => el?.classList.toggle('is-detached', detached))
+    satEls?.release?.setAttribute('aria-pressed', String(detached))
+
+    if (!detached) {
+      this._detachOffset[handId] = { x: 0, y: 0 }
+      const els = this._groupEls(handId)
+      if (animate) {
+        gsap.to(els, { x: 0, y: 0, duration: 0.28, ease: 'power2.out' })
+      } else {
+        gsap.set(els, { x: 0, y: 0 })
+      }
+    }
+    this._persistDetachState()
+  }
+
+  /** Drag handle is each pad's own header — the small abbr/mode-label
+   *  strip at the top. Direction buttons and satellites keep their own
+   *  press behavior; only the header becomes grabbable, and only once
+   *  the pad is actually detached (same gating Panel.js uses for its
+   *  own attach()/_bindDrag — docked pads are never draggable). */
+  _bindPadDrag (handId, headerEl) {
+    headerEl.style.pointerEvents = 'auto'
+    headerEl.addEventListener('pointerdown', (e) => {
+      if (!this._detached[handId]) return
+      e.preventDefault()
+      this._dragState = {
+        handId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startOffset: { ...this._detachOffset[handId] },
+      }
+      window.addEventListener('pointermove', this._onDragMove)
+      window.addEventListener('pointerup',   this._onDragEnd)
+    })
+  }
+
+  _handleDragMove (e) {
+    const d = this._dragState
+    if (!d) return
+    const offset = {
+      x: d.startOffset.x + (e.clientX - d.startX),
+      y: d.startOffset.y + (e.clientY - d.startY),
+    }
+    this._detachOffset[d.handId] = offset
+    gsap.set(this._groupEls(d.handId), { x: offset.x, y: offset.y })
+  }
+
+  _handleDragEnd () {
+    if (!this._dragState) return
+    this._dragState = null
+    window.removeEventListener('pointermove', this._onDragMove)
+    window.removeEventListener('pointerup',   this._onDragEnd)
+    this._persistDetachState()
+  }
+
+  _persistDetachState () {
+    try {
+      const data = {
+        lh: { detached: this._detached.lh, offset: this._detachOffset.lh },
+        rh: { detached: this._detached.rh, offset: this._detachOffset.rh },
+      }
+      localStorage.setItem('omni:movementpad:detach', JSON.stringify(data))
+    } catch (_) {}
+  }
+
+  /** Reload-persistent by direct request; a different user/machine
+   *  starts docked since this is plain localStorage, nothing extra
+   *  needed for that half of the ask. Cross-everything save is the
+   *  future OmniCustomLayout feature, not this. */
+  _restoreDetachState () {
+    let data = null
+    try {
+      data = JSON.parse(localStorage.getItem('omni:movementpad:detach') ?? 'null')
+    } catch (_) { data = null }
+    if (!data) return
+    ;['lh', 'rh'].forEach(handId => {
+      const saved = data[handId]
+      if (!saved?.detached) return
+      this._detachOffset[handId] = saved.offset ?? { x: 0, y: 0 }
+      this._setDetached(handId, true, false)
+      gsap.set(this._groupEls(handId), { x: this._detachOffset[handId].x, y: this._detachOffset[handId].y })
+    })
   }
 
   _buildPad (handId) {
@@ -633,9 +848,11 @@ export default class MovementPad {
     el.className = ['omni-pad', `omni-pad--${cfg.corner}`, isTBD ? 'omni-pad--tbd' : ''].filter(Boolean).join(' ')
     el.setAttribute('aria-label', `${cfg.abbr} movement pad`)
     el.setAttribute('role', 'group')
-    el.appendChild(this._buildHeader(handId))
+    const header = this._buildHeader(handId)
+    el.appendChild(header)
     el.appendChild(this._buildCross(handId))
     if (cfg.keyboard) el.appendChild(this._buildKeyHint(handId))
+    if (cfg.movable) this._bindPadDrag(handId, header)
     return el
   }
 

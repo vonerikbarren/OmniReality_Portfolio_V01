@@ -102,6 +102,8 @@ import OmniExpression    from './ui/OmniExpression.js'
 import OmniExpressionInspector from './ui/OmniExpressionInspector.js'
 import OmniKeys          from './ui/OmniKeys.js'
 import OmniKeysInspector from './ui/OmniKeysInspector.js'
+import OmniQuickLauncher from './ui/OmniQuickLauncher.js'
+import OmniKeyCryptxReveal from './ui/OmniKeyCryptxReveal.js'
 import OmniSelector      from './ui/OmniSelector.js'
 import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
 import OmniEdgeInspector from './ui/OmniEdgeInspector.js'
@@ -417,6 +419,14 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniKeysInspector = new OmniKeysInspector(base.context)
   base.addModule(omniKeysInspector)
+
+  // CryptxMode presentation keyboard — a free-floating ⟐ launcher
+  // (radial popup, "⟐Keyboard" entry) opens a genuinely separate,
+  // right-edge pull-out keyboard, built for mouse-only control from a
+  // TV/classroom presentation setup. See both files' own header
+  // comments for the full design.
+  base.addModule(new OmniQuickLauncher(base.context))
+  base.addModule(new OmniKeyCryptxReveal(base.context))
 
   const omniSelector = new OmniSelector(base.context)
   base.addModule(omniSelector)
@@ -886,6 +896,15 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     )
     if (isTyping) return
     miniMap.toggle()
+  })
+
+  // Live show/hide from ui/MiniMapSettingsPanel.js's own toggle — distinct
+  // from the "Visible on Start" setting, which only affects next launch.
+  // MiniMap.js is a main.js-scoped singleton with no event listeners of
+  // its own for this, so main.js is where the event has to be picked up,
+  // same as the 'm' key above calls the same real setVisible().
+  window.addEventListener('omni:minimap-visibility-set', (e) => {
+    miniMap.setVisible(!!e.detail?.visible)
   })
 
   // ── 'F2' — refresh the page ─────────────────────────────────

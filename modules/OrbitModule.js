@@ -36,8 +36,16 @@ export default class OrbitModule {
     this.controls.minPolarAngle = 0
     this.controls.maxPolarAngle = Math.PI
 
-    // No pan — the space is navigated spatially, not panned
-    this.controls.enablePan = false
+    // Right-click-drag pan — explicit request: exact-angle framing during
+    // a presentation is something orbit rotation alone can't fix, since
+    // rotating around the fixed target can't shift *what's centered*.
+    // three.js's own default mouseButtons mapping (LEFT=ROTATE,
+    // MIDDLE=DOLLY, RIGHT=PAN) is left untouched — just turning this on.
+    // See systems/OmniNode.js's _onCanvasContextMenu for the companion
+    // fix: without it, a right-drag pan that ends over a node would also
+    // pop that node's quick-menu, since contextmenu fires on mouse-up
+    // regardless of how far the button moved while held.
+    this.controls.enablePan = true
 
     // Disabled on boot — entry animation owns the camera first
     this.controls.enabled = false

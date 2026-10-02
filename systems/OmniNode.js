@@ -1030,7 +1030,9 @@ export default class OmniNode {
     this._onSequenceNodeSet       = null
     this._onMouseMove   = null
     this._onMouseClick  = null
+    this._onCanvasMouseDown = null
     this._onCanvasContextMenu = null
+    this._rmbDownPoint = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -1185,6 +1187,7 @@ export default class OmniNode {
     if (canvas) {
       canvas.removeEventListener('mousemove', this._onMouseMove)
       canvas.removeEventListener('click',     this._onMouseClick)
+      canvas.removeEventListener('mousedown', this._onCanvasMouseDown)
       canvas.removeEventListener('contextmenu', this._onCanvasContextMenu)
     }
 
@@ -1508,6 +1511,19 @@ export default class OmniNode {
 
     this._onMouseMove = (e) => this._updateMouse(e)
     this._onMouseClick = (e) => this._handleClick(e)
+
+    // Right-click-drag now pans the camera (OrbitModule.enablePan), and
+    // contextmenu fires on mouse-up regardless of how far the button
+    // moved while held — so without this guard, panning the camera and
+    // happening to release over a node would also pop that node's quick
+    // menu. Track where the right button actually went down and only
+    // treat it as "open the menu" if the button never moved more than a
+    // few px — a real drag (a pan gesture) is left alone.
+    this._rmbDownPoint = null
+    this._onCanvasMouseDown = (e) => {
+      if (e.button === 2) this._rmbDownPoint = { x: e.clientX, y: e.clientY }
+    }
+
     // Real right-click context menu on a 3D object (Developer Queue
     // item 5) — same raycast, same _selectableMeshes() hit-test the
     // ordinary click already uses, just surfaced as an event for
@@ -1515,6 +1531,15 @@ export default class OmniNode {
     // rather than building a second, competing menu system.
     this._onCanvasContextMenu = (e) => {
       e.preventDefault()
+
+      const down = this._rmbDownPoint
+      this._rmbDownPoint = null
+      if (down) {
+        const dx = e.clientX - down.x
+        const dy = e.clientY - down.y
+        if ((dx * dx + dy * dy) > 36) return // > ~6px — a pan drag, not a menu click
+      }
+
       this._updateMouse(e)
       this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
       const hits = this._raycaster.intersectObjects(this._selectableMeshes(), false)
@@ -1527,6 +1552,7 @@ export default class OmniNode {
 
     canvas.addEventListener('mousemove', this._onMouseMove,  { passive: true })
     canvas.addEventListener('click',     this._onMouseClick)
+    canvas.addEventListener('mousedown', this._onCanvasMouseDown)
     canvas.addEventListener('contextmenu', this._onCanvasContextMenu)
   }
 
@@ -1757,6 +1783,38 @@ export default class OmniNode {
   // ── Node lifecycle ────────────────────────────────────────────────────────
 
   /**
+   * Applies wireframe / transparency / material-type from node data onto
+   * an already-built mesh. Shared by _createNode (fresh creation) and
+   * _load (restore from storage) so the two can never drift the way
+   * wireframe-only handling already had before this was factored out.
+   * Same material-swap approach OmniDraw's own preview and
+   * OmniInspector's live swap already use, applied here instead so it
+   * actually reaches the real, scene-spawned node, not just a preview.
+   */
+  _applyAppearanceFlags (mesh, data) {
+    if (!mesh.material || Array.isArray(mesh.material)) return
+
+    if (data.material && data.material !== 'MeshStandardMaterial') {
+      const MatCtor = THREE[data.material] ?? THREE.MeshStandardMaterial
+      const old = mesh.material
+      mesh.material = new MatCtor({
+        color      : old.color,
+        wireframe  : !!data.wireframe,
+        transparent: !!data.alpha,
+        opacity    : data.alpha ? 0.45 : 1,
+      })
+      old.dispose()
+      return
+    }
+
+    if (data.wireframe) mesh.material.wireframe = true
+    if (data.alpha) {
+      mesh.material.transparent = true
+      mesh.material.opacity = 0.45
+    }
+  }
+
+  /**
    * Create a node — adds to scene, registry, storage, and panel list.
    * @param {object} data  — node schema object
    */
@@ -1782,6 +1840,22 @@ export default class OmniNode {
       data.scale = this._normalizeScale(data.scale)
       mesh.scale.set(...data.scale)
     }
+    // Sequence Node created already-flagged (e.g. from OmniDraw's Export
+    // to Scene, not just toggled on later in the Inspector) — same
+    // "wireframe as its initial/unbuilt look" default, applied once here
+    // instead of waiting for the Inspector toggle to do it.
+    if (data.isSequenceNode && !data.wireframe) {
+      data.wireframe = true
+    }
+
+    // OmniDraw's own wireframe/alpha/material-type choices (ID_WireFrameChannel,
+    // ID_AlphaChannel, ID_MeshTypeChannel) — a real, previously-unfixed gap:
+    // OmniDraw's "Export to Scene" never carried any of the three through,
+    // so a node built with any of them set in the panel always came back
+    // plain on arrival in the actual scene, silently discarding a real
+    // choice the user made.
+    this._applyAppearanceFlags(mesh, data)
+
     mesh.userData.nodeId = data.id
     mesh.userData.label = data.label   // real, global label access — any system holding this mesh can read its actual name, not just its id
     mesh.userData.font = data.font   // per-node, not global — each node carries its own real font, same pattern as label
@@ -3235,6 +3309,15 @@ export default class OmniNode {
         emissive: d.emissive,
         emissiveIntensity: d.emissiveIntensity,
         classification: d.classification ?? 'neutral',
+        // Sequence Node, settable at creation from OmniDraw's own
+        // schema now, not just toggled afterward in the Inspector.
+        isSequenceNode: d.isSequenceNode ?? false,
+        cameraMode: d.cameraMode ?? 'focus',
+        // OmniDraw's wireframe/alpha/material-type — previously dropped
+        // here entirely (see _applyAppearanceFlags).
+        wireframe: d.wireframe ?? false,
+        alpha: d.alpha ?? false,
+        material: d.material ?? 'MeshStandardMaterial',
       })
     }
 
@@ -3723,13 +3806,12 @@ export default class OmniNode {
           // applied live, at the moment "Is Domain" was toggled. It
           // never got reapplied on restore, so a domain-marked object
           // silently came back single-sided after a page reload.
-          // Same bug once more — a Sequence Node's wireframe default
-          // (applied live when the toggle is first switched on) was
+          // Same bug once more — wireframe/alpha/material-type (whether
+          // set via a Sequence Node's default or OmniDraw directly) was
           // never reapplied on restore either, so it silently came back
-          // solid after a page reload.
-          if (data.wireframe && mesh.material && !Array.isArray(mesh.material)) {
-            mesh.material.wireframe = true
-          }
+          // plain after a page reload. Shared with fresh creation — see
+          // _applyAppearanceFlags.
+          this._applyAppearanceFlags(mesh, data)
           if (data.isDomain && mesh.material) {
             mesh.material.side = THREE.DoubleSide
             mesh.material.needsUpdate = true
