@@ -838,6 +838,25 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     else omniBrowserWindow1.openFromSide()
   })
 
+  // ── 'p' — open/close ⟐p OmniPresenter ──────────────────────
+  // Real gap found while walking through the Sequence Node feature:
+  // OmniPresenter listens for omni:system-toggle {system:'omnipresenter'}
+  // (documented in its own header) but nothing anywhere actually
+  // dispatched it — there was no live way to open the panel at all
+  // short of calling omniPresenter.open() directly. 'p' was unbound;
+  // matches the exact pattern 'n' already uses for OmniDraw/OmniNode.
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'p' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    window.dispatchEvent(new CustomEvent('omni:system-toggle', { detail: { system: 'omnipresenter' } }))
+  })
+
   // ── 'n' — open the OmniDraw mode picker (Static or Dynamic) ──
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'n' || e.repeat) return

@@ -1987,6 +1987,18 @@ CONTROLS.md`.
   navigation before JS sees them outside fullscreen — worth confirming
   live on the actual classroom setup.
 
+### V148
+Real bug fixed, found while walking the user through how Sequence
+Node/OmniPresenter actually works end-to-end: `systems/OmniPresenter.js`
+listens for `omni:system-toggle { system: 'omnipresenter' }` (its own
+documented open mechanism), but nothing anywhere in the app ever
+dispatched it — no button, no menu entry, no keybind. The only way to
+open the panel at all was calling `omniPresenter.open()` directly.
+Fixed with a `main.js` keybind on `p` (unbound, confirmed via the
+compiled shortcuts list), dispatching that exact event — same pattern
+`n` already uses for OmniDraw/OmniNode. Added to
+`ui/OmniKeyboardShortcutsPanel.js`'s own compiled list too.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
