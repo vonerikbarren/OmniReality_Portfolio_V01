@@ -57,7 +57,10 @@ const HAND_CONFIGS = {
     hamburgerType: 'drawer',
     hamburgerDir : 'left',
     hamburgerMenu: '⟐mniMenu',
-    padFunction  : 'Switch axiomatic app',
+    // Was 'Switch axiomatic app' — stale once this hand got a real,
+    // working MovementPad (direct request: "mirror the lh and rh").
+    // Now describes what the ⚇ button here actually opens.
+    padFunction  : 'Camera movement — translate (mirrors LH)',
     radialDir    : 'center-right',
     topRow       : ['hamburger', 'pad'],    // left-side: ☰ outer, ⚇ inner
     bottomRow    : ['orbiter',   'radial'],
@@ -71,7 +74,10 @@ const HAND_CONFIGS = {
     hamburgerType: 'drawer',
     hamburgerDir : 'right',
     hamburgerMenu: '⟐NavMenu',
-    padFunction  : 'Switch axiomatic spatial function',
+    // Was 'Switch axiomatic spatial function' — stale once this hand
+    // got a real, working MovementPad (direct request: "mirror the lh
+    // and rh"). Now describes what the ⚇ button here actually opens.
+    padFunction  : 'Camera movement — altitude/orbit (mirrors RH)',
     radialDir    : 'center-left',
     topRow       : ['pad', 'hamburger'],    // right-side: ⚇ inner, ☰ outer
     bottomRow    : ['orbiter', 'radial'],

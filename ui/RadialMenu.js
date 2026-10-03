@@ -57,21 +57,28 @@ const TOOL_ANGLES = Array.from({ length: 10 }, (_, i) => -90 + i * 36)
 // blank here on purpose for all four hands. The real per-hand app lists
 // live on page 2 instead, per direct request. Page 3 remains the planned
 // OmniKeyboard launcher (same doc), also not built yet.
+// OmniHand/ConsciousHand's own '⟐2' tool lists now mirror LH/RH's —
+// direct request: "adjust the tool context with each hand to mirror
+// the lh and rh." Same pairing MovementPad.js's own PAD_CONFIGS now
+// uses (OmniHand mirrors LH's MOVE pad, ConsciousHand mirrors RH's
+// NAV pad), applied here to the radial Tool menu's content too, for
+// the same reason: both hands in a pair now do the same real thing.
+// abbr/color stay each hand's own — only the tool content mirrors.
 const TOOLS = {
   omnihand: {
     abbr : '⟐mH',
     color: 'rgba(255, 255, 255, 0.90)',
     '⟐1' : null,
-    '⟐2' : ['OmniTime','OmniIdentity','OmniMemory','OmniMap','OmniFlow',
-             'OmniTask','OmniRitual','OmniLaw','OmniArchive','OmniActualize'],
+    '⟐2' : ['Translate3D','Rotate3D','Scale3D','OrbitControl','PathfindingStep',
+             'SnapToGrid','PhysicsImpulse','CollisionCheck','AnchorPointSet','StateToggle'],
     '⟐3' : null,
   },
   conscious: {
     abbr : '⟐CH',
     color: 'rgba(180, 210, 255, 0.90)',
     '⟐1' : null,
-    '⟐2' : ['SpatialVisor','ThermalVisor','EnergeticVisor','StructuralVisor','SemanticVisor',
-             'IdentityVisor','TemporalVisor','RelationalVisor','MythicVisor','OmniPerspective'],
+    '⟐2' : ['ColorShift','MaterialMorph','ShapeBlend','ParticleEmote','AuraField',
+             'SymbolStamp','GestureTrail','SoundResonance','TextureWeave','MoodLighting'],
     '⟐3' : null,
   },
   lh: {
@@ -147,7 +154,17 @@ const STYLES = /* css */`
   position        : fixed;
   width           : ${CONTAINER}px;
   height          : ${CONTAINER}px;
-  z-index         : 55;
+  /* Real fix — was 55. MovementPad.js's own _handleRadialToggle
+     deliberately bumps a hand's pad to z-index 60 while that hand's
+     radial is open (so the pad stays clickable through it), which
+     left the radial popup itself rendering BELOW the pad whenever
+     both were out at once — invisible, not just hard to reach. That
+     bump was never noticed before because OmniHand/ConsciousHand's
+     own pads used to be permanently invisible (TBD, movable:false);
+     now that they're real pads, the overlap is real too. Raised past
+     60 so the popup always wins regardless of that bump, on every
+     hand, not just the two that happened to go unnoticed. */
+  z-index         : 65;
   pointer-events  : none;
   opacity         : 0;
   user-select     : none;

@@ -2078,6 +2078,105 @@ builds.
   it back to free orbit — direct reference to Zelda's own Z-targeting
   feel.
 
+### V150 — real movement pads for OmniHand/ConsciousHand
+
+Direct request: "create movement pads for the conscioushand and
+OmniHand and adjust the tool context with each hand to mirror the lh
+and rh." Previously both were `PAD_CONFIGS` entries with
+`movable: false, keyboard: null` — a visible but fully inert "TBD"
+cross with no listeners attached at all (`_buildDirBtn`'s own
+`isTBD = !cfg.movable` gate skips wiring entirely). Each hand already
+had its own real ⚇ pad-toggle button in `ui/Hand.js` though
+(`topRow` includes `'pad'` for all four hands, not just LH/RH), so
+toggling it previously just revealed an empty, non-functional cross.
+
+**`ui/MovementPad.js`:**
+- OmniHand (top-left) now mirrors LH (bottom-left)'s translate-move
+  semantics; ConsciousHand (top-right) mirrors RH (bottom-right)'s
+  altitude+orbit NAV semantics — same functional pairing the corners
+  already visually suggest. `_applyLHMovement`/`_applyRHMovement`
+  generalized into `_applyTranslateMovement(cam, delta, handId)` /
+  `_applyNavMovement(cam, delta, handId)`, called for both hands in
+  each pair rather than duplicating the logic. Dash stays an
+  LH-exclusive modifier (only applied when `handId === 'lh'`) — OmniHand's
+  own Dash satellite slot is inert, same as RH's always was.
+- New keyboard bindings, chosen to avoid every already-bound key
+  (checked against `OmniKeyboardShortcutsPanel.js`'s compiled list and
+  `main.js`'s `HAND_KEY_BINDINGS`, which already claims Numpad1-4 for
+  the hand-menu shortcuts): OmniHand uses the numpad's operator row
+  (`/` `*` `-` `+` → up/down/left/right); ConsciousHand uses Numpad7/9
+  (up/down only — mirrors RH's own R/F, which also only binds
+  up/down, never left/right).
+- Satellite clusters (Release/Dash/reserved) now build for all four
+  movable hands, not just LH/RH — `_buildAllSatelliteClusters`,
+  `_persistDetachState`/`_restoreDetachState` generalized from a
+  hardcoded `['lh','rh']` to `Object.keys(PAD_CONFIGS).filter(id =>
+  movable)`. Release is wired for all four (full detach/re-dock
+  parity); Dash stays visually present but inert on every hand except
+  LH, matching the pre-existing RH behavior.
+- Satellite rim geometry (`_buildSatGeom`) generalized to support
+  top-anchored pads, not just bottom-anchored ones — LH/RH's cluster
+  leans inward-and-down toward the bottom-center gap near the Dock;
+  OmniHand/ConsciousHand's leans inward-and-up toward the top-center
+  gap instead (the straight-down 180° reserved slot becomes
+  straight-up 0°, Dash's diagonal flips from 135°/225° to 45°/315°).
+  Release stays nearest screen-center either way (90°/270°).
+
+**`ui/Hand.js`:** `padFunction` labels for OmniHand/ConsciousHand
+updated from the old placeholder text ("Switch axiomatic app" /
+"Switch axiomatic spatial function") to describe what their ⚇ button
+actually opens now.
+
+**`ui/RadialMenu.js`:** "adjust the tool context... to mirror the lh
+and rh" — OmniHand's own `⟐2` radial tool list now mirrors LH's
+(Translate3D/Rotate3D/Scale3D/OrbitControl/...); ConsciousHand's
+mirrors RH's (ColorShift/MaterialMorph/ShapeBlend/...). Each hand's
+own `abbr`/`color` identity is untouched — only the tool content
+mirrors, same pairing as the pads themselves. Confirmed via direct
+inspection that tool selection here (`omni:tool-select`/`omni:tool-
+deselect`) isn't consumed anywhere else yet, so this is a
+self-contained content change.
+
+### V151 — radial/pad stacking fix + satellites tied to pad visibility
+
+Direct feedback after testing V150's new OmniHand/ConsciousHand pads.
+
+**Real bug fixed — `ui/RadialMenu.js`:** "the tool menu for both
+consciousHand and OmniHand cannot be seen if the pad is out." Root
+cause: `MovementPad.js`'s own `_handleRadialToggle` deliberately bumps
+a hand's pad to `z-index: 60` while that hand's own radial Tool menu
+is open, so the pad stays clickable through it — but `.omni-radial`'s
+own z-index was only `55`, so the pad's boost put it ABOVE the radial
+popup instead, hiding it outright rather than just making it
+awkward to reach. This exact bug applied equally to every hand, LH/RH
+included, but OmniHand/ConsciousHand's pads used to sit at
+`opacity: 0` permanently (`movable: false`, TBD), so the overlap was
+never visibly real until V150 gave them genuine, visible pads. Fixed
+by raising `.omni-radial` to `z-index: 65`, above the boosted pad on
+every hand, not just the two that happened to surface it.
+
+**Built — `ui/MovementPad.js`:** "put it so that the 3 buttons for
+both hands come out when the movement pads come out." The satellite
+cluster (Release/Dash/reserved) used to be independent top-level
+elements with no opacity tie to their own pad at all — permanently at
+full opacity from the moment they were built in `init()`, regardless
+of whether the pad itself was ever toggled visible. New
+`_animateSatellitesIn(handId)`/`_animateSatellitesOut(handId)`,
+called from the pad's own existing `_animateIn`/`_animateOut`, fade
+each satellite in/out in lockstep with its pad — same timing/easing,
+Release and Dash settling at full opacity, the reserved slot at its
+usual dimmed 0.30. `.omni-pad-sat`'s own CSS now defaults to
+`opacity: 0` at rest, matching `.omni-pad` itself, so a satellite
+cluster is never visible while its pad is collapsed. This also
+directly addresses the separate "the 3 buttons for the LeftHand...
+are gone" report — LH's satellites were always built and positioned
+correctly (confirmed by hand-computing `_buildSatGeom`'s own numbers,
+unchanged from before V150), so whatever made them read as "gone" in
+that particular test, tying their visibility deterministically to the
+pad's own open/closed state — rather than leaving them floating
+independently, with no clear signal for when they should be visible —
+removes the ambiguity either way.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

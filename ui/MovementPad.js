@@ -75,17 +75,23 @@ const PAD_OFFSET = 4
 // ── Pad configuration ─────────────────────────────────────────────────────────
 
 const PAD_CONFIGS = {
+  // Real pads, mirroring LH/RH — direct request: "create movement
+  // pads for the conscioushand and OmniHand... to mirror the lh and
+  // rh." OmniHand (top-left) mirrors LH (bottom-left)'s MOVE/translate
+  // semantics; ConsciousHand (top-right) mirrors RH (bottom-right)'s
+  // NAV/altitude+orbit semantics — same pairing RadialMenu.js's own
+  // TOOLS context now mirrors too (see that file).
   omnihand: {
-    id: 'omnihand', corner: 'tl', abbr: '⟐H', modeLabel: 'TBD',
-    movable: false, keyboard: null,
-    dirLabels: { up: '▲', down: '▼', left: '◄', right: '►' },
-    centerLabel: null,
+    id: 'omnihand', corner: 'tl', abbr: '⟐H', modeLabel: 'MOVE',
+    movable: true, keyboard: 'omnihand-move',
+    dirLabels: { up: 'FWD', down: 'BCK', left: 'STR-L', right: 'STR-R' },
+    centerLabel: '⟐OH',
   },
   conscious: {
-    id: 'conscious', corner: 'tr', abbr: 'CH', modeLabel: 'TBD',
-    movable: false, keyboard: null,
-    dirLabels: { up: '▲', down: '▼', left: '◄', right: '►' },
-    centerLabel: null,
+    id: 'conscious', corner: 'tr', abbr: 'CH', modeLabel: 'NAV',
+    movable: true, keyboard: 'conscious-nav',
+    dirLabels: { up: 'RISE', down: 'FALL', left: 'ORB-L', right: 'ORB-R' },
+    centerLabel: '⟐CH',
   },
   lh: {
     id: 'lh', corner: 'bl', abbr: 'LH', modeLabel: 'MOVE',
@@ -122,24 +128,45 @@ function _clockOffset (clockDeg, r) {
 // LH: Release @ 3 o'clock (90°, nearest screen-center), Dash @ 135°,
 // TBD @ 6 o'clock (180°, straight down). RH mirrors across the vertical
 // axis: same roles, angles reflected (360 − θ), landing in the 180–270° arc.
+//
+// OmniHand/ConsciousHand (top corners) mirror that same pair vertically —
+// direct request, same "mirror the lh and rh" that gave them real pads at
+// all. LH/RH's cluster leans inward-and-DOWN, toward the bottom-center gap
+// between them near the Dock; OmniHand/ConsciousHand's leans inward-and-UP
+// instead, toward the top-center gap between THEM — the straight-down 180°
+// TBD slot becomes straight-up 0°, and the diagonal Dash slot flips from
+// 135°/225° to 45°/315° to match. Release stays nearest screen-center either
+// way (90°/270°), since that relationship doesn't depend on top vs bottom.
 const _SAT_ANGLES = {
-  lh: { release: 90, dash: 135, undefined: 180 },
-  rh: { release: 270, dash: 225, undefined: 180 },
+  lh:        { release: 90,  dash: 135, undefined: 180 },
+  rh:        { release: 270, dash: 225, undefined: 180 },
+  omnihand:  { release: 90,  dash: 45,  undefined: 0   },
+  conscious: { release: 270, dash: 315, undefined: 0   },
 }
+const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'right' }
+const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
 
 function _buildSatGeom (padHalf, satHalf) {
   const R = padHalf + PAD_OFFSET + satHalf
   const center = padHalf + 4 // pad's own left/right CSS offset is 4px
   const bottomBase = DOCK_H + HAND_WH + PAD_OFFSET + padHalf
-  const out = { lh: {}, rh: {} }
-  ;['lh', 'rh'].forEach(hand => {
+  const topBase    = BAR_H  + HAND_WH + PAD_OFFSET + padHalf
+  const out = {}
+  Object.keys(_SAT_ANGLES).forEach(hand => {
+    out[hand] = {}
+    const side   = _SAT_SIDE[hand]
+    const anchor = _SAT_ANCHOR[hand]
     Object.entries(_SAT_ANGLES[hand]).forEach(([role, clockDeg]) => {
       const { dx, dy } = _clockOffset(clockDeg, R)
-      // LH is left-anchored (dx>0 moves right → larger `left`); RH is
-      // right-anchored (dx>0 moves right → SMALLER `right`, so subtract).
-      const d = hand === 'lh' ? (center + dx - satHalf) : (center - dx - satHalf)
-      const b = bottomBase - dy - satHalf
-      out[hand][role] = { d: Math.round(d), b: Math.round(b) }
+      // Left-anchored hands (dx>0 moves right → larger `left`); right-
+      // anchored hands (dx>0 moves right → SMALLER `right`, so subtract).
+      const d = side === 'left' ? (center + dx - satHalf) : (center - dx - satHalf)
+      // Bottom-anchored hands: moving down (dy>0) means a SMALLER
+      // `bottom` offset (closer to the screen's actual bottom edge).
+      // Top-anchored hands: moving down means a LARGER `top` offset
+      // (further from the screen's actual top edge) — opposite sign.
+      const v = anchor === 'bottom' ? (bottomBase - dy - satHalf) : (topBase + dy - satHalf)
+      out[hand][role] = { d: Math.round(d), v: Math.round(v), side, anchor }
     })
   })
   return out
@@ -286,6 +313,12 @@ const STYLES = `
   letter-spacing   : 0.02em;
   cursor           : pointer;
   pointer-events   : auto;
+  /* Rest state — hidden until its own pad is toggled visible (direct
+     request: "the 3 buttons... come out when the movement pads come
+     out"). _animateIn/_animateOut's own _animateSatellitesIn/Out
+     fade this to 1 (or 0.30 for the reserved slot) and back via GSAP,
+     mirroring the pad's own opacity choreography exactly. */
+  opacity          : 0;
   /* Real fix (bug-squash pass) — was 40, BELOW .omni-pad's own z-index
      of 41. Each satellite sits just outside the pad's circular edge by
      design (see _buildSatGeom's R formula), but a square button's own
@@ -315,18 +348,16 @@ const STYLES = `
   border-style     : dashed;
 }
 
-${['lh', 'rh'].map(hand => ['release', 'dash', 'undefined'].map(role => {
+${Object.keys(_SAT_ANGLES).map(hand => ['release', 'dash', 'undefined'].map(role => {
     const g = _SAT_GEOM[hand][role]
-    const side = hand === 'lh' ? 'left' : 'right'
-    return `.omni-pad-sat--${hand}-${role} { ${side}: ${g.d}px; bottom: ${g.b}px; }`
+    return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
   }).join('\n')).join('\n')}
 
 @media (max-width: 460px) {
   .omni-pad-sat { width: 34px; height: 34px; font-size: 11px; }
-  ${['lh', 'rh'].map(hand => ['release', 'dash', 'undefined'].map(role => {
+  ${Object.keys(_SAT_ANGLES).map(hand => ['release', 'dash', 'undefined'].map(role => {
       const g = _SAT_GEOM_MOBILE[hand][role]
-      const side = hand === 'lh' ? 'left' : 'right'
-      return `.omni-pad-sat--${hand}-${role} { ${side}: ${g.d}px; bottom: ${g.b}px; }`
+      return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
     }).join('\n')).join('\n')}
 }
 
@@ -564,8 +595,10 @@ export default class MovementPad {
     this._keyEls = {}
     this._visible = { omnihand: false, conscious: false, lh: false, rh: false }
     this._pressed = {
-      lh: { up: false, down: false, left: false, right: false },
-      rh: { up: false, down: false, left: false, right: false },
+      lh:        { up: false, down: false, left: false, right: false },
+      rh:        { up: false, down: false, left: false, right: false },
+      omnihand:  { up: false, down: false, left: false, right: false },
+      conscious: { up: false, down: false, left: false, right: false },
     }
 
     this._v3fwd   = new THREE.Vector3()
@@ -591,7 +624,7 @@ export default class MovementPad {
     // every other Admin-driven value here uses.
     this._dashActive     = false
     this._dashMultiplier = 3
-    this._satEls         = { lh: {}, rh: {} }
+    this._satEls         = { lh: {}, rh: {}, omnihand: {}, conscious: {} }
 
     // Released/detached pads — "released from its location so we can
     // move it around the space," one toggle per movable hand. The whole
@@ -603,8 +636,11 @@ export default class MovementPad {
     // a different user/machine starts docked, which is just ordinary
     // localStorage scoping, nothing extra needed. OmniCustomLayout is the
     // real cross-everything answer, noted for later, not built here.
-    this._detached = { lh: false, rh: false }
-    this._detachOffset = { lh: { x: 0, y: 0 }, rh: { x: 0, y: 0 } }
+    this._detached = { lh: false, rh: false, omnihand: false, conscious: false }
+    this._detachOffset = {
+      lh: { x: 0, y: 0 }, rh: { x: 0, y: 0 },
+      omnihand: { x: 0, y: 0 }, conscious: { x: 0, y: 0 },
+    }
     this._dragState = null
 
     // Rotation pivot for OmniKeys' center-pad camera rotation —
@@ -651,7 +687,8 @@ export default class MovementPad {
     if (!cam) return
     this._lhCallCount = (this._lhCallCount || 0) + 1
     try {
-      this._applyLHMovement(cam, delta)
+      this._applyTranslateMovement(cam, delta, 'lh')
+      this._applyTranslateMovement(cam, delta, 'omnihand')
       this._lastLHError = null
     } catch (err) {
       // Surfaced on the Input Monitor panel — the goal is making an
@@ -659,7 +696,8 @@ export default class MovementPad {
       // readable on the phone screen itself.
       this._lastLHError = err.message
     }
-    this._applyRHMovement(cam, delta)
+    this._applyNavMovement(cam, delta, 'rh')
+    this._applyNavMovement(cam, delta, 'conscious')
   }
 
   destroy () {
@@ -708,10 +746,12 @@ export default class MovementPad {
    *  moving them together with the pad (see _setDetached) is just
    *  applying the same GSAP offset to all of them, no DOM nesting. */
   _buildAllSatelliteClusters () {
-    ;['lh', 'rh'].forEach(handId => {
-      if (Object.keys(this._satEls[handId]).length) return // double-init guard, matches _buildAllPads
-      this._buildSatelliteCluster(handId)
-    })
+    Object.keys(PAD_CONFIGS)
+      .filter(id => PAD_CONFIGS[id].movable)
+      .forEach(handId => {
+        if (Object.keys(this._satEls[handId]).length) return // double-init guard, matches _buildAllPads
+        this._buildSatelliteCluster(handId)
+      })
   }
 
   _buildSatelliteCluster (handId) {
@@ -732,9 +772,12 @@ export default class MovementPad {
       el.innerHTML = `<span class="sat-glyph">${spec.glyph}</span>`
       if (role === 'release') el.addEventListener('click', () => this._toggleDetach(handId))
       if (role === 'dash' && handId === 'lh') el.addEventListener('click', () => this.toggleDash())
-      // RH's own Dash slot exists for visual mirror symmetry only — dash
-      // is specifically an LH (WASD) speed modifier, not a real RH
-      // control, so it stays inert there (no handler, reads as reserved).
+      // RH/OmniHand/ConsciousHand's own Dash slots exist for visual
+      // mirror symmetry only — dash is specifically an LH (WASD) speed
+      // modifier, not a real control on any other hand, so they stay
+      // inert (no handler, read as reserved). Release, by contrast, is
+      // wired for every movable hand — full parity is the whole point
+      // of giving OmniHand/ConsciousHand real pads at all.
       shell.appendChild(el)
       this._satEls[handId][role] = el
       if (role === 'dash' && handId === 'lh') this._dashButtonEl = el
@@ -829,10 +872,12 @@ export default class MovementPad {
 
   _persistDetachState () {
     try {
-      const data = {
-        lh: { detached: this._detached.lh, offset: this._detachOffset.lh },
-        rh: { detached: this._detached.rh, offset: this._detachOffset.rh },
-      }
+      const data = {}
+      Object.keys(PAD_CONFIGS)
+        .filter(id => PAD_CONFIGS[id].movable)
+        .forEach(handId => {
+          data[handId] = { detached: this._detached[handId], offset: this._detachOffset[handId] }
+        })
       localStorage.setItem('omni:movementpad:detach', JSON.stringify(data))
     } catch (_) {}
   }
@@ -840,20 +885,24 @@ export default class MovementPad {
   /** Reload-persistent by direct request; a different user/machine
    *  starts docked since this is plain localStorage, nothing extra
    *  needed for that half of the ask. Cross-everything save is the
-   *  future OmniCustomLayout feature, not this. */
+   *  future OmniCustomLayout feature, not this. Now covers all four
+   *  movable hands, not just LH/RH, now that OmniHand/ConsciousHand
+   *  are real, detachable pads too. */
   _restoreDetachState () {
     let data = null
     try {
       data = JSON.parse(localStorage.getItem('omni:movementpad:detach') ?? 'null')
     } catch (_) { data = null }
     if (!data) return
-    ;['lh', 'rh'].forEach(handId => {
-      const saved = data[handId]
-      if (!saved?.detached) return
-      this._detachOffset[handId] = saved.offset ?? { x: 0, y: 0 }
-      this._setDetached(handId, true, false)
-      gsap.set(this._groupEls(handId), { x: this._detachOffset[handId].x, y: this._detachOffset[handId].y })
-    })
+    Object.keys(PAD_CONFIGS)
+      .filter(id => PAD_CONFIGS[id].movable)
+      .forEach(handId => {
+        const saved = data[handId]
+        if (!saved?.detached) return
+        this._detachOffset[handId] = saved.offset ?? { x: 0, y: 0 }
+        this._setDetached(handId, true, false)
+        gsap.set(this._groupEls(handId), { x: this._detachOffset[handId].x, y: this._detachOffset[handId].y })
+      })
   }
 
   _buildPad (handId) {
@@ -961,9 +1010,19 @@ export default class MovementPad {
     lbl.className   = 'pad-keys-label'
     lbl.textContent = 'KB'
     strip.appendChild(lbl)
-    const isRH = handId === 'rh'
-    const keys = isRH ? ['R', 'F'] : ['W', 'A', 'S', 'D']
-    const dirs = isRH ? ['up', 'down'] : ['up', 'left', 'down', 'right']
+    // Keyed by PAD_CONFIGS[handId].keyboard — one entry per real
+    // keyboard scheme this pad responds to (see _mapKey for the
+    // matching e.code bindings). OmniHand/ConsciousHand's own schemes
+    // use free Numpad keys, since Numpad1-4 are already the app's
+    // hand-menu shortcuts (main.js's HAND_KEY_BINDINGS).
+    const HINTS = {
+      wasd:            { keys: ['W', 'A', 'S', 'D'], dirs: ['up', 'left', 'down', 'right'] },
+      rf:              { keys: ['R', 'F'],           dirs: ['up', 'down'] },
+      'omnihand-move': { keys: ['/', '*', '-', '+'], dirs: ['up', 'down', 'left', 'right'] },
+      'conscious-nav': { keys: ['N7', 'N9'],         dirs: ['up', 'down'] },
+    }
+    const hint = HINTS[PAD_CONFIGS[handId].keyboard] ?? { keys: [], dirs: [] }
+    const { keys, dirs } = hint
     this._keyEls[handId] = {}
     keys.forEach((k, i) => {
       const span = document.createElement('span')
@@ -987,6 +1046,7 @@ export default class MovementPad {
       { opacity: 1, scale: 1, duration: 0.24, ease: 'back.out(1.8)',
         onComplete () { el.style.transform = '' } }
     )
+    this._animateSatellitesIn(handId)
   }
 
   _animateOut (handId) {
@@ -1001,6 +1061,42 @@ export default class MovementPad {
         if (this._pressed[handId]) DIRS.forEach(d => this._setPressed(handId, d, false, true))
       }
     })
+    this._animateSatellitesOut(handId)
+  }
+
+  /** Satellites (Release/Dash/reserved) now come out and retract WITH
+   *  their own pad — direct request: "put it so that the 3 buttons...
+   *  come out when the movement pads come out." Same fromTo/to shape
+   *  and timing as the pad's own _animateIn/_animateOut, just applied
+   *  to each satellite button individually since they're independent
+   *  top-level elements, not children of the pad. The reserved/
+   *  "undefined" slot settles at its own dimmed 0.30 opacity instead
+   *  of 1 — matching `.omni-pad-sat--undefined`'s existing look — and
+   *  never gets pointer-events, same as it always has. */
+  _animateSatellitesIn (handId) {
+    const group = this._satEls[handId] ?? {}
+    Object.entries(group).forEach(([role, sat]) => {
+      if (!sat) return
+      gsap.killTweensOf(sat)
+      if (role !== 'undefined') sat.style.pointerEvents = 'auto'
+      const targetOpacity = role === 'undefined' ? 0.30 : 1
+      gsap.fromTo(sat,
+        { opacity: 0, scale: 0.80 },
+        { opacity: targetOpacity, scale: 1, duration: 0.22, ease: 'back.out(1.8)' }
+      )
+    })
+  }
+
+  _animateSatellitesOut (handId) {
+    const group = this._satEls[handId] ?? {}
+    Object.values(group).forEach(sat => {
+      if (!sat) return
+      gsap.killTweensOf(sat)
+      gsap.to(sat, {
+        opacity: 0, scale: 0.82, duration: 0.16, ease: 'power2.in',
+        onComplete: () => { sat.style.pointerEvents = 'none' }
+      })
+    })
   }
 
   // ── Press state ─────────────────────────────────────────────────────────────
@@ -1014,17 +1110,24 @@ export default class MovementPad {
     this._keyEls[handId]?.[dir]?.classList.toggle('is-active',  active)
     if (!silent) {
       window.dispatchEvent(new CustomEvent('omni:movement', {
-        detail: { hand: handId, direction: dir, active, mode: handId === 'rh' ? 'nav' : 'wasd' }
+        detail: { hand: handId, direction: dir, active, mode: (handId === 'rh' || handId === 'conscious') ? 'nav' : 'wasd' }
       }))
     }
   }
 
   // ── Camera movement ─────────────────────────────────────────────────────────
 
-  _applyLHMovement (cam, delta) {
-    const p = this._pressed.lh
+  /** LH's own translate-move logic, now parameterized by handId so
+   *  OmniHand (mirroring LH, per direct request) runs through the
+   *  exact same real implementation rather than a duplicated copy.
+   *  Dash stays an LH-exclusive modifier either way — only applied
+   *  when handId is actually 'lh' — since OmniHand's own Dash
+   *  satellite button is deliberately left inert, same as RH's. */
+  _applyTranslateMovement (cam, delta, handId) {
+    const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
-    const speed = MOVE_SPEED * this._moveSpeedMultiplier * (this._dashActive ? this._dashMultiplier : 1) * delta
+    const dashMult = handId === 'lh' && this._dashActive ? this._dashMultiplier : 1
+    const speed = MOVE_SPEED * this._moveSpeedMultiplier * dashMult * delta
     cam.getWorldDirection(this._v3fwd)
     this._v3fwd.y = 0
 
@@ -1053,8 +1156,11 @@ export default class MovementPad {
     if (p.left)  cam.position.addScaledVector(this._v3right, -speed)
   }
 
-  _applyRHMovement (cam, delta) {
-    const p = this._pressed.rh
+  /** RH's own altitude+yaw logic, now parameterized by handId so
+   *  ConsciousHand (mirroring RH, per direct request) runs through
+   *  the exact same real implementation rather than a duplicated copy. */
+  _applyNavMovement (cam, delta, handId) {
+    const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
 
     if (p.up)   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier * delta
@@ -1108,6 +1214,18 @@ export default class MovementPad {
       case 'ArrowDown':  return { handId: 'rh', dir: 'down'  }
       case 'ArrowLeft':  return { handId: 'rh', dir: 'left'  }
       case 'ArrowRight': return { handId: 'rh', dir: 'right' }
+      // OmniHand (mirrors LH's 4-direction MOVE) — the numpad's own
+      // operator row, deliberately NOT Numpad1-4 (those are already
+      // main.js's HAND_KEY_BINDINGS for opening the hand menus).
+      case 'NumpadDivide':   return { handId: 'omnihand', dir: 'up'    }
+      case 'NumpadMultiply': return { handId: 'omnihand', dir: 'down'  }
+      case 'NumpadSubtract': return { handId: 'omnihand', dir: 'left'  }
+      case 'NumpadAdd':      return { handId: 'omnihand', dir: 'right' }
+      // ConsciousHand (mirrors RH's 2-direction altitude-only NAV —
+      // RH's own R/F binds only up/down too, left/right orbit stays
+      // mouse/pad-only on both). Numpad7/9 — also free.
+      case 'Numpad7': return { handId: 'conscious', dir: 'up'   }
+      case 'Numpad9': return { handId: 'conscious', dir: 'down' }
       default:     return null
     }
   }

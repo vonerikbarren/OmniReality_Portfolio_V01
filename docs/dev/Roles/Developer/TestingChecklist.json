@@ -593,6 +593,64 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniHand / ConsciousHand movement pads (V150)",
+      "items": [
+        {
+          "feature": "OmniHand (top-left) is a real MOVE pad",
+          "howToReach": "Click OmniHand's own \u2687 button (top-left corner), or press Numpad / * - +",
+          "whatToCheck": "A real cross with FWD/BCK/STR-L/STR-R appears (not a dimmed TBD cross); clicking or pressing the numpad operator keys translates the camera, mirroring LH's WASD feel",
+          "tested": false
+        },
+        {
+          "feature": "ConsciousHand (top-right) is a real NAV pad",
+          "howToReach": "Click ConsciousHand's own \u2687 button (top-right corner), or press Numpad7/Numpad9",
+          "whatToCheck": "A real cross with RISE/FALL/ORB-L/ORB-R appears; Numpad7/9 move altitude up/down, left/right pad buttons orbit-yaw, mirroring RH's R/F feel",
+          "tested": false
+        },
+        {
+          "feature": "Satellite clusters on both new pads",
+          "howToReach": "Look at the rim of OmniHand/ConsciousHand's pads once visible",
+          "whatToCheck": "Release button works (detach/re-dock, same as LH/RH); Dash button is present but visually inert (reserved) on both, same as RH already was",
+          "tested": false
+        },
+        {
+          "feature": "Radial Tool menu content now mirrors LH/RH",
+          "howToReach": "Open OmniHand's Tool radial (page \u27d02) and compare to LH's; same for ConsciousHand vs RH",
+          "whatToCheck": "OmniHand's tool list matches LH's (Translate3D, Rotate3D, Scale3D, ...); ConsciousHand's matches RH's (ColorShift, MaterialMorph, ...)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Radial/pad stacking + satellite visibility tie-in (V151)",
+      "items": [
+        {
+          "feature": "Tool radial menu visible over an open pad",
+          "howToReach": "Toggle OmniHand's pad on (\u2687 button or numpad keys), then open OmniHand's own Tool radial (\u27d02 page); repeat for ConsciousHand, and spot-check LH/RH too",
+          "whatToCheck": "The radial popup renders ON TOP of the pad, fully visible and clickable, not hidden behind it",
+          "tested": false
+        },
+        {
+          "feature": "Satellites fade in with their pad",
+          "howToReach": "Toggle any of the 4 hands' pads on from fully closed",
+          "whatToCheck": "Release + Dash/reserved satellite buttons fade in together with the pad, not already sitting there beforehand",
+          "tested": false
+        },
+        {
+          "feature": "Satellites fade out with their pad",
+          "howToReach": "Toggle a pad off while it's open",
+          "whatToCheck": "Satellites fade out together with the pad, not left floating on screen after the pad disappears",
+          "tested": false
+        },
+        {
+          "feature": "LH's 3 satellite buttons present and working",
+          "howToReach": "Toggle LH's pad on",
+          "whatToCheck": "Release, Dash, and the reserved slot all appear on LH's rim and are clickable (Release detaches, Dash toggles speed boost)",
+          "tested": false
+        }
+      ]
     }
   ]
 }
