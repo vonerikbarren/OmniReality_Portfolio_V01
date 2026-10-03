@@ -43,6 +43,8 @@ const STORAGE_KEY = 'omni:quicklauncher:pos'
 const SIZE = 48
 const RING_R = 56
 const DRAG_THRESHOLD_SQ = 36 // ~6px — below this, a pointerup is a click, not a drag
+const DOCK_H = 52 // px — matches Dock.js's own DOCK_H; kept as a local copy, same
+                   // pattern MovementPad.js already uses for this same constant
 
 const TOOLS = [
   { id: 'keyboard', label: 'Keyboard', glyph: '⌨', event: 'omni:cryptx-keyboard-toggle' },
@@ -65,6 +67,14 @@ const STYLES = /* css */`
   font-family      : 'Courier New', Courier, monospace;
   cursor           : grab;
   z-index          : 56;
+  /* Real fix (bug-squash pass) — #omni-ui (this element's shell parent)
+     sets pointer-events:none on itself so the canvas stays interactive
+     through it; every interactive child must explicitly opt back in,
+     same established pattern as RadialMenu's .radial-item and
+     MovementPad's .omni-pad-sat. This element never did, so it never
+     received a single pointerdown — confirmed root cause of "the ⟐
+     symbol at the top really doesnt do anything." */
+  pointer-events   : auto;
   user-select      : none;
   -webkit-user-select: none;
   touch-action     : none;
@@ -174,12 +184,17 @@ export default class OmniQuickLauncher {
     this._el = el
   }
 
-  // ── Default position — clear of the four Hand corners and both
-  //    movement pads, so it never spawns on top of something else the
-  //    first time an app loads with no saved position yet. ──────────────
+  // ── Default position — dead-center of the bottom Dock, "kind of like
+  //    apple's hold-home-button on their legacy phones" (direct request).
+  //    Clear of the four Hand corners and both movement pads either way,
+  //    so it never spawns on top of something else the first time an app
+  //    loads with no saved position yet. ──────────────────────────────
 
   _defaultPosition () {
-    return { x: window.innerWidth / 2 - SIZE / 2, y: 90 }
+    return {
+      x: window.innerWidth / 2 - SIZE / 2,
+      y: window.innerHeight - DOCK_H / 2 - SIZE / 2,
+    }
   }
 
   _restorePosition () {

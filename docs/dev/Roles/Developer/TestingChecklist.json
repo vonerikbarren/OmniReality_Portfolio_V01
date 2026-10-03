@@ -1,17 +1,17 @@
 {
-  "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
+  "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere \u2014 fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
       "category": "Core Navigation & UI",
       "items": [
         {
-          "feature": "Left Drawer — the top-left menu, all OmniProducts",
+          "feature": "Left Drawer \u2014 the top-left menu, all OmniProducts",
           "howToReach": "Click the top-left drawer handle",
           "whatToCheck": "OmniDraw, OmniChat, OmniTranslator, OmniSystem*, OmniMixer, OmniPocket, OmniNavi all listed and clickable",
           "tested": false
         },
         {
-          "feature": "GlobalBar — Assistance menu",
+          "feature": "GlobalBar \u2014 Assistance menu",
           "howToReach": "Top bar, Assistance category",
           "whatToCheck": "Keyboard Shortcuts panel opens, list is accurate (includes 't' for OmniTranslator)",
           "tested": false
@@ -24,165 +24,574 @@
         },
         {
           "feature": "OmniStartHUD quadrant maximize",
-          "howToReach": "Open the Start Menu HUD, hover a quadrant, click its maximize (⛶) button",
+          "howToReach": "Open the Start Menu HUD, hover a quadrant, click its maximize (\u26f6) button",
           "whatToCheck": "That quadrant fills the whole HUD container (not full browser), other three hide, click again restores all four",
           "tested": false
         }
       ]
     },
     {
-      "category": "OmniDraw — all modes",
+      "category": "OmniDraw \u2014 all modes",
       "items": [
-        { "feature": "Static mode", "howToReach": "Press 'n', pick Static", "whatToCheck": "Live shape preview, spawns a real node", "tested": false },
-        { "feature": "Dynamic mode", "howToReach": "Press 'n', pick Dynamic", "whatToCheck": "Real ticker/dynamic text node spawns", "tested": false },
-        { "feature": "Jsonifier mode + themes", "howToReach": "Press 'n', pick Jsonifier", "whatToCheck": "Theme picker (black/white/grey) affects spawned node color by depth; classification via a real '_classification' key in your JSON produces a colored highlight ring (green=truth, red=false, none=neutral)", "tested": false },
-        { "feature": "OmniCell mode", "howToReach": "Press 'n', pick OmniCell", "whatToCheck": "Standalone creation panel works", "tested": false },
-        { "feature": "Chat mode", "howToReach": "Press 'n', pick Chat", "whatToCheck": "OmniChat opens with Text/JSON/Terminal tabs", "tested": false },
-        { "feature": "Log mode", "howToReach": "Press 'n', pick Log", "whatToCheck": "OmniLog editor opens; try the Lorem Ipsum button in the page-options area to force multiple real pages; RGBA color picker affects the actual page background", "tested": false }
+        {
+          "feature": "Static mode",
+          "howToReach": "Press 'n', pick Static",
+          "whatToCheck": "Live shape preview, spawns a real node",
+          "tested": false
+        },
+        {
+          "feature": "Dynamic mode",
+          "howToReach": "Press 'n', pick Dynamic",
+          "whatToCheck": "Real ticker/dynamic text node spawns",
+          "tested": false
+        },
+        {
+          "feature": "Jsonifier mode + themes",
+          "howToReach": "Press 'n', pick Jsonifier",
+          "whatToCheck": "Theme picker (black/white/grey) affects spawned node color by depth; classification via a real '_classification' key in your JSON produces a colored highlight ring (green=truth, red=false, none=neutral)",
+          "tested": false
+        },
+        {
+          "feature": "OmniCell mode",
+          "howToReach": "Press 'n', pick OmniCell",
+          "whatToCheck": "Standalone creation panel works",
+          "tested": false
+        },
+        {
+          "feature": "Chat mode",
+          "howToReach": "Press 'n', pick Chat",
+          "whatToCheck": "OmniChat opens with Text/JSON/Terminal tabs",
+          "tested": false
+        },
+        {
+          "feature": "Log mode",
+          "howToReach": "Press 'n', pick Log",
+          "whatToCheck": "OmniLog editor opens; try the Lorem Ipsum button in the page-options area to force multiple real pages; RGBA color picker affects the actual page background",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniLog specifics",
       "items": [
-        { "feature": "Number fields next to sliders", "howToReach": "OmniLog editor, transform section", "whatToCheck": "Typing an exact number in the field updates the matching slider and vice versa", "tested": false },
-        { "feature": "Universal Edit action", "howToReach": "Right-click any node, including an existing OmniLog page", "whatToCheck": "On a regular node: opens Inspector. On an OmniLog entry: reopens the actual editor pre-filled, and resubmitting updates the same entry rather than creating a duplicate", "tested": false }
+        {
+          "feature": "Number fields next to sliders",
+          "howToReach": "OmniLog editor, transform section",
+          "whatToCheck": "Typing an exact number in the field updates the matching slider and vice versa",
+          "tested": false
+        },
+        {
+          "feature": "Universal Edit action",
+          "howToReach": "Right-click any node, including an existing OmniLog page",
+          "whatToCheck": "On a regular node: opens Inspector. On an OmniLog entry: reopens the actual editor pre-filled, and resubmitting updates the same entry rather than creating a duplicate",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniPocket",
       "items": [
-        { "feature": "PocketThis⟐", "howToReach": "Right-click any node's quick menu", "whatToCheck": "Node disappears from scene, appears in OmniPocket panel", "tested": false },
-        { "feature": "Q2 pocket manager", "howToReach": "Open Start Menu HUD, Q2 (top-right)", "whatToCheck": "Header shows hovered item's title; drag to reorder persists; preview button shows JSON tree/data/dynamic string depending on node type; Take Out reinstates the node live", "tested": false }
+        {
+          "feature": "PocketThis\u27d0",
+          "howToReach": "Right-click any node's quick menu",
+          "whatToCheck": "Node disappears from scene, appears in OmniPocket panel",
+          "tested": false
+        },
+        {
+          "feature": "Q2 pocket manager",
+          "howToReach": "Open Start Menu HUD, Q2 (top-right)",
+          "whatToCheck": "Header shows hovered item's title; drag to reorder persists; preview button shows JSON tree/data/dynamic string depending on node type; Take Out reinstates the node live",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniTranslator",
       "items": [
-        { "feature": "Vault positioning", "howToReach": "Press 't'", "whatToCheck": "Left/Right vaults sit in the real gap between the top and bottom Hand corners, not overlapping the Start Menu", "tested": false },
-        { "feature": "Add to Translator", "howToReach": "Right-click any OmniDraw element's quick menu", "whatToCheck": "Vault picker sub-menu adds the item to the chosen side", "tested": false }
+        {
+          "feature": "Vault positioning",
+          "howToReach": "Press 't'",
+          "whatToCheck": "Left/Right vaults sit in the real gap between the top and bottom Hand corners, not overlapping the Start Menu",
+          "tested": false
+        },
+        {
+          "feature": "Add to Translator",
+          "howToReach": "Right-click any OmniDraw element's quick menu",
+          "whatToCheck": "Vault picker sub-menu adds the item to the chosen side",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniRealityGridSelector & PointSelector (Admin-only)",
       "items": [
-        { "feature": "Cell selector", "howToReach": "Admin panel, slot 12", "whatToCheck": "Start Selecting, click floor cells, they highlight white with yellow outline; Save Context creates a real, listed, loadable named context with an in-scene grid wireframe boundary", "tested": false },
-        { "feature": "Point selector", "howToReach": "Admin panel, slot 14", "whatToCheck": "Points snap to grid vertices, not cell centers; nexus label shows world position + cell index; local subdivision densifies just one cell; raising a wall on north/south/east/west grows a real vertical grid from that edge", "tested": false }
+        {
+          "feature": "Cell selector",
+          "howToReach": "Admin panel, slot 12",
+          "whatToCheck": "Start Selecting, click floor cells, they highlight white with yellow outline; Save Context creates a real, listed, loadable named context with an in-scene grid wireframe boundary",
+          "tested": false
+        },
+        {
+          "feature": "Point selector",
+          "howToReach": "Admin panel, slot 14",
+          "whatToCheck": "Points snap to grid vertices, not cell centers; nexus label shows world position + cell index; local subdivision densifies just one cell; raising a wall on north/south/east/west grows a real vertical grid from that edge",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniVerticalMeter",
       "items": [
-        { "feature": "Altitude readout", "howToReach": "Admin panel, slot 13", "whatToCheck": "Marker position and number update live as you change camera height", "tested": false }
+        {
+          "feature": "Altitude readout",
+          "howToReach": "Admin panel, slot 13",
+          "whatToCheck": "Marker position and number update live as you change camera height",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Q4 Minimap",
       "items": [
-        { "feature": "Real, live minimap", "howToReach": "Open Start Menu HUD, Q4 (bottom-right)", "whatToCheck": "Shows real node dots, the landing-point marker, and staged grid contexts as yellow regions, all scaled to fit whatever actually exists", "tested": false },
-        { "feature": "Click-to-fast-travel", "howToReach": "Click anywhere on the Q4 minimap", "whatToCheck": "Camera flies to that real world location", "tested": false }
+        {
+          "feature": "Real, live minimap",
+          "howToReach": "Open Start Menu HUD, Q4 (bottom-right)",
+          "whatToCheck": "Shows real node dots, the landing-point marker, and staged grid contexts as yellow regions, all scaled to fit whatever actually exists",
+          "tested": false
+        },
+        {
+          "feature": "Click-to-fast-travel",
+          "howToReach": "Click anywhere on the Q4 minimap",
+          "whatToCheck": "Camera flies to that real world location",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Developer Menu (above Admin)",
       "items": [
-        { "feature": "OmniCommandTerminal — Dev01", "howToReach": "Developer menu, slot 1", "whatToCheck": "Try ⟐help, ⟐ls, ⟐create BoxGeometry test, ⟐cd <id>, ⟐inspect, ⟐present, ⟐pocket — typing without the leading ⟐ still works", "tested": false },
-        { "feature": "OmniProgram — Dev02", "howToReach": "Developer menu, slot 2, or ⟐OmniNavi in the Left Drawer", "whatToCheck": "Building spawns a real OmniBotProgram with cube head, embedded panel, sphere body, and a separate stateCommunicator sphere above the head; Basic tier idles with a continuous bob+spin", "tested": false },
-        { "feature": "OmniInputMonitor — Dev03", "howToReach": "Developer menu, slot 3", "whatToCheck": "Live camera position, orbit-enabled state, pressed directions", "tested": false },
-        { "feature": "Dev_FPS_Exp_ListOfEmotions — Dev04", "howToReach": "Developer menu, slot 4", "whatToCheck": "Every one of the 13 emotion buttons visibly changes the camera-attached particles' color and motion; standing still vs. moving changes Normal Walking/Dash density", "tested": false }
+        {
+          "feature": "OmniCommandTerminal \u2014 Dev01",
+          "howToReach": "Developer menu, slot 1",
+          "whatToCheck": "Try \u27d0help, \u27d0ls, \u27d0create BoxGeometry test, \u27d0cd <id>, \u27d0inspect, \u27d0present, \u27d0pocket \u2014 typing without the leading \u27d0 still works",
+          "tested": false
+        },
+        {
+          "feature": "OmniProgram \u2014 Dev02",
+          "howToReach": "Developer menu, slot 2, or \u27d0OmniNavi in the Left Drawer",
+          "whatToCheck": "Building spawns a real OmniBotProgram with cube head, embedded panel, sphere body, and a separate stateCommunicator sphere above the head; Basic tier idles with a continuous bob+spin",
+          "tested": false
+        },
+        {
+          "feature": "OmniInputMonitor \u2014 Dev03",
+          "howToReach": "Developer menu, slot 3",
+          "whatToCheck": "Live camera position, orbit-enabled state, pressed directions",
+          "tested": false
+        },
+        {
+          "feature": "Dev_FPS_Exp_ListOfEmotions \u2014 Dev04",
+          "howToReach": "Developer menu, slot 4",
+          "whatToCheck": "Every one of the 13 emotion buttons visibly changes the camera-attached particles' color and motion; standing still vs. moving changes Normal Walking/Dash density",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniHand (just activated)",
       "items": [
-        { "feature": "All four hands visible", "howToReach": "Look at all four screen corners", "whatToCheck": "omnihand (TL), conscious (TR), lh (BL), rh (BR) all render with their real hamburger/pad/orbiter/radial cells", "tested": false }
+        {
+          "feature": "All four hands visible",
+          "howToReach": "Look at all four screen corners",
+          "whatToCheck": "omnihand (TL), conscious (TR), lh (BL), rh (BR) all render with their real hamburger/pad/orbiter/radial cells",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniChronos (just fixed)",
       "items": [
-        { "feature": "White-disc fix", "howToReach": "Enable OmniChronos, look into the RootSpace tunnel", "whatToCheck": "The traveling reality-node disc should be invisible until a real texture/video is actually set on it — no more opaque white circle by default", "tested": false }
+        {
+          "feature": "White-disc fix",
+          "howToReach": "Enable OmniChronos, look into the RootSpace tunnel",
+          "whatToCheck": "The traveling reality-node disc should be invisible until a real texture/video is actually set on it \u2014 no more opaque white circle by default",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Admin (below Developer)",
       "items": [
-        { "feature": "WallpaperSettings / TerminalSettings / reset action", "howToReach": "Admin panel, various slots", "whatToCheck": "Each opens its real panel", "tested": false }
+        {
+          "feature": "WallpaperSettings / TerminalSettings / reset action",
+          "howToReach": "Admin panel, various slots",
+          "whatToCheck": "Each opens its real panel",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Sequence Node (V146)",
       "items": [
-        { "feature": "Sequence toggle + camera mode", "howToReach": "Select any non-group node, open Inspector", "whatToCheck": "A Sequence Node toggle and a Focus/Free camera-mode select appear; toggling on wireframes the node once as a first-time default", "tested": false },
-        { "feature": "Single outgoing sequence edge", "howToReach": "Connect a Sequence Node to a second target node via a new sequence edge", "whatToCheck": "The old outgoing sequence edge is automatically removed — a Sequence Node never has two", "tested": false },
-        { "feature": "OmniPresenter auto-chain-walk", "howToReach": "Build a short chain of Sequence Nodes, open OmniPresenter", "whatToCheck": "It finds the true head of the chain and walks it in order, matching the amber/dashed sequence edges, not the generic path system", "tested": false },
-        { "feature": "Focus vs Free camera mode on arrival", "howToReach": "Set one chain node to Focus, another to Free, run the Presenter through both", "whatToCheck": "Focus mode does NOT re-enable orbit on arrival (camera stays locked on the node); Free mode does", "tested": false },
-        { "feature": "OmniDraw export carries Sequence fields", "howToReach": "OmniDraw, set isSequenceNode + cameraMode, Export to Scene", "whatToCheck": "The spawned real node has both fields set correctly, not defaulted", "tested": false }
+        {
+          "feature": "Sequence toggle + camera mode",
+          "howToReach": "Select any non-group node, open Inspector",
+          "whatToCheck": "A Sequence Node toggle and a Focus/Free camera-mode select appear; toggling on wireframes the node once as a first-time default",
+          "tested": false
+        },
+        {
+          "feature": "Single outgoing sequence edge",
+          "howToReach": "Connect a Sequence Node to a second target node via a new sequence edge",
+          "whatToCheck": "The old outgoing sequence edge is automatically removed \u2014 a Sequence Node never has two",
+          "tested": false
+        },
+        {
+          "feature": "OmniPresenter auto-chain-walk",
+          "howToReach": "Build a short chain of Sequence Nodes, open OmniPresenter",
+          "whatToCheck": "It finds the true head of the chain and walks it in order, matching the amber/dashed sequence edges, not the generic path system",
+          "tested": false
+        },
+        {
+          "feature": "Focus vs Free camera mode on arrival",
+          "howToReach": "Set one chain node to Focus, another to Free, run the Presenter through both",
+          "whatToCheck": "Focus mode does NOT re-enable orbit on arrival (camera stays locked on the node); Free mode does",
+          "tested": false
+        },
+        {
+          "feature": "OmniDraw export carries Sequence fields",
+          "howToReach": "OmniDraw, set isSequenceNode + cameraMode, Export to Scene",
+          "whatToCheck": "The spawned real node has both fields set correctly, not defaulted",
+          "tested": false
+        }
       ]
     },
     {
       "category": "MiniMap Settings toggle",
       "items": [
-        { "feature": "Live MiniMap Visible toggle", "howToReach": "Map Settings panel, new 'MiniMap Visible' row (above 'Visible on Start')", "whatToCheck": "Toggling it immediately shows/hides the live minimap, distinct from 'Visible on Start' which only affects next launch", "tested": false },
-        { "feature": "Checkbox stays synced", "howToReach": "With Map Settings open, toggle the minimap via the 'm' key instead of the panel", "whatToCheck": "The panel's checkbox updates to match, not left stale", "tested": false }
+        {
+          "feature": "Live MiniMap Visible toggle",
+          "howToReach": "Map Settings panel, new 'MiniMap Visible' row (above 'Visible on Start')",
+          "whatToCheck": "Toggling it immediately shows/hides the live minimap, distinct from 'Visible on Start' which only affects next launch",
+          "tested": false
+        },
+        {
+          "feature": "Checkbox stays synced",
+          "howToReach": "With Map Settings open, toggle the minimap via the 'm' key instead of the panel",
+          "whatToCheck": "The panel's checkbox updates to match, not left stale",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniDraw appearance-flags export fix",
       "items": [
-        { "feature": "Wireframe/alpha/material survive export", "howToReach": "OmniDraw, set Wireframe on, Alpha below 1, a non-default Material type, then Export to Scene", "whatToCheck": "The real spawned node reflects all three — previously these were silently dropped on export (preview-only bug), only the embedded preview mesh showed them", "tested": false },
-        { "feature": "Survives a reload", "howToReach": "Reload the page after exporting a node with those flags set", "whatToCheck": "Restore path re-applies the same flags via the shared _applyAppearanceFlags helper — no drift between fresh creation and restore", "tested": false }
+        {
+          "feature": "Wireframe/alpha/material survive export",
+          "howToReach": "OmniDraw, set Wireframe on, Alpha below 1, a non-default Material type, then Export to Scene",
+          "whatToCheck": "The real spawned node reflects all three \u2014 previously these were silently dropped on export (preview-only bug), only the embedded preview mesh showed them",
+          "tested": false
+        },
+        {
+          "feature": "Survives a reload",
+          "howToReach": "Reload the page after exporting a node with those flags set",
+          "whatToCheck": "Restore path re-applies the same flags via the shared _applyAppearanceFlags helper \u2014 no drift between fresh creation and restore",
+          "tested": false
+        }
       ]
     },
     {
       "category": "OmniPanelTray (replaces the old minimize orb)",
       "items": [
-        { "feature": "Dock toggle opens/closes the Tray", "howToReach": "Click the ▲ button in the Dock's right wing", "whatToCheck": "Tray slides open/closed; button shows an active state while open", "tested": false },
-        { "feature": "Minimize lands in the Tray", "howToReach": "Minimize any panel", "whatToCheck": "A titled tab appears in the Tray's row 1", "tested": false },
-        { "feature": "Restore actually works (real bug fix)", "howToReach": "Minimize OmniChronos, OmniKeys, or AdminPanel specifically — these never had a working restore before this build — then click their Tray tab", "whatToCheck": "The panel genuinely reappears and comes to front; previously only ~5 of 40+ panels could be restored at all", "tested": false },
-        { "feature": "Orientation docking", "howToReach": "Header toolbar orientation buttons", "whatToCheck": "Tray re-docks cleanly to bottom/top/left/right with no inverted row order; below 560px width, left/right auto-fall back to bottom", "tested": false },
-        { "feature": "Expand/Collapse rows", "howToReach": "Header toolbar Expand/Collapse", "whatToCheck": "Reveals/hides row 2 then row 3 in order", "tested": false },
-        { "feature": "Drag-and-drop reorder (desktop)", "howToReach": "Drag a tab within or between rows", "whatToCheck": "Tab moves to the new position/row and stays there", "tested": false },
-        { "feature": "Context menu (mobile-equivalent path)", "howToReach": "Right-click (or long-press) a tab", "whatToCheck": "Maximize / Close / Move Left / Move Right / Move to Row N all work; 'Close' is non-destructive, same as the old orb's Dismiss, not a delete", "tested": false },
-        { "feature": "Filter / Sort / Search", "howToReach": "Header toolbar", "whatToCheck": "Filter cycles present ⟐ categories; Sort (Manual/Alphabetical/By Date/By ⟐) actually redistributes tabs across rows, row 1 filling first; Search matches by label substring", "tested": false },
-        { "feature": "Persistence across reload", "howToReach": "Set a non-default orientation/sort/header-visible state, reload the page", "whatToCheck": "Those three persist; the actual minimized-tab list intentionally does NOT persist (no panel tracks that as its own state yet) — stale tabs after reload would be the wrong behavior, not a bug", "tested": false }
+        {
+          "feature": "Dock toggle opens/closes the Tray",
+          "howToReach": "Click the \u25b2 button in the Dock's right wing",
+          "whatToCheck": "Tray slides open/closed; button shows an active state while open",
+          "tested": false
+        },
+        {
+          "feature": "Minimize lands in the Tray",
+          "howToReach": "Minimize any panel",
+          "whatToCheck": "A titled tab appears in the Tray's row 1",
+          "tested": false
+        },
+        {
+          "feature": "Restore actually works (real bug fix)",
+          "howToReach": "Minimize OmniChronos, OmniKeys, or AdminPanel specifically \u2014 these never had a working restore before this build \u2014 then click their Tray tab",
+          "whatToCheck": "The panel genuinely reappears and comes to front; previously only ~5 of 40+ panels could be restored at all",
+          "tested": false
+        },
+        {
+          "feature": "Orientation docking",
+          "howToReach": "Header toolbar orientation buttons",
+          "whatToCheck": "Tray re-docks cleanly to bottom/top/left/right with no inverted row order; below 560px width, left/right auto-fall back to bottom",
+          "tested": false
+        },
+        {
+          "feature": "Expand/Collapse rows",
+          "howToReach": "Header toolbar Expand/Collapse",
+          "whatToCheck": "Reveals/hides row 2 then row 3 in order",
+          "tested": false
+        },
+        {
+          "feature": "Drag-and-drop reorder (desktop)",
+          "howToReach": "Drag a tab within or between rows",
+          "whatToCheck": "Tab moves to the new position/row and stays there",
+          "tested": false
+        },
+        {
+          "feature": "Context menu (mobile-equivalent path)",
+          "howToReach": "Right-click (or long-press) a tab",
+          "whatToCheck": "Maximize / Close / Move Left / Move Right / Move to Row N all work; 'Close' is non-destructive, same as the old orb's Dismiss, not a delete",
+          "tested": false
+        },
+        {
+          "feature": "Filter / Sort / Search",
+          "howToReach": "Header toolbar",
+          "whatToCheck": "Filter cycles present \u27d0 categories; Sort (Manual/Alphabetical/By Date/By \u27d0) actually redistributes tabs across rows, row 1 filling first; Search matches by label substring",
+          "tested": false
+        },
+        {
+          "feature": "Persistence across reload",
+          "howToReach": "Set a non-default orientation/sort/header-visible state, reload the page",
+          "whatToCheck": "Those three persist; the actual minimized-tab list intentionally does NOT persist (no panel tracks that as its own state yet) \u2014 stale tabs after reload would be the wrong behavior, not a bug",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Orbit right-click panning (V147)",
       "items": [
-        { "feature": "Right-click-drag pans the camera", "howToReach": "Hold right mouse button on the 3D canvas and drag", "whatToCheck": "Camera pans (shifts what's centered), doesn't just rotate", "tested": false },
-        { "feature": "No stray node context menu after a pan", "howToReach": "Right-click-drag starting or ending over a node mesh", "whatToCheck": "The node's quick menu does NOT pop open just because the release happened to land on it — only a right-click with no real drag (<~6px) should open it", "tested": false }
+        {
+          "feature": "Right-click-drag pans the camera",
+          "howToReach": "Hold right mouse button on the 3D canvas and drag",
+          "whatToCheck": "Camera pans (shifts what's centered), doesn't just rotate",
+          "tested": false
+        },
+        {
+          "feature": "No stray node context menu after a pan",
+          "howToReach": "Right-click-drag starting or ending over a node mesh",
+          "whatToCheck": "The node's quick menu does NOT pop open just because the release happened to land on it \u2014 only a right-click with no real drag (<~6px) should open it",
+          "tested": false
+        }
       ]
     },
     {
       "category": "Detachable LH/RH movement pads (V147)",
       "items": [
-        { "feature": "Satellite cluster visible", "howToReach": "Look at the LH (bottom-left) and RH (bottom-right) movement pads", "whatToCheck": "3 small buttons on each pad's own rim — Release, Dash (⟫⟫), and a dimmed TBD slot; LH cluster in the lower-right arc of its circle, RH mirrored in the lower-left arc of its circle", "tested": false },
-        { "feature": "Release detaches the whole group", "howToReach": "Click Release on either pad", "whatToCheck": "The pad's cross AND its 3 satellites all become draggable together, dragged by the pad's own header text", "tested": false },
-        { "feature": "Release again re-docks it", "howToReach": "With a pad detached and dragged somewhere, click Release again", "whatToCheck": "The whole group animates back to its original corner", "tested": false },
-        { "feature": "Dash still works from its new spot", "howToReach": "Click the Dash button inside the LH satellite cluster", "whatToCheck": "LH (WASD) movement speed multiplies, same as before — only its position changed", "tested": false },
-        { "feature": "Detached position persists on reload", "howToReach": "Detach a pad, drag it, reload the page (same browser)", "whatToCheck": "It comes back detached, at the same position", "tested": false }
+        {
+          "feature": "Satellite cluster visible",
+          "howToReach": "Look at the LH (bottom-left) and RH (bottom-right) movement pads",
+          "whatToCheck": "3 small buttons on each pad's own rim \u2014 Release, Dash (\u27eb\u27eb), and a dimmed TBD slot; LH cluster in the lower-right arc of its circle, RH mirrored in the lower-left arc of its circle",
+          "tested": false
+        },
+        {
+          "feature": "Release detaches the whole group",
+          "howToReach": "Click Release on either pad",
+          "whatToCheck": "The pad's cross AND its 3 satellites all become draggable together, dragged by the pad's own header text",
+          "tested": false
+        },
+        {
+          "feature": "Release again re-docks it",
+          "howToReach": "With a pad detached and dragged somewhere, click Release again",
+          "whatToCheck": "The whole group animates back to its original corner",
+          "tested": false
+        },
+        {
+          "feature": "Dash still works from its new spot",
+          "howToReach": "Click the Dash button inside the LH satellite cluster",
+          "whatToCheck": "LH (WASD) movement speed multiplies, same as before \u2014 only its position changed",
+          "tested": false
+        },
+        {
+          "feature": "Detached position persists on reload",
+          "howToReach": "Detach a pad, drag it, reload the page (same browser)",
+          "whatToCheck": "It comes back detached, at the same position",
+          "tested": false
+        }
       ]
     },
     {
-      "category": "⟐ Quick Launcher (V147)",
+      "category": "\u27d0 Quick Launcher (V147)",
       "items": [
-        { "feature": "Draggable anywhere", "howToReach": "Drag the ⟐ icon (default: top-center)", "whatToCheck": "Moves freely, stays where dropped, persists across reload", "tested": false },
-        { "feature": "Click opens radial popup", "howToReach": "Click (don't drag) the ⟐ icon", "whatToCheck": "A small radial popup fans out near it with a '⌨ Keyboard' option", "tested": false },
-        { "feature": "⌨ Keyboard opens CryptxMode", "howToReach": "Click the Keyboard option in the popup", "whatToCheck": "The CryptxMode panel appears docked at the right edge, collapsed to its header", "tested": false }
+        {
+          "feature": "Draggable anywhere",
+          "howToReach": "Drag the \u27d0 icon (default: top-center)",
+          "whatToCheck": "Moves freely, stays where dropped, persists across reload",
+          "tested": false
+        },
+        {
+          "feature": "Click opens radial popup",
+          "howToReach": "Click (don't drag) the \u27d0 icon",
+          "whatToCheck": "A small radial popup fans out near it with a '\u2328 Keyboard' option",
+          "tested": false
+        },
+        {
+          "feature": "\u2328 Keyboard opens CryptxMode",
+          "howToReach": "Click the Keyboard option in the popup",
+          "whatToCheck": "The CryptxMode panel appears docked at the right edge, collapsed to its header",
+          "tested": false
+        }
       ]
     },
     {
       "category": "CryptxMode presentation keyboard (V147)",
       "items": [
-        { "feature": "Opens collapsed", "howToReach": "Open via the ⟐ Quick Launcher's Keyboard option", "whatToCheck": "Only the meta header is visible against the right edge, no columns yet", "tested": false },
-        { "feature": "MX Ergo top/bottom arrow reveals/retracts a column (keyboard open)", "howToReach": "With CryptxMode open, press the MX Ergo's dedicated top arrow button", "whatToCheck": "One more vertical column appears (Control first, then letter rows, then digits, then symbols), pulling the panel further left; the other arrow button retracts the most recent one", "tested": false },
-        { "feature": "Same buttons control height when keyboard is closed", "howToReach": "With CryptxMode closed, press the MX Ergo's top/bottom arrow buttons", "whatToCheck": "Camera rises/falls (same as pressing R/F), confirming the mode-scoped mapping actually switches", "tested": false },
-        { "feature": "Scroll wheel moves selection within the active column", "howToReach": "With at least one column revealed, scroll over the panel", "whatToCheck": "Highlight moves up/down within the most-recently-revealed column only, wrapping at the ends; the column auto-scrolls if the highlight goes off-screen", "tested": false },
-        { "feature": "Left click commits the character", "howToReach": "Click a highlighted or any character cell, with a real text input focused somewhere", "whatToCheck": "That character is actually typed into the focused input", "tested": false },
-        { "feature": "Right click retracts a column", "howToReach": "Right-click anywhere on the CryptxMode panel", "whatToCheck": "Retracts the most recently revealed column, same as the MX Ergo's retract button", "tested": false },
-        { "feature": "Middle click closes it", "howToReach": "Middle-click the CryptxMode panel", "whatToCheck": "Panel closes entirely", "tested": false },
-        { "feature": "Independent per-column scroll", "howToReach": "Reveal the Symbols column (6th reveal) on a short browser window", "whatToCheck": "That column scrolls on its own if taller than the panel, without affecting other revealed columns", "tested": false }
+        {
+          "feature": "Opens collapsed",
+          "howToReach": "Open via the \u27d0 Quick Launcher's Keyboard option",
+          "whatToCheck": "Only the meta header is visible against the right edge, no columns yet",
+          "tested": false
+        },
+        {
+          "feature": "MX Ergo top/bottom arrow reveals/retracts a column (keyboard open)",
+          "howToReach": "With CryptxMode open, press the MX Ergo's dedicated top arrow button",
+          "whatToCheck": "One more vertical column appears (Control first, then letter rows, then digits, then symbols), pulling the panel further left; the other arrow button retracts the most recent one",
+          "tested": false
+        },
+        {
+          "feature": "Same buttons control height when keyboard is closed",
+          "howToReach": "With CryptxMode closed, press the MX Ergo's top/bottom arrow buttons",
+          "whatToCheck": "Camera rises/falls (same as pressing R/F), confirming the mode-scoped mapping actually switches",
+          "tested": false
+        },
+        {
+          "feature": "Scroll wheel moves selection within the active column",
+          "howToReach": "With at least one column revealed, scroll over the panel",
+          "whatToCheck": "Highlight moves up/down within the most-recently-revealed column only, wrapping at the ends; the column auto-scrolls if the highlight goes off-screen",
+          "tested": false
+        },
+        {
+          "feature": "Left click commits the character",
+          "howToReach": "Click a highlighted or any character cell, with a real text input focused somewhere",
+          "whatToCheck": "That character is actually typed into the focused input",
+          "tested": false
+        },
+        {
+          "feature": "Right click retracts a column",
+          "howToReach": "Right-click anywhere on the CryptxMode panel",
+          "whatToCheck": "Retracts the most recently revealed column, same as the MX Ergo's retract button",
+          "tested": false
+        },
+        {
+          "feature": "Middle click closes it",
+          "howToReach": "Middle-click the CryptxMode panel",
+          "whatToCheck": "Panel closes entirely",
+          "tested": false
+        },
+        {
+          "feature": "Independent per-column scroll",
+          "howToReach": "Reveal the Symbols column (6th reveal) on a short browser window",
+          "whatToCheck": "That column scrolls on its own if taller than the panel, without affecting other revealed columns",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "\u27d0 Quick Launcher fix + reposition (V149)",
+      "items": [
+        {
+          "feature": "Launcher actually responds to clicks",
+          "howToReach": "Click the \u27d0 icon (now defaulting to the bottom Dock's dead-center, like a home button)",
+          "whatToCheck": "Radial popup with 'Keyboard' opens immediately on click; previously did nothing at all",
+          "tested": false
+        },
+        {
+          "feature": "Default position is Dock dead-center",
+          "howToReach": "Clear localStorage (or a fresh browser profile) and reload",
+          "whatToCheck": "\u27d0 icon spawns centered horizontally, vertically centered inside the bottom Dock bar \u2014 not floating near the top anymore",
+          "tested": false
+        },
+        {
+          "feature": "Still draggable, position still persists",
+          "howToReach": "Drag the launcher elsewhere, reload the page (same browser)",
+          "whatToCheck": "Launcher reopens at the dragged position, not snapping back to the Dock default",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "MovementPad satellite buttons fix (V149)",
+      "items": [
+        {
+          "feature": "Dash button lights up and actually speeds LH movement",
+          "howToReach": "Click the Dash satellite button on the LH pad, then move with WASD",
+          "whatToCheck": "Button glows bright/active immediately on click; LH movement speed visibly multiplies while active",
+          "tested": false
+        },
+        {
+          "feature": "Release button visibly shows detached state",
+          "howToReach": "Click the Release satellite button on either pad",
+          "whatToCheck": "Release button itself now glows/lights up (not just a subtle pad box-shadow change), header becomes grabbable, pad can be dragged anywhere",
+          "tested": false
+        },
+        {
+          "feature": "Release again re-docks the pad",
+          "howToReach": "With a pad detached and dragged elsewhere, click Release again",
+          "whatToCheck": "Pad (and its satellites) animate back to the original docked corner position, Release button un-lights",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "KryptxKeyboard entry in OmniKeys top menu (V149)",
+      "items": [
+        {
+          "feature": "KryptxKeyboard button opens CryptxMode",
+          "howToReach": "Open \u27d0OmniKeys, look at the top menu row (first button, before Edit/Delivery/Sequence/Command)",
+          "whatToCheck": "Clicking 'KryptxKeyboard' opens the CryptxMode vertical keyboard from the right edge, independent of whether the \u27d0 Quick Launcher works",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniMeter \u2014 consolidated spatial indicators (V149)",
+      "items": [
+        {
+          "feature": "All three indicators open together",
+          "howToReach": "Open OmniMeter from the nav drawer (replaces the old OmniVerticalMeter entry)",
+          "whatToCheck": "Vertical track (right edge), Horizontal track (top edge), and Depth line (top-to-center) all appear and their markers move as the camera moves on Y/X/Z respectively",
+          "tested": false
+        },
+        {
+          "feature": "Settings popover \u2014 per-axis show/hide",
+          "howToReach": "Click the small \u2699 button near the top-right",
+          "whatToCheck": "Unchecking an axis hides just that one indicator; the other two stay visible",
+          "tested": false
+        },
+        {
+          "feature": "Label style toggle",
+          "howToReach": "In the same settings popover, click the 'Labels:' button",
+          "whatToCheck": "Toggles between 'Horiz / Vert / Depth' and 'X / Y / Z' naming",
+          "tested": false
+        },
+        {
+          "feature": "Range feels bounded, not infinite",
+          "howToReach": "Fly the camera far along any axis",
+          "whatToCheck": "Marker clamps at the track's end around +/-525 from center rather than running off/disappearing",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Tracking nodes with afterimages (V149)",
+      "items": [
+        {
+          "feature": "Two nodes move and trail afterimages",
+          "howToReach": "Look for two glowing spheres moving through the scene",
+          "whatToCheck": "Each leaves a visible trail of fading/shrinking ghost copies behind it as it moves on X/Y/Z",
+          "tested": false
+        },
+        {
+          "feature": "Click locks the camera on, Zelda-style",
+          "howToReach": "Click directly on one of the moving nodes",
+          "whatToCheck": "Camera smoothly follows the node as it moves; the existing Z-Targeting reticle (tetrahedron markers) appears around it; OrbitControls stop responding to drag while locked",
+          "tested": false
+        },
+        {
+          "feature": "Click again (or click empty space) releases the lock",
+          "howToReach": "While locked on, click the same node again, or click empty space",
+          "whatToCheck": "Camera stops following, free orbit control returns, the targeting reticle disappears",
+          "tested": false
+        }
       ]
     }
   ]

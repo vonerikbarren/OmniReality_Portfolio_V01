@@ -407,6 +407,19 @@ const STYLES = /* css */`
 .ok-mode-btn--sequence.is-active { background: rgba(190, 160, 255, 0.18); color: rgba(210, 185, 255, 0.95); }
 .ok-mode-btn--command.is-active { background: rgba(255, 180, 100, 0.2); color: rgba(255, 200, 140, 0.95); }
 
+/* KryptxKeyboard entry — a real opener, not a mode tab (never gets
+   .is-active, since it doesn't participate in this._mode at all), so
+   it reads as a distinct action set apart from Edit/Delivery/Sequence/
+   Command with a vertical rule and its own accent color. */
+.ok-mode-btn--kryptx {
+  color            : rgba(255, 255, 255, 0.55);
+  border-right     : 1px solid var(--ok-border);
+  border-radius    : 5px 0 0 5px;
+  margin-right     : 3px;
+  padding-right    : 10px;
+}
+.ok-mode-btn--kryptx:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+
 .ok-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .ok-ctrl {
   width            : 24px; height: 24px;
@@ -963,6 +976,7 @@ export default class OmniKeys {
       <div class="ok-header">
         <span class="ok-title">⟐OmniKeys</span>
         <div class="ok-modes" id="ok-modes">
+          <button class="ok-mode-btn ok-mode-btn--kryptx" data-action="open-kryptx-keyboard" title="Open the CryptxMode presentation keyboard">KryptxKeyboard</button>
           ${MODES.map(m => /* html */`
             <button class="ok-mode-btn ok-mode-btn--${m.toLowerCase()} ${m === this._mode ? 'is-active' : ''}" data-mode="${m}">${m}</button>
           `).join('')}
@@ -992,6 +1006,15 @@ export default class OmniKeys {
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('[data-action="inspector"]').addEventListener('click', () => this._openInspectorForSelected())
+    // Second, independent opener for CryptxMode — the ⟐ Quick Launcher
+    // is the first (its one real tool dispatches this same event), but
+    // that launcher had a real bug of its own (see OmniQuickLauncher.js),
+    // so this is the one that was actually reachable in the meantime.
+    // Deliberately NOT a data-mode button — it doesn't touch this._mode
+    // or the QWERTY grid at all, just opens the separate Kryptx panel.
+    el.querySelector('[data-action="open-kryptx-keyboard"]').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:cryptx-keyboard-toggle'))
+    })
 
     el.dataset.winId = 'omnikeys'
     WindowManager.register('omnikeys', el, 'OmniKeys')

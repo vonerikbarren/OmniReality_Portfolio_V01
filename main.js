@@ -31,6 +31,7 @@ import OmniFloorManager  from './modules/OmniFloorManager.js'
 import FloorManagerPanel from './ui/FloorManagerPanel.js'
 import OmniTargeting     from './modules/OmniTargeting.js'
 import OmniTargetingSettingsPanel from './ui/OmniTargetingSettingsPanel.js'
+import OmniTrackingNodes from './systems/OmniTrackingNodes.js'
 import FloorSettingsPanel from './ui/FloorSettingsPanel.js'
 import ToolTipSettingsPanel from './ui/ToolTipSettingsPanel.js'
 import TerminalTunnel    from './modules/TerminalTunnel.js'
@@ -81,7 +82,7 @@ import TerminalSettingsPanel from './ui/TerminalSettingsPanel.js'
 import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
 import OmniRealityGridSelector from './systems/OmniRealityGridSelector.js'
 import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
-import OmniVerticalMeter from './ui/OmniVerticalMeter.js'
+import OmniMeter from './ui/OmniMeter.js'
 import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
 import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
 import OmniBotProgram from './systems/OmniBotProgram.js'
@@ -181,6 +182,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
                    base.addModule(new FloorManagerPanel(omniFloorManager))
                    base.addModule(new OmniTargeting(base.context))
                    base.addModule(new OmniTargetingSettingsPanel(base.context))
+                   base.addModule(new OmniTrackingNodes(base.context))
                    base.addModule(new FloorSettingsPanel(base.context))
                    base.addModule(new ToolTipSettingsPanel())
                    base.addModule(new TerminalTunnel(base.context))
@@ -335,7 +337,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniRealityGridSelector = new OmniRealityGridSelector(base.context)
   base.addModule(omniRealityGridSelector)
   base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
-  base.addModule(new OmniVerticalMeter(base.context))
+  base.addModule(new OmniMeter(base.context))
   const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)
   base.addModule(omniRealityGridPointSelector)
   base.addModule(new OmniRealityGridPointSelectorPanel(omniRealityGridPointSelector))
@@ -543,7 +545,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         },
         11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
         12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
-        13: { label: 'OmniVerticalMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniVerticalMeter' } })) },
+        13: { label: 'OmniMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniMeter' } })) },
         14: { label: 'OmniRealityGridPointSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridPointSelector' } })) },
         15: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
       }

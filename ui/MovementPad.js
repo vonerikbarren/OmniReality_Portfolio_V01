@@ -286,7 +286,16 @@ const STYLES = `
   letter-spacing   : 0.02em;
   cursor           : pointer;
   pointer-events   : auto;
-  z-index          : 40;
+  /* Real fix (bug-squash pass) — was 40, BELOW .omni-pad's own z-index
+     of 41. Each satellite sits just outside the pad's circular edge by
+     design (see _buildSatGeom's R formula), but a square button's own
+     corner nearest the pad still dips a few px inside the pad's
+     bounding circle at the diagonal (Dash) position. With the pad on
+     top there, that corner silently ate clicks — likely why "the speed
+     button doesnt work" even though the click handler was always
+     wired correctly. Now strictly above the pad, so the full button is
+     always clickable regardless of any sliver of geometric overlap. */
+  z-index          : 42;
   transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
 .omni-pad-sat:hover   { background: rgba(255, 255, 255, 0.13); }
@@ -758,6 +767,13 @@ export default class MovementPad {
     padEl?.classList.toggle('is-detached', detached)
     Object.values(satEls ?? {}).forEach(el => el?.classList.toggle('is-detached', detached))
     satEls?.release?.setAttribute('aria-pressed', String(detached))
+    // Real fix (bug-squash pass) — this only ever set aria-pressed
+    // (screen-reader-only, invisible on screen) and never the actual
+    // .is-active glow class Dash's own toggleDash() applies to itself.
+    // The pad's own is-detached box-shadow bump is subtle enough that
+    // clicking Release genuinely looked like it did nothing — this
+    // gives Release the same unmistakable lit-up feedback Dash has.
+    satEls?.release?.classList.toggle('is-active', detached)
 
     if (!detached) {
       this._detachOffset[handId] = { x: 0, y: 0 }

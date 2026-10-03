@@ -1999,6 +1999,85 @@ compiled shortcuts list), dispatching that exact event — same pattern
 `n` already uses for OmniDraw/OmniNode. Added to
 `ui/OmniKeyboardShortcutsPanel.js`'s own compiled list too.
 
+### V149 — "bug squashing mode"
+
+Two real, confirmed regressions from V147's own new features, both
+caught by direct inspection rather than guessed at, plus three new
+builds.
+
+**Bugs fixed:**
+- `ui/OmniQuickLauncher.js` — the `.oql-launcher` element never set
+  `pointer-events: auto`. `#omni-ui` (its shell parent, per
+  `index.html`'s real, non-fallback CSS) sets `pointer-events: none`
+  on itself so the canvas stays interactive through the UI layer;
+  every interactive child has to explicitly opt back in — the
+  established pattern everywhere else (`RadialMenu.js`'s
+  `.radial-item`, `MovementPad.js`'s `.omni-pad-sat`). This one never
+  did, so it silently never received a single click. Confirmed by
+  reading `index.html` line 56 directly, not assumed. Fixed by adding
+  the declaration. Also relocated its default (first-boot, no saved
+  position yet) spawn point from top-center to the exact center of
+  the bottom Dock — "kind of like apple's hold-home-button on their
+  legacy phones," per direct request.
+- `ui/MovementPad.js` — two issues on the satellite cluster (Release/
+  Dash/TBD):
+  1. `.omni-pad-sat` had `z-index: 40`, one below `.omni-pad`'s own
+     `z-index: 41`. Each satellite sits just outside the pad's
+     circular edge by design, but a square button's own corner
+     nearest the pad genuinely dips a few px inside the pad's
+     bounding circle at the diagonal (Dash) position — confirmed by
+     working through the real `_buildSatGeom` geometry by hand, not
+     assumed. With the pad stacked above there, that corner silently
+     ate clicks. Fixed by moving satellites to `z-index: 42`, strictly
+     above the pad.
+  2. `_setDetached()` only ever set `aria-pressed` on the Release
+     button (screen-reader-only, invisible on screen) and never
+     toggled the same `.is-active` glow class `toggleDash()` already
+     applies to itself. The pad's own `is-detached` box-shadow bump is
+     subtle enough that clicking Release genuinely looked like
+     nothing happened. Fixed by toggling `.is-active` on the Release
+     button too, matching Dash's existing, working feedback.
+
+**Built:**
+- `ui/OmniKeys.js` — added a `KryptxKeyboard` entry to OmniKeys' own
+  top menu/header row (`#ok-modes`, first in the lineup), as a second,
+  independent opener for CryptxMode that doesn't depend on the ⟐ Quick
+  Launcher. Dispatches the same `omni:cryptx-keyboard-toggle` event
+  the launcher's own Keyboard tool uses. Deliberately not a real
+  `data-mode` button — it doesn't touch `this._mode` or the QWERTY
+  grid, just opens the separate Kryptx panel.
+- `ui/OmniMeter.js` — new file, replaces `ui/OmniVerticalMeter.js` as
+  the thing `main.js` instantiates (that old file is left in the repo
+  untouched; its track/tick/marker math is what this one reuses for
+  the Vertical/Y indicator). Two new siblings join it: a Horizontal/X
+  track along the top of the screen, and a Depth/Z line running from
+  the top edge down to screen-center. All three consolidate under one
+  ⚙ settings popover — per-axis show/hide checkboxes, plus a toggle
+  between Horizontal/Vertical/Depth and plain X/Y/Z labels (either
+  naming was fine per direct request). Range is ±525 on every axis —
+  half of `WallpaperSphere.js`'s own `BASE_SIZE` (1050) — centered on
+  each axis's own real rest value (Y on `CENTER_Y`, X/Z on world
+  origin), per direct request: "as large as the wallpaper is. Actually
+  half that. So the user doesnt feel like that have an infinite
+  boundary."
+- `systems/OmniTrackingNodes.js` — new file. Two scene nodes moving on
+  a continuous Lissajous-style path (X oscillates at twice Z's
+  frequency — "two iterations for the x and one for the z" — plus an
+  independent Y bob, "the Y is actually good too"), each trailing a
+  short-lived pool of fading/shrinking ghost meshes as a motion-trail
+  afterimage. Clicking a node locks the camera onto it — a real
+  follow-cam that keeps whatever relative angle the user approached
+  from and lerps toward it every frame — suspending `OrbitControls`
+  via the app's own existing `omni:orbit-disable`/`omni:orbit-enable`
+  event pair (same mechanism `CameraTravel.js`/`OmniPocket.js` already
+  use), and reporting the lock through the same `omni:node-selected`
+  event every other selection path dispatches — so the existing
+  Z-Targeting reticle (`modules/OmniTargeting.js`) shows up around the
+  locked node automatically, no second targeting system built.
+  Clicking the locked node again, or clicking empty space, releases
+  it back to free orbit — direct reference to Zelda's own Z-targeting
+  feel.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered
