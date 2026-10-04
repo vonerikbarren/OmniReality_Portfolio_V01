@@ -2177,6 +2177,148 @@ pad's own open/closed state — rather than leaving them floating
 independently, with no clear signal for when they should be visible —
 removes the ambiguity either way.
 
+### V152 — OmniPresenter background spinners
+
+Direct request: three supplied gear images as a layered, rotating
+backdrop inside the ⟐p OmniPresenter panel, applied back-to-front in
+this order — Gear (white), Gear (Gold), Gear (solarSystem). Assets
+saved to `assets/images/gear-white.svg`, `gear-gold.svg`,
+`gear-solarsystem.png`, following the same `./assets/images/...`
+reference convention `modules/WallpaperSphere.js` already uses for its
+own default wallpaper.
+
+**`systems/OmniPresenter.js`:**
+- New `.op-bg-spinners` layer — three `<img>` elements with no
+  per-image `z-index`, so plain DOM order *is* paint order: white
+  first (furthest back), gold second, solarSystem last (nearest the
+  real content) — exactly the requested ordering. Each spins via one
+  shared `@keyframes op-gear-spin`, at a different size/speed/
+  direction/opacity so the three read as layered depth rather than one
+  flat spinning image (white: 420px, 100s, forward, 0.10 opacity; gold:
+  300px, 55s, reverse, 0.18; solarSystem: 320px, 75s, forward, 0.24).
+- Real fix made along the way: the old `.op-panel` carried its own
+  background directly (`--op-bg`, 0.93 opacity) — a child element can
+  never paint behind its own parent's background, so simply adding the
+  spinners as a child wouldn't have made them visible at all; the
+  panel's own background would always sit behind everything, including
+  the new layer. Moved that background onto a new `.op-content`
+  wrapper around all the existing panel markup instead, placed above
+  `.op-bg-spinners` in the same stacking context, and eased its
+  opacity from 0.93 to 0.84 so the spinners actually read through it
+  rather than being almost entirely blotted out. `.op-panel` itself is
+  now transparent — purely a positioning/blur/border shell.
+- No IDs or classes on any existing control changed — `.op-content` is
+  a pure wrapper, so every existing `querySelector` binding in
+  `_bindPanelControls` keeps working unchanged.
+
+### V153 — OmniGallery: default texture gallery for nodes
+
+Direct request: a new default gallery panel, OmniGallery, for textures
+that can be put on node meshes — a ToBeSorted bucket first, then
+SystemAssets with geometry-type folders underneath, selectable from
+any inspector.
+
+**New file `systems/OmniGallery.js`:**
+- Built exactly to OmniPresenter's own architectural pattern: a
+  floating panel constructed from a template string into a DOM node
+  under `#omni-ui`, its own scoped `<style id="omni-gallery-styles">`
+  injected once, slide in/out via GSAP, module contract
+  (`constructor`/`init`/`update`/`destroy`). Anchored bottom-*left*
+  (mirrored from OmniPresenter's bottom-right slot) so the two panels'
+  default positions never overlap.
+- Opens/closes via `omni:system-toggle { system: 'omnigallery' }` —
+  same convention every other panel in this codebase uses — and via a
+  second, dedicated `omni:gallery-toggle` event that optionally carries
+  `{ select: true }` to open the panel in "pick a texture" mode (used
+  by the Inspector's new Gallery button, below). `openForSelect()` is
+  also exposed directly on the instance.
+- Folder tree, in the literal order asked for: `ToBeSorted` (empty,
+  built and rendered even though nothing is in it yet — a real,
+  navigable, currently-empty bucket for future/uncategorized assets)
+  then `SystemAssets → Geometries`. The Geometries folder list is
+  built from `GEOMETRY_DEFS`/`GEO_LABELS`, imported straight from
+  `systems/OmniNode.js` — the actual live registry of geometry types a
+  node can be swapped to in this app (20 types: Box, Sphere, Cylinder,
+  Cone, Torus, TorusKnot, Octahedron, Tetrahedron, Icosahedron,
+  Dodecahedron, Plane, Circle, Ring, Capsule, Lathe, Tube, Extrude,
+  Shape, Edges, Wireframe) — not an invented list. `EssenceData` is
+  left out, matching `OmniInspector.js`'s own `GEO_TYPES` list, since
+  it's OmniNode's special internal type rather than a plain geometry
+  swap target.
+- Left-pane tree (expand/collapse, persisted to
+  `localStorage['omni:gallery:ui']`) + right-pane responsive grid of
+  swatch thumbnails for whichever folder is active. Clicking a swatch
+  dispatches `omni:gallery-texture-select { path, label }` on
+  `window` — the path is the same `./assets/images/<file>` relative
+  form `modules/WallpaperSphere.js`'s `DEFAULT_IMG_URL` already uses —
+  and, if the gallery was opened in select mode, closes the panel
+  immediately after, like a native file picker's "choose" action.
+- Keyboard shortcut: `g` (free — checked `HAND_KEY_BINDINGS` and every
+  other `e.key ===` keydown handler in `main.js` plus
+  `ui/OmniKeyboardShortcutsPanel.js`'s `SHORTCUTS` array first; nothing
+  else claims it). Wired in `main.js` the same way `'p'` opens
+  OmniPresenter — a plain `keydown` listener dispatching
+  `omni:system-toggle`. Added to `SHORTCUTS` in
+  `ui/OmniKeyboardShortcutsPanel.js` too.
+
+**New assets — `assets/images/` (13 files, all SVG, all actually read
+before naming — none kept their meaningless export names):**
+- `gallery-tex-lotus-emblem.svg` — a lotus-flower line emblem.
+- `gallery-tex-panel-square-a/b/c.svg` — three large (4941×4941)
+  rounded-square UI-panel frame variants.
+- `gallery-tex-panel-nested-square-a/b/c.svg` — three nested/
+  concentric rounded-square panel variants (1930×1929).
+- `gallery-tex-connector-bar.svg` — the thin horizontal pill/connector
+  bar shape.
+- `gallery-tex-blueprint-grid-corner.svg` — a grid-of-dots blueprint
+  pattern with L-bracket corner marks (ex-"Asset_10").
+- `gallery-tex-technical-corner-frame.svg` — a technical corner-frame
+  line pattern with dash/bracket details (ex-"Asset_11").
+- `gallery-tex-schematic-burst-emblem.svg` — a symmetric mirrored-
+  quadrant schematic burst emblem (ex-"Asset_12").
+- `gallery-tex-quadrant-schematic-pattern.svg` — a symmetric mirrored-
+  quadrant schematic line pattern (ex-"Asset_13").
+- `gallery-tex-dashed-rule-pair.svg` — the faint (`opacity:.36`)
+  dashed/segmented top-and-bottom rule pair (ex-"Asset_18").
+
+All 13 are registered inside **both** the Plane and the Box geometry
+folders, per the literal ask ("Inside the plane and box geometries
+folders... please add these"). Judgment call: none of the 13 looked
+clearly unsuited to either shape (they're all flat decorative/UI
+textures, not something shape-specific like a 6-face skybox cross),
+so nothing was excluded from either folder — documented here rather
+than silently deviating.
+
+**`systems/OmniInspector.js` — "choose from gallery" wiring:**
+- Added a `⟐g Gallery` button into the existing Texture slot's URL
+  row (`#oi-tex-gallery`, styled with the same `.oi-slot-apply` class
+  the existing Apply button already uses — no new CSS needed).
+  Clicking it dispatches `omni:gallery-toggle { select: true }`.
+- One new class-level listener for `omni:gallery-texture-select`,
+  registered once in `init()` — the same pattern this file already
+  uses for `_onForceSaveFlush` (see that handler's own comment): the
+  texture slot's `body`/`ext` closures live inside `_wireAppearance()`,
+  which re-runs on every node selection, so registering the listener
+  there directly would pile up one per node ever inspected. Instead,
+  `_wireAppearance()` now stashes the current node's texture-slot
+  `body`/`ext` onto `this._texSlotBody`/`this._texSlotExt`, and the one
+  class-level listener reads those and calls the existing
+  `_applyTextureUrl()` — the exact same code path the Apply button and
+  file-drop already use, so a gallery pick goes through
+  `THREE.TextureLoader`, sets `material.map`, flips `needsUpdate`, and
+  persists via `_saveExt()` exactly like any other texture source. The
+  listener no-ops if no mesh is currently selected, so a stray pick
+  with nothing selected can't throw.
+- `main.js`: imports `OmniGallery`, instantiates it alongside
+  `omniPresenter`/`omniPocket`/etc., and registers it via
+  `base.addModule(omniGallery)` — identical wiring to every other
+  system in that block.
+
+No existing IDs, IPC event names, or control bindings were touched —
+OmniGallery is fully additive, and the Inspector change only adds one
+new button + one new listener alongside the untouched existing
+texture-slot code.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

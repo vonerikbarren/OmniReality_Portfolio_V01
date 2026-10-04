@@ -176,7 +176,11 @@ const STYLES = /* css */`
 /* ── Presenter panel root ─────────────────────────────────────────────────── */
 
 .op-panel {
-  --op-bg           : rgba(6, 6, 10, 0.93);
+  /* Was 0.93, directly on .op-panel. Now lives on .op-content instead
+     (see below) and is eased to 0.84 so the new background spinners
+     actually read through it rather than being blotted out almost
+     entirely by an near-opaque tint. */
+  --op-bg           : rgba(6, 6, 10, 0.84);
   --op-border       : rgba(255, 255, 255, 0.09);
   --op-sep          : rgba(255, 255, 255, 0.05);
   --op-header-bg    : rgba(255, 255, 255, 0.03);
@@ -202,7 +206,13 @@ const STYLES = /* css */`
   display           : flex;
   flex-direction    : column;
 
-  background        : var(--op-bg);
+  /* Real background moved to .op-content below — this element itself
+     stays transparent now so .op-bg-spinners (a plain DOM child) can
+     actually show through. A child can never paint behind its own
+     parent's background, so the old var(--op-bg) living here would
+     have fully hidden any backdrop layered behind the real content
+     instead of in front of it. */
+  background        : transparent;
   backdrop-filter   : blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border-top        : 1px solid var(--op-border);
@@ -221,6 +231,70 @@ const STYLES = /* css */`
   -webkit-font-smoothing: antialiased;
 
   visibility        : hidden;
+}
+
+/* ── Background spinners — three gears, direct request: "Apply them
+      in this order to the back - Gear (white), Gear (Gold), Gear
+      (solarSystem)." DOM order = paint order here (no z-index on the
+      images themselves), so white sits furthest back, gold in the
+      middle, solarSystem nearest the real content — each its own
+      independent rotation so the clockwork reads as layered depth,
+      not one flat spinning image. Sits behind .op-content's own
+      background, which now carries the panel's real tint/opacity. ── */
+
+.op-bg-spinners {
+  position          : absolute;
+  inset             : 0;
+  z-index           : 0;
+  overflow          : hidden;
+  pointer-events    : none;
+  border-radius     : inherit;
+}
+
+.op-bg-gear {
+  position          : absolute;
+  top               : 50%;
+  left              : 50%;
+  object-fit        : contain;
+  will-change       : transform;
+}
+
+@keyframes op-gear-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.op-bg-gear--white {
+  width             : 420px;
+  height            : 420px;
+  opacity           : 0.10;
+  animation         : op-gear-spin 100s linear infinite;
+}
+.op-bg-gear--gold {
+  width             : 300px;
+  height            : 300px;
+  opacity           : 0.18;
+  animation         : op-gear-spin 55s linear infinite reverse;
+}
+.op-bg-gear--solar {
+  width             : 320px;
+  height            : 320px;
+  opacity           : 0.24;
+  animation         : op-gear-spin 75s linear infinite;
+}
+
+/* ── Content wrapper — now the real background/scrim layer, sitting
+      above .op-bg-spinners so every existing panel element reads over
+      the gears rather than the gears painting on top of the text. ── */
+
+.op-content {
+  position          : relative;
+  z-index           : 1;
+  display           : flex;
+  flex-direction    : column;
+  width             : 100%;
+  height            : 100%;
+  background        : var(--op-bg);
 }
 
 /* Playing state — warm amber glow on left+top border */
@@ -968,6 +1042,18 @@ export default class OmniPresenter {
     el.id        = 'omni-presenter-panel'
 
     el.innerHTML = /* html */`
+      <!-- Background spinners — direct request: "Apply them in this
+           order to the back - Gear (white), Gear (Gold), Gear
+           (solarSystem)." DOM order is paint order (no per-image
+           z-index): white furthest back, gold in the middle,
+           solarSystem nearest the real content. -->
+      <div class="op-bg-spinners" aria-hidden="true">
+        <img class="op-bg-gear op-bg-gear--white" src="./assets/images/gear-white.svg" alt="">
+        <img class="op-bg-gear op-bg-gear--gold"  src="./assets/images/gear-gold.svg"  alt="">
+        <img class="op-bg-gear op-bg-gear--solar" src="./assets/images/gear-solarsystem.png" alt="">
+      </div>
+
+      <div class="op-content">
       <div class="op-glitch-line" aria-hidden="true"></div>
 
       <!-- Header -->
@@ -1040,6 +1126,7 @@ export default class OmniPresenter {
       <div class="op-footer">
         <span class="op-footer-state" id="op-footer-state">⟐p  idle</span>
         <span class="op-footer-node"  id="op-footer-node">—</span>
+      </div>
       </div>
     `
 

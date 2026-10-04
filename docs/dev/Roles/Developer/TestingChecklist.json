@@ -1,17 +1,17 @@
 {
-  "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere \u2014 fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
+  "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
       "category": "Core Navigation & UI",
       "items": [
         {
-          "feature": "Left Drawer \u2014 the top-left menu, all OmniProducts",
+          "feature": "Left Drawer — the top-left menu, all OmniProducts",
           "howToReach": "Click the top-left drawer handle",
           "whatToCheck": "OmniDraw, OmniChat, OmniTranslator, OmniSystem*, OmniMixer, OmniPocket, OmniNavi all listed and clickable",
           "tested": false
         },
         {
-          "feature": "GlobalBar \u2014 Assistance menu",
+          "feature": "GlobalBar — Assistance menu",
           "howToReach": "Top bar, Assistance category",
           "whatToCheck": "Keyboard Shortcuts panel opens, list is accurate (includes 't' for OmniTranslator)",
           "tested": false
@@ -24,14 +24,14 @@
         },
         {
           "feature": "OmniStartHUD quadrant maximize",
-          "howToReach": "Open the Start Menu HUD, hover a quadrant, click its maximize (\u26f6) button",
+          "howToReach": "Open the Start Menu HUD, hover a quadrant, click its maximize (⛶) button",
           "whatToCheck": "That quadrant fills the whole HUD container (not full browser), other three hide, click again restores all four",
           "tested": false
         }
       ]
     },
     {
-      "category": "OmniDraw \u2014 all modes",
+      "category": "OmniDraw — all modes",
       "items": [
         {
           "feature": "Static mode",
@@ -92,7 +92,7 @@
       "category": "OmniPocket",
       "items": [
         {
-          "feature": "PocketThis\u27d0",
+          "feature": "PocketThis⟐",
           "howToReach": "Right-click any node's quick menu",
           "whatToCheck": "Node disappears from scene, appears in OmniPocket panel",
           "tested": false
@@ -171,25 +171,25 @@
       "category": "Developer Menu (above Admin)",
       "items": [
         {
-          "feature": "OmniCommandTerminal \u2014 Dev01",
+          "feature": "OmniCommandTerminal — Dev01",
           "howToReach": "Developer menu, slot 1",
-          "whatToCheck": "Try \u27d0help, \u27d0ls, \u27d0create BoxGeometry test, \u27d0cd <id>, \u27d0inspect, \u27d0present, \u27d0pocket \u2014 typing without the leading \u27d0 still works",
+          "whatToCheck": "Try ⟐help, ⟐ls, ⟐create BoxGeometry test, ⟐cd <id>, ⟐inspect, ⟐present, ⟐pocket — typing without the leading ⟐ still works",
           "tested": false
         },
         {
-          "feature": "OmniProgram \u2014 Dev02",
-          "howToReach": "Developer menu, slot 2, or \u27d0OmniNavi in the Left Drawer",
+          "feature": "OmniProgram — Dev02",
+          "howToReach": "Developer menu, slot 2, or ⟐OmniNavi in the Left Drawer",
           "whatToCheck": "Building spawns a real OmniBotProgram with cube head, embedded panel, sphere body, and a separate stateCommunicator sphere above the head; Basic tier idles with a continuous bob+spin",
           "tested": false
         },
         {
-          "feature": "OmniInputMonitor \u2014 Dev03",
+          "feature": "OmniInputMonitor — Dev03",
           "howToReach": "Developer menu, slot 3",
           "whatToCheck": "Live camera position, orbit-enabled state, pressed directions",
           "tested": false
         },
         {
-          "feature": "Dev_FPS_Exp_ListOfEmotions \u2014 Dev04",
+          "feature": "Dev_FPS_Exp_ListOfEmotions — Dev04",
           "howToReach": "Developer menu, slot 4",
           "whatToCheck": "Every one of the 13 emotion buttons visibly changes the camera-attached particles' color and motion; standing still vs. moving changes Normal Walking/Dash density",
           "tested": false
@@ -213,7 +213,7 @@
         {
           "feature": "White-disc fix",
           "howToReach": "Enable OmniChronos, look into the RootSpace tunnel",
-          "whatToCheck": "The traveling reality-node disc should be invisible until a real texture/video is actually set on it \u2014 no more opaque white circle by default",
+          "whatToCheck": "The traveling reality-node disc should be invisible until a real texture/video is actually set on it — no more opaque white circle by default",
           "tested": false
         }
       ]
@@ -241,7 +241,7 @@
         {
           "feature": "Single outgoing sequence edge",
           "howToReach": "Connect a Sequence Node to a second target node via a new sequence edge",
-          "whatToCheck": "The old outgoing sequence edge is automatically removed \u2014 a Sequence Node never has two",
+          "whatToCheck": "The old outgoing sequence edge is automatically removed — a Sequence Node never has two",
           "tested": false
         },
         {
@@ -287,13 +287,13 @@
         {
           "feature": "Wireframe/alpha/material survive export",
           "howToReach": "OmniDraw, set Wireframe on, Alpha below 1, a non-default Material type, then Export to Scene",
-          "whatToCheck": "The real spawned node reflects all three \u2014 previously these were silently dropped on export (preview-only bug), only the embedded preview mesh showed them",
+          "whatToCheck": "The real spawned node reflects all three — previously these were silently dropped on export (preview-only bug), only the embedded preview mesh showed them",
           "tested": false
         },
         {
           "feature": "Survives a reload",
           "howToReach": "Reload the page after exporting a node with those flags set",
-          "whatToCheck": "Restore path re-applies the same flags via the shared _applyAppearanceFlags helper \u2014 no drift between fresh creation and restore",
+          "whatToCheck": "Restore path re-applies the same flags via the shared _applyAppearanceFlags helper — no drift between fresh creation and restore",
           "tested": false
         }
       ]
@@ -303,7 +303,7 @@
       "items": [
         {
           "feature": "Dock toggle opens/closes the Tray",
-          "howToReach": "Click the \u25b2 button in the Dock's right wing",
+          "howToReach": "Click the ▲ button in the Dock's right wing",
           "whatToCheck": "Tray slides open/closed; button shows an active state while open",
           "tested": false
         },
@@ -315,7 +315,7 @@
         },
         {
           "feature": "Restore actually works (real bug fix)",
-          "howToReach": "Minimize OmniChronos, OmniKeys, or AdminPanel specifically \u2014 these never had a working restore before this build \u2014 then click their Tray tab",
+          "howToReach": "Minimize OmniChronos, OmniKeys, or AdminPanel specifically — these never had a working restore before this build — then click their Tray tab",
           "whatToCheck": "The panel genuinely reappears and comes to front; previously only ~5 of 40+ panels could be restored at all",
           "tested": false
         },
@@ -346,13 +346,13 @@
         {
           "feature": "Filter / Sort / Search",
           "howToReach": "Header toolbar",
-          "whatToCheck": "Filter cycles present \u27d0 categories; Sort (Manual/Alphabetical/By Date/By \u27d0) actually redistributes tabs across rows, row 1 filling first; Search matches by label substring",
+          "whatToCheck": "Filter cycles present ⟐ categories; Sort (Manual/Alphabetical/By Date/By ⟐) actually redistributes tabs across rows, row 1 filling first; Search matches by label substring",
           "tested": false
         },
         {
           "feature": "Persistence across reload",
           "howToReach": "Set a non-default orientation/sort/header-visible state, reload the page",
-          "whatToCheck": "Those three persist; the actual minimized-tab list intentionally does NOT persist (no panel tracks that as its own state yet) \u2014 stale tabs after reload would be the wrong behavior, not a bug",
+          "whatToCheck": "Those three persist; the actual minimized-tab list intentionally does NOT persist (no panel tracks that as its own state yet) — stale tabs after reload would be the wrong behavior, not a bug",
           "tested": false
         }
       ]
@@ -369,7 +369,7 @@
         {
           "feature": "No stray node context menu after a pan",
           "howToReach": "Right-click-drag starting or ending over a node mesh",
-          "whatToCheck": "The node's quick menu does NOT pop open just because the release happened to land on it \u2014 only a right-click with no real drag (<~6px) should open it",
+          "whatToCheck": "The node's quick menu does NOT pop open just because the release happened to land on it — only a right-click with no real drag (<~6px) should open it",
           "tested": false
         }
       ]
@@ -380,7 +380,7 @@
         {
           "feature": "Satellite cluster visible",
           "howToReach": "Look at the LH (bottom-left) and RH (bottom-right) movement pads",
-          "whatToCheck": "3 small buttons on each pad's own rim \u2014 Release, Dash (\u27eb\u27eb), and a dimmed TBD slot; LH cluster in the lower-right arc of its circle, RH mirrored in the lower-left arc of its circle",
+          "whatToCheck": "3 small buttons on each pad's own rim — Release, Dash (⟫⟫), and a dimmed TBD slot; LH cluster in the lower-right arc of its circle, RH mirrored in the lower-left arc of its circle",
           "tested": false
         },
         {
@@ -398,7 +398,7 @@
         {
           "feature": "Dash still works from its new spot",
           "howToReach": "Click the Dash button inside the LH satellite cluster",
-          "whatToCheck": "LH (WASD) movement speed multiplies, same as before \u2014 only its position changed",
+          "whatToCheck": "LH (WASD) movement speed multiplies, same as before — only its position changed",
           "tested": false
         },
         {
@@ -410,22 +410,22 @@
       ]
     },
     {
-      "category": "\u27d0 Quick Launcher (V147)",
+      "category": "⟐ Quick Launcher (V147)",
       "items": [
         {
           "feature": "Draggable anywhere",
-          "howToReach": "Drag the \u27d0 icon (default: top-center)",
+          "howToReach": "Drag the ⟐ icon (default: top-center)",
           "whatToCheck": "Moves freely, stays where dropped, persists across reload",
           "tested": false
         },
         {
           "feature": "Click opens radial popup",
-          "howToReach": "Click (don't drag) the \u27d0 icon",
-          "whatToCheck": "A small radial popup fans out near it with a '\u2328 Keyboard' option",
+          "howToReach": "Click (don't drag) the ⟐ icon",
+          "whatToCheck": "A small radial popup fans out near it with a '⌨ Keyboard' option",
           "tested": false
         },
         {
-          "feature": "\u2328 Keyboard opens CryptxMode",
+          "feature": "⌨ Keyboard opens CryptxMode",
           "howToReach": "Click the Keyboard option in the popup",
           "whatToCheck": "The CryptxMode panel appears docked at the right edge, collapsed to its header",
           "tested": false
@@ -437,7 +437,7 @@
       "items": [
         {
           "feature": "Opens collapsed",
-          "howToReach": "Open via the \u27d0 Quick Launcher's Keyboard option",
+          "howToReach": "Open via the ⟐ Quick Launcher's Keyboard option",
           "whatToCheck": "Only the meta header is visible against the right edge, no columns yet",
           "tested": false
         },
@@ -486,18 +486,18 @@
       ]
     },
     {
-      "category": "\u27d0 Quick Launcher fix + reposition (V149)",
+      "category": "⟐ Quick Launcher fix + reposition (V149)",
       "items": [
         {
           "feature": "Launcher actually responds to clicks",
-          "howToReach": "Click the \u27d0 icon (now defaulting to the bottom Dock's dead-center, like a home button)",
+          "howToReach": "Click the ⟐ icon (now defaulting to the bottom Dock's dead-center, like a home button)",
           "whatToCheck": "Radial popup with 'Keyboard' opens immediately on click; previously did nothing at all",
           "tested": false
         },
         {
           "feature": "Default position is Dock dead-center",
           "howToReach": "Clear localStorage (or a fresh browser profile) and reload",
-          "whatToCheck": "\u27d0 icon spawns centered horizontally, vertically centered inside the bottom Dock bar \u2014 not floating near the top anymore",
+          "whatToCheck": "⟐ icon spawns centered horizontally, vertically centered inside the bottom Dock bar — not floating near the top anymore",
           "tested": false
         },
         {
@@ -536,14 +536,14 @@
       "items": [
         {
           "feature": "KryptxKeyboard button opens CryptxMode",
-          "howToReach": "Open \u27d0OmniKeys, look at the top menu row (first button, before Edit/Delivery/Sequence/Command)",
-          "whatToCheck": "Clicking 'KryptxKeyboard' opens the CryptxMode vertical keyboard from the right edge, independent of whether the \u27d0 Quick Launcher works",
+          "howToReach": "Open ⟐OmniKeys, look at the top menu row (first button, before Edit/Delivery/Sequence/Command)",
+          "whatToCheck": "Clicking 'KryptxKeyboard' opens the CryptxMode vertical keyboard from the right edge, independent of whether the ⟐ Quick Launcher works",
           "tested": false
         }
       ]
     },
     {
-      "category": "OmniMeter \u2014 consolidated spatial indicators (V149)",
+      "category": "OmniMeter — consolidated spatial indicators (V149)",
       "items": [
         {
           "feature": "All three indicators open together",
@@ -552,8 +552,8 @@
           "tested": false
         },
         {
-          "feature": "Settings popover \u2014 per-axis show/hide",
-          "howToReach": "Click the small \u2699 button near the top-right",
+          "feature": "Settings popover — per-axis show/hide",
+          "howToReach": "Click the small ⚙ button near the top-right",
           "whatToCheck": "Unchecking an axis hides just that one indicator; the other two stay visible",
           "tested": false
         },
@@ -599,13 +599,13 @@
       "items": [
         {
           "feature": "OmniHand (top-left) is a real MOVE pad",
-          "howToReach": "Click OmniHand's own \u2687 button (top-left corner), or press Numpad / * - +",
+          "howToReach": "Click OmniHand's own ⚇ button (top-left corner), or press Numpad / * - +",
           "whatToCheck": "A real cross with FWD/BCK/STR-L/STR-R appears (not a dimmed TBD cross); clicking or pressing the numpad operator keys translates the camera, mirroring LH's WASD feel",
           "tested": false
         },
         {
           "feature": "ConsciousHand (top-right) is a real NAV pad",
-          "howToReach": "Click ConsciousHand's own \u2687 button (top-right corner), or press Numpad7/Numpad9",
+          "howToReach": "Click ConsciousHand's own ⚇ button (top-right corner), or press Numpad7/Numpad9",
           "whatToCheck": "A real cross with RISE/FALL/ORB-L/ORB-R appears; Numpad7/9 move altitude up/down, left/right pad buttons orbit-yaw, mirroring RH's R/F feel",
           "tested": false
         },
@@ -617,7 +617,7 @@
         },
         {
           "feature": "Radial Tool menu content now mirrors LH/RH",
-          "howToReach": "Open OmniHand's Tool radial (page \u27d02) and compare to LH's; same for ConsciousHand vs RH",
+          "howToReach": "Open OmniHand's Tool radial (page ⟐2) and compare to LH's; same for ConsciousHand vs RH",
           "whatToCheck": "OmniHand's tool list matches LH's (Translate3D, Rotate3D, Scale3D, ...); ConsciousHand's matches RH's (ColorShift, MaterialMorph, ...)",
           "tested": false
         }
@@ -628,7 +628,7 @@
       "items": [
         {
           "feature": "Tool radial menu visible over an open pad",
-          "howToReach": "Toggle OmniHand's pad on (\u2687 button or numpad keys), then open OmniHand's own Tool radial (\u27d02 page); repeat for ConsciousHand, and spot-check LH/RH too",
+          "howToReach": "Toggle OmniHand's pad on (⚇ button or numpad keys), then open OmniHand's own Tool radial (⟐2 page); repeat for ConsciousHand, and spot-check LH/RH too",
           "whatToCheck": "The radial popup renders ON TOP of the pad, fully visible and clickable, not hidden behind it",
           "tested": false
         },
@@ -648,6 +648,100 @@
           "feature": "LH's 3 satellite buttons present and working",
           "howToReach": "Toggle LH's pad on",
           "whatToCheck": "Release, Dash, and the reserved slot all appear on LH's rim and are clickable (Release detaches, Dash toggles speed boost)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniPresenter background spinners (V152)",
+      "items": [
+        {
+          "feature": "Three gears visible and layered correctly",
+          "howToReach": "Open ⟐p OmniPresenter (press 'p' or use its menu entries)",
+          "whatToCheck": "White gear reads as the furthest-back/faintest layer, gold in the middle, solarSystem nearest the text — all three visible behind the panel's text/controls without hurting readability",
+          "tested": false
+        },
+        {
+          "feature": "Each gear spins independently",
+          "howToReach": "Watch the panel background for ~10 seconds",
+          "whatToCheck": "White, gold, and solarSystem each rotate at their own speed; gold turns the opposite direction from the other two",
+          "tested": false
+        },
+        {
+          "feature": "Panel content still fully functional",
+          "howToReach": "Use the sequence list, transport buttons, speed slider, close/minimize/attach controls",
+          "whatToCheck": "Everything works exactly as before — the background change didn't break any click targets or bindings",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniGallery default texture gallery (V153)",
+      "items": [
+        {
+          "feature": "Panel opens and closes",
+          "howToReach": "Press 'g', or click the Gallery button inside any node's Inspector > Appearance > Texture slot",
+          "whatToCheck": "⟐g OmniGallery panel slides in from the bottom-left above the Dock and slides back out on close, without overlapping OmniPresenter's own bottom-right panel",
+          "tested": false
+        },
+        {
+          "feature": "Folder order and tree contents",
+          "howToReach": "Open OmniGallery and look at the left-hand tree",
+          "whatToCheck": "Top level shows 'ToBeSorted' first (expandable, empty), then 'SystemAssets' second; expanding SystemAssets shows 'Geometries', and expanding that shows one folder per real node geometry type (Box, Sphere, Cylinder, Cone, Torus, TorusKnot, Octahedron, Tetrahedron, Icosahedron, Dodecahedron, Plane, Circle, Ring, Capsule, Lathe, Tube, Extrude, Shape, Edges, Wireframe)",
+          "tested": false
+        },
+        {
+          "feature": "Plane and Box folders show all 13 textures",
+          "howToReach": "Click the 'Plane' folder, then the 'Box' folder",
+          "whatToCheck": "Both folders list all 13 swatches (lotus emblem, 3 panel-square variants, 3 nested-square variants, connector bar, blueprint grid corner, technical corner frame, schematic burst emblem, quadrant schematic pattern, dashed rule pair) and every thumbnail actually renders the image, not a broken-image icon",
+          "tested": false
+        },
+        {
+          "feature": "Other geometry folders are real but empty",
+          "howToReach": "Click any geometry folder other than Plane or Box (e.g. Sphere, Torus)",
+          "whatToCheck": "Folder opens with an empty-state message ('No textures in this folder yet.') rather than erroring or showing stale content from the previously selected folder",
+          "tested": false
+        },
+        {
+          "feature": "Tree expand/collapse and selection persists",
+          "howToReach": "Expand/collapse a few folders, select one, close the panel, reopen it (press 'g' twice)",
+          "whatToCheck": "The same folders are still expanded and the same folder is still the active selection after reopening (persisted via localStorage)",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard shortcut 'g' doesn't collide with anything",
+          "howToReach": "Press 'g' while NOT focused in a text input, then again while focused in a text input (e.g. a node's Label field)",
+          "whatToCheck": "First press toggles OmniGallery; second press (while typing) types the letter 'g' into the field instead of toggling the panel",
+          "tested": false
+        },
+        {
+          "feature": "Shortcut documented in ⟐ Keyboard Shortcuts panel",
+          "howToReach": "Open the Keyboard Shortcuts panel from the Assistance dropdown",
+          "whatToCheck": "A row reads \"g — Toggle ⟐g OmniGallery\"",
+          "tested": false
+        },
+        {
+          "feature": "Inspector 'Gallery' button opens OmniGallery in select mode",
+          "howToReach": "Select a node, open its Inspector, expand Appearance, find the Texture slot, click the '⟐g Gallery' button next to Apply",
+          "whatToCheck": "OmniGallery opens with a visible 'Pick a texture' badge and a colored glow border indicating select mode is active",
+          "tested": false
+        },
+        {
+          "feature": "Picking a texture from the gallery applies it to the selected mesh",
+          "howToReach": "With a node selected and OmniGallery open in select mode (from the Inspector button), click any texture swatch",
+          "whatToCheck": "OmniGallery closes automatically, the Inspector's texture preview/URL field updates to the picked asset's path, and the actual 3D mesh in the scene visibly gets that image as its material map",
+          "tested": false
+        },
+        {
+          "feature": "Picking a texture with no node selected doesn't throw",
+          "howToReach": "Deselect all nodes (omni:node-deselected), open OmniGallery directly with 'g', click a swatch",
+          "whatToCheck": "omni:gallery-texture-select still fires (console/listener), no error is thrown, and nothing crashes since no mesh is currently loaded in the Inspector",
+          "tested": false
+        },
+        {
+          "feature": "Existing texture slot behavior unchanged",
+          "howToReach": "Use the Inspector's texture drop-zone, file picker, URL + Apply, and Clear texture controls as before",
+          "whatToCheck": "All of this still works exactly as before the Gallery button was added — no regression in the existing texture flow",
           "tested": false
         }
       ]

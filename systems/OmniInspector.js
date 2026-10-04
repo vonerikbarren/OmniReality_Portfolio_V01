@@ -1699,6 +1699,21 @@ export default class OmniInspector {
       this._pendingCommitScale?.()
     }
     window.addEventListener('omni:force-save', this._onForceSaveFlush)
+
+    // Gallery texture pick — same single-class-level-listener reasoning as
+    // _onForceSaveFlush just above: _wireAppearance() (where the texture
+    // slot's body/ext closures live) re-runs on every node selection, so
+    // this listener is registered exactly once here and reads whichever
+    // body/ext the texture slot last wired via this._texSlotBody/_texSlotExt
+    // rather than piling up one listener per node ever inspected.
+    this._onGalleryTextureSelect = (e) => {
+      const { path } = e.detail ?? {}
+      if (!path || !this._texSlotBody || !this._currentMesh) return
+      this._applyTextureUrl(path, this._texSlotBody, this._texSlotExt)
+      const urlInput = this._texSlotBody.querySelector('#oi-tex-url')
+      if (urlInput) urlInput.value = path
+    }
+    window.addEventListener('omni:gallery-texture-select', this._onGalleryTextureSelect)
   }
 
   update (delta) {
@@ -1742,6 +1757,7 @@ export default class OmniInspector {
     window.removeEventListener('omni:node-program-set', this._onProgramSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
     window.removeEventListener('omni:force-save', this._onForceSaveFlush)
+    window.removeEventListener('omni:gallery-texture-select', this._onGalleryTextureSelect)
     window.removeEventListener('omni:node-selected', this._onSelected)
     window.removeEventListener('omni:node-restored', this._onNodeRestored)
     window.removeEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
@@ -3343,6 +3359,7 @@ export default class OmniInspector {
           <input class="oi-input" id="oi-tex-url" type="url"
                  placeholder="https://…" value="${ext?.texture ?? ''}">
           <button class="oi-slot-apply" id="oi-tex-apply">Apply</button>
+          <button class="oi-slot-apply" id="oi-tex-gallery" title="Choose from OmniGallery">⟐g Gallery</button>
         </div>
         <button class="oi-tex-clear ${ext?.texture ? 'is-visible' : ''}" id="oi-tex-clear">✕ Clear texture</button>
         <input type="file" id="oi-tex-file" accept="image/*" style="display:none">
@@ -4256,12 +4273,27 @@ export default class OmniInspector {
 
     // ── Texture slot ──────────────────────────────────────────────────
 
+    // Stashed so the single class-level 'omni:gallery-texture-select'
+    // listener (registered once in init()) always has the current node's
+    // live body/ext to apply a gallery pick into — see that listener's
+    // own comment for why this isn't wired fresh here instead.
+    this._texSlotBody = body
+    this._texSlotExt  = ext
+
     // Drop zone — click opens file picker
-    const texDrop  = body.querySelector('#oi-tex-drop')
-    const texFile  = body.querySelector('#oi-tex-file')
-    const texUrl   = body.querySelector('#oi-tex-url')
-    const texApply = body.querySelector('#oi-tex-apply')
-    const texClear = body.querySelector('#oi-tex-clear')
+    const texDrop    = body.querySelector('#oi-tex-drop')
+    const texFile     = body.querySelector('#oi-tex-file')
+    const texUrl      = body.querySelector('#oi-tex-url')
+    const texApply    = body.querySelector('#oi-tex-apply')
+    const texGallery  = body.querySelector('#oi-tex-gallery')
+    const texClear    = body.querySelector('#oi-tex-clear')
+
+    // Opens OmniGallery in "pick a texture" mode — any panel/inspector can
+    // do this the same way, per OmniGallery's own documented contract.
+    texGallery?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:gallery-toggle', { detail: { select: true } }))
+      this._playSound('click')
+    })
 
     texDrop?.addEventListener('click', () => texFile?.click())
 

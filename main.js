@@ -49,6 +49,7 @@ import OmniGrab          from './systems/OmniGrab.js'
 import ToolTipMenu       from './ui/ToolTipMenu.js'
 import OmniInspector     from './systems/OmniInspector.js'
 import OmniPresenter     from './systems/OmniPresenter.js'
+import OmniGallery       from './systems/OmniGallery.js'
 import OmniPocket        from './systems/OmniPocket.js'
 import NodeManager       from './systems/NodeManager.js'
 import EventTestIndicators from './systems/EventTestIndicators.js'
@@ -195,6 +196,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniNode      = new OmniNode(base.context)
   const omniInspector = new OmniInspector(base.context)
   const omniPresenter = new OmniPresenter(base.context)
+  const omniGallery   = new OmniGallery(base.context)
   const omniPocket    = new OmniPocket(base.context)
   const nodeLoader    = new NodeLoader(base.context)
 
@@ -206,6 +208,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const toolTipMenu = base.addModule(new ToolTipMenu(base.context, omniNode, omniGrab))
   base.addModule(omniInspector)
   base.addModule(omniPresenter)
+  base.addModule(omniGallery)
   base.addModule(omniPocket)
   base.addModule(nodeLoader)
   base.addModule(new EventTestIndicators(base.context))
@@ -857,6 +860,21 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     )
     if (isTyping) return
     window.dispatchEvent(new CustomEvent('omni:system-toggle', { detail: { system: 'omnipresenter' } }))
+  })
+
+  // ── 'g' — open/close ⟐g OmniGallery ────────────────────────
+  // Same pattern as 'p' above for OmniPresenter — matches the project's
+  // existing per-system-toggle keyboard convention exactly.
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'g' || e.repeat) return
+    const active = document.activeElement
+    const isTyping = active && (
+      active.tagName === 'INPUT' ||
+      active.tagName === 'TEXTAREA' ||
+      active.isContentEditable
+    )
+    if (isTyping) return
+    window.dispatchEvent(new CustomEvent('omni:system-toggle', { detail: { system: 'omnigallery' } }))
   })
 
   // ── 'n' — open the OmniDraw mode picker (Static or Dynamic) ──

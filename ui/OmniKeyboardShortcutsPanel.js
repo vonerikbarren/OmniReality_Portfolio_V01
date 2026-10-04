@@ -132,6 +132,7 @@ const SHORTCUTS = [
   { key: 'k',        desc: 'Toggle OmniMixer' },
   { key: 't',        desc: 'Toggle OmniTranslator' },
   { key: 'p',        desc: 'Toggle ⟐p OmniPresenter' },
+  { key: 'g',        desc: 'Toggle ⟐g OmniGallery' },
   { key: 'F2',        desc: 'Refresh the page' },
   { key: 'F4',        desc: 'Toggle fullscreen' },
   { key: 'Escape',   desc: 'Exit fullscreen' },
