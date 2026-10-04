@@ -18,11 +18,11 @@ const STYLES = `
 .account-profile-panel {
   pointer-events   : auto;
   --app-bg         : var(--omni-theme-bg, rgba(6, 8, 14, 0.94));
-  --app-border     : var(--omni-theme-border, rgba(127, 216, 255, 0.18));
+  --app-border     : var(--omni-theme-border, rgba(var(--omni-color-accent-blue-rgb), 0.18));
   --app-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --app-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.94));
   --app-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.6));
-  --app-accent     : var(--omni-theme-accent, #7fd8ff);
+  --app-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -42,7 +42,7 @@ const STYLES = `
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border           : 1px solid var(--app-border);
   border-radius    : 14px;
-  box-shadow       : 0 0 40px rgba(127,216,255,0.08), 0 20px 50px rgba(0,0,0,0.55);
+  box-shadow       : 0 0 40px rgba(var(--omni-color-accent-blue-rgb), 0.08), 0 20px 50px rgba(0,0,0,0.55);
 
   font-family      : var(--mono);
   z-index          : 60;
@@ -76,7 +76,7 @@ const STYLES = `
 
 .app-body { flex: 1 1 auto; overflow-y: auto; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
 
-.app-avatar { text-align: center; font-size: 30px; color: var(--app-accent); text-shadow: 0 0 18px rgba(127,216,255,0.5); }
+.app-avatar { text-align: center; font-size: 30px; color: var(--app-accent); text-shadow: 0 0 18px rgba(var(--omni-color-accent-blue-rgb), 0.5); }
 .app-name { text-align: center; font-size: 14px; color: var(--app-text); letter-spacing: 0.04em; }
 .app-subname { text-align: center; font-size: 9px; color: var(--app-text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: -8px; }
 

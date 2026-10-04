@@ -42,7 +42,7 @@ const STYLES = `
   --oj-header-bg   : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --oj-text        : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --oj-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
-  --oj-accent      : var(--omni-theme-accent, #7fd8ff);
+  --oj-accent      : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -106,11 +106,11 @@ const STYLES = `
 }
 .oj-toolbar-row { display: flex; gap: 6px; margin-bottom: 10px; }
 .oj-create-btn {
-  flex: 1; background: rgba(127,216,255,0.15); border: 1px solid var(--oj-accent);
+  flex: 1; background: rgba(var(--omni-color-accent-blue-rgb), 0.15); border: 1px solid var(--oj-accent);
   color: var(--oj-accent); font-family: inherit; font-size: 11px; padding: 7px; border-radius: 5px;
   cursor: pointer;
 }
-.oj-create-btn:hover { background: rgba(127,216,255,0.25); }
+.oj-create-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.25); }
 .oj-error { color: #ff8c8c; font-size: 10px; margin-bottom: 8px; }
 
 .oj-node { font-size: 11px; color: var(--oj-text); }

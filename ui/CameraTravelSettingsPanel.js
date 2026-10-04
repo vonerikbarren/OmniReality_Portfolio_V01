@@ -24,7 +24,7 @@ const STYLES = `
   --cts-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --cts-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --cts-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
-  --cts-accent     : var(--omni-theme-accent, #7fd8ff);
+  --cts-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;

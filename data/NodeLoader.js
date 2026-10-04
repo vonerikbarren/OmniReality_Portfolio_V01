@@ -290,6 +290,7 @@ export default class NodeLoader {
     this._onNavigate = null
     this._onSceneClear = null
     this._onDeleteSystemRequest = null
+    this._onRotationAutomationSet = null
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
@@ -303,9 +304,42 @@ export default class NodeLoader {
   /**
    * Called every frame by BaseScene render loop.
    * Drains one deferred hydration task per frame to avoid load spikes.
-   * @param {number} _delta
+   * @param {number} delta
    */
-  update (_delta) {
+  update (delta) {
+    // Real bug fix — OmniInspector's "Automation" (Auto-Rotate) section
+    // renders unconditionally for ANY selected/created node, loader-owned
+    // or not, but systems/OmniNode.js's own rotation-automation listener
+    // and per-frame apply loop only ever look at OmniNode's own `_nodes`
+    // Map. Any node hydrated through THIS registry instead (anything
+    // loaded via loadFromURL/loadNode — e.g. every node
+    // ui/OmniSystemCreatorPanel.js's "Create System" produces) was
+    // invisible to that loop, so toggling Auto-Rotate on one did nothing
+    // at all: the patch was silently dropped (no matching entry to
+    // apply it to) and nothing was ever there to spin the mesh even if
+    // it had landed. Mirrors systems/OmniNode.js update()'s own
+    // autoRotation/lookAt block exactly, scoped to this registry instead.
+    for (const entry of this._registry.values()) {
+      if (entry.state !== 'loaded' || !entry.mesh || !entry.data) continue
+      const data = entry.data
+      const mesh = entry.mesh
+
+      const mode = data.lookAtMode
+      if (mode === 'Camera') {
+        mesh.lookAt(this.ctx.camera.position)
+        continue
+      }
+      if (mode === 'Coordinate' && data.lookAtCoordinate) {
+        mesh.lookAt(...data.lookAtCoordinate)
+        continue
+      }
+
+      if (!data.autoRotation) continue
+      if (data.autoRotationAxisX) mesh.rotation.x += (data.autoRotationSpeedX ?? 1) * delta
+      if (data.autoRotationAxisY) mesh.rotation.y += (data.autoRotationSpeedY ?? 1) * delta
+      if (data.autoRotationAxisZ) mesh.rotation.z += (data.autoRotationSpeedZ ?? 1) * delta
+    }
+
     if (this._loadQueue.length === 0) return
     for (let i = 0; i < DEQUEUE_PER_FRAME; i++) {
       const task = this._loadQueue.shift()
@@ -318,6 +352,7 @@ export default class NodeLoader {
     window.removeEventListener('omni:navigate', this._onNavigate)
     window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
     window.removeEventListener('omni:delete-system-request', this._onDeleteSystemRequest)
+    window.removeEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
 
     // Dispose all loaded meshes
     for (const [id, entry] of this._registry) {
@@ -886,6 +921,29 @@ export default class NodeLoader {
   }
 
   /**
+   * Merge a field patch into an ALREADY-stored node (unlike
+   * _writeToStorage above, which only ever writes a node once at
+   * ingest time). Needed so a live edit — e.g. the Inspector's
+   * Automation section toggling autoRotation on a loader-owned node —
+   * actually survives a reload instead of silently reverting to
+   * whatever was first ingested.
+   * @param {string} id
+   * @param {object} patch
+   */
+  _updateStoredNode (id, patch) {
+    try {
+      const raw      = localStorage.getItem(STORE_LOADER)
+      const existing = raw ? JSON.parse(raw) : []
+      const idx = existing.findIndex(n => n.id === id)
+      if (idx === -1) return
+      existing[idx] = { ...existing[idx], ...patch }
+      localStorage.setItem(STORE_LOADER, JSON.stringify(existing))
+    } catch (err) {
+      console.warn('⟐ NodeLoader — storage write failed:', err)
+    }
+  }
+
+  /**
    * On init, restore any nodes previously written to 'omni:loader:nodes'.
    * Re-ingest their data — hydration will occur normally.
    */
@@ -996,6 +1054,21 @@ export default class NodeLoader {
       this.deleteSystemInstance(e.detail?.systemInstanceId)
     }
     window.addEventListener('omni:delete-system-request', this._onDeleteSystemRequest)
+
+    // Real bug fix — same event systems/OmniInspector.js's Automation
+    // section dispatches for every node type; OmniNode.js already
+    // listens for it but only ever resolves ids against its own `_nodes`
+    // Map, so a loader-owned id (anything hydrated through THIS
+    // registry) was never found there and the patch was silently
+    // dropped. This registry needs its own listener for its own ids.
+    this._onRotationAutomationSet = (e) => {
+      const { id, ...patch } = e.detail ?? {}
+      const entry = this._registry.get(id)
+      if (!entry || !entry.data) return
+      Object.assign(entry.data, patch)
+      this._updateStoredNode(id, patch)
+    }
+    window.addEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
   }
 
   /**

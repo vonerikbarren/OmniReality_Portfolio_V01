@@ -42,7 +42,7 @@ const STYLES = `
   --osp-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --osp-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --osp-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
-  --osp-accent     : var(--omni-theme-accent, #7fd8ff);
+  --osp-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -101,7 +101,7 @@ const STYLES = `
   cursor: pointer; text-align: left;
 }
 .osp-mode-btn:hover { background: rgba(255,255,255,0.1); }
-.osp-mode-btn.is-active { border-color: var(--osp-accent); color: var(--osp-accent); background: rgba(127,216,255,0.1); }
+.osp-mode-btn.is-active { border-color: var(--osp-accent); color: var(--osp-accent); background: rgba(var(--omni-color-accent-blue-rgb), 0.1); }
 
 .osp-spacing-row { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--osp-border); }
 .osp-field-label { font-size: 9px; color: var(--osp-text-dim); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }

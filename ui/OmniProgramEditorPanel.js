@@ -7,7 +7,12 @@
  * (per direct request: "slowly build the coolest ide this way"). For
  * now it's the same command-dropdown-per-step editor as the
  * Inspector's quick version, just roomier, plus the same
- * ⟐OmniBegin(Program) run button.
+ * ⟐OmniBegin(Program) run button. Includes the Group step — a step
+ * whose body is its own nested, reorderable step list (recursively,
+ * including further Groups) — as the first real "middle zone" toward
+ * the eventual full IDE, per direct request. See
+ * systems/OmniProgramCommands.js's header comment for the data model
+ * and depth cap.
  *
  * Follows the exact same real, working pattern as
  * ui/OmniInternalPanel.js: this panel never touches localStorage
@@ -35,7 +40,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { defaultStep, stepRowHTML, runProgram } from '../systems/OmniProgramCommands.js'
+import { defaultStep, stepRowHTML, runProgram, resolveStepPath } from '../systems/OmniProgramCommands.js'
 
 const STYLES = /* css */`
 
@@ -149,6 +154,16 @@ const STYLES = /* css */`
 .op-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 70px; min-width: 64px; }
 .op-field-label { font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
 .op-field-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); border-radius: 4px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 5px; width: 100%; box-sizing: border-box; }
+
+/* Group step — same recursive op-step markup, indented. Matches
+   systems/OmniInspector.js's copy of these same rules. */
+.op-step--group { border-color: rgba(255, 238, 0, 0.18); }
+.op-step-collapse { background: none; border: none; color: rgba(255,255,255,0.45); font-size: 10px; cursor: pointer; padding: 0 2px; width: 12px; }
+.op-step-collapse:hover { color: #fff; }
+.op-group-body { margin: 6px 0 2px 14px; padding: 8px 0 0 10px; border-left: 2px solid rgba(255, 238, 0, 0.16); display: flex; flex-direction: column; gap: 8px; }
+.op-group-steps { display: flex; flex-direction: column; gap: 8px; }
+.op-step-add-nested { align-self: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.75); border-radius: 5px; font-family: inherit; font-size: 9px; padding: 4px 8px; cursor: pointer; }
+.op-step-add-nested:hover { background: rgba(255,255,255,0.1); }
 
 .ope-row { display: flex; gap: 8px; }
 .ope-btn {
@@ -301,8 +316,10 @@ export default class OmniProgramEditorPanel {
       </div>
       <div class="ope-note">
         Move / Rotate / Scale genuinely tween this object; Communicate /
-        Notify push through the real ⟐OmniNotify pipeline. Running a
-        program plays it live — it won't overwrite this object's saved
+        Notify push through the real ⟐OmniNotify pipeline. Group bundles
+        an ordered set of steps — including further Groups — into one
+        container, run in order like any other step. Running a program
+        plays it live — it won't overwrite this object's saved
         transform. This is the same data as the Inspector's own
         "▶ Program" section — saving here saves for real, no need to
         also save there.
@@ -314,6 +331,7 @@ export default class OmniProgramEditorPanel {
 
       <div class="ope-row">
         <button class="ope-btn" id="ope-add-step">+ Add Step</button>
+        <button class="ope-btn" id="ope-add-group">+ Add Group</button>
       </div>
 
       <div class="ope-enabled-row">
@@ -344,29 +362,57 @@ export default class OmniProgramEditorPanel {
       this._markUnsaved()
     })
 
+    // Steps can now nest (Group), so every row is addressed by its
+    // dotted-index path ("0", "0.2", "0.2.1", ...) via
+    // resolveStepPath() rather than a flat array index — same scheme
+    // as systems/OmniInspector.js's quick editor, since both share
+    // this exact row markup/behavior.
     const wireStepRows = () => {
       body.querySelectorAll('.op-step-cmd').forEach(sel => {
         sel.addEventListener('change', (e) => {
-          const idx = Number(sel.dataset.idx)
-          this._staged.steps[idx] = defaultStep(e.target.value)
+          const hit = resolveStepPath(this._staged.steps, sel.dataset.path)
+          if (!hit) return
+          hit.arr[hit.index] = defaultStep(e.target.value)
           this._markUnsaved()
           rerenderSteps()
         })
       })
       body.querySelectorAll('.op-field-input').forEach(input => {
         input.addEventListener('input', (e) => {
-          const idx = Number(input.dataset.idx)
+          const hit = resolveStepPath(this._staged.steps, input.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
           const field = input.dataset.field
-          const step = this._staged.steps[idx]
-          if (!step) return
           step[field] = input.type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value
           this._markUnsaved()
         })
       })
       body.querySelectorAll('.op-step-del').forEach(btn => {
         btn.addEventListener('click', () => {
-          const idx = Number(btn.dataset.idx)
-          this._staged.steps.splice(idx, 1)
+          const hit = resolveStepPath(this._staged.steps, btn.dataset.path)
+          if (!hit) return
+          hit.arr.splice(hit.index, 1)
+          this._markUnsaved()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-collapse').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(this._staged.steps, btn.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
+          step.collapsed = !step.collapsed
+          this._markUnsaved()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-add-nested').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(this._staged.steps, btn.dataset.groupPath)
+          if (!hit) return
+          const group = hit.arr[hit.index]
+          if (!Array.isArray(group.steps)) group.steps = []
+          group.steps.push(defaultStep('move'))
           this._markUnsaved()
           rerenderSteps()
         })
@@ -388,6 +434,12 @@ export default class OmniProgramEditorPanel {
 
     body.querySelector('#ope-add-step')?.addEventListener('click', () => {
       this._staged.steps.push(defaultStep('move'))
+      this._markUnsaved()
+      rerenderSteps()
+    })
+
+    body.querySelector('#ope-add-group')?.addEventListener('click', () => {
+      this._staged.steps.push(defaultStep('group'))
       this._markUnsaved()
       rerenderSteps()
     })

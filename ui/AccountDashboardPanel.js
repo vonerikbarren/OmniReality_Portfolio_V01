@@ -28,11 +28,11 @@ const STYLES = `
 .account-dashboard-panel {
   pointer-events   : auto;
   --adp-bg         : var(--omni-theme-bg, rgba(6, 8, 14, 0.94));
-  --adp-border     : var(--omni-theme-border, rgba(127, 216, 255, 0.18));
+  --adp-border     : var(--omni-theme-border, rgba(var(--omni-color-accent-blue-rgb), 0.18));
   --adp-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --adp-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.94));
   --adp-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.6));
-  --adp-accent     : var(--omni-theme-accent, #7fd8ff);
+  --adp-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -52,7 +52,7 @@ const STYLES = `
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
   border           : 1px solid var(--adp-border);
   border-radius    : 14px;
-  box-shadow       : 0 0 40px rgba(127,216,255,0.08), 0 20px 50px rgba(0,0,0,0.55);
+  box-shadow       : 0 0 40px rgba(var(--omni-color-accent-blue-rgb), 0.08), 0 20px 50px rgba(0,0,0,0.55);
 
   font-family      : var(--mono);
   z-index          : 60;

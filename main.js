@@ -86,6 +86,7 @@ import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniMeter from './ui/OmniMeter.js'
 import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
 import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
+import OmniPointing from './systems/OmniPointing.js'
 import OmniBotProgram from './systems/OmniBotProgram.js'
 import OmniProgramPanel from './ui/OmniProgramPanel.js'
 import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
@@ -344,6 +345,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)
   base.addModule(omniRealityGridPointSelector)
   base.addModule(new OmniRealityGridPointSelectorPanel(omniRealityGridPointSelector))
+  // OmniMeter(External) / Admin15 — real, new system; not a mode on
+  // either grid selector above (see systems/OmniPointing.js's own
+  // header comment for why). Needs omniNode only to step aside when
+  // the cursor is over a real node mesh, and to issue the real
+  // omni:node-create-request "Highlight and Edit" fires.
+  const omniPointing = new OmniPointing(base.context, omniNode)
+  base.addModule(omniPointing)
   const omniBotProgram = new OmniBotProgram(base.context, omniNode)
   base.addModule(omniBotProgram)
   base.addModule(new OmniProgramPanel(omniBotProgram))
@@ -548,9 +556,19 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         },
         11: { label: 'TerminalSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TerminalSettings' } })) },
         12: { label: 'OmniRealityGridSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridSelector' } })) },
-        13: { label: 'OmniMeter', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniMeter' } })) },
+        // Label-only rename, per direct request — same OmniMeter onClick
+        // target, unchanged (ui/OmniMeter.js itself is untouched).
+        13: { label: 'OmniMeter(Internal)', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniMeter' } })) },
         14: { label: 'OmniRealityGridPointSelector', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniRealityGridPointSelector' } })) },
-        15: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
+        // OmniMeter(External) — the real, new OmniPointing/OmniStemming
+        // system (systems/OmniPointing.js), not a label-only change.
+        // onClick toggles it active/inactive; there's no separate
+        // draggable window for this one — the whole feature IS the
+        // floor-hover overlay, so "opening" it means switching it on.
+        15: { label: 'OmniMeter(External)', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniMeterExternal' } })) },
+        // FloorManager — moved from slot 15 to slot 16 to make room for
+        // OmniMeter(External) above. Same onClick/label, just renumbered.
+        16: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },

@@ -158,7 +158,7 @@ const STYLES = /* css */`
   --od-text        : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --od-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.68));
   --od-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.45));
-  --od-accent      : var(--omni-theme-accent, #7fd8ff);
+  --od-accent      : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --od-line        : var(--omni-theme-text, rgba(255, 255, 255, 0.45));
   --od-input-bg    : var(--omni-theme-input-bg, rgba(255, 255, 255, 0.05));
   --od-input-border: var(--omni-theme-input-border, var(--od-border));
@@ -347,15 +347,15 @@ const STYLES = /* css */`
   font-size        : 10px;
   letter-spacing   : 0.06em;
   color            : var(--od-accent);
-  background       : rgba(127, 216, 255, 0.08);
-  border           : 1px solid rgba(127, 216, 255, 0.35);
+  background       : rgba(var(--omni-color-accent-blue-rgb), 0.08);
+  border           : 1px solid rgba(var(--omni-color-accent-blue-rgb), 0.35);
   border-radius    : 6px;
   padding          : 5px 10px;
   cursor           : pointer;
   transition       : background 0.12s ease;
 }
 
-.od-expand-btn:hover { background: rgba(127, 216, 255, 0.16); }
+.od-expand-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.16); }
 
 .od-export-btn {
   color            : #7fffb0;
@@ -428,7 +428,7 @@ const STYLES = /* css */`
   transition       : transform 0.15s ease, background 0.15s ease;
 }
 
-.od-toggle.is-on { background: rgba(127, 216, 255, 0.35); border-color: rgba(127, 216, 255, 0.5); }
+.od-toggle.is-on { background: rgba(var(--omni-color-accent-blue-rgb), 0.35); border-color: rgba(var(--omni-color-accent-blue-rgb), 0.5); }
 .od-toggle.is-on::after { transform: translateX(14px); background: var(--od-accent); }
 
 .od-num {

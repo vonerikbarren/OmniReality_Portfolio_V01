@@ -2319,6 +2319,580 @@ OmniGallery is fully additive, and the Inspector change only adds one
 new button + one new listener alongside the untouched existing
 texture-slot code.
 
+### V154 — theme centralization, MiniMap off by default, Kryptx nudge, minimize-to-tab restore fix
+
+Four direct asks in one pass. Dated 2026-10-04.
+
+**1. "Theme everything" — the blue accent and shared panel colors**
+
+Investigated before building anything, and found two separate real
+things already in the codebase, not one gap:
+
+- A *complete* theme system already exists and is already running:
+  `ui/ThemeManager.js` loads `data/themes.json` (`dark` / `light` +
+  a saved `custom` set) and applies it by setting
+  `--omni-theme-bg/-border/-header-bg/-text/-text-dim/-text-muted/
+  -accent/-input-bg/-input-border` on `document.documentElement`.
+  Roughly 50 panels (every `*SettingsPanel`, the Account* panels,
+  `OmniKeys.js`, `OmniDraw.js`, `AdminPanel.js`, and more) already
+  define their own local CSS vars as
+  `--xx-bg: var(--omni-theme-bg, <their own original literal>)`, so
+  they already pick up a theme switch. `main.js` already calls
+  `ThemeManager.initTheme()` on startup, and `ui/AdminPanel.js`
+  already has a working theme picker + custom-color editor. None of
+  this needed building — confirmed it's real and wired, and left it
+  untouched.
+- The actual gap: the specific blue — `#7fd8ff` / `rgba(127, 216,
+  255, …)`, which is also `data/themes.json`'s `dark.accent` — is
+  *also* hardcoded directly as a raw literal, independent of the
+  `--omni-theme-accent` hook above, in a dozen-plus files' hover/
+  active-state glows. Those don't derive from `--omni-theme-accent`,
+  so switching to the `light` theme via AdminPanel wouldn't re-color
+  them — a real, if minor, theme-consistency gap.
+
+**Fix — `ui/OmniTheme.js` (new file):** defines `:root { --omni-color-
+accent-blue: #7fd8ff; --omni-color-accent-blue-rgb: 127, 216, 255; }`
+via the same injected-`<style>`-by-id convention every other module in
+this app already uses. Wired into `ui/index.js`'s `init()` as the very
+first step (`injectOmniTheme()`, before any panel's own
+`injectStyles()`).
+
+**Files edited to reference the token instead of repeating the
+literal** (every value reproduced exactly — same resolved color, same
+alpha per call site, confirmed visually-equivalent): `ui/
+AccountDashboardPanel.js`, `ui/AccountLoginPanel.js`, `ui/
+AccountProfilePanel.js`, `ui/MiniMapSettingsPanel.js`, `ui/
+OmniCommunicationPanel.js`, `ui/OmniDraw.js`, `ui/OmniDrawDynamic.js`,
+`ui/OmniJsonifier.js`, `ui/OmniKeys.js`, `ui/OmniPanelTray.js`, `ui/
+OmniStructurePanel.js`, `ui/CameraTravelSettingsPanel.js`, `ui/
+ToolTipSettingsPanel.js`, `ui/OmniUserPanel.js`, `systems/
+OmniInspector.js`. `#7fd8ff` → `var(--omni-color-accent-blue)`;
+`rgba(127, 216, 255, X)` → `rgba(var(--omni-color-accent-blue-rgb), X)`.
+
+**Caught myself before shipping it:** an initial pass also rewrote
+three occurrences that looked like the same literal but weren't CSS at
+all — `ui/OmniDrawDynamic.js` (a `color` field in an `omni:node-create-
+request` detail, consumed as a `THREE.Color` string), `systems/
+OmniPlayerGame.js` (`EMOTIONAL_STATES.curious.color`, consumed by
+`mat.color.set(...)` in `modules/OmniExpressionator.js`), and `ui/
+OmniCellPanel.js` (`SERIES_COLORS`, a chart-series palette, not panel
+chrome). A `var(--omni-color-accent-blue)` string means nothing to
+`THREE.Color` or a canvas/D3 color parser — all three were reverted
+back to the literal `#7fd8ff` before this was done. Left alone on
+purpose, documented in `ui/OmniTheme.js`'s own header so it isn't
+"fixed" again by accident later.
+
+**Deliberately not done:** fully closing the light/dark gap for those
+dozen-plus literal glows (making them read `--omni-theme-accent`
+instead) — CSS can't split a theme's `accent` hex back into separate
+R/G/B channels for a translucent `rgba(…, 0.16)` wash without
+`color-mix()`, which would be a second, larger pass across the same
+files. Also deliberately left `--omni-theme-bg/-border/-text/etc.`
+alone — already live and working via ThemeManager, nothing to add.
+
+**2. MiniMap off by default**
+
+`utils/MiniMapSettings.js` — `DEFAULTS.startVisible` flipped from
+`true` to `false` (one line, comment explains how to flip it back).
+This is the real flag `ui/MiniMap.js` reads at `init()` to decide its
+initial `_visible` state (`this._visible = this._settings.
+startVisible`). Everything else — the 'm' key toggle, and the live
+`omni:minimap-visibility-set` listener in `main.js` that `ui/
+MiniMapSettingsPanel.js`'s own toggle fires — is untouched, so the
+MiniMap can still be turned on/off live without a reload. **To turn it
+back on by default:** flip that one line back to `true`, or open the
+MiniMap settings panel (Admin) and toggle "Visible on Start."
+
+**3. KryptxKeyboard — arrow buttons to move it out**
+
+Found: "Kryptx" in this app is `ui/OmniKeyCryptxReveal.js`
+("CryptxMode," opened via `omni:cryptx-keyboard-toggle" from `ui/
+OmniKeys.js`'s "KryptxKeyboard" button) — a separate docked panel,
+`position: fixed; right: 0`, not a mode of `ui/OmniKeys.js` itself.
+
+Added two header buttons, `◂` (out) and `▸` (in), using the exact
+offset-on-top-of-docked-position pattern `ui/MovementPad.js` already
+uses for its own detach mechanic (`gsap.set(el, { x, y })` layered
+over the CSS-docked position, never touching the docked CSS properties
+themselves):
+- `_offsetX`, nudged by `NUDGE_STEP` (48px) per click, applied as
+  `gsap.set(this._el, { x: -this._offsetX })` on top of `right: 0`.
+- Bounded to `[0, _maxOffset()]`, where `_maxOffset()` is computed from
+  the *current* panel width (`HEADER_W + revealedCount * COL_W`) and
+  `window.innerWidth`, re-clamped every time columns are revealed/
+  retracted (so revealing a column can't push an already-maximal
+  offset off-screen) — same "can't move it off-screen" requirement
+  MovementPad's own detach bounds satisfy.
+- `◂`/`▸` disable themselves at the bounds (mirrors MovementPad's own
+  disabled-state convention).
+- Persisted to `localStorage` (`omni:cryptx-keyboard:offset`), same as
+  MovementPad's own detach offset — survives reopening the panel and
+  page reloads.
+
+**4. Minimize-to-tab — real bug found and fixed, not just explained**
+
+The feature: minimizing any panel (its header's `_`/`–` control) sends
+it to `ui/OmniPanelTray.js`, a real tray of tabs toggled open/closed by
+the small `▲` arrow in the Dock's right wing. Clicking a tab is
+supposed to restore (maximize) that panel and remove its tab.
+
+Read the full chain end to end rather than guessing. Every panel that
+minimizes dispatches the same `omni:panel-minimized` event (confirmed:
+43 files). `OmniPanelTray._maximizeTab(id)` calls `WindowManager.
+restorePanel(id)` then unconditionally removes the tab. Read `ui/
+WindowManager.js`'s `restorePanel`:
+
+```js
+export function restorePanel (id) {
+  const entry = registry.get(id)
+  if (!entry) return false                                   // ← bug
+  entry.el.style.visibility = 'visible'
+  bringToFront(id)
+  window.dispatchEvent(new CustomEvent('omni:panel-restore', { detail: { id } }))
+  return true
+}
+```
+
+Its own header comment claims it "still dispatches `omni:panel-
+restore`... for the handful of panels that do listen" even when not
+registered — but the code returns `false` **before** reaching that
+dispatch for any unregistered id, so that promise was never actually
+kept. Cross-checked which of the 43 minimizing panels are registered
+with `WindowManager.register(...)` (the ~45-panel `IndexedPanel.js`-
+based majority all are) versus which only listen for `omni:panel-
+restore` directly: `ui/Panel.js` (the lh/rh base panels) does listen
+for it — so its tab was silently un-restorable too, the early return
+skipped the dispatch it needed. `systems/OmniNode.js`, `systems/
+OmniPocket.js`, `systems/OmniPresenter.js` dispatch a *different*,
+unconsumed event (`omni:panel-restore-handler`, only ever read by
+`systems/EventTestIndicators.js` for a debug flash — nothing stores or
+calls the handler it carries) and never import `WindowManager` at
+all — a second, deeper, pre-existing gap: those three panels were
+**completely unreachable** once minimized, by any route, confirmed
+by `grep`.
+
+**Fixed:**
+- `ui/WindowManager.js` — `restorePanel(id)` now dispatches `omni:
+  panel-restore` unconditionally; the registry-based visibility/
+  z-index branch only runs when the id *is* registered. Fixes `ui/
+  Panel.js`'s lh/rh tabs for real.
+- `systems/OmniNode.js`, `systems/OmniPocket.js`, `systems/
+  OmniPresenter.js` — each now imports `WindowManager` and calls
+  `WindowManager.register(id, el, label)` right after its panel
+  element is built (`'omninode'`, `'omnipocket'`, `'omnipresenter'` —
+  the exact same ids they already use in their `omni:panel-minimized`
+  dispatch), so `restorePanel` can actually find and unhide them. This
+  is the standard, already-established registration call every
+  `IndexedPanel.js`-based panel makes; these three just never made it.
+
+Re-verified after the fix: every one of the 43 panels that dispatches
+`omni:panel-minimized` is now either `WindowManager`-registered or
+listens for `omni:panel-restore` directly (checked by diff, zero
+remaining gaps) — a tab in the tray now actually brings its panel back
+for all of them, not just the ones that happened to implement the
+other half of the contract.
+
+**Real, correct usage** (answering "I don't see this working"): click
+a panel's `_` (or `–`) header button to minimize it — nothing appears
+to happen in the corner, because the destination is the Dock's small
+**`▲` arrow** in its far-right wing, not anywhere near the panel
+itself. Click that arrow to open the tray (it rotates 180° while open)
+and the minimized panel appears as a tab inside it. Click the tab to
+restore the panel; right-click (or long-press) a tab for Maximize /
+Close / Move. That `▲` arrow is the one, fixed, always-reachable place
+the tray opens from regardless of which edge the tray itself is
+docked to — genuinely easy to miss since nothing else in the UI points
+at it.
+
+**Verification this pass:** `node --check` on all 171 `.js` files in
+the repo — zero failures.
+
+### V155 — MiniMap migration fix, Admin slot changes, OmniPointing/OmniStemming (OmniMeter(External))
+
+Dated 2026-10-04.
+
+**1. `utils/MiniMapSettings.js` — the real root-caused minimap bug**
+
+Already root-caused coming into this pass: `DEFAULTS.startVisible` was
+flipped to `false` in V154, but `loadSettings()` did
+`{ ...DEFAULTS, ...JSON.parse(raw) }` — a saved blob already in this
+user's browser (from before the default changed) always overrode the
+new default, forever, no matter what the code said. Fixed with a
+one-time migration: added `STORE_VERSION = 2` and a `MIGRATIONS` list.
+`loadSettings()` now reads any saved blob's own `_v` (missing = `0`),
+and if it's older than `STORE_VERSION`, runs the matching migration(s)
+— here, forcing `startVisible` back to the new code default while
+leaving `corner`/`showPortals` exactly as the user had them — then
+immediately re-persists with the bumped `_v` so this runs exactly
+once. After that, the user's own future toggling of "Visible on
+Start" is respected normally, in either direction. Verified by reading
+the fixed load path end to end (`utils/MiniMapSettings.js`).
+
+**2. Admin panel slot changes (main.js, `admin`'s `specialSlots`)**
+
+- Slot 15 `FloorManager` → slot 16 `FloorManager` (same onClick/label,
+  renumbered to make room for slot 15 below).
+- Slot 13's label: `OmniMeter` → `OmniMeter(Internal)`. Same onClick
+  target — `ui/OmniMeter.js` itself is completely untouched, this is a
+  label-only rename.
+- Slot 15: new, real `OmniMeter(External)` — not a label change. See
+  below.
+
+**3. OmniMeter(External) — OmniPointing / OmniStemming, a real, new system**
+
+Built `systems/OmniPointing.js` and registered it in `main.js` right
+after `omniRealityGridPointSelector`. Per direct confirmation this is
+its **own** system, not a mode on `systems/OmniRealityGridSelector.js`
+/ `systems/OmniRealityGridPointSelector.js` — it only reuses their
+real `GRID_SPACING = 20` / `FLOOR_Y = -0.08` constants (neither module
+exports them, so they're duplicated here on purpose, documented).
+
+Grid basis is procedural per direct confirmation: no persistent point
+objects exist in the scene. Every hover raycasts the cursor onto the
+floor plane and snaps to the nearest grid intersection by spacing
+math; nothing becomes a real object until "Highlight and Edit" is
+actually clicked.
+
+What's real and working:
+- **Hover tooltip** — shows the snapped `(x, y, z)`, reusing
+  `var(--ttm-bg/-color/-border)` (the same CSS vars
+  `utils/ToolTipSettings.js` already drives) for visual parity with
+  every other tooltip in the project. Shows a saved title first line
+  if that exact coordinate has one.
+- **Neighbor fade-by-distance** — a real, lightweight DOM-overlay
+  effect: small screen-projected dot elements (pooled/reused, not
+  recreated every frame) around the hovered point, opacity falling
+  off linearly to 0 at `FADE_MAX_DIST = GRID_SPACING * 2.5` (chosen,
+  documented constant). Chosen over spawning real Three.js geometry
+  per candidate point since the whole effect is cursor-anchored and
+  transient — documented in the file's own header comment.
+- **Click → real subContextMenu** (`.omp-quickmenu`, its own CSS
+  deliberately modeled on `ui/ToolTipMenu.js`'s `.ttm-quickmenu`/
+  `.ttm-action-btn`, kept as a separate copy so OmniPointing never
+  depends on ToolTipMenu's init order): **TakeMeThere** (real camera
+  tween, same `gsap.to(camera.position, {...})` pattern as the Spaces
+  feature / `utils/CameraTravel.js`, adapted for a bare coordinate
+  since there's no mesh to tween toward here), **Title** (real
+  `window.prompt`, persisted to `localStorage` keyed by exact
+  coordinate, shown on future hovers of that same point), **Pocket**
+  (real, honest, `disabled` stub — matches this codebase's own
+  established "labeled, not wired" convention, same as Developer →
+  OmniCommandTerminal in `main.js`), **STEM** (real, not a stub — see
+  below), **Highlight and Edit** (real — see below).
+- **OmniStemming** — toggled by the **`KeyJ`** shortcut (checked
+  against every binding in `main.js`'s keydown handlers and
+  `HAND_KEY_BINDINGS`, and every entry in
+  `ui/OmniKeyboardShortcutsPanel.js`'s `SHORTCUTS` list first; `j` was
+  unclaimed by either — added a `SHORTCUTS` entry for it), only while
+  OmniMeter(External) itself is active. While on, hovering follows a
+  vertical "stem" through the snapped `(x, z)` column: the mouse's
+  screen position is raycast against a vertical plane containing that
+  stem's own axis and facing the camera (not the floor plane),
+  clamped to `[FLOOR_Y, FLOOR_Y + STEM_HEIGHT]`, giving the exact
+  `(x, y, z)` along it. A faint preview dashed line follows the hover;
+  clicking "activates" that exact point as the real, persisted,
+  highlighted **ActiveStemming** line (only one at a time — a
+  documented scope choice, matching the user's own description of it
+  as a single highlighted state) and opens the same subContextMenu,
+  mirrored: STEM becomes "Deactivate STEM," and Highlight and Edit
+  drops the locationNode at the exact clicked point along the stem
+  rather than at floor level.
+- **Vertical dashed stem** — a real dashed line, `STEM_HEIGHT = 14`
+  world units, rising only from the point (not also descending — a
+  documented call; the user's own wording named "rising" explicitly
+  and left descending undecided). Built via real geometric dashing
+  (stacked short cylinder segments with real gaps) — grepped for
+  "Dashed" first per instruction, and that search found
+  `systems/OmniNode.js`'s own `_buildDashedCylinderGeometry`
+  (segmented-cylinder dashing) as the *only* prior dashed-line
+  technique in this project; `THREE.LineDashedMaterial` is never used
+  here, so OmniPointing's own `_buildDashedVerticalLine` follows that
+  existing convention instead of introducing a second one.
+- **Highlight and Edit → real `locationNode`** — dispatches the real
+  `omni:node-create-request` event `systems/OmniNode.js` already
+  listens for, with `geometry: 'SphereGeometry'`, `scale: 0.22`,
+  `color: '#ffe14d'` (yellow), and `isLocationNode: true` +
+  `pointingCoordinate: {x,y,z}`. This is a real, fully registered
+  OmniNode — selectable, deletable, draggable, same as any other node.
+  Carries its own sonar-ping ring effect: three looping,
+  expanding-and-fading rings (`RingGeometry`, lying flat), added as
+  independent scene objects at the node's world position (not as
+  children of the tiny node mesh itself — its own `0.22` scale would
+  otherwise shrink the rings down to near-nothing too), re-attached on
+  both fresh creation (`omni:node-created`) and page-reload restore
+  (`omni:node-restored`, so it survives a reload).
+
+**Honest note, stated plainly**: no "sonar" effect, and no single,
+reusable "the 0,0,0 point's own marker" object, exist anywhere in this
+codebase — grepped for "sonar"/"Sonar" project-wide, zero matches, and
+confirmed no origin-specific persistent marker exists either. The
+sonar-ping effect built here is therefore a **new, original effect**
+inspired by the user's own description (smaller than
+`modules/PortalSpheres.js`'s own orbital-ring radius, the closest real
+analogue found), not a scaled-down copy of a pre-existing one.
+
+**Real bug found and fixed in the same pass**: `systems/OmniNode.js`'s
+`omni:node-create-request` handler (`_onCreateRequest`) rebuilds a
+fixed object literal field-by-field rather than spreading the
+incoming event detail — so without an explicit line for them,
+`isLocationNode`/`pointingCoordinate` would have been silently
+dropped on every node OmniPointing creates this way, and
+`OmniInspector.js`'s new Location section would never have triggered
+for a single one of them. Fixed by adding
+`isLocationNode: d.isLocationNode ?? false, pointingCoordinate:
+d.pointingCoordinate ?? null,` to that object literal — every other
+node type simply carries `isLocationNode: false` and is otherwise
+unaffected.
+
+**4. `systems/OmniInspector.js` — real `locationNode` inspector support**
+
+Added a new "Location (OmniPointing)" section (`_locationHTML`/
+`_wireLocation`), rendered only when `data.isLocationNode` is true,
+following the exact same section-scaffold pattern (HTML fn + wire fn,
+`_sectionHTML`, `_sectionOpen`) every other section in this file
+already uses. Per the user's own spec ("at minimum its title/label,
+color, and coordinate") — title and color are already fully editable
+via the existing, generic Identity → Label and Appearance → color/XYZ
+controls (OmniInspector's fields are generic across every node type,
+not per-type), so this section doesn't duplicate those controls; it
+surfaces them together as one honest, read-only combined readout
+specific to a location node (type badge, title, color swatch,
+coordinate), with a note pointing back to where each is actually
+edited.
+
+**5. `docs/dev/Roles/Developer/KeyN-NodeTypeRegistry.md` — new**
+
+The user's own requested running registry of every real node type,
+per direct request ("Add to the 'KeyN' list of nodes — this is also a
+way for me to keep track of all node types"). Enumerates every real
+entry in `systems/OmniNode.js`'s `GEOMETRY_DEFS`/`GEO_LABELS` plus the
+new `isLocationNode` flagged type, each with a one-line description,
+and documents the convention that any future new node type gets
+appended there too.
+
+**Verification this pass:** `node --check` on every `.js` file in the
+repo copy — zero failures.
+
+### V156 — 2026-10-04
+
+**Real bug fixed — per-node Auto-Rotate toggle in the Inspector did
+nothing, for any node that wasn't created through `systems/OmniNode.js`
+itself.**
+
+Reported bug: `systems/OmniInspector.js`'s Automation section
+(`_automationHTML`/`_wireAutomation`) — toggling Auto-Rotate (or an
+axis, or dragging a Speed slider) on a selected node visibly flips the
+switch but the node never spins.
+
+Traced the full dispatch → listener → per-frame-apply chain in
+`systems/OmniNode.js` first (the Inspector's `dispatch()` →
+`window:omni:node-rotation-automation-set` → `OmniNode._onRotationAutomationSet`
+→ `Object.assign(entry.data, patch)` → `OmniNode.update(delta)`'s
+`mesh.rotation.x/y/z += speed * delta` loop) and confirmed every link
+in it is internally correct: field names match exactly
+(`autoRotation`/`autoRotationAxisX/Y/Z`/`autoRotationSpeedX/Y/Z`), the
+Inspector's `data` is the live `entry.data` object by reference (not a
+clone), and nothing else in the repo reassigns `mesh.rotation.x/y/z`
+(or `.set(...)`/`.copy(...)`) on a per-frame basis that could stomp it
+back. So this part, exactly as already suspected before this pass, was
+not the bug.
+
+**Actual root cause: a second, completely separate node registry.**
+`data/NodeLoader.js` ("⟐mniReality Data Layer") keeps its own
+`Map<id, LoaderEntry>` (`this._registry`) for every node hydrated via
+`loadFromURL()`/`loadNode()` — and `ui/OmniSystemCreatorPanel.js`'s
+"Create System" button (Cross/Ring/Sphere/galaxy formations) creates
+every one of its nodes through exactly that path
+(`this.nodeLoader.loadNode(data)`, line ~757), never through
+`OmniNode`'s own `omni:node-create-request`. A loader-owned node's
+mesh is visually identical to an OmniNode-owned one and fires the same
+`omni:node-created` event, so `OmniInspector` happily auto-opens and
+renders the *exact same* Automation section for it — the Inspector
+never checks which registry actually owns the node.
+
+But the only code that ever *acts* on
+`omni:node-rotation-automation-set`, and the only code that ever
+applies the rotation increment per frame, lives in
+`systems/OmniNode.js`, scoped strictly to `this._nodes` (its own Map).
+For a loader-owned id, `OmniNode._onRotationAutomationSet` does
+`this._nodes.get(id)` → `undefined` → `if (!entry) return` — the patch
+is silently dropped, every time — and even if it weren't,
+`OmniNode.update()`'s rotation loop only ever iterates `this._nodes`,
+so a loader-owned mesh would never be spun regardless. Net result: the
+toggle visually flips, nothing is ever persisted, and nothing ever
+spins — a total, silent no-op, exactly matching the report.
+
+This exact registry split had already caused one other confirmed bug
+before this pass (see `data/NodeLoader.js`'s own `_onSceneClear`
+comment: "Clear Scene... previously only reached OmniNode's own node
+storage — NodeLoader's separate registry, which is exactly what
+OmniSystemCreator's Cross/Ring/Sphere nodes are created through, was
+never touched at all"), confirming this is a real, recurring class of
+bug in this codebase, not a one-off.
+
+**Fix — `data/NodeLoader.js`:** gave this registry its own, independent
+copy of the same mechanism, rather than trying to merge the two
+registries (a much bigger change than this bug needs):
+- `update(delta)` now also loops `this._registry.values()` and applies
+  the identical `lookAtMode` / `autoRotation` /
+  `autoRotationAxis{X,Y,Z}` / `autoRotationSpeed{X,Y,Z}` logic
+  `OmniNode.update()` already uses, scoped to loader-owned, `'loaded'`
+  entries only.
+- New `_onRotationAutomationSet` listener (added/removed in
+  `_bindEvents()`/`destroy()`) resolves the id against
+  `this._registry` instead of `OmniNode`'s Map, merges the patch into
+  `entry.data`, and persists it.
+- New `_updateStoredNode(id, patch)` — `_writeToStorage()` only ever
+  writes a node once, at ingest ("idempotent — skips if id already
+  present"), so it couldn't be reused for a later live edit without
+  breaking that ingest-time guarantee. `_updateStoredNode` merges a
+  patch into the already-stored record in `'omni:loader:nodes'` so a
+  loader-owned node's Auto-Rotate setting actually survives a reload.
+
+Not touched, and not the bug: `modules/OrbitModule.js` /
+`ui/CameraMovementOptionsPanel.js`'s camera `autoRotate` (OrbitControls)
+— confirmed unrelated, separate feature, left exactly as-is.
+
+**Verification this pass:** read the corrected path end-to-end for
+both registries (Inspector dispatch → each registry's own listener →
+each registry's own per-frame apply loop). `node --check` on every
+`.js` file in the repo copy — zero failures.
+
+### V157 — 2026-10-04 — Group step for the Program feature (middle zone toward the full IDE)
+
+**Ask:** add a Group step type to the existing Program feature (the
+per-node move/rotate/scale/communicate/notify step sequence) whose
+body is itself an ordered sub-sequence of steps, including further
+nested Groups, wired into both consumers — `systems/OmniInspector.js`'s
+quick "▶ Program" editor and `ui/OmniProgramEditorPanel.js`'s full
+editor — with Save/Run continuing to work unchanged. Explicitly scoped
+as a deliberate middle step toward the far-future
+`Plan_FullOmniSense_IDE_` system described in
+`docs/omniproducts/OMNISENSE_ALPHABET_AXIOMS_DESIGN.md` — not that
+system; that doc was not touched.
+
+**`systems/OmniProgramCommands.js` (the shared module — most of the
+real work lives here, by design, since both panels already share it):**
+- New `group` entry in `PROGRAM_COMMANDS` — label "Group", one generic
+  field (`label`, default `"Group"`) reusing the existing generic
+  field-rendering path rather than special-casing it.
+- `defaultStep('group')` now also sets `steps: []` (a group's real
+  content, outside the generic field list).
+- `stepRowHTML(step, idx, path, depth)` — extended, not replaced. Two
+  new optional params: `path` (dotted-index address, e.g. `"0.2.1"`),
+  defaulting to `String(idx)` so every pre-existing top-level call
+  site (`stepRowHTML(s, i)`) keeps working byte-for-byte unchanged;
+  `depth` (nesting level, default `0`), used only to decide whether
+  the dropdown still offers "Group" (see depth cap below). All
+  `data-idx="${idx}"` attributes on the command `<select>`, the field
+  `<input>`s and the delete `<button>` became `data-path="${path}"` —
+  a flat numeric index can no longer address a step once nesting
+  exists. A Group row additionally renders a collapse/expand toggle
+  and a new `groupBodyHTML()` section: the group's own `steps` array,
+  rendered by **`stepRowHTML()` calling itself again** on each child
+  at `depth + 1` — one real rendering implementation for every row,
+  flat or nested, in both panels — plus a scoped "+ Add Step" button
+  (`.op-step-add-nested`, `data-group-path`).
+- New exported `resolveStepPath(steps, path)` — walks a dotted-index
+  path down through nested `step.steps` arrays and returns
+  `{ arr, index }`: the real containing array plus the step's index in
+  it, so a caller can read/replace/splice it in place without caring
+  how deep it is. Both panels' wiring code now goes through this
+  instead of a flat `steps[idx]`.
+- `runProgram()` — the old inline per-step `forEach` became two new
+  internal helpers, `appendStepToTimeline()` (one step) and
+  `appendStepsToTimeline()` (a list), so a `group` step can call
+  `appendStepsToTimeline()` again on its own `.steps` at `depth + 1`.
+  A group's children land on the exact same `gsap.timeline()` as
+  everything else — not a nested sub-timeline — so they run in order,
+  one after another, inheriting the program's existing timing
+  semantics (and the existing Auto-Persist / `repeat: 'infinite'`
+  behavior, which operates on the timeline as a whole) with zero new
+  special-casing. This also directly answers point 4 of the ask: a
+  nested move/rotate/scale step still writes back on Auto-Persist
+  exactly like a top-level one, because by the time Auto-Persist's
+  `tl.call(...)`/`onRepeat` fires, the group's steps were never a
+  separate thing to begin with — they're just more entries already on
+  the same timeline.
+- **Depth cap — `MAX_GROUP_DEPTH = 5`, a documented call, not a hard
+  design requirement.** `stepRowHTML()`'s recursion into a group's
+  children and `runProgram()`'s recursion into a group's children both
+  recurse once per nesting level with no other bound, so an unbounded
+  depth (hand-edited JSON, or a corrupted/cyclic localStorage blob)
+  could blow the call stack or build a pathologically large timeline.
+  5 levels is far past anything buildable by hand through this UI in
+  practice, so the cap is invisible in normal use: `stepRowHTML` simply
+  stops offering "Group" in the dropdown once a row is already at
+  depth 5, and `runProgram` independently refuses to recurse past
+  depth 5 even if a step somehow arrived deeper than that already —
+  defense in both the editor and the runner, not just one of them.
+
+**`systems/OmniInspector.js`:**
+- Quick Program editor's `_wireProgram()` rewritten to address steps
+  by path via `resolveStepPath()` (handles any depth, not just
+  top-level) for the command dropdown, field inputs, and delete
+  button; added a collapse-toggle listener (`.op-step-collapse`,
+  toggles `step.collapsed`) and a nested add-step listener
+  (`.op-step-add-nested`, pushes `defaultStep('move')` into the
+  addressed group's `.steps`).
+- New "+ Add Group" button next to "+ Add Step"
+  (`#oi-program-add-group`), pushes `defaultStep('group')`.
+- New CSS for `.op-step--group` / `.op-step-collapse` / `.op-group-body`
+  / `.op-group-steps` / `.op-step-add-nested`, matching this file's
+  existing convention of each consumer keeping its own copy of the
+  shared Program visual language.
+- **Real pre-existing bug found and fixed in the same pass** (not
+  strictly part of the ask, but directly on the implementation path
+  for "Save/Run must keep working with nested shape"): `_onProgramSet`
+  — the handler for the full Editor Panel's cross-panel Save — replaced
+  `#oi-program-steps`' innerHTML with freshly rendered rows but never
+  re-attached any listeners to them, for *any* step shape, flat or
+  nested; a save from the full editor while the quick editor was open
+  would render correct-looking rows that silently did nothing on
+  click/input until the whole section was torn down and rebuilt.
+  Fixed by exposing `_wireProgram`'s internal `wireStepRows` closure as
+  `this._programRewireSteps`, called from `_onProgramSet` right after
+  it rewrites the container's innerHTML.
+
+**`ui/OmniProgramEditorPanel.js`:** identical treatment — `_wireBody()`'s
+`wireStepRows` now uses `resolveStepPath()` against `this._staged.steps`
+for the same four listeners, plus the new collapse and nested-add
+listeners; new "+ Add Group" button (`#ope-add-group`); same new CSS
+block added to this file's own `STYLES` copy. `_save()`/`init()`
+untouched — they already pass `program`/`steps` through opaquely
+(`structuredClone`, array length/map checks only), so nested groups
+round-trip through the existing `omni:node-program-set` save path and
+`localStorage` (`STORE_PREFIX` + nodeId) with no changes needed there;
+confirmed by reading `_saveExt()`/`_loadExt()` and every `program.steps`
+consumer in `OmniInspector.js` — all of them are shape-agnostic
+(`.length`, `.map((s,i) => stepRowHTML(s,i))`), none assume a flat leaf
+step.
+
+**Judgment calls made, documented here per the no-mid-task-questions
+instruction:**
+- Group is a step *type*, selectable from the exact same command
+  dropdown as move/rotate/scale/communicate/notify (switching a row's
+  dropdown to "Group" converts it in place via `defaultStep('group')`,
+  same as switching to any other command) — not a separate button that
+  wraps an existing selection, since no existing "wrap selected steps"
+  interaction exists to reuse and inventing one would be a bigger,
+  un-asked-for UI concept.
+- Default group label: `"Group"`, editable via the same generic text
+  field mechanism every other command's fields already use.
+- Collapse/expand is per-group state stored on the step itself
+  (`step.collapsed`), persisted like any other field — so a group's
+  expanded/collapsed state survives a save/reload rather than always
+  starting expanded.
+- Nesting depth cap: 5 levels, defensive only — see
+  `MAX_GROUP_DEPTH` above.
+
+**Verification this pass:** manually traced add → nest 2-3 steps
+(move + notify) inside a Group → save → run, through both panels'
+code paths and the shared `runProgram()`/`stepRowHTML()` recursion, by
+reading the full call chain (not run in a browser from this pass).
+`node --check` on every `.js` file in the repo copy (172 files) — zero
+failures.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

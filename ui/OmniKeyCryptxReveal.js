@@ -64,12 +64,30 @@
  *   new column entry away if that turns out to matter.
  *
  * ─────────────────────────────────────────────────────────────────────
+ * Position nudge — ◂ / ▸ arrow buttons in the header
+ * ─────────────────────────────────────────────────────────────────────
+ *
+ *   The panel docks flush against the right edge (`right: 0`) same as
+ *   always. ◂ nudges it further OUT (left, away from the edge) by
+ *   NUDGE_STEP px per click; ▸ nudges it back IN toward the edge. Same
+ *   GSAP-offset-on-top-of-docked-position pattern as MovementPad.js's
+ *   detach mechanic (ui/MovementPad.js's `_detachOffset` / `gsap.set(…,
+ *   { x, y })`) rather than re-parenting or changing `right` directly —
+ *   bounded to [0, _maxOffset()] so it can never push the panel's
+ *   leftmost revealed column off the left edge of the viewport. The
+ *   offset persists in localStorage (OFFSET_STORE_KEY), same as
+ *   MovementPad.js's own detach offset — survives both re-opens and
+ *   page reloads, re-clamped against the current viewport width and
+ *   revealed-column count every time it's applied.
+ *
+ * ─────────────────────────────────────────────────────────────────────
  * Events consumed
  * ─────────────────────────────────────────────────────────────────────
  *
  *   omni:cryptx-keyboard-toggle  →  open if closed, close if open
  */
 
+import gsap from 'gsap'
 import { classifyChar, computeCode } from './OmniKeys.js'
 
 // ── Column data ────────────────────────────────────────────────────────────
@@ -106,6 +124,11 @@ const HEADER_W = 90
 const COL_W    = 64
 const TOP_OFF  = 110
 const BOTTOM_OFF = 70
+
+// ── Position-nudge constants (◂ / ▸ header buttons) ──────────────────────
+const NUDGE_STEP   = 48   // px per click, away from / back toward the right edge
+const EDGE_MARGIN  = 16   // px always left visible past the panel's own left edge
+const OFFSET_STORE_KEY = 'omni:cryptx-keyboard:offset'
 
 const STYLES = /* css */`
 
@@ -156,6 +179,30 @@ const STYLES = /* css */`
   justify-content  : center;
 }
 .ocx-close:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* ── Position-nudge arrows — move the whole docked panel further out
+   from (◂) or back in toward (▸) the right edge ─────────────────────── */
+.ocx-nudge-group {
+  display          : flex;
+  gap              : 4px;
+}
+
+.ocx-nudge {
+  width            : 22px;
+  height           : 20px;
+  border-radius    : 4px;
+  border           : 1px solid rgba(255, 255, 255, 0.30);
+  background       : rgba(255, 255, 255, 0.06);
+  color            : rgba(255, 255, 255, 0.80);
+  cursor           : pointer;
+  font-size        : 10px;
+  line-height      : 1;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+}
+.ocx-nudge:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.ocx-nudge:disabled { opacity: 0.30; cursor: default; }
 
 .ocx-hint {
   font-size        : 7px;
@@ -238,6 +285,7 @@ export default class OmniKeyCryptxReveal {
     this._selected = {} // per-column id -> index, remembered across retract/re-reveal
     this._el = null
     this._columnEls = []
+    this._offsetX = this._loadOffset()
 
     this._onToggleEvent = () => this.toggle()
     this._onWheel        = this._handleWheel.bind(this)
@@ -300,8 +348,14 @@ export default class OmniKeyCryptxReveal {
     header.className = 'ocx-header'
     header.innerHTML = `
       <span class="ocx-title">⟐Keyboard</span>
+      <div class="ocx-nudge-group" role="group" aria-label="Move keyboard">
+        <button class="ocx-nudge" data-nudge="out" title="Move further out, away from the edge">◂</button>
+        <button class="ocx-nudge" data-nudge="in" title="Move back in, toward the edge">▸</button>
+      </div>
       <span class="ocx-hint">Scroll: move&nbsp;·&nbsp;L-click: type&nbsp;·&nbsp;R-click: back&nbsp;·&nbsp;M-click: close</span>
     `
+    header.querySelector('[data-nudge="out"]').addEventListener('click', () => this._nudge(1))
+    header.querySelector('[data-nudge="in"]').addEventListener('click', () => this._nudge(-1))
     const closeBtn = document.createElement('button')
     closeBtn.className = 'ocx-close'
     closeBtn.textContent = '×'
@@ -313,6 +367,7 @@ export default class OmniKeyCryptxReveal {
     shell.appendChild(el)
     this._el = el
     this._renderColumns()
+    this._applyOffset()
     window.addEventListener('wheel', this._onWheel, { passive: false })
   }
 
@@ -363,6 +418,60 @@ export default class OmniKeyCryptxReveal {
       const selEl = itemEls[this._selected[col.id]]
       if (selEl) selEl.scrollIntoView({ block: 'nearest' })
     })
+
+    // Revealing/retracting a column changes the panel's own width, which
+    // changes how far it can be nudged out before its leftmost column
+    // would run off-screen — re-clamp every render, not just on nudge.
+    this._applyOffset()
+  }
+
+  // ── Position nudge (◂ / ▸) ───────────────────────────────────────────────
+
+  /** Current total panel width — header + every revealed column. */
+  _panelWidth () {
+    return HEADER_W + this._revealedCount * COL_W
+  }
+
+  /** Furthest this panel can be nudged out before its left edge would
+   *  pass EDGE_MARGIN px from the viewport's left edge. */
+  _maxOffset () {
+    return Math.max(0, window.innerWidth - this._panelWidth() - EDGE_MARGIN)
+  }
+
+  _loadOffset () {
+    try {
+      const raw = Number(localStorage.getItem(OFFSET_STORE_KEY))
+      return Number.isFinite(raw) && raw > 0 ? raw : 0
+    } catch (_) { return 0 }
+  }
+
+  _saveOffset () {
+    try { localStorage.setItem(OFFSET_STORE_KEY, String(this._offsetX)) } catch (_) { /* non-fatal */ }
+  }
+
+  /** Re-applies the current (clamped) offset as a GSAP x-translate on
+   *  top of the panel's docked `right: 0` position — same layering
+   *  MovementPad.js uses for its own detach offset, never touching
+   *  `right` itself. Also updates the ◂/▸ buttons' disabled state at
+   *  the bounds. */
+  _applyOffset () {
+    if (!this._el) return
+    const max = this._maxOffset()
+    this._offsetX = Math.min(Math.max(0, this._offsetX), max)
+    gsap.set(this._el, { x: -this._offsetX })
+
+    const outBtn = this._el.querySelector('[data-nudge="out"]')
+    const inBtn  = this._el.querySelector('[data-nudge="in"]')
+    if (outBtn) outBtn.disabled = this._offsetX >= max
+    if (inBtn)  inBtn.disabled  = this._offsetX <= 0
+  }
+
+  /** @param {number} dir  +1 nudges out (away from the edge), -1 nudges in. */
+  _nudge (dir) {
+    if (!this._el) return
+    this._offsetX += dir * NUDGE_STEP
+    this._applyOffset()
+    this._saveOffset()
   }
 
   // ── Reveal / retract ─────────────────────────────────────────────────────

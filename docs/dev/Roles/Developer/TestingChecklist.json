@@ -745,6 +745,296 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Theme centralization, MiniMap off-by-default, Kryptx nudge, minimize-to-tab restore fix (V154)",
+      "items": [
+        {
+          "feature": "Blue accent still renders identically after centralization",
+          "howToReach": "Open any of: AccountDashboardPanel, AccountLoginPanel, AccountProfilePanel, MiniMapSettingsPanel, OmniCommunicationPanel, OmniDraw, OmniDrawDynamic, OmniJsonifier, OmniKeys, OmniPanelTray, OmniStructurePanel, CameraTravelSettingsPanel, ToolTipSettingsPanel, OmniUserPanel, or the Inspector (OmniInspector)",
+          "whatToCheck": "The blue accent (borders, hover glows, active states) looks exactly as before — same hue/opacity, no panel rendering unstyled or with a missing color (would show as transparent/black instead of blue if the var() token failed to resolve)",
+          "tested": false
+        },
+        {
+          "feature": "Existing ThemeManager light/dark/custom switch still works",
+          "howToReach": "Open AdminPanel's theme picker and switch between Dark, Light, and a custom color set",
+          "whatToCheck": "Panels built on the --omni-theme-* hook (most SettingsPanels, Account* panels, OmniKeys, OmniDraw, AdminPanel itself) still re-color correctly — OmniTheme.js's new --omni-color-accent-blue token is independent of this system and was not supposed to touch it",
+          "tested": false
+        },
+        {
+          "feature": "THREE.Color / canvas / chart colors unaffected by the theme pass",
+          "howToReach": "In OmniDraw's Dynamic text tool, create a dynamic ticker node; check an emotional-state-driven player aura color (OmniPlayerGame); open OmniCellPanel and view a chart with multiple series",
+          "whatToCheck": "The dynamic ticker node's sphere renders actual blue (not invisible/black/default material color), the player aura still tints correctly, and the chart's first series swatch is still blue — these three were deliberately kept as literal '#7fd8ff' hex (not var()) since THREE.Color/canvas/D3 can't resolve a CSS custom property",
+          "tested": false
+        },
+        {
+          "feature": "MiniMap does not appear on a fresh load",
+          "howToReach": "Clear localStorage (or use a fresh profile) and load the app",
+          "whatToCheck": "The MiniMap is NOT visible in the top-right corner on load",
+          "tested": false
+        },
+        {
+          "feature": "MiniMap can still be turned on live",
+          "howToReach": "Press 'm', or open the MiniMap settings panel (Admin) and toggle its visibility switch",
+          "whatToCheck": "The MiniMap appears/disappears live without needing a reload, exactly as before this change — only the startup default changed",
+          "tested": false
+        },
+        {
+          "feature": "KryptxKeyboard ◂/▸ nudge buttons move the panel",
+          "howToReach": "Open OmniKeys, click 'KryptxKeyboard' to open CryptxMode, then click the ◂ and ▸ buttons in its header",
+          "whatToCheck": "◂ moves the whole docked panel further left (away from the right screen edge) in 48px steps; ▸ moves it back toward the edge; ◂ disables once the panel's leftmost column would run off-screen, ▸ disables once back at the docked position (offset 0)",
+          "tested": false
+        },
+        {
+          "feature": "Kryptx nudge offset persists and re-clamps",
+          "howToReach": "Nudge the Kryptx panel out a few steps, reveal/retract columns, then reload the page and reopen CryptxMode",
+          "whatToCheck": "The offset is restored from localStorage on reopen/reload, and revealing more columns (which widens the panel) re-clamps the offset so it can never push the panel off the left edge of the viewport",
+          "tested": false
+        },
+        {
+          "feature": "Minimizing any panel sends it to the OmniPanelTray, not nowhere",
+          "howToReach": "Open any panel (e.g. OmniNode, OmniPocket, OmniPresenter, OmniKeys, lh/rh side panels) and click its minimize ('_' or '–') control",
+          "whatToCheck": "The panel disappears and a tab for it appears in the Dock's panel tray once opened (see next item) — it should NOT just vanish with no trace",
+          "tested": false
+        },
+        {
+          "feature": "The Dock's ▲ arrow actually opens/closes the panel tray",
+          "howToReach": "Click the small ▲ arrow in the Dock's far-right wing",
+          "whatToCheck": "A tray of tabs slides open/closed along whichever edge it's currently oriented to (bottom by default); the arrow itself rotates 180° while the tray is open",
+          "tested": false
+        },
+        {
+          "feature": "Clicking a tab actually restores its panel (the real bug fixed this version)",
+          "howToReach": "Minimize OmniNode, OmniPocket, OmniPresenter, and an lh/rh side panel (ui/Panel.js), open the tray, and click each one's tab",
+          "whatToCheck": "Each panel genuinely reappears (not just the tab disappearing with nothing coming back) — this exact case was broken before V154: WindowManager.restorePanel() returned early for unregistered ids and never dispatched omni:panel-restore, and OmniNode/OmniPocket/OmniPresenter were never registered with WindowManager at all",
+          "tested": false
+        },
+        {
+          "feature": "Restoring a panel also works for every other panel type (regression check)",
+          "howToReach": "Minimize a handful of IndexedPanel-based panels (e.g. any *SettingsPanel, AdminPanel, OmniChronos) via the tray and restore them",
+          "whatToCheck": "No regression — these were already working via WindowManager registration before this pass and should still restore correctly",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "MiniMap migration fix, Admin slot changes, OmniPointing/OmniStemming / OmniMeter(External) (V155)",
+      "items": [
+        {
+          "feature": "MiniMap no longer silently reverts to visible-on-start for a returning user",
+          "howToReach": "In a browser that already has an old omni:minimap:settings blob saved (from before V154), load the page fresh",
+          "whatToCheck": "The minimap starts hidden (the new code default), not visible — the one-time migration should have forced startVisible back to false while leaving your saved corner/showPortals untouched; check localStorage's omni:minimap:settings now has _v: 2",
+          "tested": false
+        },
+        {
+          "feature": "MiniMap's own 'Visible on Start' toggle works normally after the migration",
+          "howToReach": "Admin → MiniMapSettings (slot 4), toggle 'Visible on Start' on, reload the page",
+          "whatToCheck": "The minimap now starts visible — your own explicit choice after the one-time migration is respected in either direction, it isn't forced back to false again",
+          "tested": false
+        },
+        {
+          "feature": "Admin slot 13 relabeled, same panel",
+          "howToReach": "Admin panel, slot 13",
+          "whatToCheck": "Label reads 'OmniMeter(Internal)'; clicking it still opens the exact same OmniMeter panel as before",
+          "tested": false
+        },
+        {
+          "feature": "Admin slot 16 is FloorManager (moved from 15)",
+          "howToReach": "Admin panel, slot 16",
+          "whatToCheck": "Opens FloorManager, identical to its old slot 15 behavior",
+          "tested": false
+        },
+        {
+          "feature": "Admin slot 15 — OmniMeter(External) toggles OmniPointing on/off",
+          "howToReach": "Admin panel, slot 15",
+          "whatToCheck": "Clicking it toggles OmniPointing active; hovering the floor only shows a tooltip/dots while active, and all overlays (tooltip, dots, stem preview) clear immediately when toggled off",
+          "tested": false
+        },
+        {
+          "feature": "OmniPointing hover tooltip shows the real snapped coordinate",
+          "howToReach": "With OmniMeter(External) active, move the mouse over the floor",
+          "whatToCheck": "A small tooltip near the cursor shows (x, y, z) snapped to the real 20-unit grid, matching OmniRealityGridPointSelector's own grid; hovering a real node mesh instead shows no OmniPointing tooltip at all (OmniNode owns that cursor)",
+          "tested": false
+        },
+        {
+          "feature": "Neighbor points fade in near the cursor, fade out with distance",
+          "howToReach": "With OmniMeter(External) active, hover the floor and watch the small dots around the hovered point",
+          "whatToCheck": "A 5x5 neighborhood of small dots appears around the hovered point, each one's opacity falling off with its real distance from the hovered point (not a fixed on/off radius)",
+          "tested": false
+        },
+        {
+          "feature": "Click opens the real OmniPointing subContextMenu",
+          "howToReach": "With OmniMeter(External) active, click anywhere on the floor",
+          "whatToCheck": "A menu opens at the cursor with exactly: TakeMeThere, Title, Pocket (soon) [disabled], STEM, Highlight and Edit; clicking elsewhere closes it without also re-opening it from the same click",
+          "tested": false
+        },
+        {
+          "feature": "TakeMeThere moves the camera to the clicked coordinate",
+          "howToReach": "Open the subContextMenu on any point, click TakeMeThere",
+          "whatToCheck": "The camera smoothly tweens to face that exact coordinate (same gsap-tween feel as the Spaces feature), then orbit controls re-enable with their pivot correctly set there",
+          "tested": false
+        },
+        {
+          "feature": "Title persists per-coordinate across reloads",
+          "howToReach": "Open the subContextMenu on a point, click Title, type a title, confirm; reload the page; hover that exact same point again",
+          "whatToCheck": "The tooltip's first line shows the saved title; a different, untitled point shows no title line",
+          "tested": false
+        },
+        {
+          "feature": "Pocket is an honest, inert stub",
+          "howToReach": "Open the subContextMenu on any point",
+          "whatToCheck": "The Pocket button is visibly disabled/greyed and labeled '(soon)' — clicking it does nothing at all, no fake success",
+          "tested": false
+        },
+        {
+          "feature": "STEM activates ActiveStemming with its own mirrored menu",
+          "howToReach": "Open the subContextMenu on any point (pointing mode), click STEM",
+          "whatToCheck": "A real, highlighted, dashed vertical line appears rising from that point, and its own mirrored subContextMenu opens with STEM now reading 'Deactivate STEM'",
+          "tested": false
+        },
+        {
+          "feature": "OmniStemming toggle (KeyJ) changes hover behavior for real",
+          "howToReach": "With OmniMeter(External) active, press 'j', then hover the floor",
+          "whatToCheck": "A faint preview dashed vertical line follows the snapped (x,z) column, and the tooltip's y value changes as you move the mouse vertically on screen (not fixed at floor level); pressing 'j' again returns to normal pointing-mode hover",
+          "tested": false
+        },
+        {
+          "feature": "Clicking while in OmniStemming mode activates that exact stem",
+          "howToReach": "With OmniStemming mode on, hover to a specific y along a stem, then click",
+          "whatToCheck": "The preview line is replaced by a real, brighter, persisted ActiveStemming line at the exact y that was clicked, and only one ActiveStemming line exists at a time (activating a new one removes the old)",
+          "tested": false
+        },
+        {
+          "feature": "Highlight and Edit creates a real, selectable locationNode",
+          "howToReach": "Open the subContextMenu on any point (pointing or stem), click Highlight and Edit",
+          "whatToCheck": "A small yellow orb appears exactly at that coordinate, with a looping sonar-ping ring effect around its base; it's auto-selected and OmniInspector opens showing a 'Location (OmniPointing)' section with its type/title/color/coordinate",
+          "tested": false
+        },
+        {
+          "feature": "locationNode survives a page reload with its sonar intact",
+          "howToReach": "Create a locationNode via Highlight and Edit, reload the page",
+          "whatToCheck": "The yellow orb is still there at the same coordinate, selectable, and its sonar-ping ring effect is running again (re-attached via omni:node-restored)",
+          "tested": false
+        },
+        {
+          "feature": "KeyN registry file lists every real node type",
+          "howToReach": "Open docs/dev/Roles/Developer/KeyN-NodeTypeRegistry.md",
+          "whatToCheck": "Every GEOMETRY_DEFS/GEO_LABELS entry from systems/OmniNode.js is listed, plus the new isLocationNode type, each with a one-line description",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Per-node Auto-Rotate — loader-registry fix (V156)",
+      "items": [
+        {
+          "feature": "Auto-Rotate works on an OmniNode/OmniDraw-created node (already-working baseline, re-check not to regress)",
+          "howToReach": "OmniDraw (or Inspector's own 'Create New' section) → place any object → select it → Inspector → Automation → toggle Auto-Rotate ON, toggle Y axis ON",
+          "whatToCheck": "The object visibly spins on Y immediately; toggling Auto-Rotate back off stops it",
+          "tested": false
+        },
+        {
+          "feature": "Auto-Rotate now works on a System-Creator (NodeLoader-owned) node — the actual reported bug",
+          "howToReach": "Admin/Developer → OmniSystemCreator → generate any formation (Cross/Ring/Sphere/galaxy) → Create System → select one of the created nodes → Inspector → Automation → toggle Auto-Rotate ON, toggle an axis ON, adjust its Speed slider",
+          "whatToCheck": "The node visibly spins on the chosen axis at the chosen speed — previously this did nothing at all (toggle visually flipped, node never moved)",
+          "tested": false
+        },
+        {
+          "feature": "A System-Creator node's Auto-Rotate setting survives a reload",
+          "howToReach": "After the above, reload the page, re-select the same node in the Inspector",
+          "whatToCheck": "Auto-Rotate is still ON and the node is still spinning — confirms data/NodeLoader.js's new _updateStoredNode() actually persisted the patch into 'omni:loader:nodes', not just the live in-memory entry",
+          "tested": false
+        },
+        {
+          "feature": "Look At (Camera / Coordinate) also works on a System-Creator node",
+          "howToReach": "Select a System-Creator-created node → Inspector → Automation → Look At → Camera",
+          "whatToCheck": "The node continuously faces the camera as you move — confirms NodeLoader's new update() loop mirrors OmniNode's lookAt handling too, not just the rotation-speed fields",
+          "tested": false
+        },
+        {
+          "feature": "Clear Scene still clears System-Creator nodes with Auto-Rotate active (no leak/crash)",
+          "howToReach": "With a System-Creator node Auto-Rotating, Admin → Clear Scene",
+          "whatToCheck": "The scene clears cleanly, no console errors, and nothing keeps spinning in an orphaned state",
+          "tested": false
+        },
+        {
+          "feature": "Camera auto-rotate (OrbitControls) is untouched",
+          "howToReach": "CameraMovementOptionsPanel → toggle camera Auto-Rotate",
+          "whatToCheck": "Behaves exactly as before — this fix only touched data/NodeLoader.js, not modules/OrbitModule.js or ui/CameraMovementOptionsPanel.js",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Program feature — Group step (V157)",
+      "items": [
+        {
+          "feature": "Add a Group step in the Inspector's quick Program editor",
+          "howToReach": "Select any OmniDraw node → Inspector → ▶ Program → Enabled ON → click \"+ Add Group\"",
+          "whatToCheck": "A new collapsible Group row appears with an editable Label field, its own empty nested step list, and a \"+ Add Step\" button scoped inside it",
+          "tested": false
+        },
+        {
+          "feature": "Add steps nested inside a Group (Inspector quick editor)",
+          "howToReach": "Inside a Group row, click its own \"+ Add Step\" → add a Move step → add another → switch it to Notify",
+          "whatToCheck": "Both nested steps render inside the Group's indented container with the same field inputs as a top-level step; each has its own working delete (✕) button that removes only that nested step",
+          "tested": false
+        },
+        {
+          "feature": "Nest a Group inside a Group (recursion)",
+          "howToReach": "Inside an existing Group's nested step list, change one nested step's command dropdown to \"Group\"",
+          "whatToCheck": "That nested step becomes its own collapsible Group with its own empty nested list and scoped Add Step button, indented one level deeper — repeat a few times to confirm real recursion, not a one-level-only mockup",
+          "tested": false
+        },
+        {
+          "feature": "Group nesting depth cap (defensive, not expected to be hit in normal use)",
+          "howToReach": "Nest a Group inside a Group inside a Group, 5 levels deep",
+          "whatToCheck": "At depth 5 the command dropdown for that row no longer offers \"Group\" as an option — only leaf commands (Move/Rotate/Scale/Communicate/Notify)",
+          "tested": false
+        },
+        {
+          "feature": "Collapse/expand a Group",
+          "howToReach": "Click the ▾/▸ button on a Group row's header",
+          "whatToCheck": "The nested step list hides/shows; the Group's collapsed state is NOT lost on the next render (re-open the Inspector section, or save/reload the node) — it's stored on the step itself",
+          "tested": false
+        },
+        {
+          "feature": "Save + Run a program containing a Group with real nested steps (Move + Notify)",
+          "howToReach": "Build: top-level Move step → Group containing [Move, Notify] → top-level Notify step. Click ▰OmniBegin(Program)",
+          "whatToCheck": "All steps run in order, including the two nested inside the Group, with no gap or skip around the Group boundary — the object actually moves per the nested Move step and the nested Notify actually pushes a real OmniNotify message, before the final top-level Notify fires",
+          "tested": false
+        },
+        {
+          "feature": "Auto-Persist still applies to a nested Move/Rotate/Scale step's end state",
+          "howToReach": "In the same program as above, turn Auto-Persist ON, Run Mode \"Once\", run the program, let it finish, then look at the node's saved Position (Inspector's own Position fields) after a reload",
+          "whatToCheck": "The node's saved position reflects wherever the LAST transform-changing step (even if it's nested inside a Group) left it — not just the last top-level step",
+          "tested": false
+        },
+        {
+          "feature": "Infinite repeat mode with a nested Group",
+          "howToReach": "Same program, Run Mode \"Infinite\", Auto-Persist ON, click Run, let it loop a couple of times, then click ▰ Stop",
+          "whatToCheck": "The whole sequence (including the Group's nested steps) visibly loops continuously; stopping it halts cleanly; Auto-Persist still fires at the end of each lap",
+          "tested": false
+        },
+        {
+          "feature": "Add/edit/remove a Group in the full Program Editor panel (ui/OmniProgramEditorPanel.js)",
+          "howToReach": "Inspector → ▶ Program → \"Open Full Editor ⧐\" → in the opened panel, click \"+ Add Group\", add nested steps inside it, edit a nested field, delete a nested step",
+          "whatToCheck": "Identical behavior to the Inspector's quick editor — same Group rendering, same nested add/remove/edit, same Run button executing nested steps in order",
+          "tested": false
+        },
+        {
+          "feature": "Program with nested Groups round-trips correctly between the two editors",
+          "howToReach": "Build a program with a Group + nested steps in the Inspector's quick editor → click \"Open Full Editor ⧐\" → edit something nested there → click 💾 Save → observe the Inspector's quick editor (still open on the same node)",
+          "whatToCheck": "The quick editor's step list updates live to reflect the full editor's save (nested Group and its children included), AND the re-rendered rows are still fully interactive — clicking a nested step's delete/edit immediately after this cross-panel save actually works (this was found broken for ALL step shapes, not just nested ones, and fixed in this same pass — see BuildLog V157)",
+          "tested": false
+        },
+        {
+          "feature": "Program with a Group survives a page reload (localStorage round-trip)",
+          "howToReach": "Build + save a program containing a Group with nested steps, reload the page, re-select the same node, open ▶ Program",
+          "whatToCheck": "The Group and all of its nested steps (including their field values and the Group's label) are exactly as saved — confirms STORE_PREFIX + nodeId's JSON round-trip handles the nested shape with no data loss",
+          "tested": false
+        }
+      ]
     }
   ]
 }

@@ -44,7 +44,7 @@ const STYLES = `
   --odd-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --odd-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --odd-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
-  --odd-accent     : var(--omni-theme-accent, #7fd8ff);
+  --odd-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -103,10 +103,10 @@ const STYLES = `
   border-radius: 5px; color: var(--odd-text); font-family: inherit; font-size: 11px; padding: 7px;
 }
 .odd-create-btn {
-  background: rgba(127,216,255,0.15); border: 1px solid var(--odd-accent);
+  background: rgba(var(--omni-color-accent-blue-rgb), 0.15); border: 1px solid var(--odd-accent);
   color: var(--odd-accent); font-family: inherit; font-size: 11px; padding: 8px; border-radius: 5px; cursor: pointer;
 }
-.odd-create-btn:hover { background: rgba(127,216,255,0.25); }
+.odd-create-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.25); }
 .odd-note { font-size: 9px; color: var(--odd-text-dim); opacity: 0.75; line-height: 1.5; }
 
 `

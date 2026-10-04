@@ -122,16 +122,27 @@ export function getRegisteredWindows () {
  *
  * This still dispatches `omni:panel-restore` (for the handful of panels
  * that do listen and need their own internal state — e.g. Panel.js's
- * `_state` — kept in sync, not just the DOM), but no longer depends on it:
- * directly toggling the registered element's visibility here means every
- * panel is reachable again after minimizing, not only the few that
- * happened to implement the other half of the contract.
+ * `_state` — kept in sync, not just the DOM), and no longer depends on
+ * registration to do so: directly toggling the registered element's
+ * visibility covers every WindowManager-registered panel, but the event
+ * is dispatched unconditionally so a panel that only listens for
+ * `omni:panel-restore` (e.g. Panel.js's lh/rh, OmniNode, OmniPocket,
+ * OmniPresenter — none of which call WindowManager.register) is still
+ * reachable from OmniPanelTray.js's "maximize" click.
+ *
+ * Real bug found and fixed in the same pass as OmniPanelTray.js (2026-10-04):
+ * this used to `return false` on an unregistered id BEFORE the dispatch
+ * below, which silently skipped it — so clicking a tab in the tray for
+ * any of those four event-only panels just removed the tab with no
+ * panel ever reappearing. See docs/dev/Roles/Developer/BuildLog.md.
  */
 export function restorePanel (id) {
   const entry = registry.get(id)
-  if (!entry) return false
-  entry.el.style.visibility = 'visible'
-  bringToFront(id)
+  if (entry) {
+    entry.el.style.visibility = 'visible'
+    bringToFront(id)
+  }
+  // Dispatched either way — see the real-bug note above.
   window.dispatchEvent(new CustomEvent('omni:panel-restore', { detail: { id } }))
   return true
 }

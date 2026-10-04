@@ -89,6 +89,7 @@
  * 
  */
 
+import { injectOmniTheme }      from './OmniTheme.js'
 import GlobalBar                from './GlobalBar.js'
 import Dock                     from './Dock.js'
 import { createAllHands }       from './Hand.js'
@@ -144,6 +145,11 @@ export default class UI {
   /** Mount all UI regions in order. Call once after BaseScene.start(). */
   init () {
     this._ensureShell()
+
+    // ── 0. Shared theme — :root CSS vars every panel's own injected
+    // styles can reference, instead of each repeating its own literal
+    // hex/rgba. Must run before any panel's injectStyles(). ───────────
+    injectOmniTheme()
 
     // ── 1. GlobalBar ───────────────────────────────────────────────────
     this.bar = new GlobalBar(this._ctx)

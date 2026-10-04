@@ -34,7 +34,7 @@ const STYLES = `
   --ocp-header-bg  : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
   --ocp-text       : var(--omni-theme-text, rgba(255, 255, 255, 0.92));
   --ocp-text-dim   : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
-  --ocp-accent     : var(--omni-theme-accent, #7fd8ff);
+  --ocp-accent     : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -112,7 +112,7 @@ const STYLES = `
   cursor: pointer; font-size: 11px; color: var(--ocp-text-dim);
 }
 .ocp-word-row:hover { background: rgba(255,255,255,0.06); }
-.ocp-word-row.is-current { background: rgba(127,216,255,0.15); color: var(--ocp-accent); }
+.ocp-word-row.is-current { background: rgba(var(--omni-color-accent-blue-rgb), 0.15); color: var(--ocp-accent); }
 .ocp-word-index { opacity: 0.5; width: 20px; flex-shrink: 0; }
 
 .ocp-word-edit { display: flex; gap: 6px; }
@@ -133,10 +133,10 @@ const STYLES = `
 }
 
 .ocp-save-btn {
-  background: rgba(127,216,255,0.15); border: 1px solid var(--ocp-accent);
+  background: rgba(var(--omni-color-accent-blue-rgb), 0.15); border: 1px solid var(--ocp-accent);
   color: var(--ocp-accent); font-family: inherit; font-size: 11px; padding: 8px; border-radius: 5px; cursor: pointer;
 }
-.ocp-save-btn:hover { background: rgba(127,216,255,0.25); }
+.ocp-save-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.25); }
 .ocp-save-confirm { font-size: 9px; color: #8cff8c; text-align: center; height: 12px; opacity: 0; transition: opacity 0.3s; }
 .ocp-save-confirm.is-visible { opacity: 1; }
 

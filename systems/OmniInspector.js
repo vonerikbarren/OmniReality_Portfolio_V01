@@ -108,7 +108,7 @@ import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as GridWidgets   from '../ui/GridWidgets.js'
 import { goToObject } from '../utils/CameraTravel.js'
-import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram } from './OmniProgramCommands.js'
+import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath } from './OmniProgramCommands.js'
 // this._programTimeline (per-Inspector, not per-node — only one node's
 // Program section can be open at a time) tracks a currently-running
 // gsap timeline so the Begin button can flip to Stop and actually
@@ -535,15 +535,15 @@ const STYLES = /* css */`
   flex              : 1;
   height            : 26px;
   border-radius     : 5px;
-  border            : 1px solid rgba(127, 216, 255, 0.28);
-  background        : rgba(127, 216, 255, 0.08);
+  border            : 1px solid rgba(var(--omni-color-accent-blue-rgb), 0.28);
+  background        : rgba(var(--omni-color-accent-blue-rgb), 0.08);
   color             : rgba(150, 220, 255, 0.95);
   font-family       : var(--mono);
   font-size         : 9px;
   cursor            : pointer;
   transition        : background 0.12s ease;
 }
-.oi-create-btn:hover { background: rgba(127, 216, 255, 0.18); }
+.oi-create-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.18); }
 
 .oi-create-btn--export {
   border-color      : rgba(140, 255, 180, 0.28);
@@ -999,6 +999,28 @@ const STYLES = /* css */`
   border-radius: 4px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 5px; width: 100%;
   box-sizing: border-box;
 }
+/* Group step — a step whose body is its own nested step list, shown
+   as an indented container inside the parent row (same op-step
+   classes recursively, so nesting needs no extra rules beyond the
+   indent/border call-out below). */
+.op-step--group { border-color: rgba(255, 238, 0, 0.18); }
+.op-step-collapse {
+  background: none; border: none; color: rgba(255,255,255,0.45); font-size: 10px;
+  cursor: pointer; padding: 0 2px; width: 12px;
+}
+.op-step-collapse:hover { color: #fff; }
+.op-group-body {
+  margin: 6px 0 2px 14px; padding: 8px 0 0 10px;
+  border-left: 2px solid rgba(255, 238, 0, 0.16);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.op-group-steps { display: flex; flex-direction: column; gap: 8px; }
+.op-step-add-nested {
+  align-self: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.75); border-radius: 5px; font-family: inherit; font-size: 9px;
+  padding: 4px 8px; cursor: pointer;
+}
+.op-step-add-nested:hover { background: rgba(255,255,255,0.1); }
 .oi-program-begin {
   width: 100%; margin-top: 2px; text-align: center; font-size: 10px; padding: 7px;
   background: rgba(255, 238, 0, 0.12); border-color: rgba(255, 238, 0, 0.35); color: #ffee00;
@@ -1647,6 +1669,7 @@ export default class OmniInspector {
     // ── Section open states ────────────────────────────────────────────
     this._sectionOpen = {
       identity   : true,
+      location   : true,   // only ever rendered for a locationNode (see _renderLoaded) — open by default so a freshly "Highlight and Edit"'d OmniPointing node shows its coordinate immediately
       hierarchy  : false,
       appearance : true,
       media      : false,
@@ -2286,6 +2309,7 @@ export default class OmniInspector {
     // Build accordion sections
     body.innerHTML = /* html */`
       ${this._sectionHTML('identity',   '▶ Identity',   this._identityHTML(data, ext))}
+      ${data.isLocationNode ? this._sectionHTML('location', '▶ Location (OmniPointing)', this._locationHTML(data)) : ''}
       ${this._sectionHTML('hierarchy',  '▶ Hierarchy',  this._hierarchyHTML(data))}
       ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
@@ -2317,6 +2341,7 @@ export default class OmniInspector {
 
     // Wire all interactive controls
     this._wireIdentity(body, data, ext)
+    if (data.isLocationNode) this._wireLocation(body, data)
     this._wireHierarchy(body, data)
     this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
@@ -2408,6 +2433,57 @@ export default class OmniInspector {
         <div class="oi-primitives" id="oi-primitives">${primBtns}</div>
       </div>
     `
+  }
+
+  // ── LOCATION section HTML — real, new node-type handling for the
+  // `locationNode` type OmniPointing's "Highlight and Edit" action
+  // creates (systems/OmniPointing.js). Follows the exact same
+  // section-scaffold pattern as every other section here rather than
+  // a parallel/competing inspector. Per the user's own spec: "at
+  // minimum its title/label, color, and coordinate." Title and color
+  // are already fully editable above (Identity → Label, Appearance →
+  // color picker/XYZ position) since OmniInspector's own fields are
+  // generic across every node type — this section doesn't duplicate
+  // those controls, it surfaces them together as a single, honest
+  // read-only summary specific to a location node, with a coordinate
+  // readout (synced to the real, live position OmniPointing snapped
+  // to at creation). ────────────────────────────────────────────────
+
+  _locationHTML (data) {
+    const [x, y, z] = (data.position ?? [0, 0, 0]).map(n => Number(n).toFixed(2))
+    const colorHex = data.color
+      ? (typeof data.color === 'number' ? '#' + data.color.toString(16).padStart(6, '0') : data.color)
+      : '#ffe14d'
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label">Type</span>
+        <input class="oi-input" value="locationNode — OmniPointing" readonly tabindex="-1">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Title</span>
+        <input class="oi-input" value="${(data.label ?? '').replace(/"/g, '&quot;')}" readonly tabindex="-1">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Color</span>
+        <input type="color" id="oi-loc-color-readout" value="${colorHex}" disabled style="width:28px;height:22px;padding:0;border-radius:4px;border:1px solid rgba(255,255,255,0.15)">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Coordinate</span>
+        <input class="oi-input" value="(${x}, ${y}, ${z})" readonly tabindex="-1">
+      </div>
+      <div class="oi-domain-status">
+        Title edits in Identity → Label and color edits in Appearance apply here too — this section is a combined readout, not a separate copy.
+      </div>
+    `
+  }
+
+  _wireLocation (body, data) {
+    // Nothing to wire yet — every field here is a read-only readout of
+    // state owned (and made editable) by the Identity/Appearance
+    // sections above. Kept as its own wire function to match this
+    // file's established per-section pattern (HTML fn + wire fn) even
+    // though it's currently a no-op, so a future locationNode-specific
+    // control (e.g. a "re-snap to grid" button) has an obvious home.
   }
 
   // ── DOMAIN section HTML — mark as space, enter/exit ─────────────────────
@@ -2583,7 +2659,9 @@ export default class OmniInspector {
       <div class="oi-data-note">
         A real step sequence for this object — Move / Rotate / Scale
         genuinely tween it; Communicate / Notify push through the real
-        ⟐OmniNotify pipeline. Works on any OmniDraw object. Running a
+        ⟐OmniNotify pipeline. Group bundles an ordered set of steps
+        (including further Groups) into one container, run in order
+        like any other step. Works on any OmniDraw object. Running a
         program plays it live — it doesn't overwrite this object's
         saved position/rotation/scale.
       </div>
@@ -2593,6 +2671,7 @@ export default class OmniInspector {
         </div>
         <div class="oi-row">
           <button class="oi-btn-small" id="oi-program-add-step">+ Add Step</button>
+          <button class="oi-btn-small" id="oi-program-add-group">+ Add Group</button>
           <button class="oi-btn-small" id="oi-program-open-editor">Open Full Editor ⟐</button>
         </div>
 
@@ -2630,31 +2709,61 @@ export default class OmniInspector {
     ext.program = { enabled: false, steps: [], autoPersist: false, repeat: 'once', ...ext.program }
     const prog = ext.program
 
+    // Steps can now nest (Group), so every row is addressed by its
+    // dotted-index path ("0", "0.2", "0.2.1", ...) via
+    // resolveStepPath() rather than a flat array index — this handles
+    // a step at any depth, top-level or inside any number of nested
+    // Groups, with the same handful of listeners rather than one set
+    // per nesting level.
     const wireStepRows = () => {
       body.querySelectorAll('.op-step-cmd').forEach(sel => {
         sel.addEventListener('change', (e) => {
-          const idx = Number(sel.dataset.idx)
-          prog.steps[idx] = defaultStep(e.target.value)
+          const hit = resolveStepPath(prog.steps, sel.dataset.path)
+          if (!hit) return
+          hit.arr[hit.index] = defaultStep(e.target.value)
           this._saveExt()
           rerenderSteps()
         })
       })
       body.querySelectorAll('.op-field-input').forEach(input => {
         input.addEventListener('input', (e) => {
-          const idx = Number(input.dataset.idx)
+          const hit = resolveStepPath(prog.steps, input.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
           const field = input.dataset.field
-          const step = prog.steps[idx]
-          if (!step) return
           step[field] = input.type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value
           this._saveExt()
         })
       })
       body.querySelectorAll('.op-step-del').forEach(btn => {
         btn.addEventListener('click', () => {
-          const idx = Number(btn.dataset.idx)
-          prog.steps.splice(idx, 1)
+          const hit = resolveStepPath(prog.steps, btn.dataset.path)
+          if (!hit) return
+          hit.arr.splice(hit.index, 1)
           this._saveExt()
           rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-collapse').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(prog.steps, btn.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
+          step.collapsed = !step.collapsed
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-add-nested').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(prog.steps, btn.dataset.groupPath)
+          if (!hit) return
+          const group = hit.arr[hit.index]
+          if (!Array.isArray(group.steps)) group.steps = []
+          group.steps.push(defaultStep('move'))
+          this._saveExt()
+          rerenderSteps()
+          this._playSound('click')
         })
       })
     }
@@ -2671,6 +2780,12 @@ export default class OmniInspector {
       wireStepRows()
     }
     wireStepRows()
+    // Exposed so _onProgramSet (the full Editor Panel's cross-panel
+    // Save notification, below) can re-wire freshly-rendered rows
+    // after it replaces #oi-program-steps' innerHTML — otherwise the
+    // new rows (including any nested group rows) would render but
+    // have no click/input listeners attached to them at all.
+    this._programRewireSteps = wireStepRows
 
     body.querySelector('#oi-program-enabled')?.addEventListener('change', (e) => {
       prog.enabled = e.target.checked
@@ -2682,6 +2797,13 @@ export default class OmniInspector {
 
     body.querySelector('#oi-program-add-step')?.addEventListener('click', () => {
       prog.steps.push(defaultStep('move'))
+      this._saveExt()
+      rerenderSteps()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-add-group')?.addEventListener('click', () => {
+      prog.steps.push(defaultStep('group'))
       this._saveExt()
       rerenderSteps()
       this._playSound('click')
@@ -5336,6 +5458,9 @@ export default class OmniInspector {
             ? program.steps.map((s, i) => stepRowHTML(s, i)).join('')
             : '<div class="oi-program-empty">No steps yet — add one below.</div>'
         }
+        // Re-attach listeners to the rows just rendered above (see the
+        // comment on where this is assigned, in _wireProgram).
+        this._programRewireSteps?.()
         const enabledBox = this._el?.querySelector('#oi-program-enabled')
         if (enabledBox) enabledBox.checked = !!program.enabled
         const progBody = this._el?.querySelector('#oi-program-body')

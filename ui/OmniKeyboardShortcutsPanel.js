@@ -140,6 +140,7 @@ const SHORTCUTS = [
   { key: 'Enter',    desc: 'Toggle OmniStartHUD' },
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
+  { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
 ]
 
 export default class OmniKeyboardShortcutsPanel {

@@ -134,6 +134,7 @@
 
 import * as THREE from 'three'
 import gsap       from 'gsap'
+import * as WindowManager from '../ui/WindowManager.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -1135,6 +1136,11 @@ export default class OmniPresenter {
 
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(el)
+
+    // Registered so WindowManager.restorePanel('omnipresenter') can
+    // actually unhide this panel once minimized — see BuildLog.md
+    // (2026-10-04).
+    WindowManager.register('omnipresenter', el, '⟐p — OmniPresenter')
 
     this._bindPanelControls()
   }

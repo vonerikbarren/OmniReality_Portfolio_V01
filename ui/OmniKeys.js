@@ -329,7 +329,7 @@ const STYLES = /* css */`
   --ok-text        : var(--omni-theme-text, rgba(255, 255, 255, 1));
   --ok-text-dim    : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.85));
   --ok-text-muted  : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.6));
-  --ok-accent      : var(--omni-theme-accent, #7fd8ff);
+  --ok-accent      : var(--omni-theme-accent, var(--omni-color-accent-blue));
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
@@ -402,7 +402,7 @@ const STYLES = /* css */`
   transition       : background 0.12s ease, color 0.12s ease;
 }
 .ok-mode-btn:hover { color: var(--ok-text); }
-.ok-mode-btn.is-active { background: rgba(127, 216, 255, 0.18); color: var(--ok-accent); }
+.ok-mode-btn.is-active { background: rgba(var(--omni-color-accent-blue-rgb), 0.18); color: var(--ok-accent); }
 .ok-mode-btn--delivery.is-active { background: rgba(140, 255, 180, 0.18); color: rgba(160, 255, 195, 0.95); }
 .ok-mode-btn--sequence.is-active { background: rgba(190, 160, 255, 0.18); color: rgba(210, 185, 255, 0.95); }
 .ok-mode-btn--command.is-active { background: rgba(255, 180, 100, 0.2); color: rgba(255, 200, 140, 0.95); }
@@ -536,12 +536,12 @@ const STYLES = /* css */`
 
 /* Media/system row */
 .ok-key--media {
-  background       : rgba(127, 216, 255, 0.10);
-  border-color     : rgba(127, 216, 255, 0.22);
+  background       : rgba(var(--omni-color-accent-blue-rgb), 0.10);
+  border-color     : rgba(var(--omni-color-accent-blue-rgb), 0.22);
   color            : rgba(180, 230, 255, 0.9);
   font-size        : 13px;
 }
-.ok-key--media:hover { background: rgba(127, 216, 255, 0.18); color: #fff; }
+.ok-key--media:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.18); color: #fff; }
 
 /* Function row */
 .ok-key--function {
@@ -653,7 +653,7 @@ const STYLES = /* css */`
   color            : var(--ok-text);
   cursor           : pointer;
 }
-.ok-popover-char:hover { background: rgba(127, 216, 255, 0.25); }
+.ok-popover-char:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.25); }
 
 .ok-resize-handle {
   position         : absolute; right: 0; bottom: 0;

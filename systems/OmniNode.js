@@ -98,6 +98,7 @@ import OmniAimReticle from '../ui/OmniAimReticle.js'
 import { createTimeData } from '../utils/TimeData.js'
 import { lockToRuler, unlockFromRuler } from '../utils/TimeDataRegistry.js'
 import { getCurrentSeconds } from '../utils/PrimaryTime.js'
+import * as WindowManager from '../ui/WindowManager.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -1334,6 +1335,12 @@ export default class OmniNode {
     this._el = el
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(el)
+
+    // Registered so WindowManager.restorePanel('omninode') can actually
+    // unhide this panel — this used to be unreachable once minimized,
+    // the exact gap OmniPanelTray.js's own header note describes for
+    // "most of the rest" of the standalone systems. See BuildLog.md.
+    WindowManager.register('omninode', el, '⟐N — OmniNode')
 
     // Bind internal panel controls
     el.querySelector('.on-controls').addEventListener('click', (e) => {
@@ -3318,6 +3325,16 @@ export default class OmniNode {
         wireframe: d.wireframe ?? false,
         alpha: d.alpha ?? false,
         material: d.material ?? 'MeshStandardMaterial',
+        // OmniPointing's locationNode type (systems/OmniPointing.js,
+        // "Highlight and Edit") — real, additive fields only; every
+        // other node type simply carries isLocationNode: false and
+        // never sees pointingCoordinate. Without these two lines this
+        // request handler silently drops both (it rebuilds a fixed
+        // object literal rather than spreading `d`), which would have
+        // made OmniInspector's new Location section never actually
+        // trigger for a node created this way.
+        isLocationNode: d.isLocationNode ?? false,
+        pointingCoordinate: d.pointingCoordinate ?? null,
       })
     }
 

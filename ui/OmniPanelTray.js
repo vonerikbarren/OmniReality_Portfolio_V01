@@ -145,10 +145,10 @@ const STYLES = /* css */`
   --opt-border    : rgba(255, 255, 255, 0.10);
   --opt-tab-bg    : rgba(255, 255, 255, 0.05);
   --opt-tab-hover : rgba(255, 255, 255, 0.10);
-  --opt-tab-active: rgba(127, 216, 255, 0.16);
+  --opt-tab-active: rgba(var(--omni-color-accent-blue-rgb), 0.16);
   --opt-text      : rgba(255, 255, 255, 0.88);
   --opt-text-dim  : rgba(255, 255, 255, 0.45);
-  --opt-accent    : rgba(127, 216, 255, 0.85);
+  --opt-accent    : rgba(var(--omni-color-accent-blue-rgb), 0.85);
   --mono          : 'Courier New', Courier, monospace;
 
   position        : fixed;

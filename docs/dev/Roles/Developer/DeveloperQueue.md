@@ -830,3 +830,99 @@ answerable. **Explicit instruction: do not build any of this — this
 entry is a note only, waiting on the person's files.** Testing the
 V143 build first; will return to this once that's done.
 
+## 45. OmniObjectFX — generalize the locationNode sonar ping into a reusable effect system — not built
+
+Raised directly, documentation-only per explicit instruction: "I would
+like that sonar fx to be stored as an OmniObjectFX and it should have
+a radius marker. We can use this for so many things. So just document
+for a work later file." **Nothing in this entry is built — planning
+only.**
+
+**What exists today (V155).** `systems/OmniPointing.js`'s "Highlight
+and Edit" action (its real locationNode-creation path) attaches a
+one-off sonar-ping effect directly to the locationNode it creates: per
+`docs/dev/Roles/Developer/BuildLog.md`'s own V155 entry, three
+looping, expanding-and-fading rings (`THREE.RingGeometry`, lying flat)
+are added as independent scene objects at the node's world position
+(not as children of the tiny node mesh itself, since its own small
+scale would shrink the rings to near-nothing), re-attached on both
+fresh creation (`omni:node-created`) and page-reload restore
+(`omni:node-restored`). That same V155 entry is explicit that this is
+a **new, original effect** built for this one feature — grepped for
+"sonar"/"Sonar" project-wide at the time with zero other matches, and
+no pre-existing "the origin point's own marker" object exists either.
+It is locationNode-specific: the ring-build/loop/dispose logic lives
+inline in `OmniPointing.js` (and whatever matching read-only display
+`systems/OmniInspector.js`'s Location section shows for it), not in
+any standalone, reusable module. Nothing else in the project can
+attach this effect, or anything like it, to an arbitrary node or mesh.
+
+**Proposed generalization.** A new `OmniObjectFX` system/registry —
+same shape as this codebase's other small, focused systems (own file,
+own module contract) — that any node or system can attach a named,
+reusable visual effect to, rather than each feature re-building its
+own one-off version the way `OmniPointing.js` did. Rough shape:
+
+- A **radius marker** as a first-class, separate concept from the
+  pulse animation itself — a visible ring/boundary showing the
+  effect's actual area of influence/relevance, distinct from (and
+  not replaced by) the expanding-and-fading sonar rings, which are an
+  *animation*, not a fixed boundary indicator. Worth deciding whether
+  the radius marker is always-visible, hover-only, or
+  selection-only — not specified by the person yet, flagged here as a
+  real open question, not decided.
+- Effects beyond sonar ping worth anticipating, since the person's own
+  framing is "we can use this for so many things," not scoped to one
+  effect: a plain pulse/glow (no expanding rings, just an
+  emissive/opacity breathing loop), a proximity-triggered effect (ties
+  naturally to the radius marker — "something happens when you're
+  inside this radius," distinct from the always-on sonar case),
+  orbiting particles/rings, a highlight-on-hover ring. None of these
+  are scoped or committed — listed only so the registry's shape isn't
+  designed around sonar alone.
+- Likely needs its own small per-type registry (mirroring how
+  `systems/OmniNode.js`'s own `GEOMETRY_DEFS`/`GEO_LABELS` or
+  `ui/OmniDraw.js`'s `SCHEMA` array work elsewhere in this codebase) so
+  a new effect type is a new registry entry, not a new one-off file.
+- Needs a real decision on lifecycle ownership — does `OmniObjectFX`
+  track its own attached-effects registry independently (its own
+  `Map<id, fxEntry>`, dispatching its own events, update()'d as its
+  own module) the same way `data/NodeLoader.js` keeps its own separate
+  node registry from `systems/OmniNode.js`'s? If so, worth deliberately
+  avoiding the exact cross-registry gap documented in this same
+  version's `BuildLog.md` entry (the Auto-Rotate bug — a feature that
+  only knows about one registry silently doing nothing for a node that
+  lives in the other) by designing `OmniObjectFX` to key off the
+  node's real id and be attachable regardless of which system actually
+  owns that node's base mesh.
+
+**Rough API sketch — not committed, illustrative only:**
+
+```js
+// Attach a named, reusable effect to any existing mesh/node.
+OmniObjectFX.attach(mesh, {
+  type   : 'sonar',       // registry key — 'sonar' today, more later
+  radius : 2.4,           // world units — drives the radius marker AND
+                           // (for sonar) how far the rings expand before fading
+  color  : '#ffe14d',
+  speed  : 1,             // loop speed multiplier
+  showRadiusMarker: true, // the fixed boundary ring, separate from the pulse animation
+})
+
+// Later, remove it (node deleted, effect toggled off, etc.)
+OmniObjectFX.detach(mesh)   // or by id, matching OmniNode's own getNodeData(id)-style API
+```
+
+**Why this matters, in the person's own framing.** Not a
+locationNode-only feature — a general-purpose "attach a radius-bounded
+visual effect to anything" capability the project will want repeatedly
+as more node types and interactions get built (proximity cues, ability
+ranges, highlight states, future OmniSystem formations), so it's worth
+extracting into one real, reusable system now that a second real use
+case (this entry) already exists, rather than each future feature
+re-implementing its own copy of `OmniPointing.js`'s inline ring logic
+the way the first one had to.
+
+**Explicit instruction: do not build any of this yet — documentation
+only, for a later work session.**
+
