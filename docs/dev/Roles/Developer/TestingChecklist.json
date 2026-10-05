@@ -1177,6 +1177,125 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniAxinator, pad-driven tunnels, top-hand pad fix (V160)",
+      "items": [
+        {
+          "feature": "Nothing is shown at load",
+          "howToReach": "Reload; do not open any pad",
+          "whatToCheck": "No tunnels, nodes or readout in the scene until a hand's pad is opened (default hidden).",
+          "tested": false
+        },
+        {
+          "feature": "Top-left ⚇ shows the OmniHand tunnel",
+          "howToReach": "Click the ⚇ cell of the top-left hand",
+          "whatToCheck": "The OmniHand pad appears AND the orange-accent OmniHand tunnel grows outward from the origin toward 11 o'clock (body/grid grow + fade ~0.9s), then the nodes pop in one after another; readout HUD appears. Click ⚇ again: the tunnel retracts faster (~0.4s) and disappears.",
+          "tested": false
+        },
+        {
+          "feature": "Top-right ⚇ shows the Conscious tunnel",
+          "howToReach": "Click the ⚇ cell of the top-right hand (also with the MiniMap shown via 'm')",
+          "whatToCheck": "Same for Conscious Hand toward 2 o'clock. The ⚇ cell must be clickable over its whole area even with the MiniMap visible in its default top-right corner (Hand z-index raised 40 -> 43).",
+          "tested": false
+        },
+        {
+          "feature": "Bottom-left ⚇ shows both",
+          "howToReach": "Click the ⚇ of the bottom-left hand",
+          "whatToCheck": "All four pads open and both hand tunnels animate in; clicking it again hides all. A top ⚇ clicked afterwards toggles only its own pad/tunnel and its cell highlight matches the pad.",
+          "tested": false
+        },
+        {
+          "feature": "Pad buttons still drive the tunnels",
+          "howToReach": "Open a top pad, press ◂ ▸ ▲ ▼ (and Numpad keys)",
+          "whatToCheck": "Marker travels node to node, Υ column ticks move, readout updates, orange OmniHand stagger flash still runs; same behaviour as V159.",
+          "tested": false
+        },
+        {
+          "feature": "Rapid toggling",
+          "howToReach": "Click a top ⚇ five or six times quickly",
+          "whatToCheck": "Ends exactly in the state of the pad (fully shown or fully hidden), no half-grown tunnel left behind.",
+          "tested": false
+        },
+        {
+          "feature": "Grey tunnel on white and black",
+          "howToReach": "Open a pad; try a white and a black wallpaper/background",
+          "whatToCheck": "Tunnel body and grid read clearly on both (grey 0x9a9a9a, single constant TUNNEL_COLOR). Tune opacity/colour in systems/OmniAxinator.js if not.",
+          "tested": false
+        },
+        {
+          "feature": "Silver/white nodes with dark outline",
+          "howToReach": "Look at nodes on white and on black",
+          "whatToCheck": "Node shells are silver with a dark second outline, readable on both; hand colour only on marker, Υ column, ticks and label borders.",
+          "tested": false
+        },
+        {
+          "feature": "Labels readable and distance-compensated",
+          "howToReach": "Open a pad, zoom/orbit near the origin and after TakeMeThere",
+          "whatToCheck": "Node titles are bold white on a dark plate with a coloured border, roughly 8% of viewport width at any distance (Υ labels ~5.5%), never hidden inside a translucent node. If too big/small change LABEL_SCREEN_FRAC_NODE / _LEVEL.",
+          "tested": false
+        },
+        {
+          "feature": "Root marking",
+          "howToReach": "Open both hand pads",
+          "whatToCheck": "First node of each hand tunnel has a crown ring and a 'ROOT' line above its title.",
+          "tested": false
+        },
+        {
+          "feature": "Node hover tooltip",
+          "howToReach": "Hover a node's shell/area on the canvas (tunnel visible)",
+          "whatToCheck": "Tooltip: node name, tunnel title and node n/N, plus 'Root' on the root node. Disappears when dragging/orbiting or leaving the node.",
+          "tested": false
+        },
+        {
+          "feature": "Node menu",
+          "howToReach": "Click a node",
+          "whatToCheck": "Menu: title line ABOVE the 'Root: ...' tooltip line, then TakeMeThere and Root. Closes on Escape, outside click, or after an action. A click-drag (orbit) must NOT open it.",
+          "tested": false
+        },
+        {
+          "feature": "TakeMeThere",
+          "howToReach": "Node menu -> TakeMeThere",
+          "whatToCheck": "Camera flies (1.4s) to stand ~512 units from the node centre (outside its 320 radius) looking at it, then orbit target switches to the node and orbit works without snapping back (maxDistance raised via omni:orbit-max-distance-set).",
+          "tested": false
+        },
+        {
+          "feature": "Root action",
+          "howToReach": "Node menu -> Root",
+          "whatToCheck": "Camera travels to the tunnel's root node. Check the console for omni:axinator-node-menu-action events.",
+          "tested": false
+        },
+        {
+          "feature": "OmniAxinator panel",
+          "howToReach": "Admin -> slot 18 OmniAxinator",
+          "whatToCheck": "Panel opens, draggable, minimizes to the tray (id axinatorpanel). Groups: Hand tunnels, Axes, Clock diagonals; each row has swatch, symbol, title, checkbox. 'Tunnels follow the pads' master toggle.",
+          "tested": false
+        },
+        {
+          "feature": "Manual override rule",
+          "howToReach": "In the panel tick X, Y, Z, 2↔8, 11↔5; use Show all / Hide all",
+          "whatToCheck": "Ticked tunnels animate in and stay regardless of pads; a 'pad' badge appears on a hand tunnel that is visible only because its pad is open. Rule: shown = checkbox OR (pad open AND follow-pads).",
+          "tested": false
+        },
+        {
+          "feature": "Follow-pads off",
+          "howToReach": "Untick 'Tunnels follow the pads' (or the toggle in DimensionalAxesSettings) then open pads",
+          "whatToCheck": "Pads open but hand tunnels do not show automatically; ticking their checkbox still shows them. Setting persists across reload (omni:dimension-axes-v2); per-tunnel pins persist in omni:axinator-v1.",
+          "tested": false
+        },
+        {
+          "feature": "Axes and clock diagonals",
+          "howToReach": "Tick X / Y / Z / 2↔8 / 11↔5",
+          "whatToCheck": "Two-sided tunnels through the origin with 5 (axes) or 3 (diagonals) placeholder nodes, centre node at the origin, tinted ticks (red X, green Y, blue Z). Check performance when all seven are on.",
+          "tested": false
+        },
+        {
+          "feature": "DimensionalAxesSettings toggle",
+          "howToReach": "Admin -> slot 17",
+          "whatToCheck": "Label now 'Tunnels follow the pads'; initial checkbox state matches the saved value (fixed stale storage key).",
+          "tested": false
+        }
+      ]
     }
   ]
 }

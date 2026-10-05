@@ -32,6 +32,8 @@
  * Active-state listening (other components call these back on the Hand):
  *   hand.setHamburgerActive(bool)
  *   hand.setPadActive(bool)
+ *   V160: omni:pad-state {hand, visible} (dispatched by MovementPad after every
+ *         real pad change) is the authoritative source for the ⚇ cell state.
  *   hand.setRadialActive(bool)
  *
  * Usage:
@@ -149,7 +151,13 @@ const STYLES = /* css */`
   --gap             : ${GAP}px;
 
   position          : fixed;
-  z-index           : 40;
+  /* V160: was 40, BELOW the MiniMap (42, a 154px box at top:60/right:16 by
+     default, pointer-events:auto) and the pad satellites (42). Geometry:
+     ConsciousHand's ⚇ cell spans x W-102..W-52, y 49..99; the minimap box spans
+     x W-170..W-16, y 60..214, so when the minimap is shown it silently ate
+     clicks on the lower part of ConsciousHand's ⚇. 43 keeps the hands above
+     those and still below the drawers (45) and every panel. */
+  z-index           : 43;
   pointer-events    : auto;
   user-select       : none;
 
@@ -510,6 +518,7 @@ export default class Hand {
     // Inline listeners were added to window — clean up
     window.removeEventListener('omni:hamburger',      this._onHamburgerExternal)
     window.removeEventListener('omni:pad-toggle',     this._onPadExternal)
+    window.removeEventListener('omni:pad-state',      this._onPadState)
     window.removeEventListener('omni:radial-toggle',  this._onRadialExternal)
     window.removeEventListener('omni:pads-global',    this._onGlobalPads)
   }
@@ -745,7 +754,18 @@ export default class Hand {
       this._setCellActive('pad', this._padActive)
     }
 
+    // V160: MovementPad is authoritative for pad visibility. It announces every
+    // real change as omni:pad-state; the ⚇ cell follows it, so a stale
+    // _padActive can never make a click re-send the state the pad is already in.
+    this._onPadState = (e) => {
+      if (e.detail?.hand === id) {
+        this._padActive = !!e.detail.visible
+        this._setCellActive('pad', this._padActive)
+      }
+    }
+
     window.addEventListener('omni:hamburger',     this._onHamburgerExternal)
+    window.addEventListener('omni:pad-state',     this._onPadState)
     window.addEventListener('omni:pad-toggle',    this._onPadExternal)
     window.addEventListener('omni:radial-toggle', this._onRadialExternal)
     window.addEventListener('omni:pads-global',   this._onGlobalPads)

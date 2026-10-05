@@ -983,3 +983,14 @@ the *content* is not. Follow-ups:
      toggles into these hands (HAND_TOGGLE doc's original plan) is
      still not done and is now a separate question from the axes.
 
+## 47. OmniAxinator follow-ups — V160
+
+1. **Confirm the top-hand ⚇ fix in a real browser.** Headless tests could not reproduce a dead button; the one real defect found is the MiniMap/hand z-index overlap (fixed, V160). If a top ⚇ still fails, inspect with `document.elementsFromPoint()` at the cell centre and look for another overlay.
+2. **Tune the look once seen.** Single knobs at the top of `systems/OmniAxinator.js`: `TUNNEL_COLOR`, `TUNNEL_BODY_OPACITY` / `TUNNEL_GRID_OPACITY`, `NODE_*` colours/opacities, `LABEL_SCREEN_FRAC_NODE` (0.08) / `_LEVEL` (0.055), `LABEL_MIN/MAX_WORLD`.
+3. **Real content for X/Y/Z and the 2↔8 / 11↔5 clock diagonals.** Placeholder nodes and root texts (TODO) in `data/OmniAxinatorData.js`. The 12↔6 diagonal is the Z tunnel; 2↔8 overlaps the one-sided Conscious tunnel and 11↔5 the OmniHand tunnel when both are on (same direction, different node positions).
+4. **Root semantics.** The Root menu action currently travels to the tunnel's root node; confirm that is what is wanted. X/Y/Z/diagonal roots are the centre node and have no crown/ROOT mark (`showRootMark:false`).
+5. **TakeMeThere and OrbitControls.** `omni:orbit-max-distance-set` raises `maxDistance` permanently (main.js) so the camera can sit ~512 units from a node; nothing restores 80. A "return to origin / reset zoom limit" action may be wanted. OmniPointing's menu and ours can both open if OmniPointing is active and a node lies behind the click.
+6. **Other channels.** `new OmniAxinator(ctx, {name, storeKey, tunnels, padSource:false, pick:false})` works standalone (tested headlessly); the panel merges `omni:axinator-list` replies by id, so a second axinator with colliding ids would need a name-qualified key in `ui/OmniAxinatorPanel.js` and the `-visible-set` event.
+7. **Performance with all tunnels on.** 7 tunnels = ~320 scene objects, label scaling per frame; measure in a real browser. Node shells share geometry per tunnel; tunnels build lazily.
+8. **Hand ⚇ stale state.** Hand now follows `omni:pad-state`, but its own click still toggles from `_padActive`; an unrelated future caller that shows a pad without `MovementPad.setVisible` would bypass the event.
+

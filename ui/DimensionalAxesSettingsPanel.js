@@ -13,9 +13,11 @@
  *   listens     omni:dimension-axes-visible      { visible }  (keeps the
  *               checkbox honest if visibility changes elsewhere)
  *
- * The persisted value itself lives in the axes system's own localStorage
- * key ('omni:dimension-axes'); this panel only reads it to draw the initial
- * checkbox state, defaulting ON like the system does.
+ * V160: the toggle now means "Tunnels follow the pads" (ON, the default: a hand's
+ * tunnel shows while its pad is open; OFF: never shown automatically). Per-tunnel
+ * manual toggles live in ui/OmniAxinatorPanel.js. The persisted value lives in the
+ * axes system's own localStorage key ('omni:dimension-axes-v2'); this panel only
+ * reads it to draw the initial checkbox state, defaulting ON like the system does.
  */
 
 import gsap from 'gsap'
@@ -96,7 +98,7 @@ function injectStyles () {
 
 function readSavedVisible () {
   try {
-    const raw = localStorage.getItem('omni:dimension-axes')
+    const raw = localStorage.getItem('omni:dimension-axes-v2')   // V160: was the stale 'omni:dimension-axes' (the system has stored under -v2 since V159)
     return raw ? JSON.parse(raw)?.visible !== false : true
   } catch (_) { return true }
 }
@@ -172,14 +174,14 @@ export default class DimensionalAxesSettingsPanel {
       </div>
       <div class="das-body">
         <div class="das-row">
-          <span class="das-row-label">Dimensional Axes Visible</span>
+          <span class="das-row-label">Tunnels follow the pads</span>
           <label class="das-toggle">
             <input type="checkbox" id="das-visible" ${readSavedVisible() ? 'checked' : ''}>
             <div class="das-toggle-track"></div>
           </label>
         </div>
         <button class="das-btn" id="das-reset">Reset Both Markers to Default</button>
-        <div class="das-note">Δ Conscious Hand and ⟐ OmniHand axes: the tunnels, massive nodes, markers and readout. Hiding them keeps the pad state (it still steps and saves); it only hides the visuals. Default is on, and the choice persists across reloads.</div>
+        <div class="das-note">Δ Conscious Hand and ⟐ OmniHand axes. ON (default): each hand's tunnel, nodes, marker and readout show while that hand's pad is open. OFF: they never show automatically (pins from ⟐OmniAxinator still work). Pad state keeps stepping and saving either way. Persists across reloads.</div>
       </div>
     `
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())

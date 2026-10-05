@@ -742,6 +742,10 @@ export default class MovementPad {
     if (this._visible[handId] === visible) return
     this._visible[handId] = visible
     visible ? this._animateIn(handId) : this._animateOut(handId)
+    // V160: MovementPad is the single source of truth for pad visibility. Every
+    // real change is announced so ui/Hand.js (the ⚇ cell state) and
+    // systems/OmniAxinator.js (tunnels follow the pads) can never drift from it.
+    window.dispatchEvent(new CustomEvent('omni:pad-state', { detail: { hand: handId, visible } }))
   }
 
   setAllVisible (visible) {

@@ -44,6 +44,7 @@ import UI                from './ui/index.js'
 import MovementPad       from './ui/MovementPad.js'
 import OmniDimensionalAxes from './systems/OmniDimensionalAxes.js'
 import DimensionalAxesSettingsPanel from './ui/DimensionalAxesSettingsPanel.js'
+import OmniAxinatorPanel from './ui/OmniAxinatorPanel.js'
 
 // ── Phase 4 — Core Systems ────────────────────────────────
 import OmniNode          from './systems/OmniNode.js'
@@ -238,6 +239,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   const omniDimensionalAxes = base.addModule(new OmniDimensionalAxes(base.context))
   movementPad.setDimensionalAxes(omniDimensionalAxes)
   base.addModule(new DimensionalAxesSettingsPanel())
+  // V160: the axes system owns one OmniAxinator ("main" channel, systems/
+  // OmniAxinator.js); this panel reaches it through omni:axinator-* events, the
+  // same bridge pattern as the settings panel above.
+  base.addModule(new OmniAxinatorPanel())
 
   // Input Monitor — real panel now, accessible from Admin Settings
   const inputMonitorPanel = new InputMonitorPanel(base.context, orbitMod, movementPad)
@@ -297,6 +302,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     _hasSelectedPivot = true
     orbitMod.controls.target.set(e.detail.x, e.detail.y, e.detail.z)
     orbitMod.controls.update()
+  })
+  // V160: OmniAxinator's TakeMeThere parks the camera ~500 units from a node but
+  // OrbitControls.maxDistance is 80, so the next controls.update() would clamp it
+  // back toward the target. The axinator announces the distance it needs.
+  window.addEventListener('omni:orbit-max-distance-set', (e) => {
+    const d = Number(e.detail?.distance)
+    if (Number.isFinite(d) && d >= 80) orbitMod.controls.maxDistance = d
   })
   window.addEventListener('omni:node-deselected', () => {
     _hasSelectedPivot = false
@@ -578,6 +590,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         // OmniMeter(External) above. Same onClick/label, just renumbered.
         16: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
         17: { label: 'DimensionalAxesSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DimensionalAxesSettings' } })) },
+        18: { label: 'OmniAxinator', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniAxinator' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
