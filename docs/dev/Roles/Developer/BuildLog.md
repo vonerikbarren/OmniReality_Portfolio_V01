@@ -2893,6 +2893,173 @@ reading the full call chain (not run in a browser from this pass).
 `node --check` on every `.js` file in the repo copy (172 files) — zero
 failures.
 
+### V158 — 2026-10-04 — Δ / ⟐ dimensional axes; OmniHand and Conscious Hand stop moving the camera
+
+**Ask:** the top two hands no longer move the camera. Each owns a pair of
+dimensional axes (primary + relative Υ), drawn as grid tunnels strung
+with massive container nodes, driven by the pad and mapped keys, with
+smooth tweened state that persists. Full design is recorded in
+`docs/architecture/HAND_TOGGLE_CONTROL_DESIGN.md` ("Design confirmed
+2026-10-04 (dimensional axes)").
+
+**Investigated first (real code, not assumed):**
+- `ui/MovementPad.js`: `update()` ran `_applyTranslateMovement` for
+  `lh` and `omnihand`, `_applyNavMovement` for `rh` and `conscious`; pads
+  are press-and-hold via `_setPressed`, which also dispatches
+  `omni:movement`. `main.js` consumes that event to `orbitMod.disable()`
+  and re-sync the orbit target, which is pure camera business.
+- Top-down orientation: `ui/MiniMap.js` draws world (x, z) at canvas
+  (cx + x, cy + z) with north at the top, so 12 o'clock = −Z and 3 o'clock
+  = +X (also the three.js default). Used as-is.
+- Grid technique: `modules/OmniFloor.js` builds `THREE.LineSegments` with a
+  `LineBasicMaterial` (transparent, no fills). Reused for the tunnels.
+- Camera: `scene/BaseScene.js` near 0.01, far 100000, `logarithmicDepthBuffer`
+  on, no fog. `OrbitModule` target (0, 2, 0), `maxDistance` 80.
+  `VoidBoundary` sphere 1000, cube 3000. Drove the size choices below.
+- Raycasts: every existing one (`OmniNode`, `OmniPointing`, `OmniGrab`,
+  `ToolTipMenu`, `PocketCubes`...) uses an explicit mesh list or
+  `intersectPlane`; the only scene traversals (`OmniPocket`,
+  `OmniPresenter`) filter on `userData.nodeId`. Nothing scene-wide would hit
+  the new meshes; `raycast = () => {}` is set anyway as a guard.
+- Settings convention: `ui/MiniMapSettingsPanel.js` (an Admin slot opens a
+  small panel via `omni:nav-select`; a live toggle dispatches an event the
+  real module listens for). Followed.
+- OmniProducts: real list = `ui/Drawer.js` `LEFT_ITEMS`; real tier
+  definition = `docs/architecture/NAMING_TIER_SYSTEM_DESIGN.md` (4 tiers).
+- Tooltip/HUD: `utils/ToolTipSettings.js` writes `--ttm-bg/--ttm-border/
+  --ttm-color` onto `:root`; the readout reuses those variables.
+
+**New `data/OmniDimensionalAxesData.js`** (data-file convention, like
+`data/OmniPlayerRealities.js`): symbols, `CLOCK`, and the four datasets
+(perspectives, scale degrees, products, tiers). Editable without touching
+logic. Header says what is real and what is placeholder.
+
+**New `systems/OmniDimensionalAxes.js`** (module contract). Builds both
+tunnels (faint `CylinderGeometry` body + grid lines), massive nodes
+(icosahedron for Conscious, octahedron for OmniHand; translucent fill +
+edge lines + name sprite), a travelling marker (ring spanning the tunnel +
+orb), and a Υ column (grid cylinder, a tick ring and name label per degree
+or tier, a travelling octahedron). State per hand is `{p, r}` integer
+indices, clamped, tweened with gsap into `anim.{p,r}`, rendered from
+`update()`. Active node = nearest node to the animated position, eased
+glow. Readout plate at top centre. Public: `step`, `goTo`, `getState`,
+`setVisible`, `isVisible`, `reset`. Events: `omni:dimension-state` (phases
+`init` / `travel` / `settle`), `omni:dimension-axes-visible`; consumes
+`omni:dimension-axes-visible-set`, `omni:dimension-axes-reset`.
+
+**`ui/MovementPad.js` (omnihand / conscious only):**
+- `update()` no longer calls the camera paths for those two hands. The
+  `_applyTranslateMovement` / `_applyNavMovement` bodies are untouched
+  (only their doc comments changed); only `lh` and `rh` call them, so
+  LH/RH behavior is unchanged. Verified by reading: the `lh`/`rh`
+  `PAD_CONFIGS` entries, `_mapKey` W/A/S/D/R/F/Arrow cases, satellite
+  Dash handling and `update()`'s `lh`/`rh` calls are identical.
+- `PAD_CONFIGS`: new `dimensional: true`, labels `Δ◂ Δ▸ Υ▲ Υ▼` (Conscious)
+  and `⟐◂ ⟐▸ Υ▲ Υ▼` (OmniHand), `modeLabel` `Δ AXIS` / `⟐ AXIS`,
+  `centerLabel` `Δ` / `⟐`. Symbols imported from the axes module.
+- `_setPressed` routes dimensional hands to `_handleDimensionPress` and
+  returns before dispatching `omni:movement`. Judgment call: no
+  `omni:movement` for these pads, otherwise every press would disable
+  OrbitControls and re-sync its target for a camera that is not moving.
+  Press = one step immediately, holding repeats every `HOLD_REPEAT_MS`
+  (450 ms, shorter than a tween, so repeats chain smoothly). A silent
+  release (pad hidden mid-hold) still clears its timer. Added a window
+  `blur` release so a held key cannot keep repeating after focus is lost.
+- New `setDimensionalAxes(axes)`; until called the buttons do nothing.
+- Show/hide, satellites, release/detach persistence, z-index fix: untouched.
+
+**Real bug found and fixed:** `main.js` toggles the domain grid sphere on
+`e.key === '0' | '9'`. Numpad9 also yields `e.key === '9'`, and since V150
+Numpad9 was Conscious Hand's down key, so it fired both. Added a
+`e.code.startsWith('Numpad')` guard to that handler (one line). This is the
+only behavior change in `main.js` beyond wiring. Consequence worth knowing:
+Numpad0/Numpad9 no longer toggle the grid sphere.
+
+**Keyboard (judgment call):** OmniHand keeps `/` `*` `-` `+` as up/down/
+left/right (the keys that already existed). Conscious Hand keeps Numpad7/9
+as up/down; it had no left/right, which it now needs, so Numpad5/6 were
+added. Numpad0 was avoided because of the `e.key` bug above.
+
+**`ui/Hand.js`:** `padFunction` strings for both hands rewritten (and the
+stale comments above them).
+
+**`ui/OmniKeyboardShortcutsPanel.js`:** the panel had no Numpad entries at
+all (so there were none to edit); added four, one per key pair.
+
+**New `ui/DimensionalAxesSettingsPanel.js` + `main.js`:** Admin slot 17
+(`DimensionalAxesSettings`), modeled on `MiniMapSettingsPanel`. Holds the
+visibility toggle (live via `omni:dimension-axes-visible-set`, kept in sync
+by `omni:dimension-axes-visible`) and a Reset button. `main.js` imports,
+registers the axes module right after `movementPad`, and calls
+`movementPad.setDimensionalAxes(...)`.
+
+**Docs:** HAND_TOGGLE design section + Status rewritten; `docs/README.md`
+blurb updated; DeveloperQueue item 46.
+
+**Judgment calls (all of them):**
+- *Positions are node indices.* "Position along the axis" = which node, so
+  `primaryPosition` and `primaryIndex` carry the same integer. The marker
+  itself moves continuously between nodes.
+- *Pad step model.* Press steps one node/tier, hold repeats. A continuous
+  "hold to slide" model was rejected: state needs discrete, nameable values.
+- *Sizes.* Node spacing 160, node radius 64, tunnel radius 44, step 14 for Υ.
+  Tunnel radius is just above OmniLandingRoom (~38), so the tunnel encloses
+  the landing area; node radius is below half the spacing so neighbours do
+  not overlap. Default extent ~784 units (inside the 1000 sphere).
+- *Even node counts* (8 and 10) so the origin sits between two nodes rather
+  than inside a massive node on both axes at once.
+- *Tunnels centred on y = 0*, literal "through the world origin"; half of
+  each is under the floor grid.
+- *Start position:* first node past the origin on the + side (idx 4 / idx 5),
+  Υ at 0, so the marker starts near the camera.
+- *Υ direction:* pad Up always moves the marker visibly up. Conscious index 0
+  (Human) is the top, so Up goes toward larger scale; OmniHand Tier 1 is the
+  bottom, so Up goes to a higher tier.
+- *Left/right:* right = toward the `pos` clock hour (2 and 4 o'clock),
+  left = toward 8 and 10.
+- *60° X, not square.* 2-8 and 10-4 cross at 60°. Used the clock numbers as
+  written (the user said perpendicular, but also gave the numbers; the
+  numbers are the more specific instruction). Swap `CLOCK` to 1.5/7.5 and
+  10.5/4.5 for a square X.
+- *OmniProducts list = 10, not all 18 drawer entries:* standalone products
+  with a design doc in `docs/omniproducts/`, plus OmniVision (named in the
+  tier doc beside OmniVisor). Excluded names are listed in the data file.
+- *Tier labels:* the generic 4-tier ladder from the naming doc; per-product
+  tiers are not modeled (OmniNavi's own doc says 3).
+- *Upsilon (Υ)* for the relative axes, per the instruction; one constant
+  (`REL_AXIS_SYMBOL`) to swap.
+- *OmniHand stagger:* (1) product nodes between old and new position flash
+  in travel order; (2) tier ticks flash outward from the new tier. Conscious
+  Hand has none. Implemented as gsap `stagger` on plain `pulse` fields.
+- *Visibility off* hides the scene objects and readout but the pad keeps
+  stepping and saving; it does not disable the pads.
+- *Colors:* violet (Conscious) and orange (OmniHand), chosen to read on the
+  white scene background as well as dark themes.
+- *Readout:* one two-row plate, top centre, styled with the global tooltip
+  CSS variables; hover title shows the placeholder "view" text.
+- *Direct method calls* (not an event) from pad to system; events are the
+  outbound interface.
+
+**What is real vs placeholder:** real = geometry, navigation, tweening,
+state, persistence, events, toggle, pad/keys. Placeholder = Conscious
+perspectives and scale degrees, all node contents (the containers are empty
+labeled shapes), per-product tiers.
+
+**Verification:** `node --check` on every `.js` file in the repo copy,
+zero failures. Beyond syntax, ran the real `OmniDimensionalAxes.js` and
+`MovementPad.js` (unmodified except the gsap import path) under jsdom with
+real three@0.165 and gsap@3.12.5: pad buttons and all eight mapped keys
+step the correct axis/direction; both clamp at the ends; hold repeats and
+stops on release; `anim.p` passes through intermediate values and settles
+exactly on target; 2 o'clock and 4 o'clock end points land at the expected
+world coordinates; camera position and quaternion unchanged after presses
+and `update()`; no `omni:movement` from axis pads; recursive raycast
+through the root hits nothing; state persisted and restored across a fresh
+instance; toggle hides scene + readout, persists, default ON.
+**Not verified:** nothing was rendered in a real browser/WebGL, so how the
+tunnels, labels and glow actually look (and the readout position on a
+phone) has not been seen. Canvas label sprites were stubbed in jsdom.
+
 ## Status
 
 Maintained going forward — add an entry here for each delivered

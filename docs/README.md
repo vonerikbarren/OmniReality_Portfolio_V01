@@ -26,10 +26,11 @@ filename, and renaming would have silently broken those links.
   convention, and how it retroactively resolves the OmniVision/OmniVisor
   naming collision.
 - [`architecture/HAND_TOGGLE_CONTROL_DESIGN.md`](architecture/HAND_TOGGLE_CONTROL_DESIGN.md)
-  — the four hands (two already active, two rendering but unwired) as
-  intended toggle control surfaces for the layer system; Conscious
-  Hand as "ToggleMaster," OmniHand mapped to the OmniProducts
-  themselves.
+  — the four hands as toggle control surfaces; Conscious Hand as
+  "ToggleMaster," OmniHand mapped to the OmniProducts themselves. As of
+  V158 the two top hands drive the Δ / ⟐ dimensional axes (confirmed
+  design recorded at the bottom of that doc); the data behind them is
+  still unbuilt.
 
 ## Core systems
 

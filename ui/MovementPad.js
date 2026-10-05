@@ -9,8 +9,17 @@
  * Hand → Pad function
  * ─────────────────────────────────────────────────────────────────────────────
  *
- *   ⟐mniHand  TL  →  TBD
- *   ⟐CH       TR  →  TBD
+ *   ⟐mniHand  TL  →  DIMENSIONAL AXIS (⟐) — NO camera movement
+ *                      Left/Right → back/forth along OmniHand's primary axis
+ *                                   (10 o'clock <-> 4 o'clock; OmniProducts)
+ *                      Up/Down    → Υ axis: product tier up/down
+ *   ⟐CH       TR  →  DIMENSIONAL AXIS (Δ) — NO camera movement
+ *                      Left/Right → back/forth along Conscious Hand's primary
+ *                                   axis (8 o'clock <-> 2 o'clock; perspectives)
+ *                      Up/Down    → Υ axis: scale degree (Human → Atomic)
+ *                      Both call systems/OmniDimensionalAxes.js; see
+ *                      setDimensionalAxes(). A press steps one position and
+ *                      holding repeats.
  *   ⟐LH       BL  →  WASD — horizontal movement through space (XZ plane)
  *                      W → Forward   S → Backward
  *                      A → Strafe L  D → Strafe R
@@ -49,10 +58,16 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *
  *   omni:movement  →  { hand, direction, active, mode }
+ *                     (lh / rh only — the dimensional pads move no camera,
+ *                      so they dispatch omni:dimension-state via the axes
+ *                      system instead)
  */
 
 import gsap from 'gsap'
 import * as THREE from 'three'
+import {
+  CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL, HOLD_REPEAT_MS,
+} from '../systems/OmniDimensionalAxes.js'
 
 // ── Motion constants ──────────────────────────────────────────────────────────
 
@@ -75,23 +90,22 @@ const PAD_OFFSET = 4
 // ── Pad configuration ─────────────────────────────────────────────────────────
 
 const PAD_CONFIGS = {
-  // Real pads, mirroring LH/RH — direct request: "create movement
-  // pads for the conscioushand and OmniHand... to mirror the lh and
-  // rh." OmniHand (top-left) mirrors LH (bottom-left)'s MOVE/translate
-  // semantics; ConsciousHand (top-right) mirrors RH (bottom-right)'s
-  // NAV/altitude+orbit semantics — same pairing RadialMenu.js's own
-  // TOOLS context now mirrors too (see that file).
+  // OmniHand and ConsciousHand do NOT move the camera (decided V158). Their
+  // four buttons drive the dimensional-axis system (systems/
+  // OmniDimensionalAxes.js): left/right travel the hand's PRIMARY axis,
+  // up/down travel its relative (Υ) axis. Pad chrome (show/hide, satellites,
+  // release/detach, z-index handling) is unchanged from V150/V151.
   omnihand: {
-    id: 'omnihand', corner: 'tl', abbr: '⟐H', modeLabel: 'MOVE',
-    movable: true, keyboard: 'omnihand-move',
-    dirLabels: { up: 'FWD', down: 'BCK', left: 'STR-L', right: 'STR-R' },
-    centerLabel: '⟐OH',
+    id: 'omnihand', corner: 'tl', abbr: '⟐H', modeLabel: `${OMNIHAND_SYMBOL} AXIS`,
+    movable: true, keyboard: 'omnihand-axes', dimensional: true,
+    dirLabels: { up: `${REL_AXIS_SYMBOL}▲`, down: `${REL_AXIS_SYMBOL}▼`, left: `${OMNIHAND_SYMBOL}◂`, right: `${OMNIHAND_SYMBOL}▸` },
+    centerLabel: OMNIHAND_SYMBOL,
   },
   conscious: {
-    id: 'conscious', corner: 'tr', abbr: 'CH', modeLabel: 'NAV',
-    movable: true, keyboard: 'conscious-nav',
-    dirLabels: { up: 'RISE', down: 'FALL', left: 'ORB-L', right: 'ORB-R' },
-    centerLabel: '⟐CH',
+    id: 'conscious', corner: 'tr', abbr: 'CH', modeLabel: `${CONSCIOUS_SYMBOL} AXIS`,
+    movable: true, keyboard: 'conscious-axes', dimensional: true,
+    dirLabels: { up: `${REL_AXIS_SYMBOL}▲`, down: `${REL_AXIS_SYMBOL}▼`, left: `${CONSCIOUS_SYMBOL}◂`, right: `${CONSCIOUS_SYMBOL}▸` },
+    centerLabel: CONSCIOUS_SYMBOL,
   },
   lh: {
     id: 'lh', corner: 'bl', abbr: 'LH', modeLabel: 'MOVE',
@@ -643,6 +657,11 @@ export default class MovementPad {
     }
     this._dragState = null
 
+    // Dimensional axes (OmniHand / ConsciousHand) — set by main.js via
+    // setDimensionalAxes(). Hold-to-repeat timers are keyed `${hand}-${dir}`.
+    this._axes = null
+    this._dimRepeat = {}
+
     // Rotation pivot for OmniKeys' center-pad camera rotation —
     // defaults to the same point OrbitControls itself defaults to
     // (0, 2, 0), so keyboard rotation and mouse-drag orbit agree on
@@ -660,6 +679,7 @@ export default class MovementPad {
     this._onNodeSelected = this._handleNodeSelected.bind(this)
     this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
+    this._onBlur       = () => this._releaseAllDimensionPresses()
     this._onKeyUp      = this._handleKeyUp.bind(this)
     this._onDragMove   = this._handleDragMove.bind(this)
     this._onDragEnd    = this._handleDragEnd.bind(this)
@@ -688,7 +708,6 @@ export default class MovementPad {
     this._lhCallCount = (this._lhCallCount || 0) + 1
     try {
       this._applyTranslateMovement(cam, delta, 'lh')
-      this._applyTranslateMovement(cam, delta, 'omnihand')
       this._lastLHError = null
     } catch (err) {
       // Surfaced on the Input Monitor panel — the goal is making an
@@ -697,7 +716,7 @@ export default class MovementPad {
       this._lastLHError = err.message
     }
     this._applyNavMovement(cam, delta, 'rh')
-    this._applyNavMovement(cam, delta, 'conscious')
+    // omnihand / conscious intentionally absent: they never move the camera.
   }
 
   destroy () {
@@ -712,6 +731,8 @@ export default class MovementPad {
     window.removeEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
+    window.removeEventListener('blur',             this._onBlur)
+    this._releaseAllDimensionPresses()
     window.removeEventListener('pointermove', this._onDragMove)
     window.removeEventListener('pointerup',   this._onDragEnd)
   }
@@ -725,6 +746,13 @@ export default class MovementPad {
 
   setAllVisible (visible) {
     Object.keys(this._els).forEach(id => this.setVisible(id, visible))
+  }
+
+  /** Connects the OmniHand / ConsciousHand pads to the dimensional-axis
+   *  system (systems/OmniDimensionalAxes.js). Until this is called their
+   *  buttons still light up but do nothing. */
+  setDimensionalAxes (axes) {
+    this._axes = axes
   }
 
   // ── DOM construction ────────────────────────────────────────────────────────
@@ -1018,8 +1046,8 @@ export default class MovementPad {
     const HINTS = {
       wasd:            { keys: ['W', 'A', 'S', 'D'], dirs: ['up', 'left', 'down', 'right'] },
       rf:              { keys: ['R', 'F'],           dirs: ['up', 'down'] },
-      'omnihand-move': { keys: ['/', '*', '-', '+'], dirs: ['up', 'down', 'left', 'right'] },
-      'conscious-nav': { keys: ['N7', 'N9'],         dirs: ['up', 'down'] },
+      'omnihand-axes': { keys: ['/', '*', '-', '+'],       dirs: ['up', 'down', 'left', 'right'] },
+      'conscious-axes': { keys: ['N7', 'N9', 'N5', 'N6'],  dirs: ['up', 'down', 'left', 'right'] },
     }
     const hint = HINTS[PAD_CONFIGS[handId].keyboard] ?? { keys: [], dirs: [] }
     const { keys, dirs } = hint
@@ -1108,6 +1136,13 @@ export default class MovementPad {
     state[dir] = active
     this._btnEls[handId]?.[dir]?.classList.toggle('is-pressed', active)
     this._keyEls[handId]?.[dir]?.classList.toggle('is-active',  active)
+    if (PAD_CONFIGS[handId]?.dimensional) {
+      // Axis pads: never dispatch omni:movement (main.js uses it to disable
+      // OrbitControls and re-sync the orbit target, which is camera business).
+      // Runs even when `silent`, so a silent release still clears its timer.
+      this._handleDimensionPress(handId, dir, active)
+      return
+    }
     if (!silent) {
       window.dispatchEvent(new CustomEvent('omni:movement', {
         detail: { hand: handId, direction: dir, active, mode: (handId === 'rh' || handId === 'conscious') ? 'nav' : 'wasd' }
@@ -1115,14 +1150,34 @@ export default class MovementPad {
     }
   }
 
+  // ── Dimensional axes (OmniHand / ConsciousHand) ─────────────────────────────
+
+  /** Press = one step along the axis immediately; holding repeats. The axis
+   *  system tweens each step smoothly, so repeats chain into continuous travel. */
+  _handleDimensionPress (handId, dir, active) {
+    const key = `${handId}-${dir}`
+    if (this._dimRepeat[key]) {
+      clearInterval(this._dimRepeat[key])
+      delete this._dimRepeat[key]
+    }
+    if (!active) return
+    this._axes?.step(handId, dir)
+    this._dimRepeat[key] = setInterval(() => this._axes?.step(handId, dir), HOLD_REPEAT_MS)
+  }
+
+  _releaseAllDimensionPresses () {
+    Object.keys(PAD_CONFIGS).filter(id => PAD_CONFIGS[id].dimensional).forEach(handId => {
+      DIRS.forEach(d => this._setPressed(handId, d, false, true))
+    })
+    Object.values(this._dimRepeat).forEach(t => clearInterval(t))
+    this._dimRepeat = {}
+  }
+
   // ── Camera movement ─────────────────────────────────────────────────────────
 
-  /** LH's own translate-move logic, now parameterized by handId so
-   *  OmniHand (mirroring LH, per direct request) runs through the
-   *  exact same real implementation rather than a duplicated copy.
-   *  Dash stays an LH-exclusive modifier either way — only applied
-   *  when handId is actually 'lh' — since OmniHand's own Dash
-   *  satellite button is deliberately left inert, same as RH's. */
+  /** LH's translate-move logic. Still parameterized by handId from V150, but
+   *  as of V158 only 'lh' calls it — OmniHand no longer moves the camera.
+   *  Dash is an LH-exclusive modifier (OmniHand/RH Dash slots are inert). */
   _applyTranslateMovement (cam, delta, handId) {
     const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
@@ -1156,9 +1211,8 @@ export default class MovementPad {
     if (p.left)  cam.position.addScaledVector(this._v3right, -speed)
   }
 
-  /** RH's own altitude+yaw logic, now parameterized by handId so
-   *  ConsciousHand (mirroring RH, per direct request) runs through
-   *  the exact same real implementation rather than a duplicated copy. */
+  /** RH's altitude+yaw logic. Still parameterized by handId from V150, but
+   *  as of V158 only 'rh' calls it — ConsciousHand no longer moves the camera. */
   _applyNavMovement (cam, delta, handId) {
     const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
@@ -1183,6 +1237,7 @@ export default class MovementPad {
   _bindKeyboard () {
     window.addEventListener('keydown', this._onKeyDown)
     window.addEventListener('keyup',   this._onKeyUp)
+    window.addEventListener('blur',    this._onBlur)
   }
 
   _handleKeyDown (e) {
@@ -1214,18 +1269,22 @@ export default class MovementPad {
       case 'ArrowDown':  return { handId: 'rh', dir: 'down'  }
       case 'ArrowLeft':  return { handId: 'rh', dir: 'left'  }
       case 'ArrowRight': return { handId: 'rh', dir: 'right' }
-      // OmniHand (mirrors LH's 4-direction MOVE) — the numpad's own
-      // operator row, deliberately NOT Numpad1-4 (those are already
-      // main.js's HAND_KEY_BINDINGS for opening the hand menus).
+      // OmniHand axis pad (V158: dimensional axes, not camera) — the numpad's
+      // operator row, deliberately NOT Numpad1-4 (main.js's HAND_KEY_BINDINGS
+      // for opening the hand menus). Same four keys as before, same four
+      // positions: up/down = Υ tier, left/right = primary axis.
       case 'NumpadDivide':   return { handId: 'omnihand', dir: 'up'    }
       case 'NumpadMultiply': return { handId: 'omnihand', dir: 'down'  }
       case 'NumpadSubtract': return { handId: 'omnihand', dir: 'left'  }
       case 'NumpadAdd':      return { handId: 'omnihand', dir: 'right' }
-      // ConsciousHand (mirrors RH's 2-direction altitude-only NAV —
-      // RH's own R/F binds only up/down too, left/right orbit stays
-      // mouse/pad-only on both). Numpad7/9 — also free.
-      case 'Numpad7': return { handId: 'conscious', dir: 'up'   }
-      case 'Numpad9': return { handId: 'conscious', dir: 'down' }
+      // ConsciousHand axis pad. Numpad7/9 kept as up/down (Υ scale degree);
+      // Numpad5/6 added for left/right (primary axis) so the keyboard can
+      // reach both axes. Numpad0 was avoided on purpose: main.js's '0'/'9'
+      // domain-grid toggle matches e.key, so Numpad0 would fire it too.
+      case 'Numpad7': return { handId: 'conscious', dir: 'up'    }
+      case 'Numpad9': return { handId: 'conscious', dir: 'down'  }
+      case 'Numpad5': return { handId: 'conscious', dir: 'left'  }
+      case 'Numpad6': return { handId: 'conscious', dir: 'right' }
       default:     return null
     }
   }

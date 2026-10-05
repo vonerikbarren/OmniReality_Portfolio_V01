@@ -42,6 +42,8 @@ import UserSpaceSphere   from './modules/UserSpaceSphere.js'
 // ── Phase 3 — UI Shell ────────────────────────────────────
 import UI                from './ui/index.js'
 import MovementPad       from './ui/MovementPad.js'
+import OmniDimensionalAxes from './systems/OmniDimensionalAxes.js'
+import DimensionalAxesSettingsPanel from './ui/DimensionalAxesSettingsPanel.js'
 
 // ── Phase 4 — Core Systems ────────────────────────────────
 import OmniNode          from './systems/OmniNode.js'
@@ -230,6 +232,12 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   movementPad.setVisible('lh', false)
   movementPad.setVisible('rh', false)
   base.addModule(movementPad)
+
+  // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
+  // The two top hands' pads drive these instead of the camera.
+  const omniDimensionalAxes = base.addModule(new OmniDimensionalAxes(base.context))
+  movementPad.setDimensionalAxes(omniDimensionalAxes)
+  base.addModule(new DimensionalAxesSettingsPanel())
 
   // Input Monitor — real panel now, accessible from Admin Settings
   const inputMonitorPanel = new InputMonitorPanel(base.context, orbitMod, movementPad)
@@ -569,6 +577,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
         // FloorManager — moved from slot 15 to slot 16 to make room for
         // OmniMeter(External) above. Same onClick/label, just renumbered.
         16: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
+        17: { label: 'DimensionalAxesSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DimensionalAxesSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },
@@ -836,6 +845,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // ── '0' / '9' — toggle the domain grid sphere's visibility ─
   window.addEventListener('keydown', (e) => {
     if ((e.key !== '0' && e.key !== '9') || e.repeat) return
+    // V158: Numpad9 is Conscious Hand's Υ-down key (ui/MovementPad.js). The
+    // domain-grid toggle is for the top-row digits; without this guard the
+    // numpad key fired both (e.key is '9' for either).
+    if (e.code.startsWith('Numpad')) return
     const active = document.activeElement
     const isTyping = active && (
       active.tagName === 'INPUT' ||

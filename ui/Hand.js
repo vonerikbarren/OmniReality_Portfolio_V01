@@ -57,10 +57,10 @@ const HAND_CONFIGS = {
     hamburgerType: 'drawer',
     hamburgerDir : 'left',
     hamburgerMenu: '⟐mniMenu',
-    // Was 'Switch axiomatic app' — stale once this hand got a real,
-    // working MovementPad (direct request: "mirror the lh and rh").
-    // Now describes what the ⚇ button here actually opens.
-    padFunction  : 'Camera movement — translate (mirrors LH)',
+    // V158: this pad no longer moves the camera. It drives OmniHand's
+    // dimensional axes (systems/OmniDimensionalAxes.js) — what the ⚇ button
+    // here actually opens.
+    padFunction  : '⟐ axis — ◂▸ travel the OmniProduct axis (10↔4 o\'clock), ▲▼ Υ product tier. No camera movement.',
     radialDir    : 'center-right',
     topRow       : ['hamburger', 'pad'],    // left-side: ☰ outer, ⚇ inner
     bottomRow    : ['orbiter',   'radial'],
@@ -74,10 +74,10 @@ const HAND_CONFIGS = {
     hamburgerType: 'drawer',
     hamburgerDir : 'right',
     hamburgerMenu: '⟐NavMenu',
-    // Was 'Switch axiomatic spatial function' — stale once this hand
-    // got a real, working MovementPad (direct request: "mirror the lh
-    // and rh"). Now describes what the ⚇ button here actually opens.
-    padFunction  : 'Camera movement — altitude/orbit (mirrors RH)',
+    // V158: this pad no longer moves the camera. It drives Conscious Hand's
+    // dimensional axes (systems/OmniDimensionalAxes.js) — what the ⚇ button
+    // here actually opens.
+    padFunction  : 'Δ axis — ◂▸ travel the perspective axis (8↔2 o\'clock), ▲▼ Υ scale degree. No camera movement.',
     radialDir    : 'center-left',
     topRow       : ['pad', 'hamburger'],    // right-side: ⚇ inner, ☰ outer
     bottomRow    : ['orbiter', 'radial'],

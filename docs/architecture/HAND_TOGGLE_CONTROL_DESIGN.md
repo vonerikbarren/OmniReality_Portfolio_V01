@@ -25,6 +25,11 @@ Conscious Hand exist, render, and occupy real screen corners, but
 aren't yet wired to a real function. This doc is what that function is
 meant to be.
 
+*(Update, V158: the movement-pad half of that function is now real —
+see "Design confirmed 2026-10-04 (dimensional axes)" at the bottom.
+The Reality / OmniReality data these hands are meant to govern is
+still unbuilt.)*
+
 ## The mapping — which hand governs which layers
 
 **"The realm ends at the LH and RH."** The directly-visible layer
@@ -162,14 +167,77 @@ just opened" flicker already fixed once before in
 
 12 checks, all passing.
 
+## Design confirmed 2026-10-04 (dimensional axes)
+
+Confirmed directly, and built in V158 (`systems/OmniDimensionalAxes.js`,
+content in `data/OmniDimensionalAxes.js`). Supersedes V150/V151's
+"mirror LH/RH" movement pads for the two top hands: **neither OmniHand
+nor Conscious Hand moves the camera.** Their pads drive their own
+dimensional axes instead. LH/RH are unchanged.
+
+**Two axes per hand, separate from world XYZ.**
+
+| | Conscious Hand | OmniHand |
+|---|---|---|
+| Symbol | **Δ** (Delta) | **⟐** |
+| Primary axis (top-down) | 2 o'clock <-> 8 o'clock, through the world origin | 10 o'clock <-> 4 o'clock, through the world origin |
+| Primary nodes | layers / perspectives / visors | the OmniProducts |
+| Relative-Y axis (**Υ**, Upsilon) | **scale degrees** | **tier** of the product |
+| Pad | left/right along the primary axis; up/down along the Υ axis | same |
+
+- **Apple on a table.** A room of experts looks at one apple: a
+  biologist, a teacher, an artist each have a different *view* of it.
+  Those views are positions along Conscious Hand's primary axis. Its Υ
+  axis changes *scale* instead: the apple on the table, then as an ant
+  would see it, then cellular, molecular, atomic.
+- **World-fixed, not camera-relative.** Top-down 12 o'clock = world
+  −Z, 3 o'clock = +X. That is the project's own convention
+  (`ui/MiniMap.js` draws world (x, z) at canvas (x, z) with north at
+  the top; also three.js's default). The two diagonals therefore cross
+  at 60°, an X but not a square one, as the clock numbers were given.
+  `CLOCK` in the data file takes fractional hours (1.5/7.5 and 10.5/4.5
+  for a perpendicular X).
+- **Form.** Each primary axis is a large transparent *tunnel* (cylinder
+  geometry) rendered as a grid, using the same line-grid technique as
+  `modules/OmniFloor.js`, and kept smaller than the main context.
+  Strung along it are *massive* translucent nodes, each nearly its own
+  scene. They are deliberately huge so the whole structure stays
+  bounded: the further from world zero, the buggier things get. The
+  default data stays within ~790 units of the origin.
+- **The nodes are containers for the reality's data.** That data layer
+  does not exist yet. Today each massive node is a labeled container
+  shape and nothing more.
+- **Every position is also a state.** Per hand, `{primary, relative}`
+  indices are clamped, tweened smoothly (gsap), persisted
+  (`localStorage` key `omni:dimension-axes`), and announced with
+  `omni:dimension-state`. The marker moves; the camera does not.
+- **OmniHand** additionally staggers: the product nodes between the
+  old and new position flash in travel order, and the tier ticks flash
+  outward from the new tier. Conscious Hand has no stagger.
+- **Visibility** of all axes is an option, default on: Admin slot 17
+  (`DimensionalAxesSettings`), live via `omni:dimension-axes-visible-set`.
+
+**Real vs placeholder (be honest about it):**
+
+- *Real:* both tunnels, the massive container nodes, travelling
+  markers, the Υ columns with tick rings, the readout, pad and key
+  control, smooth tweening, state, persistence, events, the toggle.
+- *Real data:* OmniHand's product names (OmniProducts from the ⟐mniMenu
+  drawer that have design docs, plus OmniVision) and its 4-tier ladder
+  (`NAMING_TIER_SYSTEM_DESIGN.md`; Tier 3's name is still undecided
+  there).
+- *Placeholder:* Conscious Hand's perspectives and scale degrees (seed
+  set from the apple example; there is no perspective census yet), and
+  everything the massive nodes are supposed to contain.
+
 ## Status
 
-Purely conceptual mapping — no code changes from this doc. OmniHand
-and Conscious Hand exist and render today but aren't wired to any
-toggle functionality yet. For now, all layer visibility (including
-Reality/InfiniteReality/OmniReality once built) lives in
-OmniBrowserSpace's own settings panel, the only real toggle surface
-that currently exists — matching the "for now" qualifier already used
-for Reality's own definition. Migrating that control into Conscious
-Hand and OmniHand specifically is real, intended future work, not
-done here.
+OmniHand and Conscious Hand are wired: their pads (and Numpad keys)
+drive the dimensional axes described above; they no longer move the
+camera. The axis geometry, navigation, state and persistence are real.
+What remains unbuilt is the data they are meant to govern: real data
+inside the massive nodes, a real perspective census for Conscious
+Hand, and real per-product tier data for OmniHand (tracked in
+`docs/dev/Roles/Developer/DeveloperQueue.md`). Migrating the layer
+visibility toggles from OmniBrowserSpace's settings panel into these
+hands is still future work. LH and RH are unchanged.

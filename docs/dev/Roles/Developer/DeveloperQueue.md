@@ -926,3 +926,60 @@ the way the first one had to.
 **Explicit instruction: do not build any of this yet — documentation
 only, for a later work session.**
 
+---
+
+## 46. Dimensional axes — real data behind the massive nodes — shell built in V158
+
+V158 built the Δ Conscious Hand and ⟐ OmniHand axes (tunnels, massive
+container nodes, markers, Υ columns, pad/key control, state,
+persistence, events, visibility toggle). See `HAND_TOGGLE_CONTROL_DESIGN.md`,
+"Design confirmed 2026-10-04 (dimensional axes)". The behavior is real;
+the *content* is not. Follow-ups:
+
+1. **Real data inside the massive nodes.** Each node is a labeled
+   translucent container shape today and holds nothing. Decide what a
+   node actually contains (its own scene? a loaded Reality?) and how
+   it loads, bearing in mind the stated reason for the size: the
+   further from world zero the buggier things get, so contents must
+   stay inside the node.
+2. **Real perspective census for Conscious Hand.** The 8 perspectives
+   (Biologist ... Historian) and 5 scale degrees (Human ... Atomic) in
+   `data/OmniDimensionalAxesData.js` are placeholders seeded from the
+   apple-on-a-table example. The HAND_TOGGLE doc's census idea
+   (how many perspective-realities exist in the current reality, and
+   what they are) needs a real queryable source first.
+3. **Real OmniProduct tier data for OmniHand.** Product names are real
+   (⟐mniMenu products with design docs, plus OmniVision) and the 4-tier
+   ladder is the real generic one from `NAMING_TIER_SYSTEM_DESIGN.md`,
+   but per-product tier availability is not modeled: OmniNavi's doc
+   describes 3 tiers, not 4; Tier 3's name is undecided; and which
+   products are actually owned/unlocked is not wired to anything. The
+   drawer products left off the axis (OmniEXP, OmniRealities,
+   OmniTranslator, OmniKeys, OmniSelect, OmniDraw, OmniMixer,
+   OmniPocket) need an inclusion decision.
+4. **Discovered while building (V158):**
+   - *Reaching the far nodes.* OrbitControls caps at `maxDistance = 80`
+     and no camera-travel-to-node exists (and neither hand may move the
+     camera), so with default controls only the nearest nodes are in
+     view; the rest are seen at distance, and the readout is the
+     reliable way to see the state. A deliberate, separate "view this
+     node" action may be wanted.
+   - *Precision / far plane.* Not a problem at this size: camera far is
+     100000, the renderer uses a logarithmic depth buffer, there is no
+     fog, and the default extent is ~790 units. If nodes ever grow
+     toward the 1000-unit VoidBoundary sphere or beyond, revisit; the
+     range constants are at the top of `systems/OmniDimensionalAxes.js`.
+   - *60° X.* The clock numbers as given (2-8, 10-4) cross at 60°, not
+     90°. Decide whether to keep or change `CLOCK` to 1.5/7.5, 10.5/4.5.
+   - *Axis height.* Both tunnels are centred on y = 0, so half of each
+     sits below the floor grid (the floor is a transparent grid, so it
+     reads fine). Raise `AXIS_Y` if that is not wanted.
+   - *Readout vs narrow screens.* The top-centre readout can run under
+     the top corner hands on a phone-width screen (it ellipsizes, it
+     does not reflow).
+   - *Tooltips.* Hand tooltips and the pad `padFunction` strings are
+     plain text and long-ish; a shorter label may be wanted.
+   - *Layer-visibility migration.* Moving OmniBrowserSpace's layer
+     toggles into these hands (HAND_TOGGLE doc's original plan) is
+     still not done and is now a separate question from the axes.
+

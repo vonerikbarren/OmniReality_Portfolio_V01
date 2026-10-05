@@ -1035,6 +1035,107 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Dimensional axes — Δ Conscious Hand / ⟐ OmniHand, no camera movement (V158)",
+      "items": [
+        {
+          "feature": "Both axes are visible by default on a fresh load",
+          "howToReach": "Clear localStorage key omni:dimension-axes, reload, look around from the start position (orbit the camera)",
+          "whatToCheck": "A violet (Δ) and an orange (⟐) grid tunnel cross at the origin in an X, with large translucent labeled nodes along each and a ring-and-orb marker on each; a two-row readout shows at top centre",
+          "tested": false
+        },
+        {
+          "feature": "Conscious Hand pad: left/right travel the primary axis",
+          "howToReach": "Top-right hand → ⚇ to open its pad → press ◂ / ▸ (Δ◂ Δ▸)",
+          "whatToCheck": "The violet marker slides smoothly (no snap) to the neighbouring node, the nearest node lights up, the readout's Perspective name and n/8 change; at the ends the marker pulses and stays put",
+          "tested": false
+        },
+        {
+          "feature": "Conscious Hand pad: up/down travel the Υ scale-degree axis",
+          "howToReach": "Same pad → ▲ / ▼ (Υ▲ Υ▼)",
+          "whatToCheck": "A small octahedron slides on the vertical column beside the marker through Human scale, Ant scale, Cellular, Molecular, Atomic; ▼ goes deeper, ▲ back toward Human; readout's Υ Scale name and n/5 change; clamps at both ends",
+          "tested": false
+        },
+        {
+          "feature": "OmniHand pad: left/right travel the OmniProduct axis",
+          "howToReach": "Top-left hand → ⚇ → ◂ / ▸ (⟐◂ ⟐▸)",
+          "whatToCheck": "The orange marker slides along the 10↔4 o'clock tunnel through OmniPlayer, OmniChronos, OmniSense, OmniExpression, OmniTargeting, OmniVision, OmniVisor, OmniBrowser, OmniSystem, OmniNavi; readout updates; ▸ heads toward 4 o'clock",
+          "tested": false
+        },
+        {
+          "feature": "OmniHand pad: up/down change the Υ tier, with the stagger",
+          "howToReach": "Same pad → ▲ / ▼",
+          "whatToCheck": "Υ Tier cycles Tier 1 · Demo to Tier 4 · Full (▲ = higher); the tier tick rings flash outward from the new tier in a staggered ripple; moving several nodes also makes the passed nodes flash in order. Conscious Hand has no stagger",
+          "tested": false
+        },
+        {
+          "feature": "Neither hand moves the camera",
+          "howToReach": "Press every button on both top pads and hold them, also with the Numpad keys; watch the camera and the Input Monitor (Admin → Dev) cam: line",
+          "whatToCheck": "Camera position and view never change and OrbitControls is not disabled; LH and RH pads still move the camera exactly as before",
+          "tested": false
+        },
+        {
+          "feature": "Hold repeats, release stops",
+          "howToReach": "Hold ▸ on either top pad (or the mapped key)",
+          "whatToCheck": "The marker keeps stepping about every half second, chaining into continuous travel; releasing stops it; switching browser tabs mid-hold does not leave it running",
+          "tested": false
+        },
+        {
+          "feature": "Numpad keys drive the same four actions",
+          "howToReach": "With no text field focused: OmniHand Numpad / * - + (up/down/left/right); Conscious Hand Numpad 7/9 (up/down) and Numpad 5/6 (left/right); watch the KB hint strip on each pad",
+          "whatToCheck": "Same results as the pad buttons; the hint keys highlight while pressed. Numpad9 no longer toggles the domain grid sphere (top-row 0 / 9 still do)",
+          "tested": false
+        },
+        {
+          "feature": "Pad labels and tooltips",
+          "howToReach": "Open both top pads; hover each hand's ⚇ button",
+          "whatToCheck": "Header reads CH · Δ AXIS and ⟐H · ⟐ AXIS, centre cells Δ and ⟐, direction labels Δ◂ Δ▸ Υ▲ Υ▼ / ⟐◂ ⟐▸ Υ▲ Υ▼; tooltips describe axis travel and say no camera movement",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard Shortcuts panel lists the axis keys",
+          "howToReach": "Assistance → Keyboard Shortcuts",
+          "whatToCheck": "Four new Numpad rows for OmniHand and Conscious Hand, each marked no camera movement",
+          "tested": false
+        },
+        {
+          "feature": "State persists across reload",
+          "howToReach": "Move both markers to non-default positions (different node and Υ level on each), reload",
+          "whatToCheck": "Both markers, nodes' highlighting, Υ columns and readout come back at the saved positions",
+          "tested": false
+        },
+        {
+          "feature": "omni:dimension-state events",
+          "howToReach": "In the console: window.addEventListener('omni:dimension-state', e => console.log(e.detail)); press a pad button",
+          "whatToCheck": "A 'travel' event immediately (destination values) and a 'settle' event when the tween finishes, with hand, primaryIndex/primaryPosition, relativeIndex/relativePosition, activeNode and activeLevel",
+          "tested": false
+        },
+        {
+          "feature": "Axis visibility toggle works live and persists",
+          "howToReach": "Admin → slot 17 DimensionalAxesSettings → toggle Dimensional Axes Visible off, then on; reload while off",
+          "whatToCheck": "Tunnels, nodes, markers, columns and readout vanish/reappear immediately; the pads keep stepping while hidden; the off state survives reload; the checkbox follows if visibility is changed by event: window.dispatchEvent(new CustomEvent('omni:dimension-axes-visible-set',{detail:{visible:true}}))",
+          "tested": false
+        },
+        {
+          "feature": "Reset button",
+          "howToReach": "Admin → DimensionalAxesSettings → Reset Both Markers to Default",
+          "whatToCheck": "Both markers glide back to their start nodes and Υ level 0",
+          "tested": false
+        },
+        {
+          "feature": "Massive geometry does not interfere with picking",
+          "howToReach": "Click-select an OmniNode, drag one with OmniGrab, and hover the floor with OmniMeter(External) (OmniPointing) while the axes are on and the camera is inside a tunnel",
+          "whatToCheck": "Selection, grab and floor pointing all behave as before; clicks never land on a tunnel or node shell",
+          "tested": false
+        },
+        {
+          "feature": "No clipping or z-fighting on the large shapes",
+          "howToReach": "Fly with LH out toward a far node along each tunnel",
+          "whatToCheck": "Node shells, tunnel grid and labels stay stable with no flicker or popping near the far nodes; labels stay readable",
+          "tested": false
+        }
+      ]
     }
   ]
 }

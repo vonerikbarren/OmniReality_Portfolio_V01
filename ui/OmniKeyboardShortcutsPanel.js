@@ -141,6 +141,13 @@ const SHORTCUTS = [
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
+  // OmniHand / Conscious Hand axis pads (V158). These move NO camera — they
+  // step the dimensional-axis markers (systems/OmniDimensionalAxes.js). Press
+  // = one step, hold = repeat. Compiled from ui/MovementPad.js's _mapKey.
+  { key: 'Numpad / and Numpad *', desc: '⟐ OmniHand: Υ tier up / down (no camera movement)' },
+  { key: 'Numpad - and Numpad +', desc: '⟐ OmniHand: back / forth along the OmniProduct axis, 10 to 4 o\'clock (no camera movement)' },
+  { key: 'Numpad 7 and Numpad 9', desc: 'Δ Conscious Hand: Υ scale degree up / down (no camera movement)' },
+  { key: 'Numpad 5 and Numpad 6', desc: 'Δ Conscious Hand: back / forth along the perspective axis, 8 to 2 o\'clock (no camera movement)' },
 ]
 
 export default class OmniKeyboardShortcutsPanel {
