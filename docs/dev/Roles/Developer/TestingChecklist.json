@@ -1136,6 +1136,47 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Dimensional axes revision — 5x, half labels, start at 11/2, white tunnels (V159)",
+      "items": [
+        {
+          "feature": "Tunnels are white and start at the origin",
+          "howToReach": "Reload (new saved key omni:dimension-axes-v2), orbit the camera near the origin",
+          "whatToCheck": "Two white grid tunnels leave the origin: OmniHand toward 11 o'clock (top-left, -X/-Z) and Conscious Hand toward 2 o'clock (top-right, +X/-Z), at a right angle; nothing extends behind the origin",
+          "tested": false
+        },
+        {
+          "feature": "Everything is 5x larger than V158",
+          "howToReach": "Compare against V158 side by side",
+          "whatToCheck": "Tunnel radius, node size, spacing, markers and the relative column are 5x; marker starts on the first node, not mid-tunnel",
+          "tested": false
+        },
+        {
+          "feature": "Labels are half their V158 size",
+          "howToReach": "Look at node and scale/tier labels",
+          "whatToCheck": "Labels are about half the V158 world width (not scaled with the 5x), still readable up close",
+          "tested": false
+        },
+        {
+          "feature": "Pad travel still works on the longer axes",
+          "howToReach": "Press pad left/right and up/down on both hands",
+          "whatToCheck": "Right moves outward along the tunnel, left returns toward the origin, clamped at both ends; camera does not move; readout updates",
+          "tested": false
+        },
+        {
+          "feature": "Node colours remain per hand",
+          "howToReach": "Look at the nodes and markers",
+          "whatToCheck": "Only the tunnels are white; nodes, markers and ticks keep violet (Conscious) and orange (OmniHand)",
+          "tested": false
+        },
+        {
+          "feature": "Contrast on a light background",
+          "howToReach": "Check with the default wallpaper and a light theme",
+          "whatToCheck": "White tunnels remain visible; if not, report it so the tunnel opacity or an outline can be adjusted",
+          "tested": false
+        }
+      ]
     }
   ]
 }

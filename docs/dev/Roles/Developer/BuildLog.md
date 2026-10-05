@@ -3066,3 +3066,21 @@ Maintained going forward — add an entry here for each delivered
 version. Entries should stay short and factual: what changed, and any
 real bugs caught and fixed in the same pass, since those are exactly
 the kind of thing worth being able to trace back to later.
+
+
+## V159 — Dimensional axes: 5x size, half-size labels, start at 11/2, white tunnels (2026-10-05)
+
+User feedback on V158 ("way too small, 5x; labels 1/2 the size; both start from 11 and 2 respectively; both tunnels white").
+
+`systems/OmniDimensionalAxes.js`
+- New `GEO_SCALE = 5` applied to NODE_SPACING, NODE_RADIUS, TUNNEL_RADIUS, TUNNEL_END_PAD, GRID_RING_STEP, REL_STEP, REL_COLUMN_RADIUS, REL_COLUMN_PAD, and the marker/orb/halo/tick tube sizes and label offsets.
+- Labels are NOT scaled: `LABEL_WIDTH_NODE = 56/2`, `LABEL_WIDTH_LEVEL = 30/2` (half of V158's absolute sizes), so after the 5x they read much smaller relative to the geometry, as asked.
+- Tunnels are one-sided: they start at the world origin and run toward the hand's hour. `_axisPoint` is now `NODE_RADIUS + p * NODE_SPACING` (first node's near surface touches the origin); the tunnel cylinder is translated to span 0..len; grid lines/rings start at 0. Default state is the first node (`p: 0`).
+- `TUNNEL_COLOR = 0xffffff` for the tunnel body and grid; nodes, markers, ticks keep the hand colour.
+- `STORE_KEY` -> `omni:dimension-axes-v2` so V158's saved mid-tunnel positions are not reused.
+
+`data/OmniDimensionalAxesData.js`: `CLOCK` is now `{conscious:{pos:2}, omnihand:{pos:11}}` (90 degrees apart, matching the hands' corners; V158's 60-degree crossing is gone).
+
+Judgment calls: (1) "11 and 2 respectively" read as OmniHand=11, Conscious=2 (each keeps its earlier side and matches its screen corner); swap in `CLOCK` if reversed. (2) "start from" read as one-sided from the origin. (3) Far nodes now sit up to ~8000 units out, beyond VoidBoundary's 1000/3000 shells (wireframes, no occlusion) and inside camera.far 100000 with a logarithmic depth buffer. (4) Scene background is white, so white tunnels rely on the wallpaper backdrop.
+
+Comments in `ui/MovementPad.js` and the design doc updated to match. No logic changes to the pad.

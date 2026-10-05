@@ -4,9 +4,9 @@
  * Each top hand owns a PAIR of axes that are separate from world XYZ:
  *
  *   Conscious Hand (Δ)  primary axis: a world-fixed diagonal through the
- *                       origin, top-down 2 o'clock <-> 8 o'clock. Nodes are
+ *                       origin toward 2 o'clock (top-down), one-sided. Nodes are
  *                       perspectives. Relative (Υ) axis: scale degrees.
- *   OmniHand (⟐)        primary axis: 10 o'clock <-> 4 o'clock. Nodes are
+ *   OmniHand (⟐)        primary axis: starts at the origin toward 11 o'clock, one-sided. Nodes are
  *                       OmniProducts. Relative (Υ) axis: product tier.
  *
  * Each primary axis is drawn as a large transparent TUNNEL rendered as a
@@ -66,24 +66,33 @@ export { CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL }
 // the camera's far plane (100000; BaseScene also uses a logarithmic depth
 // buffer, and there is no fog), so nothing here clips or z-fights.
 
-const AXIS_Y            = 0     // tunnels pass through the world origin
-const NODE_SPACING      = 160   // distance between node centres along an axis
-const NODE_RADIUS       = 64    // massive nodes: scene-sized, < spacing/2 so neighbours don't overlap
-const TUNNEL_RADIUS     = 44    // larger than OmniLandingRoom (r~38), well inside the main context
-const TUNNEL_END_PAD    = 24    // tunnel extends this far past the outermost node surface
-const GRID_RING_STEP    = 40    // spacing of the tunnel's grid rings
+// V159: every geometry size below is V158's value times GEO_SCALE (user: "5x the
+// size"). Label sizes are deliberately NOT multiplied — they are set to half of
+// their V158 world size (see LABEL_WIDTH_*).
+const GEO_SCALE         = 5
+const AXIS_Y            = 0     // tunnels start at the world origin
+const NODE_SPACING      = 160 * GEO_SCALE   // distance between node centres along an axis
+const NODE_RADIUS       = 64 * GEO_SCALE    // massive nodes: scene-sized, < spacing/2 so neighbours don't overlap
+const TUNNEL_RADIUS     = 44 * GEO_SCALE
+const TUNNEL_END_PAD    = 24 * GEO_SCALE    // tunnel extends this far past the outermost node surface
+const GRID_RING_STEP    = 40 * GEO_SCALE    // spacing of the tunnel's grid rings
+const TUNNEL_COLOR      = 0xffffff          // both tunnels white (nodes/markers keep their hand colour)
+const LABEL_WIDTH_NODE  = 56 / 2            // half of V158's 56
+const LABEL_WIDTH_LEVEL = 30 / 2            // half of V158's 30
 const GRID_LONGITUDES   = 24    // longitudinal grid lines
 const RING_SEGMENTS     = 48
 
-const REL_STEP          = 14    // vertical distance between relative-axis ticks
-const REL_COLUMN_RADIUS = 14
-const REL_COLUMN_PAD    = 8
+const REL_STEP          = 14 * GEO_SCALE    // vertical distance between relative-axis ticks
+const REL_COLUMN_RADIUS = 14 * GEO_SCALE
+const REL_COLUMN_PAD    = 8 * GEO_SCALE
 
 const TRAVEL_DURATION   = 0.55  // seconds per primary step
 const REL_DURATION      = 0.45  // seconds per relative step
 const HOLD_REPEAT_MS    = 450   // exported for the pad: hold-to-repeat interval
 
-const STORE_KEY = 'omni:dimension-axes'
+// v2: V159 moved the axes to start at the origin; old saved positions (V158 centred the
+// axis on the origin) would start the markers mid-tunnel, so they are not reused.
+const STORE_KEY = 'omni:dimension-axes-v2'
 
 export { HOLD_REPEAT_MS }
 
@@ -335,9 +344,8 @@ export default class OmniDimensionalAxes {
   // ── State ───────────────────────────────────────────────────────────────────
 
   _defaultState (def) {
-    // Start at the first node just past the origin on the positive side, so the
-    // marker is near the camera's default area rather than at a far end.
-    return { p: clamp(Math.floor(def.nodes.length / 2), 0, def.nodes.length - 1), r: 0 }
+    // V159: axes start at the origin, so the marker starts at the first node.
+    return { p: 0, r: 0 }
   }
 
   _load () {
@@ -460,7 +468,7 @@ export default class OmniDimensionalAxes {
   }
 
   _axisPoint (h, p, out) {
-    const s = (p - (h.def.nodes.length - 1) / 2) * NODE_SPACING
+    const s = NODE_RADIUS + p * NODE_SPACING      // first node's near surface touches the origin
     return out.copy(h.dir).multiplyScalar(s).setY(AXIS_Y)
   }
 
@@ -468,7 +476,7 @@ export default class OmniDimensionalAxes {
     const def = AXIS_DEFS[id]
     const n = def.nodes.length
     const m = def.levels.length
-    const dir = clockToDir(CLOCK[id].pos)     // toward the RIGHT button's end
+    const dir = clockToDir(CLOCK[id].pos)     // tunnel starts at the origin and runs toward this hour
     const colorHex = hex(def.color)
 
     const defaults = this._defaultState(def)
@@ -490,14 +498,15 @@ export default class OmniDimensionalAxes {
 
     // ── Tunnel: faint cylinder body + grid lines, built along local +Y then
     //    rotated so +Y lies on this hand's diagonal.
-    const half = ((n - 1) / 2) * NODE_SPACING + NODE_RADIUS + TUNNEL_END_PAD
+    const len = NODE_RADIUS + (n - 1) * NODE_SPACING + NODE_RADIUS + TUNNEL_END_PAD   // origin -> past last node
     const tunnel = new THREE.Group()
     tunnel.position.y = AXIS_Y
     tunnel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
 
-    const bodyGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, half * 2, GRID_LONGITUDES * 2, 1, true)
+    const bodyGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, len, GRID_LONGITUDES * 2, 1, true)
+    bodyGeo.translate(0, len / 2, 0)             // span y = 0 .. len so the tunnel starts at the origin
     const bodyMat = new THREE.MeshBasicMaterial({
-      color: def.color, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false,
+      color: TUNNEL_COLOR, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false,
     })
     tunnel.add(new THREE.Mesh(bodyGeo, bodyMat))
 
@@ -505,9 +514,9 @@ export default class OmniDimensionalAxes {
     for (let i = 0; i < GRID_LONGITUDES; i++) {
       const a = (i / GRID_LONGITUDES) * Math.PI * 2
       const x = Math.cos(a) * TUNNEL_RADIUS, z = Math.sin(a) * TUNNEL_RADIUS
-      verts.push(x, -half, z, x, half, z)
+      verts.push(x, 0, z, x, len, z)
     }
-    for (let y = -Math.floor(half / GRID_RING_STEP) * GRID_RING_STEP; y <= half; y += GRID_RING_STEP) {
+    for (let y = 0; y <= len; y += GRID_RING_STEP) {
       for (let i = 0; i < RING_SEGMENTS; i++) {
         const a0 = (i / RING_SEGMENTS) * Math.PI * 2
         const a1 = ((i + 1) / RING_SEGMENTS) * Math.PI * 2
@@ -517,7 +526,7 @@ export default class OmniDimensionalAxes {
     }
     const gridGeo = new THREE.BufferGeometry()
     gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3))
-    const gridMat = new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.38, depthWrite: false })
+    const gridMat = new THREE.LineBasicMaterial({ color: TUNNEL_COLOR, transparent: true, opacity: 0.38, depthWrite: false })
     tunnel.add(new THREE.LineSegments(gridGeo, gridMat))
     h.group.add(tunnel)
 
@@ -534,8 +543,8 @@ export default class OmniDimensionalAxes {
       const fill = new THREE.Mesh(geo, fillMat)
       const edgeMat = new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.22, depthWrite: false })
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat)
-      const label = makeLabelSprite(`${NODE_LABEL_PREFIX[id]}${nd.name}`, colorHex, 56)
-      label.position.set(0, NODE_RADIUS + 10, 0)
+      const label = makeLabelSprite(`${NODE_LABEL_PREFIX[id]}${nd.name}`, colorHex, LABEL_WIDTH_NODE)
+      label.position.set(0, NODE_RADIUS + 10 * GEO_SCALE, 0)
 
       const g = new THREE.Group()
       g.position.copy(center)
@@ -547,16 +556,16 @@ export default class OmniDimensionalAxes {
     // ── Primary marker: a ring spanning the tunnel + an orb on the axis.
     const marker = new THREE.Group()
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(TUNNEL_RADIUS * 0.97, 0.9, 8, 64),
+      new THREE.TorusGeometry(TUNNEL_RADIUS * 0.97, 0.9 * GEO_SCALE, 8, 64),
       new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.95, depthWrite: false })
     )
     ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir)
     const orb = new THREE.Mesh(
-      new THREE.SphereGeometry(4.5, 16, 12),
+      new THREE.SphereGeometry(4.5 * GEO_SCALE, 16, 12),
       new THREE.MeshBasicMaterial({ color: def.color })
     )
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(10, 16, 12),
+      new THREE.SphereGeometry(10 * GEO_SCALE, 16, 12),
       new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.22, depthWrite: false })
     )
     marker.add(ring, orb, halo)
@@ -583,17 +592,17 @@ export default class OmniDimensionalAxes {
     def.levels.forEach((lv, j) => {
       const y = this._yOf(h, j)
       const tickMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.4, depthWrite: false })
-      const tick = new THREE.Mesh(new THREE.TorusGeometry(REL_COLUMN_RADIUS * 1.15, 0.5, 6, 40), tickMat)
+      const tick = new THREE.Mesh(new THREE.TorusGeometry(REL_COLUMN_RADIUS * 1.15, 0.5 * GEO_SCALE, 6, 40), tickMat)
       tick.rotation.x = Math.PI / 2
       tick.position.y = y
-      const lbl = makeLabelSprite(lv.name, colorHex, 30)
-      lbl.position.set(REL_COLUMN_RADIUS * 1.15 + 17, y, 0)
+      const lbl = makeLabelSprite(lv.name, colorHex, LABEL_WIDTH_LEVEL)
+      lbl.position.set(REL_COLUMN_RADIUS * 1.15 + 17 * GEO_SCALE, y, 0)
       column.add(tick, lbl)
       h.ticks.push({ y, tickMat, labelMat: lbl.material, pulse: 0 })
     })
 
     const relOrb = new THREE.Mesh(
-      new THREE.OctahedronGeometry(3.2, 0),
+      new THREE.OctahedronGeometry(3.2 * GEO_SCALE, 0),
       new THREE.MeshBasicMaterial({ color: def.color })
     )
     column.add(relOrb)

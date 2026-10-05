@@ -180,7 +180,7 @@ dimensional axes instead. LH/RH are unchanged.
 | | Conscious Hand | OmniHand |
 |---|---|---|
 | Symbol | **Δ** (Delta) | **⟐** |
-| Primary axis (top-down) | 2 o'clock <-> 8 o'clock, through the world origin | 10 o'clock <-> 4 o'clock, through the world origin |
+| Primary axis (top-down) | starts at the world origin toward 2 o'clock (V159; was 2 <-> 8 through the origin) | starts at the world origin toward 11 o'clock (V159; was 10 <-> 4 through the origin) |
 | Primary nodes | layers / perspectives / visors | the OmniProducts |
 | Relative-Y axis (**Υ**, Upsilon) | **scale degrees** | **tier** of the product |
 | Pad | left/right along the primary axis; up/down along the Υ axis | same |
@@ -241,3 +241,16 @@ Hand, and real per-product tier data for OmniHand (tracked in
 `docs/dev/Roles/Developer/DeveloperQueue.md`). Migrating the layer
 visibility toggles from OmniBrowserSpace's settings panel into these
 hands is still future work. LH and RH are unchanged.
+
+## V159 revision (2026-10-05, dimensional axes)
+
+After testing V158 the user asked for: everything **5x** the size; labels at
+**half** their V158 size (so not scaled with the 5x); both axes to **start from
+11 o'clock (OmniHand) and 2 o'clock (Conscious Hand)**, which are 90 degrees
+apart; both **tunnels white** (nodes and markers keep their hand colour). The
+11/2 assignment follows each hand's own corner (TL / TR) and each hand's earlier
+side (10 -> 11, 2 -> 2); if the user meant the reverse, swap `CLOCK` in
+`data/OmniDimensionalAxesData.js`. Tunnels are now one-sided (origin outward)
+and the saved-state key was bumped to `omni:dimension-axes-v2` so markers start
+at the first node. The scene background is white (`BaseScene`), so white tunnels
+depend on the wallpaper/backdrop for contrast.

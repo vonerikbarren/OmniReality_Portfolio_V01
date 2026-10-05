@@ -11,11 +11,11 @@
  *
  *   ⟐mniHand  TL  →  DIMENSIONAL AXIS (⟐) — NO camera movement
  *                      Left/Right → back/forth along OmniHand's primary axis
- *                                   (10 o'clock <-> 4 o'clock; OmniProducts)
+ *                                   (starts at the origin toward 11 o'clock; OmniProducts)
  *                      Up/Down    → Υ axis: product tier up/down
  *   ⟐CH       TR  →  DIMENSIONAL AXIS (Δ) — NO camera movement
  *                      Left/Right → back/forth along Conscious Hand's primary
- *                                   axis (8 o'clock <-> 2 o'clock; perspectives)
+ *                                   axis (starts at the origin toward 2 o'clock; perspectives)
  *                      Up/Down    → Υ axis: scale degree (Human → Atomic)
  *                      Both call systems/OmniDimensionalAxes.js; see
  *                      setDimensionalAxes(). A press steps one position and

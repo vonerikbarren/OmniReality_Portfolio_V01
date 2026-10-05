@@ -37,15 +37,16 @@ export const REL_AXIS_SYMBOL  = 'Υ'
 // (cx + x, cy + z) with north/12 at the top, so -Z is up and +X is right
 // (also three.js's default, camera looking down -Z).
 //
-// `neg` is the end the LEFT pad button travels toward, `pos` the end the
-// RIGHT button travels toward. Hours may be fractional (e.g. 1.5).
-//
-// NOTE: 2-8 and 10-4 as written cross at 60 degrees (an X, but not a
-// square one). For a perpendicular X use conscious 1.5/7.5 and
-// omnihand 10.5/4.5.
+// V159: each tunnel is ONE-SIDED. It starts at the world origin and runs out
+// toward `pos` (the end the RIGHT pad button travels toward; LEFT travels back
+// toward the origin). OmniHand 11 o'clock and Conscious Hand 2 o'clock are 90
+// degrees apart (a square corner), and sit over their hands' own screen corners
+// (top-left / top-right). Hours may be fractional. V158 used two-sided axes at
+// 2-8 and 10-4 (crossing at 60 degrees); to restore the through-origin axes
+// the build code would need its `neg` end back.
 export const CLOCK = {
-  conscious: { neg: 8,  pos: 2 },
-  omnihand:  { neg: 10, pos: 4 },
+  conscious: { pos: 2 },
+  omnihand:  { pos: 11 },
 }
 
 // ── Conscious Hand — PLACEHOLDER perspectives and scale degrees ─────────────
