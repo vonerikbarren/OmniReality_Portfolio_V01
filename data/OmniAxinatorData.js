@@ -86,6 +86,7 @@ export function buildDefaultTunnelDefs () {
       nodes: CONSCIOUS_PERSPECTIVES, levels: CONSCIOUS_SCALE_DEGREES,
       relDir: -1,   // deeper scale degrees sit LOWER, so pad Up moves back toward Human scale
       rootIndex: 0, rootText: CONSCIOUS_ROOT_TEXT, showRootMark: true,
+      opacityScale: 1.3,   // V164: tunnel body+grid 30% less transparent (use 0.7 for the opposite reading)
     },
     {
       id: 'omnihand', group: 'hand', title: 'OmniHand', symbol: OMNIHAND_SYMBOL,
@@ -96,6 +97,7 @@ export function buildDefaultTunnelDefs () {
       relDir: 1,    // higher tiers sit higher, pad Up moves to a higher tier
       stagger: true,
       rootIndex: 0, rootText: OMNIHAND_ROOT_TEXT, showRootMark: true,
+      opacityScale: 1.3,   // V164: same as conscious
     },
     {
       id: 'x', group: 'axes', title: 'X axis (3↔9)', symbol: 'X', color: 0xff5a5a,

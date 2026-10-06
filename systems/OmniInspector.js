@@ -108,6 +108,8 @@ import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as GridWidgets   from '../ui/GridWidgets.js'
 import { goToObject } from '../utils/CameraTravel.js'
+import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
+import { createBehaviorForm } from '../ui/OmniNodeBehaviorForm.js'
 import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath } from './OmniProgramCommands.js'
 // this._programTimeline (per-Inspector, not per-node — only one node's
 // Program section can be open at a time) tracks a currently-running
@@ -2160,7 +2162,7 @@ export default class OmniInspector {
 
     const labels = {
       identity: 'Identity', hierarchy: 'Hierarchy', domain: 'Domain',
-      appearance: 'Appearance', automation: 'Automation', media: 'Media', create: 'Create New',
+      appearance: 'Appearance', automation: 'Automation', behavior: 'Behavior', media: 'Media', create: 'Create New',
     }
 
     const widgets = []
@@ -2314,6 +2316,7 @@ export default class OmniInspector {
       ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
       ${this._sectionHTML('automation', '▶ Automation', this._automationHTML(data))}
+      ${this._sectionHTML('behavior',   '▶ Behavior',   this._behaviorHTML(data))}
       ${this._sectionHTML('program',    '▶ Program',    this._programHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
       ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
@@ -2346,6 +2349,7 @@ export default class OmniInspector {
     this._wireDomain(body, data)
     this._wireAppearance(body, data, ext)
     this._wireAutomation(body, data)
+    this._wireBehavior(body, data)
     this._wireProgram(body, data, ext)
     this._wireMedia(body, ext)
     this._wireData(body, data, ext)
@@ -2632,6 +2636,67 @@ export default class OmniInspector {
         dispatch({ lookAtCoordinate: coord })
       })
     })
+  }
+
+  // ── BEHAVIOR section — NodeBehavior (systems/OmniNodeBehavior.js). Works for
+  // ANY node, in either registry (OmniNode's or NodeLoader's): it only talks to the
+  // behaviour engine by event; the engine persists through the same
+  // omni:node-rotation-automation-set path the Automation section uses. ─────────
+
+  _behaviorHTML (data) {
+    return /* html */`<div id="oi-bhv-root" data-node="${data.id}"></div>
+      <div class="oi-domain-note">Behaviours the engine runs: motion, rotation and scale of real nodes. "Signal" ones (Transform, Amplify … Mediate) are a visual metaphor only. Stopped nodes return to their saved spot.</div>`
+  }
+
+  _wireBehavior (body, data) {
+    const root = body.querySelector('#oi-bhv-root')
+    if (!root) return
+    this._bhvForm?.destroy()
+    this._bhvForm = null
+    const send = (behavior) => {
+      data.behavior = behavior
+      window.dispatchEvent(new CustomEvent('omni:node-behavior-set', { detail: { nodeId: data.id, behavior } }))
+    }
+    const render = () => {
+      this._bhvForm?.destroy(); this._bhvForm = null
+      root.textContent = ''
+      const cfg = data.behavior
+      const row = document.createElement('div'); row.className = 'oi-row'
+      const lab = document.createElement('span'); lab.className = 'oi-label'; lab.style.width = 'auto'; lab.textContent = 'Behavior'
+      const sel = document.createElement('select'); sel.className = 'oi-select'; sel.id = 'oi-bhv-type'
+      const none = document.createElement('option'); none.value = ''; none.textContent = '— none —'; sel.appendChild(none)
+      for (const cls of BEHAVIOR_CLASSES) {
+        const g = document.createElement('optgroup'); g.label = cls
+        for (const n of Object.keys(BEHAVIOR_TABLE)) if (BEHAVIOR_TABLE[n].cls === cls) { const o = document.createElement('option'); o.value = n; o.textContent = n + (BEHAVIOR_TABLE[n].tier === 'B' ? ' ≈' : ''); g.appendChild(o) }
+        sel.appendChild(g)
+      }
+      sel.value = cfg?.type ?? ''
+      row.append(lab, sel)
+      root.appendChild(row)
+      sel.addEventListener('change', () => {
+        if (!sel.value) { send(null); render(); return }
+        const prev = data.behavior
+        send({ type: sel.value, params: behaviorDefaults(sel.value), targets: prev?.targets ?? [], enabled: true, role: BEHAVIOR_TABLE[sel.value]?.role ?? null })
+        render()
+      })
+      if (!cfg) return
+      const en = document.createElement('div'); en.className = 'oi-row'
+      const el2 = document.createElement('span'); el2.className = 'oi-label'; el2.style.width = 'auto'; el2.textContent = 'Enabled'
+      const tg = document.createElement('button'); tg.className = 'oi-toggle' + (cfg.enabled !== false ? ' is-on' : ''); tg.id = 'oi-bhv-enabled'; tg.setAttribute('role', 'switch'); tg.setAttribute('aria-checked', String(cfg.enabled !== false))
+      tg.addEventListener('click', () => {
+        const next = !(data.behavior.enabled !== false)
+        tg.classList.toggle('is-on', next); tg.setAttribute('aria-checked', String(next))
+        send({ ...data.behavior, enabled: next })
+      })
+      en.append(el2, tg)
+      const rm = document.createElement('button'); rm.className = 'oi-domain-btn'; rm.id = 'oi-bhv-remove'; rm.textContent = 'Remove behavior'; rm.style.marginLeft = 'auto'
+      rm.addEventListener('click', () => { send(null); render() })
+      en.appendChild(rm)
+      root.appendChild(en)
+      this._bhvForm = createBehaviorForm({ cfg, hostId: data.id, onChange: (c) => send({ ...c, enabled: data.behavior?.enabled !== false }) })
+      root.appendChild(this._bhvForm.el)
+    }
+    render()
   }
 
   // ── PROGRAM section — real, per-object step sequence. Applies to

@@ -30,6 +30,29 @@
  *                      Right → Orbit R  (arc around world Y)
  *
  * ─────────────────────────────────────────────────────────────────────────────
+ * Satellite buttons (V165: FOUR per movable pad, on the pad's own rim)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   id: omni-pad-sat-${hand}-${role}, in this order along the arc:
+ *     1 release   ⏏  detach the pad into a free-floating, draggable group (unchanged)
+ *     2 speed     »  opens ui/HandSpeedPanel.js: slider 1.0x..10.0x, per hand, stored in
+ *                    utils/OmniHandsSettings.js `speed`. Replaces the V150-V164 Dash toggle.
+ *                    The systems follow the EASED value (utils/OmniHandSpeed.js, ~0.15 s):
+ *                    lh translate, rh altitude/orbit, conscious/omnihand axis tween
+ *                    durations ÷ speed and hold-repeat interval ÷ speed (>= 60 ms).
+ *                    Lit (aria-pressed) while speed > 1.0x; the "×N" shows on the button.
+ *     3 activate  the hand's FX. omnihand/conscious (◎): toggles that hand's dimensional
+ *                    TUNNEL (systems/OmniAxinator.js; precedence off > pin > pad-follow).
+ *                    lh/rh (✦): FIRES the current "ammo" behaviour at the target node
+ *                    (systems/OmniHandAmmo.js). A small ammo chip beside it names the
+ *                    current ammo; click / tap cycles (Shift+click: previous); "[" / "]"
+ *                    cycle the last-touched lower hand. Both dispatch omni:hand-activate.
+ *     4 settings  ⚙  toggles ⟐OmniHands on that hand's view (omni:nav-select
+ *                    '⟐LogicalHand' | '⟐CreativeHand' | '⟐ConsciousHand' | '⟐OmniHand';
+ *                    omni:hands-panel-close when it is already open on that hand).
+ *   The V150-V164 inert "undefined" 3rd satellite is gone (replaced by activate).
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  * Aesthetic
  * ─────────────────────────────────────────────────────────────────────────────
  *
@@ -51,12 +74,21 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *
  *   omni:pad-toggle   →  { hand, visible }
+ *   omni:pad-redock   →  { hand }   (V163 ⟐OmniHands: snap a detached pad back to its dock)
+ *   omni:hands-settings-changed (speed / ammo -> button + chip labels), omni:axinator-tunnel-visible /
+ *   omni:axinator-list (Activation lit state), omni:hand-ammo-state / -feedback,
+ *   omni:hands-panel-state (settings button lit state), omni:hand-speed-panel-state
+ *   emits omni:pad-detach-state { hand, detached } on every detach/re-dock
  *   omni:pads-global  →  { visible }
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Events dispatched
  * ─────────────────────────────────────────────────────────────────────────────
  *
+ *   omni:hand-activate     →  { hand }              (Activation satellite, all four hands)
+ *   omni:hand-ammo-cycle   →  { hand, dir }         (ammo chip, [ ] keys)
+ *   omni:nav-select        →  { item }              (settings satellite -> ⟐OmniHands view)
+ *   omni:hands-panel-close →  {}                    (settings satellite, panel already on this hand)
  *   omni:movement  →  { hand, direction, active, mode }
  *                     (lh / rh only — the dimensional pads move no camera,
  *                      so they dispatch omni:dimension-state via the axes
@@ -65,6 +97,9 @@
 
 import gsap from 'gsap'
 import * as THREE from 'three'
+import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
+import { getEffectiveSpeed, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
+import HandSpeedPanel, { HAND_NAMES, formatSpeed } from './HandSpeedPanel.js'
 import {
   CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL, HOLD_REPEAT_MS,
 } from '../systems/OmniDimensionalAxes.js'
@@ -126,39 +161,36 @@ const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 
 // ── Satellite cluster geometry ─────────────────────────────────────────────────
 //
-// Three buttons (Release / Dash / an inert TBD slot) sit on each movable
-// pad's own circular rim, not inside its 3×3 cross. LH spans the 3–6 o'clock
-// arc of its own circle; RH spans 6–9 o'clock, mirrored — both clusters face
-// inward-and-down (toward screen-bottom-center), just reflected left/right,
-// per direct request ("to mirror the other hand"). Clock angle θ is measured
-// clockwise from 12 o'clock; (dx, dy) is the screen offset from the pad's own
-// center (dx: +right, dy: +down), at radius R from that center.
+// FOUR buttons (V165: Release / Speed / Activate / Settings) sit on each movable pad's
+// own circular rim, not inside its 3×3 cross. Clock angle θ is measured clockwise from
+// 12 o'clock; (dx, dy) is the screen offset from the pad's own center (dx: +right,
+// dy: +down), at radius R from that center.
+//
+// LH spans the 3–6 o'clock arc of its own circle (90°, 120°, 150°, 180°: a 30° step, so
+// neighbouring buttons are 2·R·sin 15° ≈ 69 px apart on desktop / 57 px on mobile — more
+// than the 40 / 34 px button size); RH mirrors it across the vertical axis (360 − θ),
+// landing in 6–9 o'clock. Both clusters face inward-and-down. OmniHand / ConsciousHand
+// (top corners) mirror that vertically (180 − θ): inward-and-UP, the straight-down 180°
+// slot becoming straight-up 0°. Release stays nearest screen-center (90° / 270°) on all
+// four. 180° / 0° is the farthest slot from Release and the one the V150 layout already
+// used, so no slot reaches past the screen edge that the old layout did not.
+const _SAT_ROLES = ['release', 'speed', 'activate', 'settings']
+const _SAT_ANGLES = {
+  lh:        { release: 90,  speed: 120, activate: 150, settings: 180 },
+  rh:        { release: 270, speed: 240, activate: 210, settings: 180 },
+  omnihand:  { release: 90,  speed: 60,  activate: 30,  settings: 0   },
+  conscious: { release: 270, speed: 300, activate: 330, settings: 0   },
+}
+const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'right' }
+const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
+const CHIP_W = 64
+const CHIP_H = 16
+const CHIP_HANDS = ['lh', 'rh']   // the ammo chip (beside Activate) exists on the two lower hands only
 
 function _clockOffset (clockDeg, r) {
   const rad = (clockDeg * Math.PI) / 180
   return { dx: r * Math.sin(rad), dy: -r * Math.cos(rad) }
 }
-
-// LH: Release @ 3 o'clock (90°, nearest screen-center), Dash @ 135°,
-// TBD @ 6 o'clock (180°, straight down). RH mirrors across the vertical
-// axis: same roles, angles reflected (360 − θ), landing in the 180–270° arc.
-//
-// OmniHand/ConsciousHand (top corners) mirror that same pair vertically —
-// direct request, same "mirror the lh and rh" that gave them real pads at
-// all. LH/RH's cluster leans inward-and-DOWN, toward the bottom-center gap
-// between them near the Dock; OmniHand/ConsciousHand's leans inward-and-UP
-// instead, toward the top-center gap between THEM — the straight-down 180°
-// TBD slot becomes straight-up 0°, and the diagonal Dash slot flips from
-// 135°/225° to 45°/315° to match. Release stays nearest screen-center either
-// way (90°/270°), since that relationship doesn't depend on top vs bottom.
-const _SAT_ANGLES = {
-  lh:        { release: 90,  dash: 135, undefined: 180 },
-  rh:        { release: 270, dash: 225, undefined: 180 },
-  omnihand:  { release: 90,  dash: 45,  undefined: 0   },
-  conscious: { release: 270, dash: 315, undefined: 0   },
-}
-const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'right' }
-const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
 
 function _buildSatGeom (padHalf, satHalf) {
   const R = padHalf + PAD_OFFSET + satHalf
@@ -170,24 +202,59 @@ function _buildSatGeom (padHalf, satHalf) {
     out[hand] = {}
     const side   = _SAT_SIDE[hand]
     const anchor = _SAT_ANCHOR[hand]
-    Object.entries(_SAT_ANGLES[hand]).forEach(([role, clockDeg]) => {
-      const { dx, dy } = _clockOffset(clockDeg, R)
+    // CSS offset of a box whose own center sits (dx, dy) from the pad center.
+    const place = (dx, dy, halfW, halfH) => {
       // Left-anchored hands (dx>0 moves right → larger `left`); right-
       // anchored hands (dx>0 moves right → SMALLER `right`, so subtract).
-      const d = side === 'left' ? (center + dx - satHalf) : (center - dx - satHalf)
+      const d = side === 'left' ? (center + dx - halfW) : (center - dx - halfW)
       // Bottom-anchored hands: moving down (dy>0) means a SMALLER
       // `bottom` offset (closer to the screen's actual bottom edge).
       // Top-anchored hands: moving down means a LARGER `top` offset
       // (further from the screen's actual top edge) — opposite sign.
-      const v = anchor === 'bottom' ? (bottomBase - dy - satHalf) : (topBase + dy - satHalf)
-      out[hand][role] = { d: Math.round(d), v: Math.round(v), side, anchor }
+      const v = anchor === 'bottom' ? (bottomBase - dy - halfH) : (topBase + dy - halfH)
+      return { d: Math.round(d), v: Math.round(v), side, anchor }
+    }
+    _SAT_ROLES.forEach(role => {
+      const clockDeg = _SAT_ANGLES[hand][role]
+      const { dx, dy } = _clockOffset(clockDeg, R)
+      out[hand][role] = { ...place(dx, dy, satHalf, satHalf), dx, dy }
     })
+    if (CHIP_HANDS.includes(hand)) {
+      // The ammo chip sits directly BELOW the Activate button (both lower hands face down), nudged
+      // outward away from the pad so it also clears the 180° Settings button. A 4 px gap keeps the
+      // two boxes from touching.
+      const a = out[hand].activate
+      const rad = (_SAT_ANGLES[hand].activate * Math.PI) / 180
+      const dx = a.dx + Math.sign(Math.sin(rad)) * 8
+      const dy = a.dy + satHalf + CHIP_H / 2 + 4
+      out[hand].chip = { ...place(dx, dy, CHIP_W / 2, CHIP_H / 2), dx, dy }
+    }
   })
   return out
 }
 
 const _SAT_GEOM        = _buildSatGeom(110, 20) // desktop: 220px pad, 40px satellite buttons
 const _SAT_GEOM_MOBILE = _buildSatGeom(90, 17)  // mobile:  180px pad, 34px satellite buttons
+
+/** Test / tooling hook: the computed geometry, and the sizes it was built for. */
+export const SAT_LAYOUT = {
+  roles: _SAT_ROLES, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H },
+  desktop: { geom: _SAT_GEOM, padHalf: 110, satHalf: 20 },
+  mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: 17 },
+  barH: BAR_H, dockH: DOCK_H, handWH: HAND_WH, padOffset: PAD_OFFSET,
+}
+
+const _satRules = (geom) => Object.keys(_SAT_ANGLES).map(hand => {
+  const rules = _SAT_ROLES.map(role => {
+    const g = geom[hand][role]
+    return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
+  })
+  if (geom[hand].chip) {
+    const g = geom[hand].chip
+    rules.push(`.omni-pad-chip--${hand} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`)
+  }
+  return rules.join('\n')
+}).join('\n')
 
 // ── Stylesheet ────────────────────────────────────────────────────────────────
 
@@ -305,48 +372,44 @@ const STYLES = `
   cursor           : grabbing;
 }
 
-/* ── Satellite cluster — Release / Dash / TBD, sitting on each pad's own rim ──
-   Position math (see MovementPad.js's _SAT_GEOM): LH spans the 3–6 o'clock
-   arc of its own circle (the quadrant facing inward/down, toward screen
-   center), RH mirrors it across 6–9 o'clock — both clusters face the same
-   inward-and-down direction, just mirrored left/right, so they read as one
-   consistent idea on either side rather than two unrelated layouts.        */
+/* ── Satellite cluster — Release / Speed / Activate / Settings, on each pad's own rim ──
+   Position math (see _buildSatGeom above): LH spans the 3–6 o'clock arc of its own
+   circle (the quadrant facing inward/down, toward screen center), RH mirrors it across
+   6–9 o'clock, the top hands mirror that vertically — one consistent idea on every
+   corner rather than four unrelated layouts.                                      */
 
 .omni-pad-sat {
   position         : fixed;
   width            : 40px;
   height           : 40px;
   display          : flex;
+  flex-direction   : column;
   align-items      : center;
   justify-content  : center;
+  gap              : 0;
   background       : rgba(8, 8, 12, 0.20);
   border           : 1px solid rgba(255, 255, 255, 0.85);
   border-radius    : 8px;
   color            : rgba(255, 255, 255, 0.90);
   font-size        : 13px;
+  line-height      : 1;
   letter-spacing   : 0.02em;
   cursor           : pointer;
   pointer-events   : auto;
-  /* Rest state — hidden until its own pad is toggled visible (direct
-     request: "the 3 buttons... come out when the movement pads come
-     out"). _animateIn/_animateOut's own _animateSatellitesIn/Out
-     fade this to 1 (or 0.30 for the reserved slot) and back via GSAP,
-     mirroring the pad's own opacity choreography exactly. */
+  padding          : 0;
+  /* Rest state — hidden until its own pad is toggled visible. _animateSatellitesIn/Out
+     fade this to 1 and back via GSAP, mirroring the pad's own opacity choreography. */
   opacity          : 0;
-  /* Real fix (bug-squash pass) — was 40, BELOW .omni-pad's own z-index
-     of 41. Each satellite sits just outside the pad's circular edge by
-     design (see _buildSatGeom's R formula), but a square button's own
-     corner nearest the pad still dips a few px inside the pad's
-     bounding circle at the diagonal (Dash) position. With the pad on
-     top there, that corner silently ate clicks — likely why "the speed
-     button doesnt work" even though the click handler was always
-     wired correctly. Now strictly above the pad, so the full button is
-     always clickable regardless of any sliver of geometric overlap. */
+  /* Strictly above the pad (.omni-pad is 41): a square button's corner can dip a few px
+     inside the pad's bounding circle at a diagonal slot and would otherwise eat clicks
+     (V151). Above the minimap / hand (42-43 are handled in their own files). */
   z-index          : 42;
+  font-family      : 'Courier New', Courier, monospace;
   transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
 .omni-pad-sat:hover   { background: rgba(255, 255, 255, 0.13); }
 .omni-pad-sat:active  { background: rgba(255, 255, 255, 0.26); }
+.omni-pad-sat:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.9); outline-offset: 2px; }
 .omni-pad-sat.is-active {
   background       : rgba(255, 255, 255, 0.26);
   color            : rgba(255, 255, 255, 0.96);
@@ -354,25 +417,53 @@ const STYLES = `
   text-shadow      : 0 0 10px rgba(255, 255, 255, 0.22);
 }
 .omni-pad-sat .sat-glyph { pointer-events: none; }
-
-.omni-pad-sat--undefined {
-  opacity          : 0.30;
-  cursor           : default;
-  pointer-events   : none;
-  border-style     : dashed;
+.omni-pad-sat .sat-sub   { pointer-events: none; font-size: 8px; margin-top: 2px; opacity: 0.85; }
+/* "No target" / "blocked" / "empty magazine" — a brief red pulse on Activate (V165). */
+.omni-pad-sat.is-nope { animation: pad-sat-nope 0.5s ease; }
+.omni-pad-sat.is-fired { animation: pad-sat-fired 0.35s ease; }
+@keyframes pad-sat-nope {
+  0%, 100% { box-shadow: none; }
+  30%      { box-shadow: 0 0 0 2px rgba(255, 110, 110, 0.95), 0 0 14px rgba(255, 110, 110, 0.6); }
+}
+@keyframes pad-sat-fired {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.9); }
+  100% { box-shadow: 0 0 0 12px rgba(255, 255, 255, 0); }
 }
 
-${Object.keys(_SAT_ANGLES).map(hand => ['release', 'dash', 'undefined'].map(role => {
-    const g = _SAT_GEOM[hand][role]
-    return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
-  }).join('\n')).join('\n')}
+/* Ammo chip (lh / rh): the current behaviour, beside the Activate button. */
+.omni-pad-chip {
+  position         : fixed;
+  width            : ${CHIP_W}px;
+  height           : ${CHIP_H}px;
+  box-sizing       : border-box;
+  padding          : 0 4px;
+  display          : block;
+  background       : rgba(8, 8, 12, 0.55);
+  border           : 1px solid rgba(255, 255, 255, 0.70);
+  border-radius    : 8px;
+  color            : rgba(255, 255, 255, 0.92);
+  font-family      : 'Courier New', Courier, monospace;
+  font-size        : 9px;
+  line-height      : ${CHIP_H - 2}px;
+  text-align       : center;
+  white-space      : nowrap;
+  overflow         : hidden;
+  text-overflow    : ellipsis;
+  cursor           : pointer;
+  pointer-events   : auto;
+  opacity          : 0;
+  z-index          : 42;
+  -webkit-tap-highlight-color: transparent;
+}
+.omni-pad-chip:hover { background: rgba(255, 255, 255, 0.18); }
+.omni-pad-chip:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.9); outline-offset: 1px; }
+
+${_satRules(_SAT_GEOM)}
 
 @media (max-width: 460px) {
   .omni-pad-sat { width: 34px; height: 34px; font-size: 11px; }
-  ${Object.keys(_SAT_ANGLES).map(hand => ['release', 'dash', 'undefined'].map(role => {
-      const g = _SAT_GEOM_MOBILE[hand][role]
-      return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
-    }).join('\n')).join('\n')}
+  .omni-pad-sat .sat-sub { font-size: 7px; margin-top: 1px; }
+  ${_satRules(_SAT_GEOM_MOBILE).replace(/\n/g, '\n  ')}
 }
 
 /* ── Header — compact and centered so it reads inside the circle ───────────── */
@@ -630,19 +721,21 @@ export default class MovementPad {
     this._orbitVerticalMultiplier = 1
     this._orbitHorizontalMultiplier = 1
 
-    // Dash — a manual on/off modifier layered ON TOP of the step-based
-    // _moveSpeedMultiplier above, LH (WASD) movement only. Triples by
-    // default (raised from 2x per direct request); the exact multiplier
-    // is admin-configurable under DashMovementSettings in
-    // ui/CameraMovementOptionsPanel.js, same storage key/broadcast
-    // every other Admin-driven value here uses.
-    this._dashActive     = false
-    this._dashMultiplier = 3
+    // V165: the V150-V164 Dash toggle (and its admin dashMultiplier) is gone. Speed is the
+    // per-hand slider (ui/HandSpeedPanel.js) and is applied as getEffectiveSpeed(hand)
+    // x the admin step multiplier above — composed once, never twice. The eased value is
+    // advanced once per frame in update().
     this._satEls         = { lh: {}, rh: {}, omnihand: {}, conscious: {} }
+    this._chipEls        = { lh: null, rh: null }
+    this._speedPanel     = new HandSpeedPanel()
+    this._tunnelOn       = { conscious: false, omnihand: false }   // Activation lit state (mirrors the tunnel)
+    this._ammoActive     = { lh: 0, rh: 0 }                        // hand-fired behaviours currently held
+    this._handsPanel     = { open: false, hand: null }             // ⟐OmniHands state (settings button lit state)
+    this._ammoHand       = 'lh'                                    // which lower hand [ ] cycle
 
     // Released/detached pads — "released from its location so we can
     // move it around the space," one toggle per movable hand. The whole
-    // cluster (cross + all 3 satellites) moves as one group via a shared
+    // cluster (cross + all 4 satellites + ammo chip) moves as one group via a shared
     // GSAP x/y offset from its docked position, not a re-parented DOM
     // container — simplest way to keep every element's own corner-anchor
     // CSS as the "home" position while still moving them together.
@@ -674,8 +767,31 @@ export default class MovementPad {
 
     this._onPadToggle  = this._handlePadToggle.bind(this)
     this._onPadsGlobal = this._handlePadsGlobal.bind(this)
+    this._onPadRedock  = (e) => { const h = e.detail?.hand; if (PAD_CONFIGS[h]?.movable && this._detached[h]) this._setDetached(h, false, true) }
     this._onRadialToggle = this._handleRadialToggle.bind(this)
     this._onAdminSteps = this._handleAdminSteps.bind(this)
+    this._onHandSetting = (e) => this._handleHandSetting(e)
+    this._onTunnelVisible = (e) => {
+      const d = e.detail ?? {}
+      if (d.id in this._tunnelOn) { this._tunnelOn[d.id] = !!d.visible; this._refreshActivate(d.id) }
+    }
+    this._onAxinatorList = (e) => (e.detail?.tunnels ?? []).forEach(t => {
+      if (t.id in this._tunnelOn) { this._tunnelOn[t.id] = !!t.visible; this._refreshActivate(t.id) }
+    })
+    this._onAmmoState = (e) => {
+      const d = e.detail ?? {}
+      if (d.hand in this._ammoActive) { this._ammoActive[d.hand] = (d.active ?? []).length; this._refreshActivate(d.hand); this._refreshChip(d.hand) }
+    }
+    this._onAmmoFeedback = (e) => this._handleAmmoFeedback(e.detail ?? {})
+    this._onHandsPanelState = (e) => {
+      const d = e.detail ?? {}
+      this._handsPanel = { open: !!d.open, hand: d.hand ?? null }
+      Object.keys(this._satEls).forEach(h => this._refreshSettings(h))
+    }
+    this._onSpeedPanelState = (e) => {
+      const { hand, open } = e.detail ?? {}
+      this._satEls[hand]?.speed?.setAttribute('aria-expanded', String(!!open))
+    }
     this._onNodeSelected = this._handleNodeSelected.bind(this)
     this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
@@ -689,6 +805,7 @@ export default class MovementPad {
     injectStyles()
     this._buildAllPads()
     this._buildAllSatelliteClusters()
+    this._speedPanel.init()
     this._bindGlobalEvents()
     this._bindKeyboard()
     const initialAll = this._computeAllMultipliers(this._readAdminSteps())
@@ -697,12 +814,14 @@ export default class MovementPad {
     this._altitudeDownMultiplier = initialAll.altitudeDown
     this._orbitVerticalMultiplier = initialAll.orbitVertical
     this._orbitHorizontalMultiplier = initialAll.orbitHorizontal
-    this._readDashMultiplierFromStorage()
     this._restoreDetachState()
+    Object.keys(this._satEls).forEach(h => { this._refreshSpeed(h); this._refreshChip(h) })
+    window.dispatchEvent(new CustomEvent('omni:axinator-list-request'))   // Activation lit state (axes may already be up)
     console.log('⟐ MovementPad: initialized.')
   }
 
   update (delta) {
+    stepSpeeds(delta)   // V165: ease every hand's speed toward its slider value (~0.15 s)
     const cam = this.ctx?.camera
     if (!cam) return
     this._lhCallCount = (this._lhCallCount || 0) + 1
@@ -723,8 +842,19 @@ export default class MovementPad {
     Object.values(this._els).forEach(el => el?.parentNode?.removeChild(el))
     Object.values(this._satEls).forEach(group =>
       Object.values(group).forEach(el => el?.parentNode?.removeChild(el)))
+    Object.values(this._chipEls).forEach(el => el?.parentNode?.removeChild(el))
+    this._speedPanel?.destroy()
+    clearTimeout(this._nopeTimers?.lh); clearTimeout(this._nopeTimers?.rh)
+    window.removeEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
+    window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
+    window.removeEventListener('omni:axinator-list', this._onAxinatorList)
+    window.removeEventListener('omni:hand-ammo-state', this._onAmmoState)
+    window.removeEventListener('omni:hand-ammo-feedback', this._onAmmoFeedback)
+    window.removeEventListener('omni:hands-panel-state', this._onHandsPanelState)
+    window.removeEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
+    window.removeEventListener('omni:pad-redock', this._onPadRedock)
     window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.removeEventListener('omni:node-selected', this._onNodeSelected)
@@ -742,6 +872,7 @@ export default class MovementPad {
     if (this._visible[handId] === visible) return
     this._visible[handId] = visible
     visible ? this._animateIn(handId) : this._animateOut(handId)
+    if (!visible && this._speedPanel.isOpen(handId)) this._speedPanel.close()   // V165: its popover belongs to the pad
     // V160: MovementPad is the single source of truth for pad visibility. Every
     // real change is announced so ui/Hand.js (the ⚇ cell state) and
     // systems/OmniAxinator.js (tunnels follow the pads) can never drift from it.
@@ -771,12 +902,10 @@ export default class MovementPad {
     })
   }
 
-  /** The 3-button satellite cluster (Release / Dash / TBD) on each
-   *  movable pad's own rim — see _SAT_GEOM above for the arc math.
-   *  Own top-level fixed elements, same sibling-of-the-pad approach
-   *  MovementPad already used for the old standalone dash button, so
-   *  moving them together with the pad (see _setDetached) is just
-   *  applying the same GSAP offset to all of them, no DOM nesting. */
+  /** The 4-button satellite cluster (Release / Speed / Activate / Settings) on each
+   *  movable pad's own rim — see _SAT_GEOM above for the arc math. Own top-level
+   *  fixed elements, siblings of the pad, so moving them together with the pad
+   *  (see _setDetached) is just applying the same GSAP offset to all of them. */
   _buildAllSatelliteClusters () {
     Object.keys(PAD_CONFIGS)
       .filter(id => PAD_CONFIGS[id].movable)
@@ -786,49 +915,156 @@ export default class MovementPad {
       })
   }
 
+  _satSpecs (handId) {
+    const name = HAND_NAMES[handId]
+    const tunnelHand = !!PAD_CONFIGS[handId].dimensional
+    return {
+      release:  { glyph: '⏏', title: 'Release — detach this pad into a free-floating panel', label: 'Release pad from its docked position', pressed: true },
+      speed:    { glyph: '»', sub: '×1.0', title: `${name} speed`, label: `${name} speed`, pressed: true },
+      activate: tunnelHand
+        ? { glyph: '◎', title: `${name} tunnel — show / hide`, label: `Toggle the ${name} tunnel`, pressed: true }
+        : { glyph: '✦', title: `${name} — fire the loaded behaviour at the target`, label: `Fire ${name} ammo`, pressed: true },
+      settings: { glyph: '⚙', title: `${name} settings`, label: `${name} settings`, pressed: true },
+    }
+  }
+
   _buildSatelliteCluster (handId) {
     const shell = document.getElementById('omni-ui') ?? document.body
-    const specs = {
-      release: { glyph: '⏏', title: 'Release — detach this pad into a free-floating panel', label: 'Release pad from its docked position' },
-      dash:    { glyph: '⟫⟫', title: 'Dash (multiplies LH movement speed)', label: 'Toggle dash' },
-      undefined: { glyph: '—', title: 'Reserved — not yet assigned', label: 'Reserved, not yet assigned' },
-    }
+    const specs = this._satSpecs(handId)
     Object.entries(specs).forEach(([role, spec]) => {
       const el = document.createElement('button')
       el.id        = `omni-pad-sat-${handId}-${role}`
       el.className = `omni-pad-sat omni-pad-sat--${handId}-${role}`
       el.type      = 'button'
       el.title     = spec.title
+      el.dataset.hand = handId
+      el.dataset.role = role
       el.setAttribute('aria-label', spec.label)
-      if (role !== 'undefined') el.setAttribute('aria-pressed', 'false')
-      el.innerHTML = `<span class="sat-glyph">${spec.glyph}</span>`
-      if (role === 'release') el.addEventListener('click', () => this._toggleDetach(handId))
-      if (role === 'dash' && handId === 'lh') el.addEventListener('click', () => this.toggleDash())
-      // RH/OmniHand/ConsciousHand's own Dash slots exist for visual
-      // mirror symmetry only — dash is specifically an LH (WASD) speed
-      // modifier, not a real control on any other hand, so they stay
-      // inert (no handler, read as reserved). Release, by contrast, is
-      // wired for every movable hand — full parity is the whole point
-      // of giving OmniHand/ConsciousHand real pads at all.
+      if (spec.pressed) el.setAttribute('aria-pressed', 'false')
+      el.innerHTML = `<span class="sat-glyph">${spec.glyph}</span>` + (spec.sub ? `<span class="sat-sub">${spec.sub}</span>` : '')
+      if (role === 'release')  el.addEventListener('click', () => this._toggleDetach(handId))
+      if (role === 'speed')    el.addEventListener('click', () => this._speedPanel.toggle(handId, el))
+      if (role === 'activate') el.addEventListener('click', () => this._activate(handId))
+      if (role === 'settings') el.addEventListener('click', () => this._toggleHandSettings(handId))
+      if (role === 'speed') el.setAttribute('aria-expanded', 'false')
+      el.addEventListener('pointerenter', () => { if (CHIP_HANDS.includes(handId)) this._ammoHand = handId })
       shell.appendChild(el)
       this._satEls[handId][role] = el
-      if (role === 'dash' && handId === 'lh') this._dashButtonEl = el
     })
+    if (CHIP_HANDS.includes(handId)) {
+      const chip = document.createElement('button')
+      chip.id = `omni-pad-chip-${handId}`
+      chip.className = `omni-pad-chip omni-pad-chip--${handId}`
+      chip.type = 'button'
+      chip.dataset.hand = handId
+      chip.addEventListener('click', (e) => {
+        this._ammoHand = handId
+        window.dispatchEvent(new CustomEvent('omni:hand-ammo-cycle', { detail: { hand: handId, dir: e.shiftKey ? -1 : 1 } }))
+      })
+      shell.appendChild(chip)
+      this._chipEls[handId] = chip
+    }
+    this._refreshSpeed(handId)
+    this._refreshChip(handId)
   }
 
-  toggleDash (force) {
-    this._dashActive = typeof force === 'boolean' ? force : !this._dashActive
-    this._dashButtonEl?.classList.toggle('is-active', this._dashActive)
-    this._dashButtonEl?.setAttribute('aria-pressed', String(this._dashActive))
+  // ── Satellite behaviour (V165) ───────────────────────────────────────────────
+
+  /** Activation: both families announce omni:hand-activate; the receiver differs
+   *  (systems/OmniAxinator.js for the tunnels, systems/OmniHandAmmo.js for ammo). */
+  _activate (handId) {
+    this._ammoHand = CHIP_HANDS.includes(handId) ? handId : this._ammoHand
+    window.dispatchEvent(new CustomEvent('omni:hand-activate', { detail: { hand: handId } }))
+  }
+
+  _toggleHandSettings (handId) {
+    const NAV = { lh: '⟐LogicalHand', rh: '⟐CreativeHand', conscious: '⟐ConsciousHand', omnihand: '⟐OmniHand' }
+    if (this._handsPanel.open && this._handsPanel.hand === handId) {
+      window.dispatchEvent(new CustomEvent('omni:hands-panel-close'))
+    } else {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: NAV[handId] } }))
+    }
+  }
+
+  _handleHandSetting (e) {
+    const { hand, key } = e.detail ?? {}
+    if (!this._satEls[hand]) return
+    if (key === 'speed') this._refreshSpeed(hand)
+    if (key === 'ammo' || key === 'magazine') this._refreshChip(hand)
+  }
+
+  _refreshSpeed (handId) {
+    const el = this._satEls[handId]?.speed
+    if (!el) return
+    const v = Number(getHandSetting(handId, 'speed')) || 1
+    const on = v > 1.0001
+    el.classList.toggle('is-active', on)
+    el.setAttribute('aria-pressed', String(on))
+    const sub = el.querySelector('.sat-sub')
+    if (sub) sub.textContent = formatSpeed(v)
+    el.title = `${HAND_NAMES[handId]} speed ${formatSpeed(v)}`
+    el.setAttribute('aria-label', `${HAND_NAMES[handId]} speed, currently ${formatSpeed(v)}`)
+  }
+
+  _refreshActivate (handId) {
+    const el = this._satEls[handId]?.activate
+    if (!el) return
+    const on = PAD_CONFIGS[handId].dimensional ? !!this._tunnelOn[handId] : this._ammoActive[handId] > 0
+    el.classList.toggle('is-active', on)
+    el.setAttribute('aria-pressed', String(on))
+  }
+
+  _refreshSettings (handId) {
+    const el = this._satEls[handId]?.settings
+    if (!el) return
+    const on = this._handsPanel.open && this._handsPanel.hand === handId
+    el.classList.toggle('is-active', on)
+    el.setAttribute('aria-pressed', String(on))
+  }
+
+  /** The current-ammo chip's text: stored ammo if loaded, else the first loaded one. */
+  _refreshChip (handId) {
+    const chip = this._chipEls[handId]
+    if (!chip) return
+    const mag = (getHandSetting(handId, 'magazine') ?? [])
+    const cur = getHandSetting(handId, 'ammo')
+    const ammo = mag.includes(cur) ? cur : (mag[0] ?? null)
+    chip.textContent = ammo ?? 'empty'
+    chip.title = ammo
+      ? `Ammo: ${ammo} (${mag.length} loaded). Click to cycle, Shift+click for previous, [ ] keys.`
+      : 'Magazine empty — load behaviours in ⟐OmniHands'
+    chip.setAttribute('aria-label', ammo ? `Current ammo ${ammo}. Click to cycle to the next loaded behaviour.` : 'Magazine empty')
+    const act = this._satEls[handId]?.activate
+    if (act) act.title = ammo
+      ? `${HAND_NAMES[handId]} — fire ${ammo} at the target (again on the same node to release it)`
+      : `${HAND_NAMES[handId]} — magazine empty`
+  }
+
+  _handleAmmoFeedback ({ hand, kind }) {
+    const el = this._satEls[hand]?.activate
+    if (!el) return
+    const cls = kind === 'fired' || kind === 'released' ? 'is-fired' : 'is-nope'
+    el.classList.remove('is-fired', 'is-nope')
+    void el.offsetWidth                       // restart the CSS animation
+    el.classList.add(cls)
+    this._nopeTimers = this._nopeTimers ?? {}
+    clearTimeout(this._nopeTimers[hand])
+    this._nopeTimers[hand] = setTimeout(() => el.classList.remove('is-fired', 'is-nope'), 600)
+    if (kind === 'no-target' || kind === 'blocked' || kind === 'empty') {
+      const msg = { 'no-target': 'No target — select a node', blocked: 'Target has its own behaviour', empty: 'Magazine empty' }[kind]
+      el.dataset.hint = msg
+      el.title = msg
+      setTimeout(() => { delete el.dataset.hint; this._refreshChip(hand) }, 1600)
+    }
   }
 
   // ── Detach / release ─────────────────────────────────────────────────────────
 
   /** All elements belonging to one pad's group — the cross itself plus
-   *  its 3 satellites — moved together as a unit whenever it's dragged
-   *  or snapped back. */
+   *  its 4 satellites (and the ammo chip on lh / rh) — moved together as a
+   *  unit whenever it's dragged or snapped back. */
   _groupEls (handId) {
-    return [this._els[handId], ...Object.values(this._satEls[handId] ?? {})].filter(Boolean)
+    return [this._els[handId], ...Object.values(this._satEls[handId] ?? {}), this._chipEls[handId]].filter(Boolean)
   }
 
   _toggleDetach (handId) {
@@ -842,12 +1078,8 @@ export default class MovementPad {
     padEl?.classList.toggle('is-detached', detached)
     Object.values(satEls ?? {}).forEach(el => el?.classList.toggle('is-detached', detached))
     satEls?.release?.setAttribute('aria-pressed', String(detached))
-    // Real fix (bug-squash pass) — this only ever set aria-pressed
-    // (screen-reader-only, invisible on screen) and never the actual
-    // .is-active glow class Dash's own toggleDash() applies to itself.
-    // The pad's own is-detached box-shadow bump is subtle enough that
-    // clicking Release genuinely looked like it did nothing — this
-    // gives Release the same unmistakable lit-up feedback Dash has.
+    // Real fix (bug-squash pass) — aria-pressed alone is screen-reader-only; the visible
+    // .is-active glow is what makes clicking Release read as having done something.
     satEls?.release?.classList.toggle('is-active', detached)
 
     if (!detached) {
@@ -860,6 +1092,8 @@ export default class MovementPad {
       }
     }
     this._persistDetachState()
+    // V163: announced for ⟐OmniHands (readout). `omni:pad-redock { hand }` is the inverse request.
+    window.dispatchEvent(new CustomEvent('omni:pad-detach-state', { detail: { hand: handId, detached } }))
   }
 
   /** Drag handle is each pad's own header — the small abbr/mode-label
@@ -1096,33 +1330,27 @@ export default class MovementPad {
     this._animateSatellitesOut(handId)
   }
 
-  /** Satellites (Release/Dash/reserved) now come out and retract WITH
-   *  their own pad — direct request: "put it so that the 3 buttons...
-   *  come out when the movement pads come out." Same fromTo/to shape
-   *  and timing as the pad's own _animateIn/_animateOut, just applied
-   *  to each satellite button individually since they're independent
-   *  top-level elements, not children of the pad. The reserved/
-   *  "undefined" slot settles at its own dimmed 0.30 opacity instead
-   *  of 1 — matching `.omni-pad-sat--undefined`'s existing look — and
-   *  never gets pointer-events, same as it always has. */
+  /** Satellites (and the ammo chip) come out and retract WITH their own pad.
+   *  Same fromTo/to shape and timing as the pad's own _animateIn/_animateOut,
+   *  applied to each button individually since they are independent top-level
+   *  elements, not children of the pad. */
+  _satAndChipEls (handId) {
+    return [...Object.values(this._satEls[handId] ?? {}), this._chipEls[handId]].filter(Boolean)
+  }
+
   _animateSatellitesIn (handId) {
-    const group = this._satEls[handId] ?? {}
-    Object.entries(group).forEach(([role, sat]) => {
-      if (!sat) return
+    this._satAndChipEls(handId).forEach(sat => {
       gsap.killTweensOf(sat)
-      if (role !== 'undefined') sat.style.pointerEvents = 'auto'
-      const targetOpacity = role === 'undefined' ? 0.30 : 1
+      sat.style.pointerEvents = 'auto'
       gsap.fromTo(sat,
         { opacity: 0, scale: 0.80 },
-        { opacity: targetOpacity, scale: 1, duration: 0.22, ease: 'back.out(1.8)' }
+        { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(1.8)' }
       )
     })
   }
 
   _animateSatellitesOut (handId) {
-    const group = this._satEls[handId] ?? {}
-    Object.values(group).forEach(sat => {
-      if (!sat) return
+    this._satAndChipEls(handId).forEach(sat => {
       gsap.killTweensOf(sat)
       gsap.to(sat, {
         opacity: 0, scale: 0.82, duration: 0.16, ease: 'power2.in',
@@ -1161,19 +1389,31 @@ export default class MovementPad {
   _handleDimensionPress (handId, dir, active) {
     const key = `${handId}-${dir}`
     if (this._dimRepeat[key]) {
-      clearInterval(this._dimRepeat[key])
+      clearTimeout(this._dimRepeat[key])
       delete this._dimRepeat[key]
     }
     if (!active) return
     this._axes?.step(handId, dir)
-    this._dimRepeat[key] = setInterval(() => this._axes?.step(handId, dir), HOLD_REPEAT_MS)
+    // V165: a chained timeout (not setInterval) so every repeat re-reads the EASED speed:
+    // changing the slider mid-hold speeds the repeat up smoothly.
+    const tick = () => {
+      this._axes?.step(handId, dir)
+      this._dimRepeat[key] = setTimeout(tick, this._repeatMs(handId))
+    }
+    this._dimRepeat[key] = setTimeout(tick, this._repeatMs(handId))
+  }
+
+  /** Hold-to-repeat interval: the V163 ⟐OmniHands setting (default == HOLD_REPEAT_MS) divided
+   *  by the hand's eased speed, never below 60 ms (utils/OmniHandSpeed.js repeatInterval). */
+  _repeatMs (handId) {
+    return repeatInterval(getHandSetting(handId, 'holdRepeatMs') ?? HOLD_REPEAT_MS, handId)
   }
 
   _releaseAllDimensionPresses () {
     Object.keys(PAD_CONFIGS).filter(id => PAD_CONFIGS[id].dimensional).forEach(handId => {
       DIRS.forEach(d => this._setPressed(handId, d, false, true))
     })
-    Object.values(this._dimRepeat).forEach(t => clearInterval(t))
+    Object.values(this._dimRepeat).forEach(t => clearTimeout(t))
     this._dimRepeat = {}
   }
 
@@ -1181,12 +1421,12 @@ export default class MovementPad {
 
   /** LH's translate-move logic. Still parameterized by handId from V150, but
    *  as of V158 only 'lh' calls it — OmniHand no longer moves the camera.
-   *  Dash is an LH-exclusive modifier (OmniHand/RH Dash slots are inert). */
+   *  V165: translate speed = MOVE_SPEED x admin step multiplier (or Global override) x the
+   *  hand's EASED Speed (1x by default) x delta. Applied exactly once. */
   _applyTranslateMovement (cam, delta, handId) {
     const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
-    const dashMult = handId === 'lh' && this._dashActive ? this._dashMultiplier : 1
-    const speed = MOVE_SPEED * this._moveSpeedMultiplier * dashMult * delta
+    const speed = MOVE_SPEED * this._moveSpeedMultiplier * getEffectiveSpeed(handId) * delta
     cam.getWorldDirection(this._v3fwd)
     this._v3fwd.y = 0
 
@@ -1221,11 +1461,13 @@ export default class MovementPad {
     const p = this._pressed[handId]
     if (!p.up && !p.down && !p.left && !p.right) return
 
-    if (p.up)   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier * delta
-    if (p.down) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * delta
+    // V165: x the hand's EASED Speed (1x by default) on top of the admin multipliers.
+    const hs = getEffectiveSpeed(handId)
+    if (p.up)   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier * hs * delta
+    if (p.down) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * hs * delta
 
     if (p.left || p.right) {
-      const angle = (p.right ? -1 : 1) * YAW_SPEED * this._orbitHorizontalMultiplier * delta
+      const angle = (p.right ? -1 : 1) * YAW_SPEED * this._orbitHorizontalMultiplier * hs * delta
       const cos   = Math.cos(angle)
       const sin   = Math.sin(angle)
       const x     = cam.position.x
@@ -1247,6 +1489,16 @@ export default class MovementPad {
   _handleKeyDown (e) {
     const tag = document.activeElement?.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    // V165: [ / ] cycle the loaded ammo of the last-touched lower hand (both keys were free).
+    if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
+      const hand = this._visible[this._ammoHand] ? this._ammoHand : CHIP_HANDS.find(h => this._visible[h])
+      if (hand) {
+        e.preventDefault()
+        this._ammoHand = hand
+        window.dispatchEvent(new CustomEvent('omni:hand-ammo-cycle', { detail: { hand, dir: e.code === 'BracketLeft' ? -1 : 1 } }))
+      }
+      return
+    }
     const mapped = this._mapKey(e.code)
     if (!mapped) return
     const { handId, dir } = mapped
@@ -1298,10 +1550,18 @@ export default class MovementPad {
   _bindGlobalEvents () {
     window.addEventListener('omni:pad-toggle',  this._onPadToggle)
     window.addEventListener('omni:pads-global', this._onPadsGlobal)
+    window.addEventListener('omni:pad-redock', this._onPadRedock)
     window.addEventListener('omni:radial-toggle', this._onRadialToggle)
     window.addEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.addEventListener('omni:node-selected', this._onNodeSelected)
     window.addEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
+    window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
+    window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
+    window.addEventListener('omni:axinator-list', this._onAxinatorList)
+    window.addEventListener('omni:hand-ammo-state', this._onAmmoState)
+    window.addEventListener('omni:hand-ammo-feedback', this._onAmmoFeedback)
+    window.addEventListener('omni:hands-panel-state', this._onHandsPanelState)
+    window.addEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
   }
 
   /** Switches the rotation pivot to whatever was just selected — "so
@@ -1406,21 +1666,6 @@ export default class MovementPad {
     } catch (_) { return fallback }
   }
 
-  /** dashMultiplier lives at the top level of omni:admin:settings, NOT
-   *  inside the nested `.steps` object _readAdminSteps() returns — read
-   *  it directly here rather than through that helper. */
-  _readDashMultiplierFromStorage () {
-    try {
-      const raw = localStorage.getItem('omni:admin:settings')
-      const dashMultiplier = raw ? JSON.parse(raw)?.dashMultiplier : null
-      if (typeof dashMultiplier === 'number' && dashMultiplier > 0) {
-        this._dashMultiplier = dashMultiplier
-      }
-    } catch (_) {
-      // falls back to the constructor default (2)
-    }
-  }
-
   /** "When the number is smaller I move more slowly on all axis, when
    *  larger I move greater distances" — one combined multiplier
    *  across all three axes, not a separate per-axis speed, matching
@@ -1460,14 +1705,7 @@ export default class MovementPad {
   }
 
   _handleAdminSteps (e) {
-    // dashMultiplier lives at the top level of the saved settings object
-    // (alongside `steps`, `theme`, etc.), not inside `steps` itself — see
-    // ui/CameraMovementOptionsPanel.js's DashMovementSettings group.
-    const dashMultiplier = e.detail?.dashMultiplier
-    if (typeof dashMultiplier === 'number' && dashMultiplier > 0) {
-      this._dashMultiplier = dashMultiplier
-    }
-
+    // (V165: the admin `dashMultiplier` field is no longer read — Dash became Speed.)
     const steps = e.detail?.steps
     if (!steps) return
     const merged = { ...this._readAdminSteps(), ...steps }

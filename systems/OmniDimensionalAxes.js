@@ -40,13 +40,14 @@
  *
  * Events consumed (window):
  *   omni:dimension-axes-visible-set  { visible }   follow-pads toggle
- *   omni:dimension-axes-reset                       back to defaults
+ *   omni:dimension-axes-reset  { hand? }            back to defaults (V163: optional single hand)
  *
  * Public API:
  *   axes.step(hand, 'left'|'right'|'up'|'down')   -> true if it moved
  *   axes.goTo(hand, primaryIndex, relativeIndex)
  *   axes.getState(hand)
- *   axes.setVisible(bool) / axes.isVisible() / axes.reset()   (follow-pads flag)
+ *   axes.setVisible(bool) / axes.isVisible()      (follow-pads flag)
+ *   axes.reset(hand?)                             (markers back to the first node)
  *   axes.getAxinator()                            -> the OmniAxinator instance
  *
  * Follows the standard module contract (constructor / init / update / destroy).
@@ -120,7 +121,7 @@ export default class OmniDimensionalAxes {
     this._readoutEl = null
     this._visible = true           // follow-pads flag (legacy name kept for the public API)
     this._onVisibleSet = (e) => this.setVisible(!!e.detail?.visible)
-    this._onReset = () => this.reset()
+    this._onReset = (e) => this.reset(e?.detail?.hand)
     this._onTunnelVisible = () => this._applyVisibility()
   }
 
@@ -200,9 +201,11 @@ export default class OmniDimensionalAxes {
     this._axinator?.goTo(hand, primaryIndex, relativeIndex)
   }
 
-  reset () {
+  /** Back to the first node. V163: optional `hand` ('conscious'|'omnihand') resets
+   *  just that marker (⟐OmniHands "Reset marker"); no argument resets both. */
+  reset (hand) {
     if (!this._axinator) return
-    HAND_IDS.forEach(id => {
+    ;(HAND_IDS.includes(hand) ? [hand] : HAND_IDS).forEach(id => {
       const d = this._axinator.getDefaultState(id)
       if (d) this._axinator.goTo(id, d.p, d.r)
     })

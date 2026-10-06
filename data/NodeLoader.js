@@ -289,6 +289,7 @@ export default class NodeLoader {
     // ── Bound event handlers ───────────────────────────────────────────
     this._onNavigate = null
     this._onSceneClear = null
+    this._onNodesRequest = null
     this._onDeleteSystemRequest = null
     this._onRotationAutomationSet = null
   }
@@ -353,6 +354,7 @@ export default class NodeLoader {
     window.removeEventListener('omni:scene-clear-request', this._onSceneClear)
     window.removeEventListener('omni:delete-system-request', this._onDeleteSystemRequest)
     window.removeEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
+    window.removeEventListener('omni:nodes-request', this._onNodesRequest)
 
     // Dispose all loaded meshes
     for (const [id, entry] of this._registry) {
@@ -1069,6 +1071,14 @@ export default class NodeLoader {
       this._updateStoredNode(id, patch)
     }
     window.addEventListener('omni:node-rotation-automation-set', this._onRotationAutomationSet)
+
+    // OmniNode answers omni:nodes-request with ITS nodes only. A system that
+    // starts after this loader has already hydrated its restored nodes
+    // (systems/OmniNodeBehavior.js) would never learn the loader-owned nodes'
+    // data (e.g. data.behavior) — so answer too, with the merged set
+    // _broadcastUpdate already builds.
+    this._onNodesRequest = () => this._broadcastUpdate()
+    window.addEventListener('omni:nodes-request', this._onNodesRequest)
   }
 
   /**

@@ -79,6 +79,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniMixer'       },
   { label: '⟐OmniPocket'      },
   { label: '⟐OmniNavi'        },
+  { label: '⟐OmniHands',     children: ['⟐LogicalHand', '⟐CreativeHand', '⟐ConsciousHand', '⟐OmniHand'] },
   { divider: true },
   { divider: true },
   { label: '⟐Developer'       },

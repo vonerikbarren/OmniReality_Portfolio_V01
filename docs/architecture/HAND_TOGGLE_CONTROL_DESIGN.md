@@ -263,3 +263,20 @@ depend on the wallpaper/backdrop for contrast.
 - **Style.** Grey tunnels (`TUNNEL_COLOR`), silver/white nodes with a dark outline, hand colour only on marker/ticks/column/label borders, distance-compensated bold labels.
 - **Pad bug (top hands).** Reproduced headlessly with the real Hand.js + MovementPad.js: the ⚇ click path, `_padActive`, opacity/pointer-events and the dimensional buttons all behave for omnihand and conscious, and `_buildPad` does not throw for the new `⟐◂` labels, so the logic was not the cause. The defect found by reading the CSS: `.omni-hand` (`ui/Hand.js`, z-index 40) sat below the MiniMap (`ui/MiniMap.js`, z-index 42, 154px box at top:60/right:16, pointer-events:auto), which covers the lower part of ConsciousHand's ⚇ cell whenever the minimap is shown; hands are now z-index 43. Pad visibility is also single-sourced: MovementPad dispatches `omni:pad-state` after every real change and Hand follows it. Not confirmed in a real browser.
 
+## V165 revision (2026-10-05, four pad satellites)
+
+Each movable pad's rim now holds four buttons: Release, Speed, Activation, Settings (the
+old Dash toggle and the inert reserved slot are gone). Hand-specific meaning:
+
+| Hand | Speed (slider 1x-10x) | Activation (the hand's FX) |
+|---|---|---|
+| LogicalHand (`lh`) | walking speed | fires the loaded node-behaviour "ammo" at the target |
+| CreativeHand (`rh`) | altitude + orbit speed | same, with its own default magazine |
+| ConsciousHand | axis travel durations / hold-repeat divided by speed | toggles its dimensional tunnel |
+| OmniHand | same | toggles its tunnel |
+
+Tunnel visibility precedence is now explicit OFF (Activation) > pin > pad-follow
+(`OmniAxinator._wantOn`). The LH/RH default magazines (LogicalHand: the "logic" classes,
+CreativeHand: the "expressive" ones) are a proposal the user can edit, not a decided
+taxonomy. Speed is eased and composes with the admin step values. Settings opens
+⟐OmniHands on the hand's own view. Full detail: `docs/omniproducts/OMNIHANDS_DESIGN.md`.

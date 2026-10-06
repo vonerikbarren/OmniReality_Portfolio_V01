@@ -19,19 +19,26 @@ const STYLES = `
 
 .omni-draw-mode-picker {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(560px, 92vw); max-height: 82vh; overflow-y: auto; box-sizing: border-box;
   background: rgba(8,8,12,0.94); border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px; padding: 16px; display: flex; gap: 10px;
+  border-radius: 10px; padding: 14px;
   font-family: 'Courier New', Courier, monospace; z-index: 65;
   opacity: 0; visibility: hidden; pointer-events: auto;
 }
-.odmp-title { position: absolute; top: -22px; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 0.05em; }
+/* V164: the option list is a responsive grid of tiles (it was a one-row flex strip). */
+.odmp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.odmp-title { grid-column: 1 / -1; text-align: center; font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 0.05em; padding-bottom: 2px; }
 .odmp-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0;
   background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
   border-radius: 8px; color: #fff; font-family: inherit; font-size: 12px;
-  padding: 16px 22px; cursor: pointer; text-align: center;
+  padding: 14px 8px; cursor: pointer; text-align: center;
 }
-.odmp-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
-.odmp-btn-sub { display: block; font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+.odmp-btn:hover, .odmp-btn:focus-visible { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); outline: none; }
+.odmp-btn.is-active { background: rgba(255,179,71,0.16); border-color: rgba(255,179,71,0.7); }
+.odmp-glyph { font-size: 20px; line-height: 1; opacity: 0.9; }
+.odmp-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 520px) { .odmp-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); } .odmp-btn { padding: 12px 4px; font-size: 11px; } }
 
 `
 
@@ -56,14 +63,17 @@ export default class OmniDrawModePicker {
     this._el = document.createElement('div')
     this._el.className = 'omni-draw-mode-picker'
     this._el.innerHTML = `
-      <span class="odmp-title">⟐OmniDraw — choose a mode</span>
-      <button class="odmp-btn" data-mode="static">Static<span class="odmp-btn-sub">place &amp; shape a real object</span></button>
-      <button class="odmp-btn" data-mode="dynamic">Dynamic<span class="odmp-btn-sub">a string, read and shown over time</span></button>
-      <button class="odmp-btn" data-mode="jsonifier">Jsonifier<span class="odmp-btn-sub">a JSON tree, toggled open branch by branch</span></button>
-      <button class="odmp-btn" data-mode="omnicell">OmniCell<span class="odmp-btn-sub">numerical data, straight to a real D3 chart</span></button>
-      <button class="odmp-btn" data-mode="chat">Chat<span class="odmp-btn-sub">a live message/terminal build tool</span></button>
-      <button class="odmp-btn" data-mode="log">Log<span class="odmp-btn-sub">a blog post, genuinely paginated into real, in-scene pages</span></button>
-      <button class="odmp-btn" data-mode="omninode">OmniNode<span class="odmp-btn-sub">the real node registry — Essence Data and every other type</span></button>
+      <div class="odmp-grid">
+        <span class="odmp-title">⟐OmniDraw — choose a mode</span>
+        <button class="odmp-btn" data-mode="static" title="place &amp; shape a real object" aria-pressed="false"><span class="odmp-glyph">▣</span><span class="odmp-label">Static</span></button>
+        <button class="odmp-btn" data-mode="dynamic" title="a string, read and shown over time" aria-pressed="false"><span class="odmp-glyph">≋</span><span class="odmp-label">Dynamic</span></button>
+        <button class="odmp-btn" data-mode="jsonifier" title="a JSON tree, toggled open branch by branch" aria-pressed="false"><span class="odmp-glyph">{ }</span><span class="odmp-label">Jsonifier</span></button>
+        <button class="odmp-btn" data-mode="omnicell" title="numerical data, straight to a real D3 chart" aria-pressed="false"><span class="odmp-glyph">▥</span><span class="odmp-label">OmniCell</span></button>
+        <button class="odmp-btn" data-mode="chat" title="a live message/terminal build tool" aria-pressed="false"><span class="odmp-glyph">✉</span><span class="odmp-label">Chat</span></button>
+        <button class="odmp-btn" data-mode="log" title="a blog post, genuinely paginated into real, in-scene pages" aria-pressed="false"><span class="odmp-glyph">☰</span><span class="odmp-label">Log</span></button>
+        <button class="odmp-btn" data-mode="omninode" title="the real node registry — Essence Data and every other type" aria-pressed="false"><span class="odmp-glyph">◉</span><span class="odmp-label">OmniNode</span></button>
+        <button class="odmp-btn" data-mode="behavior" title="a node that animates others: Orbit, Leader, Follower, Attract, Repel and more" aria-pressed="false"><span class="odmp-glyph">⟳</span><span class="odmp-label">BehaviorNode</span></button>
+      </div>
     `
     document.body.appendChild(this._el)
 
@@ -74,6 +84,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="chat"]').addEventListener('click', () => this._choose('chat'))
     this._el.querySelector('[data-mode="log"]').addEventListener('click', () => this._choose('log'))
     this._el.querySelector('[data-mode="omninode"]').addEventListener('click', () => this._choose('omninode'))
+    this._el.querySelector('[data-mode="behavior"]').addEventListener('click', () => this._choose('behavior'))
 
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐OmniDraw') return
@@ -114,6 +125,7 @@ export default class OmniDrawModePicker {
 
   _choose (mode) {
     declareDesire(`open-omnidraw-${mode}`, { mode })
+    this._el.querySelectorAll('.odmp-btn').forEach(b => { const on = b.dataset.mode === mode; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)) })
 
     // OmniNode is a real, separate registry system (systems/OmniNode.js) —
     // it never listens for 'omni:nav-select' like the other five modes do,
@@ -127,7 +139,7 @@ export default class OmniDrawModePicker {
       return
     }
 
-    const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell', chat: '⟐OmniDrawChat', log: '⟐OmniDrawLog' }
+    const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell', chat: '⟐OmniDrawChat', log: '⟐OmniDrawLog', behavior: '⟐OmniDrawBehavior' }
     window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: labels[mode] } }))
     this.close()
   }

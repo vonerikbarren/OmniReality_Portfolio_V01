@@ -994,3 +994,48 @@ the *content* is not. Follow-ups:
 7. **Performance with all tunnels on.** 7 tunnels = ~320 scene objects, label scaling per frame; measure in a real browser. Node shells share geometry per tunnel; tunnels build lazily.
 8. **Hand ⚇ stale state.** Hand now follows `omni:pad-state`, but its own click still toggles from `_padActive`; an unrelated future caller that shows a pad without `MovementPad.setVisible` would bypass the event.
 
+
+## 48. ⟐OmniHands follow-ups — V163
+
+1. **See it in a real browser.** Nothing in V163 was rendered. Check the panel (330 px wide, up to 84vh, scrolls), the drawer sub-menu, and the live clock-hour rebuild.
+2. **Orbiter and radial tools are still undefined** (item 38). Each hand view says so; once item 38 defines them, add their settings to `ui/OmniHandsPanel.js` and `utils/OmniHandsSettings.js` (add the key to `DEFAULTS`, read it where used).
+3. **Key rebinding.** Bindings are fixed (`MovementPad._mapKey`); the panel only shows them read-only. Rebinding needs a conflict check against main.js `HAND_KEY_BINDINGS` and the numpad rules in `_mapKey`.
+4. **Per-hand follow-pads.** "Tunnels follow the pads" is one shared flag (`OmniAxinator._followPads`); a per-hand version would change `_wantOn`.
+5. **Two stores for LogicalHand/CreativeHand.** Their speeds stay in `omni:admin:settings` (shared with ⟐CameraMovementOptions) on purpose; if the speeds ever move into `omni:hands-settings-v1`, MovementPad must read both until migrated.
+6. **Stagger for ConsciousHand** is not offered (its tunnel def has no `stagger`); add `stagger` to its `DEFAULTS` and def if wanted.
+7. **Pad on start ordering.** Applied in `main.js` right after the axes panels via `omni:pad-toggle`; confirm in a real boot that the Hand ⚇ cells and tunnels agree.
+8. **Product list.** ⟐OmniHands is not in `OMNIHAND_PRODUCTS` (data/OmniDimensionalAxesData.js, even count kept on purpose) nor in `docs/architecture/DRAWER_TO_30_MAPPING.md` (no concept assigned yet).
+
+
+## 49. OmniDraw(BehaviorNode) / NodeBehavior follow-ups — V164
+
+1. **See it in a real browser.** Nothing in V164 was rendered. Check the mode grid (desktop + phone), the BehaviorNode panel, ring/line/bead legibility on a white AND a black wallpaper, marker size, and the 1 s start delay after creation.
+2. **Hand tunnel opacity reading.** "Lower the transparency by 30%" was applied as 30% *less* transparent (`opacityScale: 1.3` on the `conscious`/`omnihand` defs). If more see-through was meant, set both to `0.7` — one line each in `data/OmniAxinatorData.js`.
+3. **Tier B is a metaphor.** Transform..Mediate animate beads, nothing more. A real signal/data layer (packets with typed payloads routed along edges) would replace the `arrive`/`tick` functions of those rows; decide whether that layer is wanted and where it lives.
+4. **Package count.** Copilot's list holds 32 behaviours (header said 30); with Leader and Follower the file says `behavior_count: 34`. Confirm the intended count.
+5. **Leader/Follower semantics.** Leader = wanders a Lissajous path with followers on its targets list; Follower = Follow with role `Follower`. If a real declared pair (a follower naming its leader, flocks around a leader, leader that follows waypoints) is wanted, extend the two rows.
+6. **Edges to moving nodes.** OmniNode edges are baked cylinders; they do not follow a node a behavior is moving. `_rebuildEdgesFor` exists but is not called per frame (cost). Decide whether edges should follow.
+7. **Parented / entered-space nodes.** The engine uses `mesh.position` as scene coordinates; nodes parented into an entered space are not treated specially.
+8. **Pick in scene.** Depends on scene clicks firing `omni:node-selected` in the current mode; the dropdown always works. Verify with a real mouse (and with OmniPointing/ToolTipMenu active).
+9. **One behavior per node; first-claim-wins.** Chaining is nodes targeting nodes. A node that is both a host and another behavior's target is moved by whichever claims it first each frame — may want explicit layering.
+10. **Restore snaps.** Stop restores the rest pose instantly (start eases in 0.6 s). Add an ease-out if it looks abrupt.
+11. **Position edits while owned.** Editing a node's position in the Inspector or dropping it with OmniGrab while a behavior owns it is overwritten on stop (rest pose). Listen to `omni:node-pos-set`/`-position-set` to update the rest pose if wanted.
+12. **Performance.** 64 behaviours x (marker ring + extras) are drawn as one line batch (cap 12 000 segments, dark twin lines double the count). Measure in a browser; lower `MAX_ACTIVE`/`MAX_SEGS` or drop outlines if needed.
+13. **Test harness.** Headless tests live in the session scratchpad only (not in the repo); consider adding a `tests/` folder.
+
+
+## 50. Hand satellites: Speed / Activation / HandSettings follow-ups — V165
+
+1. **See it in a real browser.** Nothing in V165 was rendered. Check the four-button arcs in all four corners (desktop + 360 px phone), the `»` `◎` `✦` `⚙` glyphs, the "×N" label inside the 34 px button, the ammo chip under ✦, the speed popover placement/drag on touch, and that the lower satellites clear the Dock and the hand 2x2 cells.
+2. **Class-to-hand split is a proposal.** LogicalHand = Mechanic(-Drift,-Oscillate) + Relational(-Mirror) + Transformational; CreativeHand = Temporal + Emergent + Drift/Oscillate/Mirror (`DEFAULT_MAGAZINE` in `utils/OmniHandsSettings.js`). Decide the real taxonomy of "communication styles"; the data is one table.
+3. **Ammo semantics.** Hand-fired behaviours attach to the TARGET node with the nearest node(s) as pair. Confirm that is the intended meaning of "firing"; alternatives: the hand's anchor node as host, or the camera/player as leader (needs an engine change: partners are resolved by node id only).
+4. **One behaviour per node.** A hand never overwrites a user-authored behaviour (`blocked`). Decide whether it should (and restore the old one on un-fire).
+5. **Hand-fired behaviours edited in the Inspector** keep `source: 'hand:..'` (the form round-trips it) and stay releasable; a different behaviour set there without `source` takes the node out of the hand's list. Confirm.
+6. **Targeting.** Selection first, then the node nearest the screen centre (25 deg cone). OmniTargeting/OmniAimReticle have no aim query; if a real "under the reticle" pick is wanted, add one there and call it from `OmniHandAmmo.resolveTarget`.
+7. **OmniKeys rotate steps are not scaled by Speed** (only held pad movement is). Say if the center-pad rotation should follow RH speed.
+8. **Legacy dash value** (`omni:admin:settings.dashMultiplier`, field in ⟐CameraMovementOptions) is kept but ignored; remove it once nobody needs it.
+9. **Activation OFF is session-only** (and the ON pin persists, as the V160 pin always did). Persist OFF across reloads if wanted.
+10. **`[` `]` keys** cycle the last-touched lower hand; if both pads are open and neither was touched it is LogicalHand. A per-hand key pair (or a wheel on the chip) is an option.
+11. **Speed popover is not a WindowManager window** (no tray/minimize). If it should stack with the other panels, register it as `handspeed`.
+12. **Tracer** is one plain line per shot; a pulse on the target mesh (engine `flash`) is not wired because it is private to the engine.
+13. **Test harness** is still scratchpad-only (see item 49.13).

@@ -1296,6 +1296,265 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Vertical axis spacing (V161)",
+      "items": [
+        {
+          "feature": "Υ relative-axis spacing",
+          "howToReach": "Open the ⚇ pad on OmniHand or Conscious Hand so its tunnel appears",
+          "whatToCheck": "Υ tier / scale-degree ticks and labels sit about 2.3x further apart than V160 (REL_STEP 70 → 160) and labels no longer crowd; marker orb still travels between ticks smoothly with ▲▼",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniAxinator TakeMeThere (V162)",
+      "items": [
+        {
+          "feature": "TakeMeThere / Root on a node",
+          "howToReach": "Open a hand pad (or tick a tunnel in ⟐OmniAxinator), click a node, choose TakeMeThere",
+          "whatToCheck": "Camera flies into that node (arrives ~40 units before its centre looking along the tunnel); you can orbit normally; works for the first node and far nodes; not stuck near 0,0,0",
+          "tested": false
+        },
+        {
+          "feature": "Hand tunnel marker follows",
+          "howToReach": "TakeMeThere on a node of the Conscious/OmniHand tunnel",
+          "whatToCheck": "Pad marker and the readout jump to that node's index",
+          "tested": false
+        },
+        {
+          "feature": "Root action",
+          "howToReach": "Node menu → Root",
+          "whatToCheck": "Flies into the tunnel's root node (index 0 for the hand tunnels)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "⟐OmniHands (V163)",
+      "items": [
+        {
+          "feature": "Drawer sub-menu",
+          "howToReach": "Open ⟐mniMenu (top-left ☰), find ⟐OmniHands below ⟐OmniNavi, expand it",
+          "whatToCheck": "Four children: ⟐LogicalHand, ⟐CreativeHand, ⟐ConsciousHand, ⟐OmniHand; each opens the ⟐OmniHands panel on that hand",
+          "tested": false
+        },
+        {
+          "feature": "Hand switcher + title",
+          "howToReach": "In the panel click each of the four top buttons",
+          "whatToCheck": "View changes; title line shows name · corner · role (LogicalHand bottom-left Analytical, CreativeHand bottom-right Creative, ConsciousHand top-right Perspectives, OmniHand top-left App Launcher)",
+          "tested": false
+        },
+        {
+          "feature": "Panel window behaviour",
+          "howToReach": "Drag header, – and ×, open another panel",
+          "whatToCheck": "Drags, stacks via WindowManager, minimize goes to the panel tray, clicking the tab restores it fully visible",
+          "tested": false
+        },
+        {
+          "feature": "LogicalHand speed + dash",
+          "howToReach": "⟐LogicalHand view; change px / dash multiplier",
+          "whatToCheck": "WASD speed and ⟫⟫ dash change immediately; same values appear in ⟐CameraMovementOptions; with its Global speed ON the px/py/pz boxes are disabled and the note says so",
+          "tested": false
+        },
+        {
+          "feature": "CreativeHand speeds",
+          "howToReach": "⟐CreativeHand view; change altitude / orbit speeds",
+          "whatToCheck": "R/F altitude and arrow-key yaw speed change; vertical orbit affects OmniKeys pitch only",
+          "tested": false
+        },
+        {
+          "feature": "Pad on start",
+          "howToReach": "Tick Show pad on start on any hand, reload",
+          "whatToCheck": "That pad is open at load (a top hand's tunnel shows with it); unticked = V162 behaviour",
+          "tested": false
+        },
+        {
+          "feature": "Pad dock readout + Re-dock",
+          "howToReach": "Detach a pad with its ⏏, open that hand's view",
+          "whatToCheck": "Readout says detached and Re-dock is enabled; Re-dock snaps it home and the readout says docked",
+          "tested": false
+        },
+        {
+          "feature": "Conscious/OmniHand tunnel pin + follow",
+          "howToReach": "⟐ConsciousHand / ⟐OmniHand view; toggle Pin and Tunnels follow the pads",
+          "whatToCheck": "Pin shows the tunnel with the pad closed; follow is the same shared flag as ⟐OmniAxinator / ⟐DimensionalAxesSettings and stays in sync",
+          "tested": false
+        },
+        {
+          "feature": "Motion settings",
+          "howToReach": "Change step travel duration, relative-axis duration, hold-to-repeat, OmniHand stagger, then use the pad",
+          "whatToCheck": "Steps visibly slower/faster; holding a button repeats at the new interval; stagger flash toggles; defaults 0.55 s / 0.45 s / 450 ms",
+          "tested": false
+        },
+        {
+          "feature": "Clock hour",
+          "howToReach": "Change clock hour (e.g. 4) with the tunnel visible",
+          "whatToCheck": "Tunnel re-aims immediately and keeps its marker position; Reset hand returns it to 2 (Conscious) / 11 (OmniHand); value survives reload",
+          "tested": false
+        },
+        {
+          "feature": "Reset marker + position readout",
+          "howToReach": "Step a hand, press Reset marker to the first node",
+          "whatToCheck": "Only that hand's marker returns to node 1; the At: line updates while stepping",
+          "tested": false
+        },
+        {
+          "feature": "Reset hand settings",
+          "howToReach": "Press Reset ⟐…Hand settings to defaults",
+          "whatToCheck": "Its settings return to defaults (LogicalHand/CreativeHand also reset the shared admin speed values it exposes); marker position and pad dock state are untouched",
+          "tested": false
+        },
+        {
+          "feature": "Hand tooltips",
+          "howToReach": "Hover a hand's name badge",
+          "whatToCheck": "Tooltip shows the product name (e.g. ⟐LogicalHand — Analytical)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniDraw grid + BehaviorNode (V164)",
+      "items": [
+        {
+          "feature": "OmniDraw mode grid",
+          "howToReach": "⟐mniMenu -> ⟐OmniDraw",
+          "whatToCheck": "Eight tiles in a grid (glyph + label, tooltip = description); all seven old modes still open their panels; BehaviorNode tile opens ⟐OmniDraw(BehaviorNode); last chosen tile highlighted; at phone width fewer columns and the card scrolls",
+          "tested": false
+        },
+        {
+          "feature": "BehaviorNode panel",
+          "howToReach": "OmniDraw -> BehaviorNode",
+          "whatToCheck": "Five class header rows spanning the grid; Leader and Follower under Relational; Tier B tiles show ≈; hover shows the summary; panel scrolls and fits a phone",
+          "tested": false
+        },
+        {
+          "feature": "Parameter form",
+          "howToReach": "Click a behaviour tile",
+          "whatToCheck": "Form changes per behaviour; sliders/selects/toggles work; target dropdown lists existing nodes; Pick in scene adds clicked nodes",
+          "tested": false
+        },
+        {
+          "feature": "Create NodeBehavior",
+          "howToReach": "Pick Orbit, add a target, Create",
+          "whatToCheck": "Octahedron in the class colour appears in front of the camera with a ring marker; starts about 1 s later and orbits the target",
+          "tested": false
+        },
+        {
+          "feature": "Tier A behaviours",
+          "howToReach": "Create each, with 1-3 target nodes",
+          "whatToCheck": "Orbit, Drift, Anchor, Align, Traverse, Oscillate, Attract, Repel, Follow, Follower, Leader, Mirror, Bind, Delay, Pulse, Sync, Schedule, Cascade, Coalesce, Diffuse, Compete, Cooperate, Adapt, Emerge each visibly do what the tooltip says; nothing explodes (Repel clamps)",
+          "tested": false
+        },
+        {
+          "feature": "Tier B behaviours (metaphor)",
+          "howToReach": "Create Transform, Amplify, Dampen, Filter, Encode, Decode, Store, Release, Gate, Mediate",
+          "whatToCheck": "Beads travel along tethers and change as described; UI says it is a metaphor, nothing computed; readable on white AND black wallpaper",
+          "tested": false
+        },
+        {
+          "feature": "Inspector Behavior section",
+          "howToReach": "Select any node -> Inspector -> Behavior",
+          "whatToCheck": "Type, enabled, params, targets, Remove all work live; works on OmniNode nodes AND on Create-System (NodeLoader) nodes",
+          "tested": false
+        },
+        {
+          "feature": "Persistence",
+          "howToReach": "Set a behavior, reload the page",
+          "whatToCheck": "Behavior resumes on both node kinds; the node sits at its saved REST position (not the orbit position); stopping a behavior returns nodes to their saved spot",
+          "tested": false
+        },
+        {
+          "feature": "Master toggle and caps",
+          "howToReach": "Checkbox 'All behaviours running'; create many",
+          "whatToCheck": "Off stops everything and restores nodes; on resumes; no more than 64 run; no slowdown with many",
+          "tested": false
+        },
+        {
+          "feature": "Locks",
+          "howToReach": "Grab (OmniGrab) a target while a behavior runs",
+          "whatToCheck": "Grabbed node is not pulled around by the behavior",
+          "tested": false
+        },
+        {
+          "feature": "Hand tunnel opacity",
+          "howToReach": "Turn on ConsciousHand and OmniHand tunnels (and X/Y/Z)",
+          "whatToCheck": "Hand tunnels are 30% more opaque (0.13/0.81); X/Y/Z and clock diagonals unchanged. If the user meant more see-through set opacityScale to 0.7 on the two defs",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Hand satellites: Speed / Activation / HandSettings (V165)",
+      "items": [
+        {
+          "feature": "Four satellites per pad",
+          "howToReach": "Open each hand's pad (⚇ on the hand, or Numpad hand keys)",
+          "whatToCheck": "Four buttons on the rim in the order ⏏ Release, » Speed, Activation, ⚙ Settings on all four pads; none overlap each other, the pad's D-pad, the Dock or the hand cells; none leaves the screen in any corner; at phone width (34 px buttons, 180 px pad) the same; they fade in/out with the pad; Release detaches the pad and all four buttons (and the ammo chip) move with it; no inert dash/dimmed button remains",
+          "tested": false
+        },
+        {
+          "feature": "Speed popover",
+          "howToReach": "Press » on any pad",
+          "whatToCheck": "Popover titled ⟐<Hand> Speed beside the button, inside the viewport; slider 1.0-10.0 moves continuously with a live ×N readout; chips 1/2/3/5/10 and Reset to ×1 work; drag by the header, × and Escape close it; pressing » again closes it; hiding the pad closes it; » shows ×N and is lit while above 1.0",
+          "tested": false
+        },
+        {
+          "feature": "Speed: LogicalHand / CreativeHand",
+          "howToReach": "Set LH speed, hold W / the pad; set RH speed, hold R/F and orbit",
+          "whatToCheck": "Walking / altitude / orbit speed scales with the slider and eases in over about 0.15 s (no jump when you drag it); at ×1 it feels exactly like V164; with ⟐CameraMovementOptions Global speed ON, speed still multiplies the override",
+          "tested": false
+        },
+        {
+          "feature": "Speed: ConsciousHand / OmniHand",
+          "howToReach": "Set speed 5-10, tap and hold the axis pad buttons",
+          "whatToCheck": "Axis travel takes 1/speed of the time; holding repeats faster (never faster than every 60 ms); at ×1 unchanged",
+          "tested": false
+        },
+        {
+          "feature": "Speed in ⟐OmniHands",
+          "howToReach": "⟐OmniHands -> any hand",
+          "whatToCheck": "Same slider and chips on every hand view, same value as the pad button; the old Dash multiplier row is gone; Reset hand returns to ×1",
+          "tested": false
+        },
+        {
+          "feature": "Activation: tunnels",
+          "howToReach": "Open the OmniHand / ConsciousHand pad, press ◎",
+          "whatToCheck": "Pad open shows the tunnel (button lit); ◎ hides it (explicit OFF) with the shrink animation; ◎ again shows it and pins it (stays when the pad closes); toggling the pad clears an OFF; OmniAxinator panel checkbox and ⟐OmniHands Pin checkbox stay in sync; a user who never presses ◎ gets the old pad-follow behaviour",
+          "tested": false
+        },
+        {
+          "feature": "Activation: ammo fire",
+          "howToReach": "LH/RH pad, select a node, press ✦",
+          "whatToCheck": "The current ammo's behaviour starts on the selected node; a thin class-coloured line flashes from the hand's corner; ✦ lit while the hand holds any; pressing again on the same node releases it; Inspector shows source hand:lh / hand:rh; with no selection it picks the node nearest the screen centre; with nothing it pulses red 'No target'",
+          "tested": false
+        },
+        {
+          "feature": "Ammo chip and cycling",
+          "howToReach": "Chip under ✦; keys [ and ]",
+          "whatToCheck": "Chip shows the current ammo; click = next, Shift+click = previous; [ / ] cycle the last-touched lower hand; empty magazine shows 'empty' and ✦ pulses red",
+          "tested": false
+        },
+        {
+          "feature": "Ammo limits and safety",
+          "howToReach": "Fire at 9+ nodes; fire at a node with its own behaviour",
+          "whatToCheck": "The 9th shot releases the oldest of that hand (max 8, editable); a node with a user-made behaviour is not overwritten (red pulse); RH firing at an LH-fired node takes it over; Release all (panel button or omni:hand-ammo-release-all) clears only that hand",
+          "tested": false
+        },
+        {
+          "feature": "Magazine editing",
+          "howToReach": "⟐OmniHands -> ⟐LogicalHand / ⟐CreativeHand -> Ammo",
+          "whatToCheck": "34 behaviours in class groups; Load all / Clear / Reset to default; current-ammo list follows what is loaded; max fired, pair mode and count editable; everything survives a reload; defaults are the proposed split (LH 20 / RH 14)",
+          "tested": false
+        },
+        {
+          "feature": "HandSettings button",
+          "howToReach": "Press ⚙ on each pad",
+          "whatToCheck": "Opens ⟐OmniHands on that hand's view (LogicalHand/CreativeHand/ConsciousHand/OmniHand); ⚙ lit while open; pressing it again closes the panel; pressing another hand's ⚙ switches the view",
+          "tested": false
+        }
+      ]
     }
   ]
 }

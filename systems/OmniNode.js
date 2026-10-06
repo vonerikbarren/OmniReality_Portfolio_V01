@@ -2046,6 +2046,7 @@ export default class OmniNode {
       spaceId   : null,   // _createNode sets this fresh based on whatever domain is actually entered right now, if any — never carry over a stale reference
       createdAt : new Date().toISOString(),
       timeData  : undefined,
+      behavior  : entry.data.behavior ? JSON.parse(JSON.stringify(entry.data.behavior)) : entry.data.behavior,   // never share the config object between nodes
     }
     if (entry.data.isEssenceNode) {
       cloned.domain = { ...(entry.data.domain ?? {}) }
@@ -3335,6 +3336,11 @@ export default class OmniNode {
         // trigger for a node created this way.
         isLocationNode: d.isLocationNode ?? false,
         pointingCoordinate: d.pointingCoordinate ?? null,
+        // OmniDraw(BehaviorNode) — same reason as above: this literal
+        // drops anything not listed. systems/OmniNodeBehavior.js reads
+        // data.behavior off omni:node-created.
+        isBehaviorNode: d.isBehaviorNode ?? false,
+        behavior: d.behavior ?? null,
       })
     }
 
@@ -3778,10 +3784,13 @@ export default class OmniNode {
 
   _save () {
     try {
-      const nodes = [...this._nodes.values()].map(n => ({
-        ...n.data,
-        position: [n.mesh.position.x, n.mesh.position.y, n.mesh.position.z],
-      }))
+      // A node a behaviour is currently moving (systems/OmniNodeBehavior.js)
+      // publishes its REST position in userData.restPosition — save that,
+      // not the transient animated position, so a reload resumes cleanly.
+      const nodes = [...this._nodes.values()].map(n => {
+        const rp = n.mesh.userData?.restPosition ?? n.mesh.position
+        return { ...n.data, position: [rp.x, rp.y, rp.z] }
+      })
       const edges = this._edges.map(e => ({ from: e.from, to: e.to }))
       localStorage.setItem(STORE_NODES, JSON.stringify(nodes))
       localStorage.setItem(STORE_EDGES, JSON.stringify(edges))

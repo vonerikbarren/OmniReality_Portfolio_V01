@@ -310,9 +310,9 @@ export default class CameraMovementOptionsPanel {
         <div class="cm-row"><span class="cm-row-label">py step</span><input class="cm-num" type="number" step="0.01" data-field="py"></div>
         <div class="cm-row"><span class="cm-row-label">pz step</span><input class="cm-num" type="number" step="0.01" data-field="pz"></div>
 
-        <div class="cm-group-title">DashMovementSettings</div>
+        <div class="cm-group-title">DashMovementSettings (legacy)</div>
         <div class="cm-row"><span class="cm-row-label">Dash speed multiplier</span><input class="cm-num" type="number" step="0.1" min="1" data-field="dashMultiplier"></div>
-        <div class="cm-note">The ⟫⟫ button beside the LH movement pad doubles step speed by default — adjust the exact multiplier here.</div>
+        <div class="cm-note">V165: the Dash button is gone — the pad's second button is now a per-hand Speed slider (1×–10×, ⟐OmniHands / the » button). This value is kept in storage but no longer applied.</div>
 
         <div class="cm-group-title">Orbit &amp; Altitude Speed</div>
         <div class="cm-row"><span class="cm-row-label">Altitude-up (R) speed</span><input class="cm-num" type="number" step="0.1" min="0.1" data-field="altitudeUp"></div>

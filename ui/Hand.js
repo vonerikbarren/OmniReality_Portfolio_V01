@@ -29,6 +29,12 @@
  *   omni:radial-toggle → { hand, visible: bool, radialDir: 'center-right'|'center-left' }
  *   omni:orbiter     →  { hand }   (stub — behaviour undefined)
  *
+ * The ⚇ Pad cell opens that hand's movement pad (ui/MovementPad.js). V165: every
+ * movable pad carries FOUR satellite buttons on its rim — ⏏ Release, » Speed (a 1x-10x
+ * slider popover, per hand), Activate (the hand's FX: the dimensional tunnel on
+ * ⟐OmniHand / ⟐ConsciousHand; node-behaviour "ammo" on ⟐LH / ⟐RH) and ⚙ Settings (opens
+ * ⟐OmniHands on this hand's view). The old Dash toggle and the inert 3rd slot are gone.
+ *
  * Active-state listening (other components call these back on the Hand):
  *   hand.setHamburgerActive(bool)
  *   hand.setPadActive(bool)
@@ -52,6 +58,7 @@ import OmniAddressBar from './OmniAddressBar.js'
 const HAND_CONFIGS = {
   omnihand: {
     id           : 'omnihand',
+    productName  : '⟐OmniHand',   // V163: ⟐OmniHands product name (tooltip only; ids/storage keys unchanged)
     name         : '⟐mni-Hand',
     abbr         : '⟐H',
     corner       : 'tl',
@@ -69,6 +76,7 @@ const HAND_CONFIGS = {
   },
   conscious: {
     id           : 'conscious',
+    productName  : '⟐ConsciousHand',   // V163: ⟐OmniHands product name (tooltip only; ids/storage keys unchanged)
     name         : '⟐Conscious-Hand',
     abbr         : 'CH',
     corner       : 'tr',
@@ -86,6 +94,7 @@ const HAND_CONFIGS = {
   },
   lh: {
     id             : 'lh',
+    productName  : '⟐LogicalHand',   // V163: ⟐OmniHands product name (tooltip only; ids/storage keys unchanged)
     name           : '⟐Left-Hand',
     abbr           : 'LH',
     corner         : 'bl',
@@ -101,6 +110,7 @@ const HAND_CONFIGS = {
   },
   rh: {
     id           : 'rh',
+    productName  : '⟐CreativeHand',   // V163: ⟐OmniHands product name (tooltip only; ids/storage keys unchanged)
     name         : '⟐Right-Hand',
     abbr         : 'RH',
     corner       : 'br',
@@ -557,7 +567,7 @@ export default class Hand {
 
     el.id        = `omni-hand-${cfg.id}`
     el.className = `omni-hand omni-hand--${cfg.corner}`
-    el.setAttribute('aria-label', cfg.name)
+    el.setAttribute('aria-label', `${cfg.name} (${cfg.productName})`)
     el.setAttribute('role', 'group')
 
     // Build cells in the order defined by topRow / bottomRow
@@ -570,6 +580,7 @@ export default class Hand {
     const badge = document.createElement('span')
     badge.className   = 'hand-name-badge'
     badge.textContent = cfg.name
+    badge.title       = `${cfg.productName} — ${cfg.role}`
     el.appendChild(badge)
 
     this._el = el

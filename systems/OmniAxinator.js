@@ -25,8 +25,13 @@
  * to the camera so they stay roughly LABEL_SCREEN_FRAC_* of the viewport width
  * (clamped), drawn with depthTest:false so they are never hidden by a node.
  *
- * Visibility rule (per tunnel):
- *     shown = manual[id]  OR  (followPads AND padOpen[def.padHand])
+ * Visibility rule (per tunnel), V165 precedence (highest first):
+ *     1. off[id]    explicit OFF from the pad's ◎ Activation button  -> hidden, whatever else
+ *     2. manual[id] the pin (panel checkbox, or Activation pressed while hidden) -> shown
+ *     3. followPads AND padOpen[def.padHand]                         -> shown (the default)
+ *     shown = !off[id] AND (manual[id] OR (followPads AND padOpen[def.padHand]))
+ * `off` is session-only; it clears when that hand's pad is next opened/closed, when
+ * Activation is pressed again, or when the tunnel is pinned from a panel checkbox.
  * `manual` is the panel checkbox (a pin); `padOpen` follows the movement pads
  * (omni:pad-toggle / omni:pads-global / the authoritative omni:pad-state that
  * ui/MovementPad.js dispatches). Tunnels are built LAZILY the first time they
@@ -43,27 +48,30 @@
  * ABOVE the "Root" tooltip line, then TakeMeThere / Root.
  *
  * Events dispatched (window):
- *   omni:axinator-tunnel-visible   { id, visible, manual, auto, name }
+ *   omni:axinator-tunnel-visible   { id, visible, manual, auto, off, name }
  *        visible = effective, manual = pinned by checkbox, auto = shown only
- *        because its hand's pad is open. Fires when any of them changes.
+ *        because its hand's pad is open, off = explicitly hidden by Activation.
+ *        Fires when any of them changes.
  *   omni:axinator-list             { name, followPads, tunnels:[{id,title,symbol,
  *                                    color,visible,manual,auto,group,padHand}] }
  *   omni:axinator-follow-pads      { follow }
  *   omni:axinator-node-menu-action { tunnel, nodeId, action:'take-me-there'|'root' }
  *   omni:dimension-state           (steppable tunnels; options.stateEvent)
  *   omni:orbit-disable / omni:orbit-target-set / omni:orbit-enable
- *        (TakeMeThere — same bracket OmniPointing uses) and
- *   omni:orbit-max-distance-set    { distance }  (nodes are 800+ units away and
- *        OrbitControls.maxDistance is 80; main.js applies this)
+ *        (TakeMeThere — same bracket OmniPointing uses; V162 no longer needs
+ *        omni:orbit-max-distance-set because it arrives inside the node)
  *
  * Events consumed (window):
  *   omni:axinator-tunnel-visible-set { id, visible }   -> manual pin
+ *   omni:hand-activate { hand }   -> V165 Activation: toggles that hand's tunnel
+ *        (visible -> explicit OFF; hidden -> explicit ON = pin). Pad-follow stays the
+ *        default when Activation is never pressed.
  *   omni:axinator-list-request                         -> omni:axinator-list
  *   omni:pad-toggle {hand, visible} / omni:pads-global {visible} /
  *   omni:pad-state {hand, visible}
  *
  * Public API: listTunnels() getTunnel(id) setTunnelVisible(id,b)
- *   isTunnelVisible(id) isManual(id) setAllVisible(b) setFollowPads(b)
+ *   isTunnelVisible(id) isManual(id) isOff(id) activateTunnel(id) setAllVisible(b) setFollowPads(b)
  *   isFollowPads() animateIn(id) animateOut(id) step(id,dir) goTo(id,p,r)
  *   getState(id) travelToNode(tunnelId,nodeId) emitState(id,phase)
  *   init() update(delta) destroy()
@@ -73,6 +81,8 @@
 
 import * as THREE from 'three'
 import gsap from 'gsap'
+import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
+import { getEffectiveSpeed } from '../utils/OmniHandSpeed.js'
 
 // ── Geometry / motion constants (V159 sizes, unchanged) ─────────────────────
 
@@ -86,7 +96,7 @@ const GRID_LONGITUDES   = 24
 const RING_SEGMENTS     = 48
 const AXIS_Y            = 0
 
-const REL_STEP          = 14 * GEO_SCALE
+const REL_STEP          = 32 * GEO_SCALE   // V161: was 14 (user: vertical-axis contexts further apart)
 const REL_COLUMN_RADIUS = 14 * GEO_SCALE
 const REL_COLUMN_PAD    = 8 * GEO_SCALE
 
@@ -99,6 +109,13 @@ export const HOLD_REPEAT_MS  = 450
 export const TUNNEL_COLOR        = 0x9a9a9a   // grey tunnel (user may tune this one value)
 const TUNNEL_BODY_OPACITY = 0.10               // V159 white was 0.05 / 0.38; grey needs more to read on white
 const TUNNEL_GRID_OPACITY = 0.62
+
+/** Per-tunnel opacity multiplier: def.opacityScale (default 1) x the base
+ *  constants above, clamped to 1. V164: the two hand tunnels carry
+ *  opacityScale 1.3 ("lower the transparency by 30%" read literally =
+ *  30% more opaque). Set it to 0.7 on the defs for the opposite reading. */
+function tunnelBodyOpacity (def) { return Math.min(1, TUNNEL_BODY_OPACITY * (def?.opacityScale ?? 1)) }
+function tunnelGridOpacity (def) { return Math.min(1, TUNNEL_GRID_OPACITY * (def?.opacityScale ?? 1)) }
 
 const NODE_FILL_COLOR     = 0xbfbfbf           // silver fill
 const NODE_EDGE_COLOR     = 0xc8c8c8           // silver edges
@@ -288,6 +305,20 @@ export default class OmniAxinator {
       if (typeof d.id === 'string') this.setTunnelVisible(d.id, !!d.visible)
     }
     this._onListRequest = () => this._dispatchList()
+    this._onHandActivate = (e) => {
+      const hand = e.detail?.hand
+      if (!hand) return
+      this._tunnels.forEach(t => { if (t.def.padHand === hand) this.activateTunnel(t.id) })
+    }
+    // V163 ⟐OmniHands: durations / stagger are read from utils/OmniHandsSettings.js
+    // at use time (nothing to do here); the clock hour needs the tunnel re-aimed.
+    this._onHandSetting = (e) => {
+      const { hand, key, value } = e.detail ?? {}
+      if (key !== 'clockHour') return
+      this._tunnels.forEach(t => {
+        if (t.def.padHand === hand) this.setTunnelDirection(t.id, { clock: value })
+      })
+    }
     this._onPadToggle = (e) => {
       const { hand, visible } = e.detail ?? {}
       if (hand) this._setPadOpen(hand, !!visible)
@@ -321,7 +352,9 @@ export default class OmniAxinator {
 
     window.addEventListener('omni:axinator-tunnel-visible-set', this._onVisibleSet)
     window.addEventListener('omni:axinator-list-request', this._onListRequest)
+    window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     if (this.opts.padSource) {
+      window.addEventListener('omni:hand-activate', this._onHandActivate)
       window.addEventListener('omni:pad-toggle', this._onPadToggle)
       window.addEventListener('omni:pads-global', this._onPadsGlobal)
       window.addEventListener('omni:pad-state', this._onPadState)
@@ -349,6 +382,8 @@ export default class OmniAxinator {
   destroy () {
     window.removeEventListener('omni:axinator-tunnel-visible-set', this._onVisibleSet)
     window.removeEventListener('omni:axinator-list-request', this._onListRequest)
+    window.removeEventListener('omni:hand-activate', this._onHandActivate)
+    window.removeEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     window.removeEventListener('omni:pad-toggle', this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
     window.removeEventListener('omni:pad-state', this._onPadState)
@@ -384,6 +419,21 @@ export default class OmniAxinator {
 
   isTunnelVisible (id) { return !!this._tunnels.get(id)?.on }
   isManual (id) { return !!this._tunnels.get(id)?.manual }
+  /** V165: true while Activation has explicitly hidden this tunnel. */
+  isOff (id) { return !!this._tunnels.get(id)?.off }
+
+  /** V165 Activation button. Visible -> explicit OFF (also drops the pin); hidden ->
+   *  explicit ON (= the manual pin). Uses the normal animated grow / hide. */
+  activateTunnel (id) {
+    const t = this._tunnels.get(id)
+    if (!t) return
+    const before = t.on
+    if (t.on) { t.off = true; t.manual = false }
+    else { t.off = false; t.manual = true }
+    this._persist()
+    this._recompute()
+    if (t.on === before) this._emitVisible(t)
+  }
   isFollowPads () { return this._followPads }
 
   /** The panel checkbox: pins a tunnel visible (or releases the pin). */
@@ -391,12 +441,38 @@ export default class OmniAxinator {
     const t = this._tunnels.get(id)
     if (!t) return
     visible = !!visible
-    if (t.manual === visible) return
+    if (visible && t.off) t.off = false           // pinning from a checkbox is an explicit ON
+    if (t.manual === visible) return   // (off && manual are never both true, so a cleared `off` always continues below)
     const before = t.on
     t.manual = visible
     this._persist()
     this._recompute()
     if (t.on === before) this._emitVisible(t)   // manual changed while the effective state did not
+  }
+
+  /** V163: re-aim a tunnel (e.g. the ⟐OmniHands clock-hour setting). `direction`
+   *  takes anything resolveDirection() does. A built tunnel is disposed and
+   *  rebuilt in place (instant, no tween) and keeps its shown state. */
+  setTunnelDirection (id, direction) {
+    const t = this._tunnels.get(id)
+    if (!t) return
+    t.dir = resolveDirection(direction)
+    t.def = { ...t.def, direction }
+    if (!t.built) return
+    const wasOn = t.on
+    t.tl?.kill(); t.tl = null
+    gsap.killTweensOf([t, ...t.nodeRecs, ...t.ticks])
+    if (this._hover?.t === t) this._setHover(null)
+    this._root.remove(t.group)
+    t.group.traverse(o => {
+      o.geometry?.dispose()
+      const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : [])
+      mats.forEach(m => { m.map?.dispose(); m.dispose() })
+    })
+    t.nodeRecs = []; t.ticks = []; t.labels = []; t.pickMeshes = []
+    t.group = null; t.tunnelGroup = null; t.built = false
+    this._ensureBuilt(t)
+    this._setShown(t, wasOn)
   }
 
   setAllVisible (visible) {
@@ -476,34 +552,42 @@ export default class OmniAxinator {
     if (t && t.steppable) this._emitState(t, phase)
   }
 
-  /** TakeMeThere: stand just outside the node's radius, orbit target on the node. */
+  /** TakeMeThere (V162): fly INTO the node. The massive nodes are scene-sized
+   *  containers, so "there" is the node's centre, not a standoff outside its
+   *  shell (V160/V161 parked the camera 512 units out on the origin side, which
+   *  for the first nodes lands ~190 units from the origin looking at a grey
+   *  wireframe, i.e. "a random place near 0,0,0"). The camera ends a little
+   *  before the centre, looking outward along the tunnel, with the orbit pivot
+   *  4 units ahead (same convention as main.js _syncOrbitTarget), so the normal
+   *  orbit distance cap (80) keeps working and nothing needs raising. For a
+   *  steppable (hand) tunnel the axis state is also moved to this node so the
+   *  marker, readout and pad agree. */
   travelToNode (tunnelId, nodeId) {
     const t = this._tunnels.get(tunnelId)
     const camera = this.ctx.camera
     if (!t || !camera) return false
     const idx = t.def.nodes.findIndex(n => n.id === nodeId)
     if (idx < 0) return false
-    const target = this._nodeCenter(t, idx, new THREE.Vector3())
-    const standoff = NODE_RADIUS * 1.6
-    const away = camera.position.clone().sub(target)
-    if (away.lengthSq() < 1) away.set(0, 0.35, 1)
-    away.y = Math.max(away.y, away.length() * 0.15)   // a little height so the camera is never level with the tunnel line
-    away.normalize()
-    const dest = target.clone().add(away.multiplyScalar(standoff))
+    const center = this._nodeCenter(t, idx, new THREE.Vector3())
+    const fwd = t.dir.clone()
+    if (Math.abs(fwd.y) > 0.98) fwd.set(0.001, Math.sign(fwd.y) || 1, 0.001).normalize()
+    const ARRIVE_BACK = 40, ARRIVE_UP = 6, PIVOT_AHEAD = 4
+    const dest = center.clone().addScaledVector(fwd, -ARRIVE_BACK)
+    dest.y += ARRIVE_UP
+    const pivot = dest.clone().addScaledVector(fwd, PIVOT_AHEAD)
+    const look = dest.clone().addScaledVector(fwd, 400)
+
+    if (t.steppable) this.goTo(t.id, idx)
 
     window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
     this._travelTween?.kill()
     this._travelTween = gsap.to(camera.position, {
       x: dest.x, y: dest.y, z: dest.z, duration: 1.4, ease: 'power2.inOut',
-      onUpdate: () => camera.lookAt(target),
+      onUpdate: () => camera.lookAt(look),
       onComplete: () => {
         this._travelTween = null
-        // OrbitControls.maxDistance is 80; without raising it the very next
-        // controls.update() would clamp the camera back to 80 units from the node.
-        window.dispatchEvent(new CustomEvent('omni:orbit-max-distance-set', {
-          detail: { distance: Math.max(80, standoff + 120) },
-        }))
-        window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: target.x, y: target.y, z: target.z } }))
+        camera.lookAt(pivot)
+        window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: pivot.x, y: pivot.y, z: pivot.z } }))
         window.dispatchEvent(new CustomEvent('omni:orbit-enable', { detail: {} }))
       },
     })
@@ -519,10 +603,14 @@ export default class OmniAxinator {
     const m = steppable ? def.levels.length : 0
     const st = this.opts.states?.[def.id]
     const defaults = { p: 0, r: 0 }
+    // V163: a hand tunnel's clock hour comes from the ⟐OmniHands store (default ==
+    // data/OmniDimensionalAxesData.js CLOCK, so unchanged until edited).
+    const hour = def.padHand && this.opts.handSettings !== false ? getHandSetting(def.padHand, 'clockHour') : undefined
     const t = {
       id: def.id, def, twoSided, steppable,
-      dir: resolveDirection(def.direction),
+      dir: resolveDirection(typeof hour === 'number' ? { clock: hour } : def.direction),
       manual: !!saved.manual?.[def.id],
+      off: false,                 // V165: explicit OFF from the Activation button (session only)
       on: false, built: false,
       grow: 0, extras: 0, tl: null,
       group: null, tunnelGroup: null, bodyMat: null, gridMat: null,
@@ -543,20 +631,25 @@ export default class OmniAxinator {
 
   _wantOn (t) {
     const hand = t.def.padHand
+    if (t.off) return false
     return !!(t.manual || (this._followPads && hand && this._padOpen[hand]))
   }
 
   _setPadOpen (hand, open, deferRecompute = false) {
     if (this._padOpen[hand] === open) return
     this._padOpen[hand] = open
+    // V165: an explicit Activation OFF lasts only until that hand's pad is next toggled.
+    this._tunnels.forEach(t => { if (t.off && t.def.padHand === hand) { t.off = false; t._offCleared = true } })
     if (!deferRecompute) this._recompute()
   }
 
   /** Reconcile every tunnel's shown state with the rule. */
   _recompute (instant = false) {
     this._tunnels.forEach(t => {
+      const cleared = t._offCleared        // an Activation OFF just lapsed (pad toggled): announce even if nothing else changed
+      t._offCleared = false
       const want = this._wantOn(t)
-      if (want === t.on && (t.built || !want)) return
+      if (want === t.on && (t.built || !want)) { if (cleared) this._emitVisible(t); return }
       t.on = want
       if (want) this._ensureBuilt(t)
       if (instant) this._setShown(t, want)
@@ -568,7 +661,7 @@ export default class OmniAxinator {
   _summary (t) {
     return {
       id: t.id, title: t.def.title, symbol: t.def.symbol, color: t.def.color,
-      visible: t.on, manual: t.manual, auto: t.on && !t.manual,
+      visible: t.on, manual: t.manual, auto: t.on && !t.manual, off: !!t.off,
       group: t.def.group ?? 'other', padHand: t.def.padHand ?? null,
     }
   }
@@ -704,7 +797,7 @@ export default class OmniAxinator {
     const bodyGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, span, GRID_LONGITUDES * 2, 1, true)
     bodyGeo.translate(0, y0 + span / 2, 0)
     t.bodyMat = new THREE.MeshBasicMaterial({
-      color: TUNNEL_COLOR, transparent: true, opacity: TUNNEL_BODY_OPACITY, side: THREE.DoubleSide, depthWrite: false,
+      color: TUNNEL_COLOR, transparent: true, opacity: tunnelBodyOpacity(def), side: THREE.DoubleSide, depthWrite: false,
     })
     tunnel.add(new THREE.Mesh(bodyGeo, t.bodyMat))
 
@@ -725,7 +818,7 @@ export default class OmniAxinator {
     }
     const gridGeo = new THREE.BufferGeometry()
     gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3))
-    t.gridMat = new THREE.LineBasicMaterial({ color: TUNNEL_COLOR, transparent: true, opacity: TUNNEL_GRID_OPACITY, depthWrite: false })
+    t.gridMat = new THREE.LineBasicMaterial({ color: TUNNEL_COLOR, transparent: true, opacity: tunnelGridOpacity(def), depthWrite: false })
     tunnel.add(new THREE.LineSegments(gridGeo, t.gridMat))
     group.add(tunnel)
 
@@ -867,8 +960,8 @@ export default class OmniAxinator {
 
     // tunnel body/grid grow outward along the direction while fading in
     t.tunnelGroup.scale.y = Math.max(grow, 1e-4)
-    t.bodyMat.opacity = TUNNEL_BODY_OPACITY * grow
-    t.gridMat.opacity = TUNNEL_GRID_OPACITY * grow
+    t.bodyMat.opacity = tunnelBodyOpacity(t.def) * grow
+    t.gridMat.opacity = tunnelGridOpacity(t.def) * grow
 
     let near = -1
     if (t.steppable) {
@@ -967,6 +1060,18 @@ export default class OmniAxinator {
     if (this.opts.stateEvent) window.dispatchEvent(new CustomEvent(this.opts.stateEvent, { detail }))
   }
 
+  /** V163: per-hand value from the ⟐OmniHands store; undefined for non-hand tunnels. */
+  _hs (t, key) {
+    return t.def.padHand && this.opts.handSettings !== false ? getHandSetting(t.def.padHand, key) : undefined
+  }
+
+  /** V165: the hand's eased Speed (utils/OmniHandSpeed.js) divides the step durations;
+   *  1x (the default, and every non-hand tunnel) leaves them exactly as before. */
+  _speed (t) { return t.def.padHand && this.opts.handSettings !== false ? getEffectiveSpeed(t.def.padHand) : 1 }
+  _travelDur (t) { return (this._hs(t, 'travelDuration') ?? TRAVEL_DURATION) / this._speed(t) }
+  _relDur (t) { return (this._hs(t, 'relDuration') ?? REL_DURATION) / this._speed(t) }
+  _staggerOn (t) { return !!(this._hs(t, 'stagger') ?? t.def.stagger) }
+
   _setState (t, p, r, animate) {
     const pChanged = p !== t.state.p
     const rChanged = r !== t.state.r
@@ -982,20 +1087,20 @@ export default class OmniAxinator {
         const moving = t.tweens.p?.isActive()
         t.tweens.p?.kill()
         t.tweens.p = gsap.to(t.anim, {
-          p, duration: TRAVEL_DURATION * Math.min(2, Math.max(1, Math.abs(p - t.anim.p))),
+          p, duration: this._travelDur(t) * Math.min(2, Math.max(1, Math.abs(p - t.anim.p))),
           ease: moving ? 'power2.out' : 'power2.inOut',
           onComplete: () => { t.tweens.p = null; this._maybeSettle(t) },
         })
-        if (t.def.stagger) this._staggerNodes(t, prevP, p)
+        if (this._staggerOn(t)) this._staggerNodes(t, prevP, p)
       }
       if (rChanged) {
         const moving = t.tweens.r?.isActive()
         t.tweens.r?.kill()
         t.tweens.r = gsap.to(t.anim, {
-          r, duration: REL_DURATION, ease: moving ? 'power2.out' : 'power2.inOut',
+          r, duration: this._relDur(t), ease: moving ? 'power2.out' : 'power2.inOut',
           onComplete: () => { t.tweens.r = null; this._maybeSettle(t) },
         })
-        if (t.def.stagger) this._staggerTicks(t, r)
+        if (this._staggerOn(t)) this._staggerTicks(t, r)
       }
     }
     this._emitState(t, 'travel')
@@ -1011,11 +1116,12 @@ export default class OmniAxinator {
   _staggerNodes (t, from, to) {
     const lo = Math.min(from, to), hi = Math.max(from, to)
     const path = t.nodeRecs.slice(lo, hi + 1)
+    const travelDur = this._travelDur(t)
     if (from > to) path.reverse()
     gsap.killTweensOf(path, 'pulse')
     gsap.fromTo(path, { pulse: 1 }, {
       pulse: 0, duration: 0.8, ease: 'power2.out',
-      stagger: { each: Math.min(0.12, TRAVEL_DURATION / Math.max(1, path.length)), from: 'start' },
+      stagger: { each: Math.min(0.12, travelDur / Math.max(1, path.length)), from: 'start' },
     })
   }
 

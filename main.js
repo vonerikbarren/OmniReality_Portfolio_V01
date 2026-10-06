@@ -45,6 +45,8 @@ import MovementPad       from './ui/MovementPad.js'
 import OmniDimensionalAxes from './systems/OmniDimensionalAxes.js'
 import DimensionalAxesSettingsPanel from './ui/DimensionalAxesSettingsPanel.js'
 import OmniAxinatorPanel from './ui/OmniAxinatorPanel.js'
+import OmniHandsPanel from './ui/OmniHandsPanel.js'
+import { getHandSetting } from './utils/OmniHandsSettings.js'
 
 // ── Phase 4 — Core Systems ────────────────────────────────
 import OmniNode          from './systems/OmniNode.js'
@@ -103,6 +105,9 @@ import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
 import OmniCommunicationPanel from './ui/OmniCommunicationPanel.js'
 import OmniCellPanel     from './ui/OmniCellPanel.js'
 import OmniDrawCell      from './ui/OmniDrawCell.js'
+import OmniDrawBehavior  from './ui/OmniDrawBehavior.js'
+import OmniNodeBehavior  from './systems/OmniNodeBehavior.js'
+import OmniHandAmmo      from './systems/OmniHandAmmo.js'
 import AdminPanel        from './ui/AdminPanel.js'
 import OmniExpression    from './ui/OmniExpression.js'
 import OmniExpressionInspector from './ui/OmniExpressionInspector.js'
@@ -236,6 +241,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
   // The two top hands' pads drive these instead of the camera.
+  // V163 ⟐OmniHands settings panel — registered BEFORE the axes so it catches their
+  // initial omni:dimension-state announcements for its position readout.
+  base.addModule(new OmniHandsPanel())
   const omniDimensionalAxes = base.addModule(new OmniDimensionalAxes(base.context))
   movementPad.setDimensionalAxes(omniDimensionalAxes)
   base.addModule(new DimensionalAxesSettingsPanel())
@@ -243,6 +251,14 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // OmniAxinator.js); this panel reaches it through omni:axinator-* events, the
   // same bridge pattern as the settings panel above.
   base.addModule(new OmniAxinatorPanel())
+
+  // V163 ⟐OmniHands "Show pad on start": opened once, after the axes system exists so a
+  // top hand's tunnel follows its pad. Default false for all four (unchanged behaviour).
+  ;['lh', 'rh', 'conscious', 'omnihand'].forEach(hand => {
+    if (getHandSetting(hand, 'padOnStart')) {
+      window.dispatchEvent(new CustomEvent('omni:pad-toggle', { detail: { hand, visible: true } }))
+    }
+  })
 
   // Input Monitor — real panel now, accessible from Admin Settings
   const inputMonitorPanel = new InputMonitorPanel(base.context, orbitMod, movementPad)
@@ -393,6 +409,16 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new OmniCommunicationPanel(base.context))
   base.addModule(new OmniCellPanel(base.context))
   base.addModule(new OmniDrawCell(base.context))
+  // OmniDraw(BehaviorNode) — the behaviour engine is its own system (works for
+  // nodes in BOTH registries: OmniNode's and NodeLoader's); added after OmniNode
+  // so its omni:nodes-request is answered. The panel is the creation flow.
+  const omniNodeBehavior = base.addModule(new OmniNodeBehavior(base.context))
+  // V165: ⟐LogicalHand / ⟐CreativeHand "ammo" — their ✦ Activation fires node behaviours
+  // (systems/OmniHandAmmo.js); it talks to the engine through the same omni:node-behavior-set
+  // event the Inspector uses and reads current behaviours from the instance.
+  const omniHandAmmo = base.addModule(new OmniHandAmmo(base.context))
+  omniHandAmmo.setBehaviorEngine?.(omniNodeBehavior)
+  base.addModule(new OmniDrawBehavior(base.context))
 
   const adminPanel = new AdminPanel(base.context)
   base.addModule(adminPanel)

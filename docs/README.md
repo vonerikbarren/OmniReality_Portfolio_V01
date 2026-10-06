@@ -94,6 +94,15 @@ still purely conceptual. Check each doc's own Status section.
   — OmniLog, OmniFeed, OmniCommunication (rhythm-game-style receiving,
   OmniReceiver), and OmniConnect as one family; dimensions-vs-tiers
   left open, plus a full SWOT.
+- [`omniproducts/OMNIHANDS_DESIGN.md`](omniproducts/OMNIHANDS_DESIGN.md)
+  — ⟐OmniHands: the settings panel for the four hands (LogicalHand,
+  CreativeHand, ConsciousHand, OmniHand), its drawer sub-menu, store and
+  what is not built.
+- [`omniproducts/OMNI_NODE_BEHAVIOR_DESIGN.md`](omniproducts/OMNI_NODE_BEHAVIOR_DESIGN.md)
+  — OmniDraw(BehaviorNode) and the NodeBehaviorPackage: 34 behaviours
+  animated in two tiers (real motion; signal metaphor), persistence on
+  both node registries, safety caps, how to add one. Also records the
+  V164 OmniDraw mode grid and the hand-tunnel opacity change.
 - [`omniproducts/OMNITRUTHS_DESIGN.md`](omniproducts/OMNITRUTHS_DESIGN.md)
   — merging realities, the realityOf(params) framing, and the still-open
   destructive/non-destructive merge question.
