@@ -2,10 +2,10 @@
  * ui/OmniHandsPanel.js — ⟐OmniHands (V163): one settings panel for the four hands.
  *
  * Opened from the ⟐mniMenu drawer sub-menu (ui/Drawer.js LEFT_ITEMS):
- *   ⟐LogicalHand   -> lh         bottom-left   Analytical
- *   ⟐CreativeHand  -> rh         bottom-right  Creative
- *   ⟐ConsciousHand -> conscious  top-right     Perspectives
- *   ⟐OmniHand      -> omnihand   top-left      App Launcher
+ *   ⟐LogicalHand   -> lh         bottom-left   Process
+ *   ⟐CreativeHand  -> rh         bottom-right  Object
+ *   ⟐ConsciousHand -> conscious  top-right     VisualStates
+ *   ⟐OmniHand      -> omnihand   top-left      MetaStates
  * (ids / storage keys keep their old names; the product names are display only.)
  *
  * The panel has a 4-button hand switcher; opening a child opens the panel on that
@@ -22,6 +22,10 @@
  *                   Release all (omni:hand-ammo-release-all). The default split is a PROPOSAL.
  *                   Lifecycle: omni:hands-panel-state {open, hand} on every open/close/minimize/tab
  *                   change; omni:hands-panel-close closes it (the pad's ⚙ settings button toggles it).
+ *   lh, rh (V168)   Fire (the pad's CENTRE button, systems/OmniFlowFire.js): lh = element kind, chain on/off + End
+ *                   chain, fire distance (HUD-centre point), max alive, Remove all fired elements, master toggle;
+ *                   rh = payload library (current ammo, open the payload panel), default word delay, fire distance,
+ *                   max alive, Remove all. Activation (behaviours) is separate and unchanged.
  *   lh              px / py / pz step   -> 'omni:admin:settings' (the SAME store
  *                   ui/CameraMovementOptionsPanel.js edits; dispatches omni:admin-settings-saved)
  *   rh              altitude-up / -down + vertical / horizontal orbit speed -> same admin store
@@ -38,8 +42,9 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import {
-  getHandSettings, getHandSetting, setHandSetting, resetHand, getDefault, LIMITS, CHANGE_EVENT,
+  getHandSettings, getHandSetting, setHandSetting, resetHand, getDefault, LIMITS, ENUMS, CHANGE_EVENT,
 } from '../utils/OmniHandsSettings.js'
+import { listPayloads, getCurrentId, setCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES } from '../systems/OmniNodeBehavior.js'
 import { formatSpeed, SPEED_PRESETS } from './HandSpeedPanel.js'
 
@@ -51,10 +56,10 @@ export const NAV_TO_HAND = {
 }
 
 export const HAND_META = {
-  lh:        { product: '⟐LogicalHand',   corner: 'bottom-left',  role: 'Analytical',   keys: 'W A S D' },
-  rh:        { product: '⟐CreativeHand',  corner: 'bottom-right', role: 'Creative',     keys: 'R / F altitude, ← → yaw (arrow keys)' },
-  conscious: { product: '⟐ConsciousHand', corner: 'top-right',    role: 'Perspectives', keys: 'Numpad 5 / 6 primary axis, 7 / 9 scale (Υ)' },
-  omnihand:  { product: '⟐OmniHand',      corner: 'top-left',     role: 'App Launcher', keys: 'Numpad − / + primary axis, / and * tier (Υ)' },
+  lh:        { product: '⟐LogicalHand',   corner: 'bottom-left',  role: 'Process',      keys: 'W A S D' },
+  rh:        { product: '⟐CreativeHand',  corner: 'bottom-right', role: 'Object',        keys: 'R / F altitude, ← → yaw (arrow keys)' },
+  conscious: { product: '⟐ConsciousHand', corner: 'top-right',    role: 'VisualStates', keys: 'Numpad 5 / 6 primary axis, 7 / 9 scale (Υ)' },
+  omnihand:  { product: '⟐OmniHand',      corner: 'top-left',     role: 'MetaStates',   keys: 'Numpad − / + primary axis, / and * tier (Υ)' },
 }
 const ORDER = ['lh', 'rh', 'conscious', 'omnihand']
 const SYMBOL = { conscious: 'Δ', omnihand: '⟐', lh: 'Λ', rh: 'Ψ' }   // V166: lh / rh tunnel symbols (data/OmniDimensionalAxesData.js)
@@ -63,8 +68,8 @@ const ADMIN_KEY = 'omni:admin:settings'
 const ADMIN_STEP_DEFAULTS = { px: 1, py: 1, pz: 1, altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1, globalSpeed: false, globalValue: 1 }
 
 const NOTES = {
-  lh: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial tool list is a static placeholder set; WASD key bindings are fixed. The step values are the same as ⟐CameraMovementOptions, edited in either place. Speed (V165) composes with them: effective = step (or Global override) × Speed. The default magazine split (logic side here, expressive side on CreativeHand) is a proposal, not a decided taxonomy.',
-  rh: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial tool list is a static placeholder set; key bindings are fixed. Speeds are the same values as ⟐CameraMovementOptions, edited in either place. Speed (V165) composes with them: effective = step (or Global override) × Speed. The default magazine split is a proposal, not a decided taxonomy.',
+  lh: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial page ⟐1 (flowchart element kinds) is real, page ⟐2 is a static placeholder set; WASD key bindings are fixed. The step values are the same as ⟐CameraMovementOptions, edited in either place. Speed (V165) composes with them: effective = step (or Global override) × Speed. The default magazine split (logic side here, expressive side on CreativeHand) is a proposal, not a decided taxonomy.',
+  rh: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial page ⟐1 (DataTypes / Color / Texture / Material) is real, page ⟐2 is a static placeholder set; key bindings are fixed. Speeds are the same values as ⟐CameraMovementOptions, edited in either place. Speed (V165) composes with them: effective = step (or Global override) × Speed. The default magazine split is a proposal, not a decided taxonomy.',
   conscious: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial tool list is a static placeholder set; perspectives / scale degrees are placeholder data (data/OmniDimensionalAxesData.js); key bindings are fixed.',
   omnihand: 'Not configurable yet: the ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38); the ⬢ radial tool list is a static placeholder set; the product / tier lists are data (data/OmniDimensionalAxesData.js); key bindings are fixed.',
 }
@@ -221,6 +226,9 @@ export default class OmniHandsPanel {
     this._axisState = {}            // hand -> last omni:dimension-state detail
     this._detached = {}             // hand -> bool
     this._ammo = {}                 // hand -> last omni:hand-ammo-state detail
+    this._flow = {}                 // hand -> last omni:flow-state detail (V168)
+    this._flowOn = true             // omni:flow-fire-master-changed
+    try { this._flowOn = localStorage.getItem('omni:flow-fire-master-v1') !== '0' } catch (_) {}
     ORDER.forEach(h => { this._detached[h] = readDetached(h) })
   }
 
@@ -256,10 +264,16 @@ export default class OmniHandsPanel {
     }
     this._onSetting = () => this._refresh()
     this._onAmmoState = (e) => { const d = e.detail; if (d?.hand) { this._ammo[d.hand] = d; this._refresh() } }
+    this._onFlowState = (e) => { const d = e.detail; if (d?.hand) { this._flow[d.hand] = d; this._refresh() } }
+    this._onFlowMaster = (e) => { this._flowOn = !!e.detail?.enabled; this._refresh() }
     this._onClose = () => this.close()
     this._onAdminSaved = () => this._refresh()
     window.addEventListener('omni:nav-select', this._onNavSelect)
     window.addEventListener('omni:hand-ammo-state', this._onAmmoState)
+    window.addEventListener('omni:flow-state', this._onFlowState)
+    window.addEventListener('omni:flow-fire-master-changed', this._onFlowMaster)
+    window.addEventListener(PAYLOAD_CHANGED, this._onSetting)
+    window.addEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.addEventListener('omni:hands-panel-close', this._onClose)
     window.addEventListener('omni:panel-restore', this._onRestore)
     window.addEventListener('omni:axinator-list', this._onList)
@@ -277,6 +291,10 @@ export default class OmniHandsPanel {
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:hand-ammo-state', this._onAmmoState)
+    window.removeEventListener('omni:flow-state', this._onFlowState)
+    window.removeEventListener('omni:flow-fire-master-changed', this._onFlowMaster)
+    window.removeEventListener(PAYLOAD_CHANGED, this._onSetting)
+    window.removeEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.removeEventListener('omni:hands-panel-close', this._onClose)
     window.removeEventListener('omni:panel-restore', this._onRestore)
     window.removeEventListener('omni:axinator-list', this._onList)
@@ -307,6 +325,7 @@ export default class OmniHandsPanel {
     WindowManager.bringToFront('omnihands', false)
     window.dispatchEvent(new CustomEvent('omni:axinator-list-request'))
     window.dispatchEvent(new CustomEvent('omni:hand-ammo-request'))
+    window.dispatchEvent(new CustomEvent('omni:flow-state-request'))
     this._emitState()
   }
 
@@ -386,6 +405,7 @@ export default class OmniHandsPanel {
     if (hand === 'lh') this._viewLogical(body)
     if (hand === 'rh') this._viewCreative(body)
     if (hand === 'lh' || hand === 'rh') this._viewAmmo(body, hand)
+    if (hand === 'lh' || hand === 'rh') this._viewFlow(body, hand)   // V168: the centre Fire button
     if (hand === 'lh' || hand === 'rh') this._viewTunnel(body, hand)   // V166: view-only tunnel pin
     if (hand === 'conscious' || hand === 'omnihand') this._viewAxis(body, hand)
     this._viewPad(body, hand)
@@ -516,6 +536,80 @@ export default class OmniHandsPanel {
       actLabel.textContent = `Fired and held: ${n}`
       rel.disabled = n === 0
     })
+  }
+
+  /** V168: the pad's CENTRE button = Fire (systems/OmniFlowFire.js). Activation (behaviours, above) is separate. */
+  _viewFlow (body, hand) {
+    const g = this._group(body, '⟐ Fire (the centre button)')
+    this._toggleRow(g, 'Fire enabled (master)', 'flowMaster', () => this._flowOn,
+      (on) => window.dispatchEvent(new CustomEvent('omni:flow-fire-master-set', { detail: { enabled: on } })))
+    if (hand === 'lh') {
+      const kindRow = el('div', 'omh-row')
+      kindRow.appendChild(el('span', 'omh-row-label', 'Element kind (also radial ⟐1)'))
+      const kind = el('select', 'omh-num')
+      kind.dataset.key = 'elementKind'; kind.style.width = '120px'
+      ENUMS.elementKind.forEach(k => { const o = el('option', null, k); o.value = k; kind.appendChild(o) })
+      kind.addEventListener('change', () => setHandSetting('lh', 'elementKind', kind.value))
+      kindRow.appendChild(kind)
+      g.appendChild(kindRow)
+      this._sync.push(() => { kind.value = getHandSetting('lh', 'elementKind') })
+      this._toggleRow(g, 'Chain consecutive elements', 'chainEnabled',
+        () => !!getHandSetting('lh', 'chainEnabled'), (on) => setHandSetting('lh', 'chainEnabled', on))
+      const chainRow = el('div', 'omh-row')
+      const chainLabel = el('span', 'omh-row-label'); chainLabel.dataset.role = 'chain-length'
+      const endChain = el('button', 'omh-btn', 'End chain'); endChain.dataset.action = 'end-chain'
+      endChain.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:flow-end-chain', { detail: { hand: 'lh' } })))
+      chainRow.append(chainLabel, endChain)
+      g.appendChild(chainRow)
+      this._sync.push(() => {
+        const n = this._flow.lh?.chainLength ?? 0
+        chainLabel.textContent = `Current chain: ${n} element${n === 1 ? '' : 's'}`
+        endChain.disabled = n === 0
+      })
+    } else {
+      const row = el('div', 'omh-row')
+      row.appendChild(el('span', 'omh-row-label', 'Current ammo (payload)'))
+      const sel = el('select', 'omh-num')
+      sel.dataset.key = 'payload'; sel.style.width = '140px'
+      sel.addEventListener('change', () => setCurrentPayload(sel.value || null))
+      row.appendChild(sel)
+      g.appendChild(row)
+      const open = el('button', 'omh-btn', 'Open the payload panel (create / edit ammo)')
+      open.dataset.action = 'open-payload'
+      open.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:payload-open', { detail: { section: 'datatype' } })))
+      g.appendChild(open)
+      this._numRow(g, 'Default word delay for new payloads', 'defaultWordDelayMs', this._storeNum('rh', 'defaultWordDelayMs', 10, 'ms'))
+      let sig = ''
+      this._sync.push(() => {
+        const items = listPayloads(), cur = getCurrentId()
+        const next = items.map(p => p.id + ':' + p.name).join('|')
+        if (next !== sig) {
+          sig = next
+          sel.textContent = ''
+          items.forEach(p => { const o = el('option', null, `${p.name} (${p.type})`); o.value = p.id; sel.appendChild(o) })
+          if (!items.length) { const o = el('option', null, '(none — create one)'); o.value = ''; sel.appendChild(o) }
+        }
+        sel.value = cur ?? ''
+        sel.disabled = !items.length
+      })
+    }
+    this._numRow(g, 'Fire distance (HUD centre)', 'fireDistance', this._storeNum(hand, 'fireDistance', 1, 'units'))
+    this._numRow(g, 'Max fired elements alive', 'maxAlive', this._storeNum(hand, 'maxAlive', 1, ''))
+    const aliveRow = el('div', 'omh-row')
+    const aliveLabel = el('span', 'omh-row-label'); aliveLabel.dataset.role = 'flow-alive'
+    const clear = el('button', 'omh-btn omh-btn--reset', hand === 'lh' ? 'Remove all fired elements' : 'Remove all fired displays')
+    clear.dataset.action = 'flow-clear'
+    clear.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:flow-clear', { detail: { hand } })))
+    aliveRow.append(aliveLabel, clear)
+    g.appendChild(aliveRow)
+    this._sync.push(() => {
+      const n = this._flow[hand]?.alive ?? 0
+      aliveLabel.textContent = `Alive: ${n}`
+      clear.disabled = n === 0
+    })
+    g.appendChild(el('div', 'omh-note', hand === 'lh'
+      ? 'The pad\'s CENTRE button fires the current element kind at the selected node (else the node nearest the screen centre; none: the point Fire distance ahead of the camera). Elements are real nodes (visual / structural only: nothing executes). A chain links consecutive elements while the target stays the same. Activation (✦) is separate: it still fires behaviours.'
+      : 'The pad\'s CENTRE button displays the current payload at the selected node (else the node nearest the screen centre; none: the point Fire distance ahead of the camera) as word tooltips, on a small anchor. Create ammo in the payload panel (radial ⟐1 > DataTypes). Activation (✦) is separate: it still fires behaviours (a known mismatch with the Object scope, DeveloperQueue item 53).'))
   }
 
   _viewLogical (body) {

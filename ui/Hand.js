@@ -18,10 +18,10 @@
  *   ⬢  Tools      →  Opens radial menu diagonally toward screen centre
  *
  * The four hand identities:
- *   omnihand   ⟐mniHand        TL  App Launcher    ☰→ ⟐mniMenu (left drawer)
- *   conscious  ⟐ConsciousHand  TR  Perspectives    ☰→ ⟐NavMenu (right drawer)
- *   lh         ⟐LH             BL  Analytical      ☰→ Panel (left),  ⚇→ global pad toggle
- *   rh         ⟐RH             BR  Creative        ☰→ Panel (right)
+ *   omnihand   ⟐mniHand        TL  MetaStates      ☰→ ⟐mniMenu (left drawer)
+ *   conscious  ⟐ConsciousHand  TR  VisualStates     ☰→ ⟐NavMenu (right drawer)
+ *   lh         ⟐LH             BL  Process         ☰→ Panel (left),  ⚇→ global pad toggle
+ *   rh         ⟐RH             BR  Object          ☰→ Panel (right)
  *
  * Events dispatched on window (Phase 3b components consume these):
  *   omni:hamburger   →  { hand, type: 'drawer'|'panel', dir: 'left'|'right', open: bool }
@@ -62,7 +62,7 @@ const HAND_CONFIGS = {
     name         : '⟐mni-Hand',
     abbr         : '⟐H',
     corner       : 'tl',
-    role         : 'App Launcher',
+    role         : 'MetaStates',
     hamburgerType: 'drawer',
     hamburgerDir : 'left',
     hamburgerMenu: '⟐mniMenu',
@@ -80,7 +80,7 @@ const HAND_CONFIGS = {
     name         : '⟐Conscious-Hand',
     abbr         : 'CH',
     corner       : 'tr',
-    role         : 'Perspectives',
+    role         : 'VisualStates',
     hamburgerType: 'drawer',
     hamburgerDir : 'right',
     hamburgerMenu: '⟐NavMenu',
@@ -98,7 +98,7 @@ const HAND_CONFIGS = {
     name           : '⟐Left-Hand',
     abbr           : 'LH',
     corner         : 'bl',
-    role           : 'Analytical',
+    role           : 'Process',
     hamburgerType  : 'panel',
     hamburgerDir   : 'left',
     hamburgerMenu  : '⟐LH Panel',
@@ -114,7 +114,7 @@ const HAND_CONFIGS = {
     name         : '⟐Right-Hand',
     abbr         : 'RH',
     corner       : 'br',
-    role         : 'Creative',
+    role         : 'Object',
     hamburgerType: 'panel',
     hamburgerDir : 'right',
     hamburgerMenu: '⟐RH Panel',

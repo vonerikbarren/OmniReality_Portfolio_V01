@@ -2,8 +2,8 @@
  * ui/GridPanel.js — ⟐mniReality 5×5 Grid Panel
  *
  * A reusable component that mounts a 5×5 interactive grid into a Panel body
- * slot. Instantiated twice — once for ⟐LH (Analytical) and once for ⟐RH
- * (Creative). Data is sourced from omniexp.panels.json (embedded below).
+ * slot. Instantiated twice — once for ⟐LH (Process) and once for ⟐RH
+ * (Object). Data is sourced from omniexp.panels.json (embedded below).
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Layout — fits exactly inside Panel.js body (no scroll)

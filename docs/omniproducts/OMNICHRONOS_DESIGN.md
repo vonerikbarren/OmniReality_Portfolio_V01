@@ -291,3 +291,12 @@ the natural/manipulated two-value time model defined, TimeData and
 perspectiveTime named as real primitives, and the actual build order
 agreed in conversation. See the build summary given alongside this
 update for the concrete first-pass plan.
+
+## Time axes — decision recorded 2026-10-06 (not built)
+
+Z = position in time, Y = time flow, X = object (see
+`docs/architecture/SCOPIC_STATES_DESIGN.md`). Recommendation on file: treat
+flow as a control (speed with a reverse range) rather than a spatial axis,
+and avoid bare X/Y/Z names in code because the existing vertical Master
+Tunnel is already called "Z-axis mode". Spaces and OmniChronos are expected
+to merge "to some degree": share the traversal component first.

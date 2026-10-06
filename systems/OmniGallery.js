@@ -74,7 +74,8 @@ const SLIDE_DUR = 0.30  // s  — slide animation
 // Paths are relative, matching the project convention seen in
 // modules/WallpaperSphere.js's DEFAULT_IMG_URL ('./assets/images/<name>').
 
-const GALLERY_ASSETS = [
+// V168: exported so the payload panel (ui/OmniPayloadPanel.js) can list the same swatches in-panel.
+export const GALLERY_ASSETS = [
   { id: 'lotus-emblem',            label: 'Lotus Emblem',              file: 'gallery-tex-lotus-emblem.svg' },
   { id: 'panel-square-a',          label: 'Panel Square A',            file: 'gallery-tex-panel-square-a.svg' },
   { id: 'panel-square-b',          label: 'Panel Square B',            file: 'gallery-tex-panel-square-b.svg' },

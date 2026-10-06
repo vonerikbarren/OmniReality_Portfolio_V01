@@ -108,6 +108,8 @@ import OmniDrawCell      from './ui/OmniDrawCell.js'
 import OmniDrawBehavior  from './ui/OmniDrawBehavior.js'
 import OmniNodeBehavior  from './systems/OmniNodeBehavior.js'
 import OmniHandAmmo      from './systems/OmniHandAmmo.js'
+import OmniFlowFire      from './systems/OmniFlowFire.js'
+import OmniPayloadPanel  from './ui/OmniPayloadPanel.js'
 import AdminPanel        from './ui/AdminPanel.js'
 import OmniExpression    from './ui/OmniExpression.js'
 import OmniExpressionInspector from './ui/OmniExpressionInspector.js'
@@ -244,6 +246,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // V163 ⟐OmniHands settings panel — registered BEFORE the axes so it catches their
   // initial omni:dimension-state announcements for its position readout.
   base.addModule(new OmniHandsPanel())
+  // V168: ⟐Payload (the RightHand's created ammo) — opened from the RH radial page ⟐1.
+  base.addModule(new OmniPayloadPanel())
   const omniDimensionalAxes = base.addModule(new OmniDimensionalAxes(base.context))
   movementPad.setDimensionalAxes(omniDimensionalAxes)
   base.addModule(new DimensionalAxesSettingsPanel())
@@ -418,6 +422,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   // event the Inspector uses and reads current behaviours from the instance.
   const omniHandAmmo = base.addModule(new OmniHandAmmo(base.context))
   omniHandAmmo.setBehaviorEngine?.(omniNodeBehavior)
+  // V168: the pads' CENTRE Fire button (flowchart elements / payload display). Target = the V165 resolver.
+  const omniFlowFire = base.addModule(new OmniFlowFire(base.context))
+  omniFlowFire.setTargetResolver?.(omniHandAmmo)
   base.addModule(new OmniDrawBehavior(base.context))
 
   const adminPanel = new AdminPanel(base.context)

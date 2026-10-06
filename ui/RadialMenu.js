@@ -28,6 +28,7 @@
  */
 
 import gsap from 'gsap'
+import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 
 // ── Geometry constants ────────────────────────────────────────────────────────
 
@@ -52,49 +53,65 @@ const TOOL_ANGLES = Array.from({ length: 10 }, (_, i) => -90 + i * 36)
 
 // ── Tool data ─────────────────────────────────────────────────────────────────
 
-// Page 1 is reserved — planned as a search + Metroid-Prime-style scan
-// function (docs/planning/BACKLOG.md), not built yet, so it stays null/
-// blank here on purpose for all four hands. The real per-hand app lists
-// live on page 2 instead, per direct request. Page 3 remains the planned
-// OmniKeyboard launcher (same doc), also not built yet.
-// OmniHand/ConsciousHand's own '⟐2' tool lists now mirror LH/RH's —
-// direct request: "adjust the tool context with each hand to mirror
-// the lh and rh." Same pairing MovementPad.js's own PAD_CONFIGS now
-// uses (OmniHand mirrors LH's MOVE pad, ConsciousHand mirrors RH's
-// NAV pad), applied here to the radial Tool menu's content too, for
-// the same reason: both hands in a pair now do the same real thing.
-// abbr/color stay each hand's own — only the tool content mirrors.
+// Page ⟐1 is REAL for the two lower hands only (V168; omnihand / conscious keep it null/blank, planned
+// for the search + scan feature, docs/planning/BACKLOG.md). Page ⟐3 remains the planned OmniKeyboard
+// launcher for all four (null, locked).
+//   lh ⟐1  FLOWCHART ELEMENTS — the ammo KIND the LeftHand's centre Fire button shoots:
+//          Terminator, Process, Decision, InputOutput, Connector, Loop (slots 1-6). Clicking one sets the
+//          LH's current element kind (OmniHandsSettings `elementKind`, applied by systems/OmniFlowFire.js
+//          from the omni:tool-select below); the highlight shows the current kind (default Process) and,
+//          unlike the other pages, clicking the lit one again does NOT un-select it (a kind is always set).
+//   rh ⟐1  #1 DataTypes (opens ui/OmniPayloadPanel.js), #2 Color, #3 Texture, #4 Material (the same panel,
+//          focused on that section) — they edit the CURRENT payload, the RightHand's ammo. Select = open /
+//          focus, select again = close.
+// Both still dispatch omni:tool-select / omni:tool-deselect {hand, tool, toolIndex, page} like every tool.
+// Page switching: omni:page-select {hand, page}; a LOCKED page (⟐3, and ⟐1 on omnihand / conscious) only
+// flashes and dispatches nothing — unchanged.
+//
+// V167 — page 2 now follows the SCOPIC STATES structure (see
+// docs/architecture/SCOPIC_STATES_DESIGN.md). Each hand is its own tool
+// system over one scope of what the user sees/does:
+//   omnihand   MetaStates   (Realities / OmniProducts — axiomatic, persistent anchors)
+//   conscious  VisualStates (Perspectives — the options an OmniProduct offers;
+//                            may be a DIFFERENT product than OmniHand's)
+//   lh         Process      (physical state of a node: behaviours, down to the number unit)
+//   rh         Object       (identity of a node: the OmniDraw object itself)
+// The tool names are PLACEHOLDER LABELS (nothing behind them yet — they only
+// dispatch omni:tool-select, same as before); they are named for what each
+// scope will do so the structure reads correctly. abbr/color stay each
+// hand's own. V168: rh ⟐2 lost ColorShift / MaterialMorph / TextureWeave (they live on ⟐1 as Color /
+// Material / Texture now: no duplicates) and gained Geometry, Glyph, Label.
 const TOOLS = {
   omnihand: {
     abbr : '⟐mH',
     color: 'rgba(255, 255, 255, 0.90)',
     '⟐1' : null,
-    '⟐2' : ['Translate3D','Rotate3D','Scale3D','OrbitControl','PathfindingStep',
-             'SnapToGrid','PhysicsImpulse','CollisionCheck','AnchorPointSet','StateToggle'],
+    '⟐2' : ['SelectMetaState','StageAtOrigin','LayerMetaState','SoloMetaState','PinAnchor',
+             'CompareMetaStates','MetaStateLaws','SaveMetaState','MetaStateInfo','ReturnToDefault'],
     '⟐3' : null,
   },
   conscious: {
     abbr : '⟐CH',
     color: 'rgba(180, 210, 255, 0.90)',
     '⟐1' : null,
-    '⟐2' : ['ColorShift','MaterialMorph','ShapeBlend','ParticleEmote','AuraField',
-             'SymbolStamp','GestureTrail','SoundResonance','TextureWeave','MoodLighting'],
+    '⟐2' : ['SelectVisualState','SwapSourceProduct','ScaleDegree','BlendVisualStates','FilterByState',
+             'RevealHidden','LensSettings','SaveVisualState','VisualStateInfo','ReturnToDefault'],
     '⟐3' : null,
   },
   lh: {
     abbr : '⟐LH',
     color: 'rgba(200, 255, 220, 0.90)',
-    '⟐1' : null,
-    '⟐2' : ['Translate3D','Rotate3D','Scale3D','OrbitControl','PathfindingStep',
-             'SnapToGrid','PhysicsImpulse','CollisionCheck','AnchorPointSet','StateToggle'],
+    '⟐1' : ['Terminator','Process','Decision','InputOutput','Connector','Loop'],
+    '⟐2' : ['Translate3D','Rotate3D','Scale3D','SetValue','StepValue',
+             'Orbit','AttractRepel','FollowAnchor','Oscillate','Quantize'],
     '⟐3' : null,
   },
   rh: {
     abbr : '⟐RH',
     color: 'rgba(255, 200, 240, 0.90)',
-    '⟐1' : null,
-    '⟐2' : ['ColorShift','MaterialMorph','ShapeBlend','ParticleEmote','AuraField',
-             'SymbolStamp','GestureTrail','SoundResonance','TextureWeave','MoodLighting'],
+    '⟐1' : ['DataTypes','Color','Texture','Material'],
+    '⟐2' : ['DrawObject','NodeType','ShapeBlend','SymbolStamp','Jsonify',
+             'BehaviorNode','ObjectInfo','Geometry','Glyph','Label'],
     '⟐3' : null,
   },
 }
@@ -107,6 +124,10 @@ const HAND_CORNER = {
 }
 
 const PAGES = ['⟐1', '⟐2', '⟐3']
+
+/** Page ⟐2 is always real; ⟐1 only where TOOLS carries a list (lh, rh); ⟐3 never. */
+const pageAvailable = (handId, page) => page === '⟐2' || (page === '⟐1' && Array.isArray(TOOLS[handId]['⟐1']))
+const KIND_PAGE = '⟐1'
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -500,11 +521,23 @@ export default class RadialMenu {
 
     this._onResize = this._handleResize.bind(this)
     this._onToggle = this._handleToggle.bind(this)
+    // V168: the LeftHand's element kind can also change from ⟐OmniHands; keep the ⟐1 highlight honest.
+    this._onHandSetting = (e) => { if (e.detail?.hand === 'lh' && e.detail?.key === 'elementKind') this._syncKindHighlight('lh') }
+    // V168: closing the payload panel with its own × un-lights the RightHand's ⟐1 tool that opened it.
+    this._onPayloadPanel = (e) => {
+      const st = this._state.rh
+      if (e.detail?.open || st.page !== KIND_PAGE || !st.activeTool) return
+      this._toolEls.rh?.forEach(el => el.classList.remove('is-active'))
+      st.activeTool = null
+    }
   }
 
   // ── Module contract ──────────────────────────────────────────────────────
 
   init () {
+    // V168: init() runs twice (main.js calls it, then base.addModule calls it again); the second pass built a
+    // second, orphaned set of menus + a second tooltip in the DOM (same guard MovementPad has).
+    if (this._els.omnihand) return
     injectStyles()
     this._buildTooltip()
     this._buildAllMenus()
@@ -518,6 +551,8 @@ export default class RadialMenu {
     this._tooltip?.parentNode?.removeChild(this._tooltip)
     window.removeEventListener('omni:radial-toggle', this._onToggle)
     window.removeEventListener('resize', this._onResize)
+    window.removeEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
+    window.removeEventListener('omni:payload-panel-state', this._onPayloadPanel)
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -669,11 +704,10 @@ export default class RadialMenu {
     PAGES.forEach((page, i) => {
       const angleDeg  = PAGE_ANGLES[i]
       const { x, y } = polar(angleDeg, INNER_R)
-      // Page 2 is the real, usable page (the per-hand app lists live
-      // there now); page 1 is reserved/locked for the planned search +
-      // scan feature, page 3 for the planned OmniKeyboard launcher —
-      // see the TOOLS comment above and docs/planning/BACKLOG.md.
-      const available = (page === '⟐2')
+      // Page 2 is real everywhere; page 1 is real on lh / rh (V168) and reserved/locked for the
+      // planned search + scan feature on the top hands; page 3 is the planned OmniKeyboard
+      // launcher — see the TOOLS comment above and docs/planning/BACKLOG.md.
+      const available = pageAvailable(handId, page)
 
       const btn = document.createElement('div')
       btn.className = ['radial-item','radial-page', available ? '' : 'is-locked', (page === '⟐2') ? 'is-active' : ''].filter(Boolean).join(' ')
@@ -754,10 +788,12 @@ export default class RadialMenu {
 
       slot.style.setProperty('--tool-accent', accentColor)
 
-      slot.addEventListener('mouseenter', (e) => this._showTooltip(toolName, e))
+      // V168: read the slot's CURRENT name (dataset.tool, rewritten by _switchPage) — the build-time
+      // closure value is the page-⟐2 name, so before this a click on a switched page reported the old tool.
+      slot.addEventListener('mouseenter', (e) => this._showTooltip(slot.dataset.tool, e))
       slot.addEventListener('mouseleave', ()  => this._hideTooltip())
       slot.addEventListener('mousemove',  (e) => this._moveTooltip(e))
-      slot.addEventListener('click', () => this._handleToolClick(handId, toolName, i, slot))
+      slot.addEventListener('click', () => this._handleToolClick(handId, slot.dataset.tool, i, slot))
       slot.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); slot.click() }
       })
@@ -869,6 +905,7 @@ export default class RadialMenu {
 
     st.page       = page
     st.activeTool = null
+    this._toolEls[handId].forEach(el => el.classList.remove('is-active'))   // a lit slot belongs to the page we just left
 
     this._playSound('click')
     this._updatePageActiveState(handId)
@@ -880,6 +917,19 @@ export default class RadialMenu {
   _handleToolClick (handId, toolName, toolIndex, slot) {
     const st       = this._state[handId]
     const wasActive = st.activeTool === toolName
+    if (handId === 'lh' && st.page === KIND_PAGE) {
+      // flowchart element kinds are a radio group: empty slots do nothing, the lit one stays lit
+      if (toolName === '—') return
+      this._toolEls[handId].forEach(el => el.classList.remove('is-active'))
+      st.activeTool = toolName
+      slot.classList.add('is-active')
+      this._playSound('click')
+      gsap.fromTo(slot, { scale: 0.88 }, { scale: 1, duration: 0.20, ease: 'back.out(2.5)' })
+      window.dispatchEvent(new CustomEvent('omni:tool-select', {
+        detail: { hand: handId, tool: toolName, toolIndex: toolIndex + 1, page: st.page }
+      }))
+      return
+    }
 
     this._toolEls[handId].forEach(el => el.classList.remove('is-active'))
 
@@ -942,8 +992,18 @@ export default class RadialMenu {
         })
 
         gsap.to(toolEls, { scale: 1, opacity: 1, duration: 0.18, stagger, ease: 'back.out(1.6)' })
+        this._syncKindHighlight(handId)
       },
     })
+  }
+
+  /** lh ⟐1: light the slot of the LeftHand's current element kind (and make it the active tool). */
+  _syncKindHighlight (handId) {
+    const st = this._state[handId]
+    if (handId !== 'lh' || st.page !== KIND_PAGE) return
+    const kind = getHandSetting('lh', 'elementKind')
+    this._toolEls.lh.forEach(el => el.classList.toggle('is-active', el.dataset.tool === kind))
+    st.activeTool = kind
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1122,6 +1182,8 @@ export default class RadialMenu {
   _bindGlobalEvents () {
     window.addEventListener('omni:radial-toggle', this._onToggle)
     window.addEventListener('resize', this._onResize)
+    window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
+    window.addEventListener('omni:payload-panel-state', this._onPayloadPanel)
   }
 
   _handleToggle (e) {

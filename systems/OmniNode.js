@@ -3297,7 +3297,10 @@ export default class OmniNode {
         position  : d.position ?? [0, 1, 0],
         rotation  : d.rotation ?? [0, 0, 0],
         scale     : d.scale ?? [1, 1, 1],
-        parentId  : d.parentId ?? this._selected ?? null,
+        // V168: a fired flow element (systems/OmniFlowFire.js) is only linked to the node it
+        // was fired AT when the caller says so (its chain edge); the selection-as-parent
+        // default is for every other creator.
+        parentId  : d.parentId ?? (d.flowElement ? null : (this._selected ?? null)),
         createdAt : new Date().toISOString(),
         autoRotation      : d.autoRotation ?? false,
         autoRotationAxisX : d.autoRotationAxisX ?? false,
@@ -3341,6 +3344,9 @@ export default class OmniNode {
         // data.behavior off omni:node-created.
         isBehaviorNode: d.isBehaviorNode ?? false,
         behavior: d.behavior ?? null,
+        // V168 — a fired flow element / display anchor: { kind, hand, payloadId, chainId, payload
+        // snapshot, style, ... } (systems/OmniFlowFire.js). Same reason as above: dropped unless listed.
+        flowElement: d.flowElement ?? null,
       })
     }
 

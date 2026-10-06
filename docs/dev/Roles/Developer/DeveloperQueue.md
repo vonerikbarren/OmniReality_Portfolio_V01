@@ -1055,3 +1055,29 @@ the *content* is not. Follow-ups:
 10. **Saved positions.** v2 axis positions are migrated by +1 once into `omni:dimension-axes-v3`; if you want to drop old saves instead, delete `migrateV2` in `systems/OmniDimensionalAxes.js`.
 11. **Speed 25x and the tunnel animations.** Step tweens floor at 0.04 s (`MIN_STEP_S`), so 10x-25x all look the same for a single step; the travel stagger flash and the marker ring pulse are not scaled. Hold-repeat stays at the 60 ms floor.
 12. **Test harness** still scratchpad-only (see 49.13); V166 added ~135 assertions plus the real-Chromium hit-test / screenshot scripts.
+
+
+## 52. Scopic states — system build, then defaults — V167 relabel only
+See `docs/architecture/SCOPIC_STATES_DESIGN.md`. Built in V167: labels only.
+Next: (1) tags + per-hand scopic-state selection + Venn query + four-line HUD
+(system first; per-product defaults later); (2) turn tunnel nodes into a
+selection UI that stages a MetaState at 0,0,0 (replace TakeMeThere with load);
+(3) RightHand activation/ammo should become object-oriented (V165 still fires
+behaviours, which are now Process = LeftHand); (4) each OmniProduct declares
+its ConsciousState option list; (5) laws-of-a-space on MetaStates acting on
+node behaviours; (6) OmniChronos axes (Z position, Y flow, X object) and the
+Spaces/Chronos shared traversal component; (7) perspectiveNode as its own
+node type; HomeSpace as a separate system.
+
+
+## 53. Fire / flowchart elements / payloads — V168 first pass
+See `docs/omniproducts/OMNI_FLOW_FIRE_DESIGN.md`. Follow-ups:
+1. **RH Activation mismatch** (also item 52.3): the RightHand Activation satellite still fires V164 behaviours; make it object-oriented.
+2. **Array and Object payloads**; per-word panels (`display.mode` switch); the incoming "shot at the user" interpretation mode; real flowchart semantics (branches, loops).
+3. A chain is not restored after reload (elements and edges are; the next shot starts a new chain).
+4. OmniNode's selection emissive overrides the `emissive` payload material while selected.
+5. The centre button is capped at 44 px (the direction buttons sit 23 px from centre); a larger pad would allow a bigger target.
+6. A per-hand ammo model (LH currently hosts the RH's current payload); a Space / global key for Fire.
+7. Camera-start oddity: in the headless run the camera starts looking up, so a HUD-centre shot lands above the horizon; check on real hardware.
+8. Judge readability on a photo wallpaper and on a touch device; harness (jsdom + Playwright) is still scratchpad-only (see 49.13).
+9. Seen only in screenshots (V168): node labels of neighbouring fired elements overlap each other (OmniNode tooltip labels), anchors show their own node label next to the words, and radial page-1 labels are truncated by the existing `splitName` ("Termina", "Decisio", "Materia"). Fixes: hide the label on anchors, wider radial labels.

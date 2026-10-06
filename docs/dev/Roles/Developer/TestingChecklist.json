@@ -1632,6 +1632,100 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Scopic-states radial menus (V167)",
+      "items": [
+        {
+          "feature": "Radial menu page 2 per hand",
+          "howToReach": "Open the ⬢ Tools button on each hand, page ⟐2",
+          "whatToCheck": "OmniHand shows MetaState tools, ConsciousHand VisualState tools, LeftHand Process tools, RightHand Object tools; all 10 labels readable (long ones wrap/ellipsis), clicking still toggles the tool highlight",
+          "tested": false
+        },
+        {
+          "feature": "Hand role names",
+          "howToReach": "Hover each hand's name badge; open each hand in ⟐OmniHands",
+          "whatToCheck": "Roles read MetaStates / VisualStates / Process / Object; ⟐LH and ⟐RH panel titles read Process and Object",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Fire / flowchart elements / payloads (V168)",
+      "items": [
+        {
+          "feature": "Centre Fire button on LH / RH pads",
+          "howToReach": "Open the Pad on LeftHand / RightHand; the round button in the middle of the cross",
+          "whatToCheck": "Click fires (no movement); D-pad arrows still work; glow when ready, dim when off or empty; OmniHand / ConsciousHand centre stays inert",
+          "tested": false
+        },
+        {
+          "feature": "LH radial page 1",
+          "howToReach": "Tools button on LeftHand, page ⟐1",
+          "whatToCheck": "Terminator, Process, Decision, InputOutput, Connector, Loop; one lit at a time; the pad button label follows",
+          "tested": false
+        },
+        {
+          "feature": "RH radial page 1",
+          "howToReach": "Tools button on RightHand, page ⟐1",
+          "whatToCheck": "DataTypes, Color, Texture, Material; each opens the Payload panel at that section; clicking again closes it",
+          "tested": false
+        },
+        {
+          "feature": "RH radial page 2",
+          "howToReach": "Tools button on RightHand, page ⟐2",
+          "whatToCheck": "No ColorShift / MaterialMorph / TextureWeave; Geometry, Glyph, Label present",
+          "tested": false
+        },
+        {
+          "feature": "Create a string payload",
+          "howToReach": "Payload panel: type String, value \"hello world from the right hand\", delay 300 ms, Create ammo",
+          "whatToCheck": "Appears in the library as current ammo; preview plays words 300 ms apart; survives reload",
+          "tested": false
+        },
+        {
+          "feature": "RH fire with a node selected",
+          "howToReach": "Select a node, press RH Fire",
+          "whatToCheck": "Tracer flies to the node, anchor appears above it, words rise as tooltips and follow the camera",
+          "tested": false
+        },
+        {
+          "feature": "RH fire with nothing selected",
+          "howToReach": "Deselect, press RH Fire",
+          "whatToCheck": "Display appears at the screen-centre node or at the HUD centre (fire distance)",
+          "tested": false
+        },
+        {
+          "feature": "LH fire and chain",
+          "howToReach": "Press LH Fire three times",
+          "whatToCheck": "Three elements of the chosen shape in a row, linked by edges; End chain in OmniHands starts a new one",
+          "tested": false
+        },
+        {
+          "feature": "Number / boolean payloads",
+          "howToReach": "Payload panel: Number, Boolean",
+          "whatToCheck": "One tooltip with type badge, e.g. 123 · number",
+          "tested": false
+        },
+        {
+          "feature": "Style: colour / texture / material",
+          "howToReach": "Payload panel style sections; fire LH",
+          "whatToCheck": "Element is styled live; words tinted and readable on white and dark backgrounds",
+          "tested": false
+        },
+        {
+          "feature": "OmniHands Fire group",
+          "howToReach": "OmniHands panel on LH and RH",
+          "whatToCheck": "Master toggle, element kind, chain, End chain, fire distance, max alive, Remove all, payload select; alive count updates",
+          "tested": false
+        },
+        {
+          "feature": "Panel fit and layering",
+          "howToReach": "Open Payload panel at 1280x720 and on a phone with other panels open",
+          "whatToCheck": "Whole panel fits (scrolls inside), sits above other panels, library and preview reachable",
+          "tested": false
+        }
+      ]
     }
   ]
 }

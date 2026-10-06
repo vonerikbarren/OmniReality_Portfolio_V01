@@ -35,6 +35,7 @@
  *   omni:hand-ammo-release-all{ hand }        un-fire every behaviour that hand fired
  *   omni:hand-ammo-request    {}              re-announce omni:hand-ammo-state for both hands
  *   omni:node-selected        { node, mesh }
+ *   omni:node-deselected      {}              (V168: clears the target, so the screen-centre fallback is reachable)
  *   omni:node-behavior-changed{ nodeId, behavior }   (keeps the registry honest)
  *   omni:node-deleted / omni:nodes-updated / omni:node-restored  (drop / adopt hand-sourced)
  *   omni:hands-settings-changed (magazine / ammo / maxActive changes re-announce state)
@@ -85,6 +86,9 @@ export default class OmniHandAmmo {
       if (node?.id && node.behavior) this._known.set(node.id, node.behavior)
       this._adopt(node?.id, node?.behavior)
     })
+    // V168: a deselect clears the target (before, a stale selection kept winning over the screen-centre
+    // fallback, and OmniFlowFire's "no target -> HUD centre" would never have been reached).
+    on('omni:node-deselected', () => { this._selected = null })
     on('omni:node-behavior-changed', (e) => {
       const { nodeId, behavior } = e.detail ?? {}
       if (!nodeId) return
@@ -230,32 +234,34 @@ export default class OmniHandAmmo {
 
   // ── Targeting ───────────────────────────────────────────────────────────────
 
-  /** Selected node, else nearest-to-screen-centre node; null when neither exists. */
-  resolveTarget () {
+  /** Selected node, else nearest-to-screen-centre node; null when neither exists.
+   *  `skip(mesh) -> bool` (V168, optional) hides meshes from the screen-centre search only (a SELECTED node is
+   *  never skipped): OmniFlowFire uses it so its own fired elements do not become the next shot's target. */
+  resolveTarget (skip) {
     const sel = this._selected
     if (sel?.mesh?.parent) return sel
-    return this._centerNode()
+    return this._centerNode(skip)
   }
 
-  _sceneNodes (exclude) {
+  _sceneNodes (exclude, skip) {
     const out = []
     const kids = this.ctx?.scene?.children ?? []
     for (let i = 0; i < kids.length; i++) {
       const m = kids[i]
       const id = m.userData?.nodeId
-      if (id && id !== exclude && m.visible !== false) out.push({ id, mesh: m, data: null })
+      if (id && id !== exclude && m.visible !== false && !(skip && skip(m))) out.push({ id, mesh: m, data: null })
     }
     return out
   }
 
-  _centerNode () {
+  _centerNode (skip) {
     const cam = this.ctx?.camera
     if (!cam) return null
     cam.updateMatrixWorld?.()
     cam.getWorldDirection(this._f)
     const cosMin = Math.cos(CENTER_CONE_DEG * Math.PI / 180)
     let best = null, bestCos = cosMin
-    this._sceneNodes().forEach(n => {
+    this._sceneNodes(undefined, skip).forEach(n => {
       n.mesh.getWorldPosition(this._v)
       this._v.sub(cam.position)
       const len = this._v.length()

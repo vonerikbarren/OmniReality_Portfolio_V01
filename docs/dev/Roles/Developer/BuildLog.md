@@ -3203,3 +3203,45 @@ Speed 10x -> 25x; four full-length hand tunnels meeting at 0,0,0 (new LogicalHan
 **Verified:** `node --check` on every .js (see below); v166 harness (`v166_test.mjs`, 135 assertions: 25x clamp / persisted 17 / floor at 0.04 s, opacities, colours, per-vertex colours, contrast, four tunnels / directions / extents, origin math, pairwise shells, 8 / 10 levels / REL_STEP / clamps / counts, readout, v2 -> v3 migration and corrupt data, stale pins, LH / RH pad / pin / pads-global / hand-activate separation, axinator panel rows / swatch / pin, OmniHands lh / rh / conscious views, label stacking and core, TakeMeThere root / far / lh node, satellite and chip overlap across ALL four hands at 1280x720, 1024x768, 390x844, 360x740, CSS rules); the V165 harness adapted to V166 (175), hands (67), axinator (56) and integ (13) all pass; the three V165 speed-limit assertions were changed from 10 to 25 and the V160-era TakeMeThere failures noted in V165 no longer occur. Screenshots: top-down and axis-down views of all four tunnels on white and black, close-ups of the nested roots, popover, all four pad corners; they show the tunnels faint but findable on both backgrounds, grey shells legible, the four root crowns concentric, labels legible; the white tunnel on white is the faintest (its dark guide lines carry it).
 
 **Not verified:** real GPU rendering / frame rate with all four tunnels (about 4100 + 1400 + ... line segments each, plus labels; software GL only), a photographic wallpaper, touch input, real phone browsers (emulated viewports only), the 4-root nested look from every angle, how the opacities feel to you (only judged by eye on flat backgrounds), ⟐OmniHands / axinator panel visual layout (only DOM-checked), OmniAxinatorPanel row order in a running app (checked in jsdom), mobile popover placement (jsdom clamp test only), 360x640 (pads overlap each other there, see queue 51.9).
+
+### V167 — 2026-10-06
+Scopic-states relabel (no behaviour change). The four hands are now named for
+their scope: OmniHand = MetaStates, ConsciousHand = VisualStates, LeftHand =
+Process, RightHand = Object (`role` strings in `ui/Hand.js`,
+`ui/OmniHandsPanel.js` HAND_META, `ui/Panel.js` titles, `ui/GridPanel.js`
+comment). Radial menu page 2 (`ui/RadialMenu.js` TOOLS) rewritten to that
+structure: OmniHand — SelectMetaState, StageAtOrigin, LayerMetaState,
+SoloMetaState, PinAnchor, CompareMetaStates, MetaStateLaws, SaveMetaState,
+MetaStateInfo, ReturnToDefault; ConsciousHand — SelectVisualState,
+SwapSourceProduct, ScaleDegree, BlendVisualStates, FilterByState,
+RevealHidden, LensSettings, SaveVisualState, VisualStateInfo,
+ReturnToDefault; LeftHand — Translate3D, Rotate3D, Scale3D, SetValue,
+StepValue, Orbit, AttractRepel, FollowAnchor, Oscillate, Quantize;
+RightHand — DrawObject, NodeType, ColorShift, MaterialMorph, TextureWeave,
+ShapeBlend, SymbolStamp, Jsonify, BehaviorNode, ObjectInfo. The names are
+placeholders (nothing behind them; same `omni:tool-select` event). New
+`docs/architecture/SCOPIC_STATES_DESIGN.md` records the whole model; time-axis
+note appended to `OMNICHRONOS_DESIGN.md`. `node --check` passes on every .js;
+not seen rendered (longer labels wrap through `splitName`, ellipsis at
+`TOOL_R*2-2` px).
+
+
+### V168 — 2026-10-06
+Centre **Fire** button on the LeftHand / RightHand pads; first real use of the scopic-state split
+(LH = Process shoots flowchart elements, RH = Object displays payloads). Design: `docs/omniproducts/OMNI_FLOW_FIRE_DESIGN.md`.
+
+Built:
+- `ui/MovementPad.js`: round centre button `omni-pad-fire-lh/rh` (lh/rh only) -> `omni:hand-fire`; ready/empty/pressed/fired/nope states, ammo label.
+- `ui/RadialMenu.js`: LH page ⟐1 = flowchart element kinds (radio, sets `elementKind`); RH page ⟐1 = DataTypes / Color / Texture / Material (opens the payload panel); RH page ⟐2 lost ColorShift / MaterialMorph / TextureWeave (gained Geometry, Glyph, Label placeholders).
+- `utils/OmniPayloads.js` (library, store `omni:payloads-v1`), `utils/FlowWordPlayer.js` (word tooltips), `ui/OmniPayloadPanel.js` (⟐Payload panel), `systems/OmniFlowFire.js` (tracer, element / display nodes, chain, replay, caps, master toggle).
+- `ui/OmniHandsPanel.js` Fire group on lh / rh; `utils/OmniHandsSettings.js` new keys (lh `elementKind` / `chainEnabled` / `fireDistance` / `maxAlive`; rh `fireDistance` / `maxAlive` / `defaultWordDelayMs`; no `_v` bump).
+- `systems/OmniNode.js`: create-request now carries `flowElement` and skips the "selection is the default parent" rule for flow elements.
+- `systems/OmniHandAmmo.js`: `omni:node-deselected` clears the stored selection (V165 never did); `resolveTarget(skip)` so fired elements are not picked by the centre ray.
+- `systems/OmniGallery.js`: exports `GALLERY_ASSETS`. `main.js`: wiring.
+
+Seen in the screenshots and adjusted: words start 24 px above the anchor so they clear the node's own label (not re-looked at after the change); the chain step went 1.7 -> 2.2 units because Decision diamonds (1.7 wide) touched neighbours (not re-looked at after the change).
+
+Fixed along the way: RadialMenu ran its init twice (guard added) and used stale click names (now `slot.dataset.tool`); payload panel was taller than a 720px viewport (own placement top 96 / right 240, max-height viewport minus top and dock; WindowManager's cascade had put it at y 196), opened underneath other panels (open now brings it to front as a real user action), and a queued preview could replay after close (timer cleared, preview() ignores a closed panel).
+
+Verified: node + jsdom suite (194 checks, scratchpad harness) and real Chromium (Playwright, software WebGL at ~1 fps; the app's gsap lagSmoothing(500,33) had to be turned off in the harness): centre-button hit tests on desktop and 390x844 (incl. a touch tap), real clicks, radial slot lists, DataTypes opening the panel, payload creation at 300 ms, RH / LH fire with a node selected (flow-fired targetId = the selected node, 3-chain linked) and with nothing selected (centre-ray / HUD point), words rising and cleaned up from the DOM. See the final report of the session for what was NOT verified (real hardware, touch, photo wallpaper).
+Not built: array / object payloads, per-word panels, incoming mode, flowchart execution, Fire on OmniHand / ConsciousHand. RH Activation still fires V164 behaviours (queue item 53).

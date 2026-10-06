@@ -1,4 +1,4 @@
-# ⟐OmniHands — design and status (V163, extended V165, V166)
+# ⟐OmniHands — design and status (V163, extended V165, V166, V168)
 
 **Status: built (settings panel; V165 added the pad satellites below; V166 added the four full-length tunnels and fixed the Speed button). V166 was checked in headless Chromium (software GL), not on real hardware.**
 
@@ -36,6 +36,16 @@ V165, Dash became Speed). CreativeHand: altitude-up,
 altitude-down, horizontal orbit, vertical orbit. When Global speed is on there,
 the boxes are disabled and a note says so.
 
+**⟐LogicalHand / ⟐CreativeHand Fire (V168).** A "⟐ Fire (the centre button)" group below Ammo
+(the pad's centre button, `systems/OmniFlowFire.js`, `docs/omniproducts/OMNI_FLOW_FIRE_DESIGN.md`).
+Both hands: Fire enabled (master toggle), Fire distance (2–60 units, the HUD-centre point used when
+nothing is targeted), Max fired elements alive (1–200), an alive count and "Remove all fired
+elements / displays". LogicalHand adds the **element kind** (Terminator / Process / Decision /
+InputOutput / Connector / Loop; the same value as radial ⟐1), "Chain consecutive elements" and
+**End chain** with the current chain length. CreativeHand adds the **current ammo** (payload
+library select), "Open the payload panel" and the default word delay for new payloads. Activation
+(✦, behaviours) is separate and unchanged: the centre button is Fire.
+
 **⟐LogicalHand / ⟐CreativeHand tunnel (V166).** Below Ammo, a "Tunnel (view only)" group: Pin this tunnel visible, "Tunnels follow the pads" (shared), and a status line. The tunnels (7↔1 green, 4↔10 red/green/blue) show while the pad is open or when pinned; they have no marker, and the ✦ button fires ammo, not the tunnel. Reset hand unpins.
 
 **⟐ConsciousHand / ⟐OmniHand.** Tunnel pin, "tunnels follow the pads" (shared
@@ -47,7 +57,7 @@ stagger, a live position readout, and Reset marker to the first node.
 
 Every movable pad carries four buttons on its own rim, in this order along the arc
 (`omni-pad-sat-${hand}-${role}`): **1 release** (detach the pad, unchanged), **2 speed**,
-**3 activate**, **4 settings**. Angles (clockwise from 12): LH 90/120/150/180, RH
+**3 activate**, **4 settings**. (V168: the pad's centre cell is a fifth control on lh / rh only: the **Fire** button, `omni:hand-fire`; see below.) Angles (clockwise from 12): LH 90/120/150/180, RH
 270/240/210/180, OmniHand 90/60/30/0, Conscious 270/300/330/0; same rim radius and
 button size (40 px desktop / 34 px mobile) as before. The old inert "undefined" slot and
 the Dash toggle are gone.
@@ -86,11 +96,23 @@ everything equals V164. The old dash multiplier is not migrated into speed.
 this panel on that hand's view; pressing it while that view is open closes the panel
 (`omni:hands-panel-state` / `omni:hands-panel-close`).
 
+## The centre Fire button (V168, lh and rh only, `ui/MovementPad.js`)
+
+The centre cell of the lh / rh cross is a round button (`omni-pad-fire-${hand}`) that dispatches
+`omni:hand-fire {hand}`: lh shoots out the current flowchart element kind, rh displays the current
+payload (`systems/OmniFlowFire.js`). Ready glow when it has ammo (dim when empty or when the master
+toggle is off), the ammo name small beneath the glyph, `aria-label` "Fire <ammo>", focusable, Space /
+Enter when focused (no global key is bound). OmniHand and ConsciousHand keep their inert centre
+label: **Fire is undefined for those two.** The radial ⟐1 pages are real on lh (flowchart element
+kinds) and rh (DataTypes, Color, Texture, Material -> `ui/OmniPayloadPanel.js`); the top hands' ⟐1
+stays blank.
+
 ## Persistence (`utils/OmniHandsSettings.js`)
 
 `localStorage` key `omni:hands-settings-v1`, stamped `_v: 1` (V165 added `speed` on all hands and
 `magazine`, `ammo`, `maxActive`, `anchorMode`, `anchorCount` on lh/rh without a bump: new fields
-merge over DEFAULTS), per-hand
+merge over DEFAULTS; V168 the same way: lh `elementKind` / `chainEnabled` / `fireDistance` /
+`maxAlive`, rh `fireDistance` / `maxAlive` / `defaultWordDelayMs`), per-hand
 `{...DEFAULTS, ...saved}` merge with clamping (corrupt or out-of-range data falls
 back to defaults). Every write dispatches
 `omni:hands-settings-changed {hand, key, value}`. Consumers read the store at use
@@ -106,10 +128,11 @@ All four hands own a full-length, two-sided tunnel through the origin (`data/Omn
 ## Not built
 
 - ⦿ Orbiter is undefined on all four hands (DeveloperQueue item 38).
-- ⬢ radial tool lists are static placeholders; not configurable.
+- ⬢ radial tool lists are static placeholders (page ⟐2 everywhere; page ⟐1 on the top hands is blank), not configurable. Real: ⟐1 on lh / rh (V168).
+- Fire on OmniHand / ConsciousHand (undefined). Array / object payloads, per-word panels, the incoming "shot at the user" mode and flowchart execution (see OMNI_FLOW_FIRE_DESIGN.md).
 - Key rebinding (shown read-only).
 - Per-hand "follow the pads"; ConsciousHand stagger.
 - The perspective / scale / product / tier lists are data (`data/OmniDimensionalAxesData.js`), not panel settings.
 
-See DeveloperQueue item 48 for follow-ups. Related:
+See DeveloperQueue items 48 and 53 for follow-ups. Related:
 `docs/architecture/HAND_TOGGLE_CONTROL_DESIGN.md`, `CAMERA_MOVEMENT_OPTIONS_DESIGN.md`.

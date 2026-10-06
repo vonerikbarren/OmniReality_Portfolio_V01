@@ -53,6 +53,22 @@
  *   The V150-V164 inert "undefined" 3rd satellite is gone (replaced by activate).
  *
  * ─────────────────────────────────────────────────────────────────────────────
+ * Centre FIRE button (V168, lh and rh ONLY)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   The centre cell of the lh / rh cross is a real round button (id omni-pad-fire-${hand}):
+ *   dispatches omni:hand-fire { hand } (systems/OmniFlowFire.js). lh fires the current flowchart
+ *   ELEMENT KIND, rh displays the current PAYLOAD (utils/OmniPayloads.js); the glyph is lit
+ *   ("ready") when there is something to fire (lh always, rh with a current payload; dim
+ *   otherwise or when the flow master toggle is off) and the ammo name sits beneath it,
+ *   truncated. Fires on click (mouse, touch, and Space / Enter while the button has focus; it is
+ *   a real <button>, so no global key is bound and F / R / WASD / arrows are untouched). Pressed /
+ *   held feedback while the pointer is down. omnihand / conscious keep their inert centre label:
+ *   Fire is UNDEFINED for those two.
+ *   Listens: omni:payload-changed / -current, omni:hands-settings-changed (elementKind),
+ *   omni:flow-state, omni:flow-fire-master-changed, omni:hand-fire-feedback.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  * Aesthetic
  * ─────────────────────────────────────────────────────────────────────────────
  *
@@ -86,6 +102,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *
  *   omni:hand-activate     →  { hand }              (Activation satellite, all four hands)
+ *   omni:hand-fire         →  { hand }              (V168: centre Fire button, lh / rh only)
  *   omni:hand-ammo-cycle   →  { hand, dir }         (ammo chip, [ ] keys)
  *   omni:nav-select        →  { item }              (settings satellite -> ⟐OmniHands view)
  *   omni:hands-panel-close →  {}                    (settings satellite, panel already on this hand)
@@ -98,6 +115,7 @@
 import gsap from 'gsap'
 import * as THREE from 'three'
 import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
+import { getCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
 import { getEffectiveSpeed, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
 import HandSpeedPanel, { HAND_NAMES, formatSpeed } from './HandSpeedPanel.js'
 import {
@@ -197,6 +215,7 @@ const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'rig
 const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
 const CHIP_W = 64
 const CHIP_H = 16
+const FIRE_HANDS = ['lh', 'rh']   // V168: the centre cell is the Fire button on these two only
 const CHIP_HANDS = ['lh', 'rh']   // the ammo chip (beside Activate) exists on the two lower hands only
 
 function _clockOffset (clockDeg, r) {
@@ -641,6 +660,57 @@ ${_satRules(_SAT_GEOM)}
   letter-spacing   : 0.10em;
 }
 
+/* ── Centre FIRE button (V168, lh / rh) ────────────────────────────────────── */
+
+.pad-center.pad-fire {
+  place-self       : center;
+  box-sizing       : border-box;
+  width            : calc(var(--pad-cell) + 4px);
+  height           : calc(var(--pad-cell) + 4px);
+  margin           : -2px;
+  padding          : 0;
+  display          : flex;
+  flex-direction   : column;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 1px;
+  background       : radial-gradient(circle at 50% 38%, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 70%);
+  border           : 1.5px solid rgba(255, 255, 255, 0.45);
+  color            : var(--pad-text);
+  font-family      : var(--mono);
+  cursor           : pointer;
+  outline          : none;
+  position         : relative;
+  touch-action     : none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow       : 0 2px 4px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition       : background 0.10s ease, border-color 0.10s ease, box-shadow 0.12s ease, transform 0.08s ease, opacity 0.12s ease;
+}
+.pad-fire .pad-fire-glyph { font-size: 15px; line-height: 1; pointer-events: none; color: rgba(255,255,255,0.55); transition: color 0.12s, text-shadow 0.12s; }
+.pad-fire .pad-fire-ammo  {
+  font-size: 6px; line-height: 1; letter-spacing: 0.02em; max-width: 36px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; pointer-events: none; color: var(--pad-text-dim);
+}
+.pad-fire.is-ready { border-color: rgba(255, 255, 255, 0.95); box-shadow: 0 0 12px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.30), inset 0 0 8px rgba(255,255,255,0.14); }
+.pad-fire.is-ready .pad-fire-glyph { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+.pad-fire.is-empty { opacity: 0.5; border-style: dashed; }
+.pad-fire:hover { background: radial-gradient(circle at 50% 38%, rgba(255,255,255,0.22), rgba(255,255,255,0.08) 70%); }
+.pad-fire:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.9); outline-offset: 2px; }
+.pad-fire.is-pressed {
+  background: rgba(255,255,255,0.30); transform: scale(0.94);
+  box-shadow: 0 0 18px rgba(255,255,255,0.55), inset 0 2px 5px rgba(0,0,0,0.30);
+}
+.pad-fire.is-fired { animation: pad-fire-fired 0.4s ease; }
+.pad-fire.is-nope  { animation: pad-fire-nope 0.5s ease; }
+@keyframes pad-fire-fired {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.9), 0 0 12px rgba(255,255,255,0.35); }
+  100% { box-shadow: 0 0 0 14px rgba(255,255,255,0), 0 0 12px rgba(255,255,255,0.35); }
+}
+@keyframes pad-fire-nope {
+  0%, 100% { box-shadow: none; }
+  30%      { box-shadow: 0 0 0 2px rgba(255,110,110,0.95), 0 0 14px rgba(255,110,110,0.6); }
+}
+
 /* ── TBD pad ───────────────────────────────────────────────────────────────── */
 
 .omni-pad--tbd .pad-cross {
@@ -752,6 +822,9 @@ export default class MovementPad {
     this._ammoActive     = { lh: 0, rh: 0 }                        // hand-fired behaviours currently held
     this._handsPanel     = { open: false, hand: null }             // ⟐OmniHands state (settings button lit state)
     this._ammoHand       = 'lh'                                    // which lower hand [ ] cycle
+    this._fireEls        = {}                                      // V168: centre Fire buttons (lh / rh)
+    this._flowOn         = true                                    // flow master toggle (omni:flow-fire-master-changed)
+    try { this._flowOn = localStorage.getItem('omni:flow-fire-master-v1') !== '0' } catch (_) {}
 
     // Released/detached pads — "released from its location so we can
     // move it around the space," one toggle per movable hand. The whole
@@ -803,6 +876,9 @@ export default class MovementPad {
       if (d.hand in this._ammoActive) { this._ammoActive[d.hand] = (d.active ?? []).length; this._refreshActivate(d.hand); this._refreshChip(d.hand) }
     }
     this._onAmmoFeedback = (e) => this._handleAmmoFeedback(e.detail ?? {})
+    this._onFireRefresh = () => FIRE_HANDS.forEach(h => this._refreshFire(h))
+    this._onFireMaster = (e) => { this._flowOn = !!e.detail?.enabled; this._onFireRefresh() }
+    this._onFireFeedback = (e) => this._handleFireFeedback(e.detail ?? {})
     this._onHandsPanelState = (e) => {
       const d = e.detail ?? {}
       this._handsPanel = { open: !!d.open, hand: d.hand ?? null }
@@ -870,6 +946,12 @@ export default class MovementPad {
     window.removeEventListener('omni:axinator-list', this._onAxinatorList)
     window.removeEventListener('omni:hand-ammo-state', this._onAmmoState)
     window.removeEventListener('omni:hand-ammo-feedback', this._onAmmoFeedback)
+    window.removeEventListener(PAYLOAD_CHANGED, this._onFireRefresh)
+    window.removeEventListener(PAYLOAD_CURRENT, this._onFireRefresh)
+    window.removeEventListener('omni:flow-state', this._onFireRefresh)
+    window.removeEventListener('omni:flow-fire-master-changed', this._onFireMaster)
+    window.removeEventListener('omni:hand-fire-feedback', this._onFireFeedback)
+    clearTimeout(this._fireTimers?.lh); clearTimeout(this._fireTimers?.rh)
     window.removeEventListener('omni:hands-panel-state', this._onHandsPanelState)
     window.removeEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
@@ -1011,6 +1093,7 @@ export default class MovementPad {
     if (!this._satEls[hand]) return
     if (key === 'speed') this._refreshSpeed(hand)
     if (key === 'ammo' || key === 'magazine') this._refreshChip(hand)
+    if (key === 'elementKind') this._refreshFire(hand)
   }
 
   _refreshSpeed (handId) {
@@ -1076,6 +1159,66 @@ export default class MovementPad {
       el.title = msg
       setTimeout(() => { delete el.dataset.hint; this._refreshChip(hand) }, 1600)
     }
+  }
+
+  // ── Centre Fire button (V168) ────────────────────────────────────────────────
+
+  _buildFireButton (handId) {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.id = `omni-pad-fire-${handId}`
+    btn.className = 'pad-center pad-fire'
+    btn.dataset.hand = handId
+    btn.innerHTML = '<span class="pad-fire-glyph">⟐</span><span class="pad-fire-ammo"></span>'
+    btn.addEventListener('contextmenu', (e) => e.preventDefault())
+    btn.addEventListener('pointerdown',   () => btn.classList.add('is-pressed'))
+    btn.addEventListener('pointerup',     () => btn.classList.remove('is-pressed'))
+    btn.addEventListener('pointercancel', () => btn.classList.remove('is-pressed'))
+    btn.addEventListener('pointerleave',  () => btn.classList.remove('is-pressed'))
+    btn.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'Enter') btn.classList.add('is-pressed') })
+    btn.addEventListener('keyup',   (e) => { if (e.code === 'Space' || e.code === 'Enter') btn.classList.remove('is-pressed') })
+    btn.addEventListener('blur', () => btn.classList.remove('is-pressed'))
+    btn.addEventListener('click', () => this._fire(handId))
+    this._fireEls[handId] = btn
+    this._refreshFire(handId)
+    return btn
+  }
+
+  _fire (handId) {
+    window.dispatchEvent(new CustomEvent('omni:hand-fire', { detail: { hand: handId } }))
+  }
+
+  /** What the centre button names: lh = the current flowchart element kind, rh = the current payload. */
+  _fireAmmo (handId) {
+    if (handId === 'lh') return { name: getHandSetting('lh', 'elementKind') || 'Process', ready: this._flowOn }
+    const p = getCurrentPayload()
+    return { name: p?.name ?? '', ready: !!p && this._flowOn }
+  }
+
+  _refreshFire (handId) {
+    const btn = this._fireEls[handId]
+    if (!btn) return
+    const { name, ready } = this._fireAmmo(handId)
+    btn.classList.toggle('is-ready', ready)
+    btn.classList.toggle('is-empty', !ready)
+    btn.querySelector('.pad-fire-ammo').textContent = name || 'no ammo'
+    const label = name || 'no ammo'
+    btn.setAttribute('aria-label', `Fire ${label}`)
+    btn.title = !this._flowOn ? 'Fire is switched off (flow master toggle)'
+      : handId === 'lh' ? `Fire — shoot a ${label} flowchart element at the target (or the HUD centre). Space / Enter when focused.`
+      : name ? `Fire — display "${label}" at the target (or the HUD centre). Space / Enter when focused.`
+        : 'Fire — no payload yet: RH radial ⟐1 > DataTypes creates one'
+  }
+
+  _handleFireFeedback ({ hand, kind }) {
+    const btn = this._fireEls[hand]
+    if (!btn) return
+    btn.classList.remove('is-fired', 'is-nope')
+    void btn.offsetWidth                       // restart the CSS animation
+    btn.classList.add(kind === 'fired' ? 'is-fired' : 'is-nope')
+    this._fireTimers = this._fireTimers ?? {}
+    clearTimeout(this._fireTimers[hand])
+    this._fireTimers[hand] = setTimeout(() => btn.classList.remove('is-fired', 'is-nope'), 600)
   }
 
   // ── Detach / release ─────────────────────────────────────────────────────────
@@ -1277,6 +1420,7 @@ export default class MovementPad {
   }
 
   _buildCenter (handId) {
+    if (FIRE_HANDS.includes(handId)) return this._buildFireButton(handId)
     const cfg    = PAD_CONFIGS[handId]
     const center = document.createElement('div')
     center.className = 'pad-center'
@@ -1580,6 +1724,11 @@ export default class MovementPad {
     window.addEventListener('omni:axinator-list', this._onAxinatorList)
     window.addEventListener('omni:hand-ammo-state', this._onAmmoState)
     window.addEventListener('omni:hand-ammo-feedback', this._onAmmoFeedback)
+    window.addEventListener(PAYLOAD_CHANGED, this._onFireRefresh)
+    window.addEventListener(PAYLOAD_CURRENT, this._onFireRefresh)
+    window.addEventListener('omni:flow-state', this._onFireRefresh)
+    window.addEventListener('omni:flow-fire-master-changed', this._onFireMaster)
+    window.addEventListener('omni:hand-fire-feedback', this._onFireFeedback)
     window.addEventListener('omni:hands-panel-state', this._onHandsPanelState)
     window.addEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
   }

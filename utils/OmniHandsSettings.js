@@ -33,6 +33,13 @@
  *   anchorMode   'nearest' | 'none'  how a two-node behaviour (Orbit, Follow...) gets its pair
  *   anchorCount  how many nearest nodes a multi-target behaviour receives
  *
+ * V168 additions (Fire = the centre button of the lh / rh pad, systems/OmniFlowFire.js):
+ *   lh:  elementKind  flowchart element the LeftHand fires (Terminator|Process|Decision|InputOutput|Connector|Loop)
+ *        chainEnabled consecutive LH-fired elements link into a chain
+ *   lh, rh:  fireDistance  units ahead of the camera for the HUD-centre fire point (2..60) when no node is targeted
+ *            maxAlive      fired elements / display anchors kept per hand (oldest removed first)
+ *   rh:  defaultWordDelayMs  word delay a NEW payload starts with in the payload panel
+ *
  * LogicalHand / CreativeHand axis-step values (px/py/pz, altitude, orbit) still live in
  * 'omni:admin:settings' (ui/CameraMovementOptionsPanel.js); speed COMPOSES with them:
  *   effective = admin step (or Global override) x hand speed (eased).
@@ -68,8 +75,10 @@ export const DEFAULT_MAGAZINE = {
 
 /** Pre-V163 values of the constants the systems used to hard-code (+ V165 speed / ammo). */
 export const DEFAULTS = {
-  lh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.lh, ammo: 'Orbit', maxActive: 8, anchorMode: 'nearest', anchorCount: 3 },
-  rh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.rh, ammo: 'Pulse', maxActive: 8, anchorMode: 'nearest', anchorCount: 3 },
+  lh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.lh, ammo: 'Orbit', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
+               elementKind: 'Process', chainEnabled: true, fireDistance: 10, maxAlive: 40 },
+  rh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.rh, ammo: 'Pulse', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
+               fireDistance: 10, maxAlive: 40, defaultWordDelayMs: 450 },
   conscious: { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.conscious.pos },
   omnihand:  { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.omnihand.pos, stagger: true },
 }
@@ -83,11 +92,15 @@ export const LIMITS = {
   speed:          { min: 1, max: 25 },      // V166: hard limit 25x (V165: 10x)
   maxActive:      { min: 1, max: 32 },
   anchorCount:    { min: 1, max: 8 },
+  fireDistance:   { min: 2, max: 60 },      // V168: HUD-centre fire point (units ahead of the camera)
+  maxAlive:       { min: 1, max: 200 },     // V168: fired flow elements / display anchors kept per hand
+  defaultWordDelayMs: { min: 50, max: 3000 },
 }
 
 /** Allowed values of the string fields that are enums. */
 export const ENUMS = {
   anchorMode: ['nearest', 'none'],
+  elementKind: ['Terminator', 'Process', 'Decision', 'InputOutput', 'Connector', 'Loop'],   // V168 (mirrors systems/OmniFlowFire.js FLOW_KINDS)
 }
 
 function sanitizeMagazine (value, def) {
