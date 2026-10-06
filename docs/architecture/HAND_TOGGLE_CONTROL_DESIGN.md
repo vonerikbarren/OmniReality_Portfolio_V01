@@ -268,7 +268,7 @@ depend on the wallpaper/backdrop for contrast.
 Each movable pad's rim now holds four buttons: Release, Speed, Activation, Settings (the
 old Dash toggle and the inert reserved slot are gone). Hand-specific meaning:
 
-| Hand | Speed (slider 1x-10x) | Activation (the hand's FX) |
+| Hand | Speed (slider 1x-25x) | Activation (the hand's FX) |
 |---|---|---|
 | LogicalHand (`lh`) | walking speed | fires the loaded node-behaviour "ammo" at the target |
 | CreativeHand (`rh`) | altitude + orbit speed | same, with its own default magazine |
@@ -280,3 +280,12 @@ Tunnel visibility precedence is now explicit OFF (Activation) > pin > pad-follow
 CreativeHand: the "expressive" ones) are a proposal the user can edit, not a decided
 taxonomy. Speed is eased and composes with the admin step values. Settings opens
 ⟐OmniHands on the hand's own view. Full detail: `docs/omniproducts/OMNIHANDS_DESIGN.md`.
+
+## V166 revision (2026-10-06, four hand tunnels, origin roots, Speed button)
+
+- **All four hands have a tunnel; the top two are full length.** OmniHand 11↔5 and ConsciousHand 2↔8 are no longer one-sided: they run through the origin (cylinder + grid from -len to +len, DoubleSide, inert, so the camera and pads pass straight through). LogicalHand 7↔1 and CreativeHand 4↔10 are new view-only tunnels (hours are my choice; `CLOCK.lh` / `CLOCK.rh`). The old `d2_8` / `d11_5` clock diagonals and their group are removed (they would coincide with the hand tunnels); saved visibility for them is ignored.
+- **Origin roots.** Node 0 of every hand tunnel is a root at exactly 0,0,0 (`⟐ConsciousHand`, `⟐OmniHand`, `⟐LogicalHand`, `⟐CreativeHand`; `def.originRoot`), nested shells 320 / 280 / 240 / 200 plus one small shared core, labels stacked by rank. The real nodes follow at s = i x NODE_SPACING (800). Marker default, readout, pad clamp, TakeMeThere (root: arrive 160 back, inside the smallest shell) and the saved state (`omni:dimension-axes-v3`, +1 migration) all use the new indexing.
+- **Colours / transparency.** ConsciousHand violet, OmniHand white (+ contrast under-pass), LogicalHand green, CreativeHand red/green/blue grid. Tunnel body/grid opacity x 0.7 (body 0.07, grid 0.434), node shells x 0.63; this replaces V164's 1.3, which had read "lower the transparency by 30%" the other way.
+- **Vertical (Υ) axis.** OmniHand exactly 8 tiers, ConsciousHand exactly 10 scale degrees (placeholders after the real ones), spacing 160 -> 320.
+- **Speed.** Slider limit 10x -> 25x; axis step tweens floor at 0.04 s, hold-repeat floor stays 60 ms.
+- **Speed button fix (found in real Chromium).** (1) The closed radial menus left invisible `pointer-events:auto` discs over the pads (visible at 768 px and on phones): now `visibility:hidden` while closed. (2) The popover itself ignored the mouse because `#omni-ui` is `pointer-events:none` and it never set `auto`. (3) Satellites were `pointer-events:auto` at rest and tied with the minimap at z 42: now none at rest and z 47. (4) On phones the cross-pad buttons overlapped: own mobile arcs. Not fixed by design: WindowManager panels (z 200+, e.g. the Inspector) still cover the left pads' buttons.

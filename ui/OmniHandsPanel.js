@@ -14,7 +14,7 @@
  *   all four        Show pad on start       utils/OmniHandsSettings.js  padOnStart (applied in main.js)
  *                   Pad docked / detached   omni:pad-detach-state  /  omni:pad-redock {hand}  (ui/MovementPad.js)
  *                   Reset this hand's settings (not the marker position or the pad dock state)
- *   all four (V165) Speed  1x..10x slider  -> utils/OmniHandsSettings.js `speed` (the SAME value as the
+ *   all four (V165) Speed  1x..25x slider  -> utils/OmniHandsSettings.js `speed` (the SAME value as the
  *                   pad's » Speed popover, ui/HandSpeedPanel.js; systems follow the eased value in
  *                   utils/OmniHandSpeed.js). The V163 "Dash multiplier" row was removed (Dash is gone).
  *   lh, rh (V165)   Ammo: the magazine (checkbox grid of all 34 behaviours by class, Load all / Clear /
@@ -57,7 +57,7 @@ export const HAND_META = {
   omnihand:  { product: '⟐OmniHand',      corner: 'top-left',     role: 'App Launcher', keys: 'Numpad − / + primary axis, / and * tier (Υ)' },
 }
 const ORDER = ['lh', 'rh', 'conscious', 'omnihand']
-const SYMBOL = { conscious: 'Δ', omnihand: '⟐' }
+const SYMBOL = { conscious: 'Δ', omnihand: '⟐', lh: 'Λ', rh: 'Ψ' }   // V166: lh / rh tunnel symbols (data/OmniDimensionalAxesData.js)
 
 const ADMIN_KEY = 'omni:admin:settings'
 const ADMIN_STEP_DEFAULTS = { px: 1, py: 1, pz: 1, altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1, globalSpeed: false, globalValue: 1 }
@@ -386,6 +386,7 @@ export default class OmniHandsPanel {
     if (hand === 'lh') this._viewLogical(body)
     if (hand === 'rh') this._viewCreative(body)
     if (hand === 'lh' || hand === 'rh') this._viewAmmo(body, hand)
+    if (hand === 'lh' || hand === 'rh') this._viewTunnel(body, hand)   // V166: view-only tunnel pin
     if (hand === 'conscious' || hand === 'omnihand') this._viewAxis(body, hand)
     this._viewPad(body, hand)
 
@@ -426,7 +427,7 @@ export default class OmniHandsPanel {
       conscious: 'Divides the step travel / relative-axis durations and the hold-repeat interval (never under 60 ms).',
       omnihand: 'Divides the step travel / relative-axis durations and the hold-repeat interval (never under 60 ms).',
     }[hand]
-    g.appendChild(el('div', 'omh-note', `${meaning} 1× = the pre-V165 behaviour; hard limit 10×. Changes ease in over about 0.15 s.`))
+    g.appendChild(el('div', 'omh-note', `${meaning} 1× = the pre-V165 behaviour; hard limit 25×. Changes ease in over about 0.15 s.`))
     this._sync.push(() => {
       const v = Number(getHandSetting(hand, 'speed')) || 1
       if (Number(slider.value) !== v) slider.value = String(v)
@@ -550,14 +551,22 @@ export default class OmniHandsPanel {
     })
   }
 
-  _viewAxis (body, hand) {
+  /** V166: LogicalHand / CreativeHand tunnels are VIEW ONLY (7↔1 and 4↔10): shown while the pad is
+   *  open (and "follow the pads" is on), or pinned here. Their ✦ button fires ammo, not the tunnel. */
+  _viewTunnel (body, hand) {
     const sym = SYMBOL[hand]
-    const g = this._group(body, `${sym} Tunnel`)
-    g.appendChild(el('div', 'omh-note', 'The pad\'s ◎ Activation button is the primary control: pressed while visible = explicit OFF (until the pad is next toggled); pressed while hidden = explicit ON (this pin). Precedence: OFF > pin > pad-follow.'))
+    const g = this._group(body, `${sym} Tunnel (view only)`)
+    g.appendChild(el('div', 'omh-note', hand === 'lh'
+      ? 'The 7↔1 o\'clock tunnel (green), root + Mechanic / Relational / Transformational nodes (placeholders). Shown while this pad is open, or pinned here. Not steppable: the pad still walks the camera.'
+      : 'The 4↔10 o\'clock tunnel (red / green / blue grid), root + Temporal / Emergent / Expressive nodes (placeholders). Shown while this pad is open, or pinned here. Not steppable: the pad still flies the camera.'))
+    this._tunnelPinRows(g, hand)
+  }
+
+  _tunnelPinRows (g, hand) {
     this._toggleRow(g, 'Pin this tunnel visible', 'pin',
       () => !!this._tunnels.get(hand)?.manual,
       (on) => window.dispatchEvent(new CustomEvent('omni:axinator-tunnel-visible-set', { detail: { id: hand, visible: on } })))
-    this._toggleRow(g, 'Tunnels follow the pads (shared by both top hands)', 'follow',
+    this._toggleRow(g, 'Tunnels follow the pads (shared by all four hands)', 'follow',
       () => this._followPads,
       (on) => window.dispatchEvent(new CustomEvent('omni:dimension-axes-visible-set', { detail: { visible: on } })))
     const vis = el('div', 'omh-readout')
@@ -569,6 +578,13 @@ export default class OmniHandsPanel {
         ? `Tunnel now: ${t.visible ? 'visible' : 'hidden'}${t.visible && !t.manual ? ' (pad open)' : ''}${t.off ? ' (hidden by ◎ Activation until the pad is toggled)' : ''}`
         : 'Tunnel now: unknown (axes system not reporting)'
     })
+  }
+
+  _viewAxis (body, hand) {
+    const sym = SYMBOL[hand]
+    const g = this._group(body, `${sym} Tunnel`)
+    g.appendChild(el('div', 'omh-note', 'The pad\'s ◎ Activation button is the primary control: pressed while visible = explicit OFF (until the pad is next toggled); pressed while hidden = explicit ON (this pin). Precedence: OFF > pin > pad-follow.'))
+    this._tunnelPinRows(g, hand)
 
     const m = this._group(body, `${sym} Motion`)
     this._numRow(m, 'Step travel duration', 'travelDuration', this._storeNum(hand, 'travelDuration', 0.05, 's'))
@@ -580,7 +596,7 @@ export default class OmniHandsPanel {
         (on) => setHandSetting('omnihand', 'stagger', on))
     }
     this._numRow(m, 'Clock hour (direction)', 'clockHour', this._storeNum(hand, 'clockHour', 0.5, 'o\'clock'))
-    m.appendChild(el('div', 'omh-note', 'Durations and hold-repeat apply on the next step; the clock hour re-aims the tunnel immediately (12 = away from you, 3 = right). Defaults: 0.55 s / 0.45 s / 450 ms, ' + getDefault(hand, 'clockHour') + ' o\'clock.'))
+    m.appendChild(el('div', 'omh-note', 'Durations and hold-repeat apply on the next step; the clock hour re-aims the tunnel immediately (12 = away from you, 3 = right; the tunnel runs through the origin, so the opposite hour is its other end). Defaults: 0.55 s / 0.45 s / 450 ms, ' + getDefault(hand, 'clockHour') + ' o\'clock.'))
 
     const p = this._group(body, `${sym} Marker`)
     const pos = el('div', 'omh-readout')
@@ -592,7 +608,7 @@ export default class OmniHandsPanel {
         ? `At: ${d.activeNode.name} (${d.primaryIndex + 1}/${d.primaryCount}) · Υ ${d.activeLevel.name} (${d.relativeIndex + 1}/${d.relativeCount})`
         : 'At: — (moves once the axes report a position)'
     })
-    const rb = el('button', 'omh-btn', 'Reset marker to the first node')
+    const rb = el('button', 'omh-btn', 'Reset marker to the root (origin)')
     rb.dataset.action = 'reset-marker'
     rb.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:dimension-axes-reset', { detail: { hand } })))
     p.appendChild(rb)
@@ -683,9 +699,8 @@ export default class OmniHandsPanel {
     resetHand(hand)
     if (hand === 'lh') writeAdmin({ px: 1, py: 1, pz: 1 })
     if (hand === 'rh') writeAdmin({ altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1 })
-    if (hand === 'conscious' || hand === 'omnihand') {
-      window.dispatchEvent(new CustomEvent('omni:axinator-tunnel-visible-set', { detail: { id: hand, visible: false } }))
-    }
+    // V166: all four hands own a tunnel now; resetting unpins it
+    window.dispatchEvent(new CustomEvent('omni:axinator-tunnel-visible-set', { detail: { id: hand, visible: false } }))
     this._refresh()
   }
 

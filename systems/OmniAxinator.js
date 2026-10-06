@@ -10,6 +10,12 @@
  * pads drive, see systems/OmniDimensionalAxes.js, which is now the thin
  * hand-driven adapter around one of these).
  *
+ * V166: the four HAND tunnels (OmniHand 11<->5, Conscious 2<->8, LogicalHand 7<->1,
+ * CreativeHand 4<->10) are full length and two-sided through the origin with an ORIGIN ROOT:
+ * def.originRoot puts node 0 at exactly 0,0,0 (its own shell radius, so the four roots nest
+ * concentrically) and node i at s = i x NODE_SPACING along the tunnel direction. Only the two
+ * top hands are steppable; LogicalHand / CreativeHand are view only.
+ *
  * Reusable: any system can do
  *     new OmniAxinator(ctx, { name, storeKey, tunnels: [def, ...] })
  * and the same machinery serves a different channel. Tunnel def shape is
@@ -17,8 +23,8 @@
  * (the user approved them): GEO_SCALE 5, NODE_SPACING 800, NODE_RADIUS 320,
  * TUNNEL_RADIUS 220.
  *
- * Style (V160): tunnel body/grid are grey (single constant TUNNEL_COLOR) with
- * opacities that read on a white AND a black background. Node shells are
+ * Style (V160): tunnel body/grid are grey (single constant TUNNEL_COLOR, unless the def sets
+ * tunnelColor / tunnelColors, V166) with opacities that read on a white AND a black background. Node shells are
  * silver/white with a dark second outline. The tunnel's accent colour is used
  * only for the marker, relative column, ticks and label borders. Labels are
  * canvas sprites whose WORLD size is recomputed every frame from the distance
@@ -96,9 +102,10 @@ const GRID_LONGITUDES   = 24
 const RING_SEGMENTS     = 48
 const AXIS_Y            = 0
 
-const REL_STEP          = 32 * GEO_SCALE   // V161: was 14 (user: vertical-axis contexts further apart)
-const REL_COLUMN_RADIUS = 14 * GEO_SCALE
-const REL_COLUMN_PAD    = 8 * GEO_SCALE
+export const REL_STEP   = 64 * GEO_SCALE   // V166: 320 (was 160 in V161-V165: "double spread" vertical nodes); V161 was 14 -> 32
+export const REL_COLUMN_RADIUS = 14 * GEO_SCALE
+const REL_COLUMN_PAD    = 16 * GEO_SCALE   // V166: doubled with REL_STEP so the column still overhangs its end ticks by the same proportion
+const MIN_STEP_S        = 0.04             // V166: a step tween never gets shorter than this (25x speed would give 0.018 s)
 
 export const TRAVEL_DURATION = 0.55
 export const REL_DURATION    = 0.45
@@ -111,11 +118,30 @@ const TUNNEL_BODY_OPACITY = 0.10               // V159 white was 0.05 / 0.38; gr
 const TUNNEL_GRID_OPACITY = 0.62
 
 /** Per-tunnel opacity multiplier: def.opacityScale (default 1) x the base
- *  constants above, clamped to 1. V164: the two hand tunnels carry
- *  opacityScale 1.3 ("lower the transparency by 30%" read literally =
- *  30% more opaque). Set it to 0.7 on the defs for the opposite reading. */
+ *  constants above, clamped to 1. V164 read "lower the transparency by 30%" literally
+ *  (opacityScale 1.3, more opaque); V166 resolved it the other way: the four hand tunnels
+ *  carry opacityScale 0.7 (body 0.07, grid 0.434), "barely seen but known to be there". */
 function tunnelBodyOpacity (def) { return Math.min(1, TUNNEL_BODY_OPACITY * (def?.opacityScale ?? 1)) }
 function tunnelGridOpacity (def) { return Math.min(1, TUNNEL_GRID_OPACITY * (def?.opacityScale ?? 1)) }
+/** V166: node shell multiplier (fill + silver edge + dark outline base values; the glow /
+ *  pulse / hover additions are NOT scaled so the active node still reads). Hand tunnels:
+ *  0.63 = the tunnel's 0.7 x 0.9 ("nodes 10% more transparent than the tunnel itself"). */
+function nodeOpacityScale (def) { return def?.nodeOpacityScale ?? 1 }
+
+// V166 contrast companion: light grid lines (white OmniHand tunnel, the light segments of the
+// RGB tunnel) vanish on a white wallpaper, so def.contrastLines adds a near-black under-pass
+// of just those segments at CONTRAST_FRAC of the coloured grid opacity, drawn just below.
+const CONTRAST_COLOR = 0x111111
+export const CONTRAST_FRAC = 0.35
+const LIGHT_LUMA = 0.6                 // Rec.709 luma above which a segment counts as "light"
+const lumaOf = (c) => {
+  const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+// V166 origin roots: the four hand tunnels' root labels share the origin, so they stack upward
+// (rank among the currently shown ones) by one label height each.
+const ROOT_LABEL_GAP = 1.08
 
 const NODE_FILL_COLOR     = 0xbfbfbf           // silver fill
 const NODE_EDGE_COLOR     = 0xc8c8c8           // silver edges
@@ -192,6 +218,12 @@ function esc (s) {
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 const hex = (n) => '#' + n.toString(16).padStart(6, '0')
+/** Node display text: def.labelPrefix + name, without doubling a glyph the name already starts with
+ *  (V166 root nodes are named '⟐OmniHand' / '⟐ConsciousHand'). */
+export const nodeText = (def, nd) => {
+  const pre = def?.labelPrefix ?? ''
+  return pre && nd.name.startsWith(pre) ? nd.name : pre + nd.name
+}
 
 /** Top-down clock hour -> world unit vector. 12 = -Z, 3 = +X. */
 export function clockToDir (hour) {
@@ -239,6 +271,13 @@ export function makeLabelSprite (text, colorHex, widthWorld, opts = {}) {
   c.fill()
   c.lineWidth = 9
   c.strokeStyle = colorHex
+  if (Array.isArray(opts.gradient) && opts.gradient.length > 1 && typeof c.createLinearGradient === 'function') {
+    const g = c.createLinearGradient(0, 0, W, 0)          // V166: RGB tunnel label border
+    if (g && typeof g.addColorStop === 'function') {
+      opts.gradient.forEach((col, i) => g.addColorStop(i / (opts.gradient.length - 1), col))
+      c.strokeStyle = g
+    }
+  }
   c.stroke()
   rr(2, 30)
   c.lineWidth = 2
@@ -308,7 +347,9 @@ export default class OmniAxinator {
     this._onHandActivate = (e) => {
       const hand = e.detail?.hand
       if (!hand) return
-      this._tunnels.forEach(t => { if (t.def.padHand === hand) this.activateTunnel(t.id) })
+      // V166: only steppable tunnels answer Activation. LogicalHand / CreativeHand share the
+      // event (their ✦ fires ammo, systems/OmniHandAmmo.js) and their tunnels are view only.
+      this._tunnels.forEach(t => { if (t.steppable && t.def.padHand === hand) this.activateTunnel(t.id) })
     }
     // V163 ⟐OmniHands: durations / stagger are read from utils/OmniHandsSettings.js
     // at use time (nothing to do here); the clock hour needs the tunnel re-aimed.
@@ -405,6 +446,7 @@ export default class OmniAxinator {
       })
     }
     this._root = null
+    this._core = null
     this._tunnels.clear()
     this._order = []
   }
@@ -470,6 +512,7 @@ export default class OmniAxinator {
       mats.forEach(m => { m.map?.dispose(); m.dispose() })
     })
     t.nodeRecs = []; t.ticks = []; t.labels = []; t.pickMeshes = []
+    t.contrastMat = null
     t.group = null; t.tunnelGroup = null; t.built = false
     this._ensureBuilt(t)
     this._setShown(t, wasOn)
@@ -571,7 +614,9 @@ export default class OmniAxinator {
     const center = this._nodeCenter(t, idx, new THREE.Vector3())
     const fwd = t.dir.clone()
     if (Math.abs(fwd.y) > 0.98) fwd.set(0.001, Math.sign(fwd.y) || 1, 0.001).normalize()
-    const ARRIVE_BACK = 40, ARRIVE_UP = 6, PIVOT_AHEAD = 4
+    // V166: the origin root shares 0,0,0 with the other hands' roots: arrive 160 back along the
+    // tunnel (inside the smallest root shell, 200) instead of 40 so the camera is not on top of them.
+    const ARRIVE_BACK = (t.def.originRoot && idx === 0) ? 160 : 40, ARRIVE_UP = 6, PIVOT_AHEAD = 4
     const dest = center.clone().addScaledVector(fwd, -ARRIVE_BACK)
     dest.y += ARRIVE_UP
     const pivot = dest.clone().addScaledVector(fwd, PIVOT_AHEAD)
@@ -597,6 +642,11 @@ export default class OmniAxinator {
   // ── Registry / visibility ───────────────────────────────────────────────────
 
   _register (def, saved) {
+    // V166: hard cap on the relative levels (OmniHand 8, Conscious 10): stepping, the column and
+    // every readout all derive from def.levels, so trimming it here limits them all.
+    if (Array.isArray(def.levels) && Number.isInteger(def.maxLevels) && def.levels.length > def.maxLevels) {
+      def = { ...def, levels: def.levels.slice(0, def.maxLevels) }
+    }
     const n = def.nodes.length
     const twoSided = !!def.twoSided
     const steppable = !!(def.levels && def.levels.length)
@@ -660,7 +710,8 @@ export default class OmniAxinator {
 
   _summary (t) {
     return {
-      id: t.id, title: t.def.title, symbol: t.def.symbol, color: t.def.color,
+      id: t.id, title: t.def.title, symbol: t.def.symbol, color: t.def.color, swatch: t.def.swatch ?? null,
+      steppable: t.steppable,
       visible: t.on, manual: t.manual, auto: t.on && !t.manual, off: !!t.off,
       group: t.def.group ?? 'other', padHand: t.def.padHand ?? null,
     }
@@ -757,6 +808,7 @@ export default class OmniAxinator {
 
   /** Signed distance along the tunnel direction of primary position p (may be fractional). */
   _sOf (t, p) {
+    if (t.def.originRoot) return p * NODE_SPACING   // V166: node 0 = root at 0,0,0; node i at i x 800
     return t.twoSided
       ? (p - (t.def.nodes.length - 1) / 2) * NODE_SPACING
       : NODE_RADIUS + p * NODE_SPACING      // first node's near surface touches the origin
@@ -774,6 +826,11 @@ export default class OmniAxinator {
     return (j - (t.def.levels.length - 1) / 2) * t.def.relDir * REL_STEP
   }
 
+  /** Shell radius of node i: V166 origin roots use def.rootRadius (distinct per tunnel). */
+  _nodeRadius (t, i) {
+    return (t.def.originRoot && i === 0) ? (t.def.rootRadius ?? NODE_RADIUS) : NODE_RADIUS
+  }
+
   _buildTunnel (t) {
     const def = t.def
     const n = def.nodes.length
@@ -783,70 +840,122 @@ export default class OmniAxinator {
     t.group = group
 
     // ── Tunnel: faint cylinder body + grid lines, built along local +Y then
-    //    rotated so +Y lies on this tunnel's direction. Two-sided: -len..+len.
+    //    rotated so +Y lies on this tunnel's direction. Two-sided: -len..+len
+    //    (V166 hand tunnels: the same length on both sides of the origin root).
     let maxS = 0
     for (let i = 0; i < n; i++) maxS = Math.max(maxS, Math.abs(this._sOf(t, i)))
     const len = maxS + NODE_RADIUS + TUNNEL_END_PAD
     const y0 = t.twoSided ? -len : 0
+    t.extent = { min: y0, max: len }
     const tunnel = new THREE.Group()
     tunnel.position.y = AXIS_Y
     tunnel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), t.dir)
     t.tunnelGroup = tunnel
 
+    const baseColor = def.tunnelColor ?? TUNNEL_COLOR
+    const palette = Array.isArray(def.tunnelColors) && def.tunnelColors.length ? def.tunnelColors : null
     const span = len - y0
     const bodyGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, span, GRID_LONGITUDES * 2, 1, true)
     bodyGeo.translate(0, y0 + span / 2, 0)
     t.bodyMat = new THREE.MeshBasicMaterial({
-      color: TUNNEL_COLOR, transparent: true, opacity: tunnelBodyOpacity(def), side: THREE.DoubleSide, depthWrite: false,
+      color: baseColor, transparent: true, opacity: tunnelBodyOpacity(def), side: THREE.DoubleSide, depthWrite: false,
     })
     tunnel.add(new THREE.Mesh(bodyGeo, t.bodyMat))
 
+    // Grid segments: [x0,y0,z0, x1,y1,z1] + the colour of each segment. Longitudes cycle the palette
+    // by index, rings cycle it along the length (single-colour tunnels: one colour).
     const verts = []
+    const segColor = []
+    const longitudeColor = (i) => palette ? palette[i % palette.length] : baseColor
+    const ringColor = (k) => palette ? palette[((k % palette.length) + palette.length) % palette.length] : baseColor
     for (let i = 0; i < GRID_LONGITUDES; i++) {
       const a = (i / GRID_LONGITUDES) * Math.PI * 2
       const x = Math.cos(a) * TUNNEL_RADIUS, z = Math.sin(a) * TUNNEL_RADIUS
       verts.push(x, y0, z, x, len, z)
+      segColor.push(longitudeColor(i))
     }
     const yStart = t.twoSided ? -Math.floor(len / GRID_RING_STEP) * GRID_RING_STEP : 0
-    for (let y = yStart; y <= len; y += GRID_RING_STEP) {
+    for (let y = yStart, k = 0; y <= len; y += GRID_RING_STEP, k++) {
       for (let i = 0; i < RING_SEGMENTS; i++) {
         const a0 = (i / RING_SEGMENTS) * Math.PI * 2
         const a1 = ((i + 1) / RING_SEGMENTS) * Math.PI * 2
         verts.push(Math.cos(a0) * TUNNEL_RADIUS, y, Math.sin(a0) * TUNNEL_RADIUS,
                    Math.cos(a1) * TUNNEL_RADIUS, y, Math.sin(a1) * TUNNEL_RADIUS)
+        segColor.push(ringColor(k))
       }
     }
     const gridGeo = new THREE.BufferGeometry()
     gridGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3))
-    t.gridMat = new THREE.LineBasicMaterial({ color: TUNNEL_COLOR, transparent: true, opacity: tunnelGridOpacity(def), depthWrite: false })
+    if (palette) {
+      const cols = new Float32Array(segColor.length * 6)
+      const c = new THREE.Color()
+      segColor.forEach((hx, i) => {
+        c.setHex(hx)
+        for (let v = 0; v < 2; v++) { cols[i * 6 + v * 3] = c.r; cols[i * 6 + v * 3 + 1] = c.g; cols[i * 6 + v * 3 + 2] = c.b }
+      })
+      gridGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+    }
+    t.gridMat = new THREE.LineBasicMaterial({
+      color: palette ? 0xffffff : baseColor, vertexColors: !!palette,
+      transparent: true, opacity: tunnelGridOpacity(def), depthWrite: false,
+    })
     tunnel.add(new THREE.LineSegments(gridGeo, t.gridMat))
+
+    // V166 contrast companion: near-black copy of only the LIGHT segments, just below the grid.
+    t.contrastMat = null
+    if (def.contrastLines) {
+      const cv = []
+      segColor.forEach((hx, i) => { if (lumaOf(hx) >= LIGHT_LUMA) cv.push(...verts.slice(i * 6, i * 6 + 6)) })
+      if (cv.length) {
+        const cGeo = new THREE.BufferGeometry()
+        cGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cv), 3))
+        t.contrastMat = new THREE.LineBasicMaterial({
+          color: CONTRAST_COLOR, transparent: true, opacity: tunnelGridOpacity(def) * CONTRAST_FRAC, depthWrite: false,
+        })
+        const cl = new THREE.LineSegments(cGeo, t.contrastMat)
+        cl.renderOrder = -1
+        tunnel.add(cl)
+        t.contrastSegments = cv.length / 6
+      }
+    }
     group.add(tunnel)
 
-    // ── Massive container nodes strung along the tunnel (shared geometry per tunnel).
-    const shellGeo = def.nodeShape === 'octahedron'
-      ? new THREE.OctahedronGeometry(NODE_RADIUS, 1)
-      : new THREE.IcosahedronGeometry(NODE_RADIUS, 1)
-    const edgeGeo = new THREE.EdgesGeometry(shellGeo)
+    // ── Massive container nodes strung along the tunnel (shared geometry per shell radius).
+    const geoCache = new Map()
+    const geosFor = (r) => {
+      if (!geoCache.has(r)) {
+        const shellGeo = def.nodeShape === 'octahedron'
+          ? new THREE.OctahedronGeometry(r, 1)
+          : new THREE.IcosahedronGeometry(r, 1)
+        geoCache.set(r, { shellGeo, edgeGeo: new THREE.EdgesGeometry(shellGeo) })
+      }
+      return geoCache.get(r)
+    }
     const tmp = new THREE.Vector3()
     const rootIdx = Number.isInteger(def.rootIndex) ? def.rootIndex : -1
+    const nodeScale = nodeOpacityScale(def)
+    const stackBase = this._maxRootRadius() + 10 * GEO_SCALE
     def.nodes.forEach((nd, i) => {
       const center = this._nodeCenter(t, i, tmp).clone()
       const isRoot = i === rootIdx
       const markRoot = isRoot && def.showRootMark !== false
+      const radius = this._nodeRadius(t, i)
+      const originRoot = !!(def.originRoot && i === 0)
+      const { shellGeo, edgeGeo } = geosFor(radius)
       const fillMat = new THREE.MeshBasicMaterial({
-        color: NODE_FILL_COLOR, transparent: true, opacity: NODE_FILL_OPACITY, side: THREE.DoubleSide, depthWrite: false,
+        color: NODE_FILL_COLOR, transparent: true, opacity: NODE_FILL_OPACITY * nodeScale, side: THREE.DoubleSide, depthWrite: false,
       })
       const fill = new THREE.Mesh(shellGeo, fillMat)
-      const edgeMat = new THREE.LineBasicMaterial({ color: NODE_EDGE_COLOR, transparent: true, opacity: NODE_EDGE_OPACITY, depthWrite: false })
+      const edgeMat = new THREE.LineBasicMaterial({ color: NODE_EDGE_COLOR, transparent: true, opacity: NODE_EDGE_OPACITY * nodeScale, depthWrite: false })
       const edges = new THREE.LineSegments(edgeGeo, edgeMat)
-      const darkMat = new THREE.LineBasicMaterial({ color: NODE_EDGE_DARK, transparent: true, opacity: NODE_DARK_OPACITY, depthWrite: false })
+      const darkMat = new THREE.LineBasicMaterial({ color: NODE_EDGE_DARK, transparent: true, opacity: NODE_DARK_OPACITY * nodeScale, depthWrite: false })
       const dark = new THREE.LineSegments(edgeGeo, darkMat)
       dark.scale.setScalar(1.012)
 
-      const label = makeLabelSprite(`${def.labelPrefix ?? ''}${nd.name}`, colorHex, LABEL_FIXED_NODE,
-        markRoot ? { sub: '⟐ ROOT' } : {})
+      const label = makeLabelSprite(nodeText(def, nd), colorHex, LABEL_FIXED_NODE,
+        { ...(markRoot ? { sub: '⟐ ROOT' } : {}), ...(Array.isArray(def.tunnelColors) ? { gradient: def.tunnelColors.map(hex) } : {}) })
       label.center.set(0.5, 0)                  // grows upward from just above the shell
-      label.position.set(0, NODE_RADIUS + 10 * GEO_SCALE, 0)
+      label.position.set(0, originRoot ? stackBase : radius + 10 * GEO_SCALE, 0)
 
       const g = new THREE.Group()
       g.position.copy(center)
@@ -854,8 +963,8 @@ export default class OmniAxinator {
 
       if (markRoot) {
         const crown = new THREE.Mesh(
-          new THREE.TorusGeometry(NODE_RADIUS * 1.06, 1.1 * GEO_SCALE, 8, 64),
-          new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.9, depthWrite: false })
+          new THREE.TorusGeometry(radius * 1.06, 1.1 * GEO_SCALE, 8, 64),
+          new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.9 * nodeScale, depthWrite: false })   // V166: follows the node scale (0.57 on hand tunnels)
         )
         crown.rotation.x = Math.PI / 2
         g.add(crown)
@@ -868,9 +977,9 @@ export default class OmniAxinator {
       }
       group.add(g)
       t.nodeRecs.push({
-        group: g, fillMat, edgeMat, darkMat, labelMat: label.material, glow: 0, pulse: 0, hov: 0, appear: 0, isRoot,
+        group: g, fillMat, edgeMat, darkMat, labelMat: label.material, glow: 0, pulse: 0, hov: 0, appear: 0, isRoot, radius, originRoot,
       })
-      t.labels.push({ sprite: label, node: t.nodeRecs[i], kind: 'node' })
+      t.labels.push({ sprite: label, node: t.nodeRecs[i], kind: 'node', stack: originRoot, baseY: stackBase })
     })
 
     // ── Steppable tunnels: primary marker + relative column.
@@ -880,15 +989,55 @@ export default class OmniAxinator {
 
     // ── Pick spheres: the ONLY raycastable objects. Added after makeInert().
     if (this.opts.pick) {
-      const pickGeo = new THREE.SphereGeometry(NODE_RADIUS, 16, 12)
+      const pickCache = new Map()
       const pickMat = new THREE.MeshBasicMaterial({ visible: false })
       t.nodeRecs.forEach((rec, i) => {
-        const pm = new THREE.Mesh(pickGeo, pickMat)
+        if (!pickCache.has(rec.radius)) pickCache.set(rec.radius, new THREE.SphereGeometry(rec.radius, 16, 12))
+        const pm = new THREE.Mesh(pickCache.get(rec.radius), pickMat)
         pm.userData.omniAxinatorPick = { tunnelId: t.id, nodeIndex: i }
         rec.group.add(pm)
         t.pickMeshes.push(pm)
       })
     }
+
+    if (def.originRoot) this._ensureOriginCore()
+  }
+
+  /** Largest origin-root shell radius among the registered tunnels (label stack base). */
+  _maxRootRadius () {
+    let m = NODE_RADIUS
+    this._tunnels.forEach(t => { if (t.def.originRoot) m = Math.max(m, t.def.rootRadius ?? NODE_RADIUS) })
+    return m
+  }
+
+  /** V166: ONE small shared marker at 0,0,0 so the nested roots read as a single meeting point
+   *  (white core + dark ring: visible on a white and on a black wallpaper). Its opacity follows
+   *  the most-grown origin-root tunnel (see _syncOriginCore). */
+  _ensureOriginCore () {
+    if (this._core) return
+    const g = new THREE.Group()
+    g.name = `OmniAxinator:${this.opts.name}:origin-core`
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+    const ringMat = new THREE.MeshBasicMaterial({ color: CONTRAST_COLOR, transparent: true, opacity: 0, depthWrite: false })
+    const core = new THREE.Mesh(new THREE.SphereGeometry(5 * GEO_SCALE, 16, 12), coreMat)
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(9 * GEO_SCALE, 0.6 * GEO_SCALE, 6, 48), ringMat)
+    ring.rotation.x = Math.PI / 2
+    g.add(core, ring)
+    g.visible = false
+    makeInert(g)
+    this._root.add(g)
+    this._core = { group: g, coreMat, ringMat }
+  }
+
+  _syncOriginCore () {
+    if (!this._core) return
+    let a = 0
+    this._tunnels.forEach(t => {
+      if (t.def.originRoot && t.built) a = Math.max(a, clamp(t.grow, 0, 1) * clamp(t.nodeRecs[0]?.appear ?? 0, 0, 1))
+    })
+    this._core.group.visible = a > 0.01
+    this._core.coreMat.opacity = 0.9 * a
+    this._core.ringMat.opacity = 0.8 * a
   }
 
   _buildMarkerAndColumn (t, group, colorHex) {
@@ -913,12 +1062,16 @@ export default class OmniAxinator {
     t.markerRing = ring
     group.add(marker)
 
+    // V166: REL_STEP doubled (320); the two hand columns share the origin, so def.relRadiusScale
+    // widens one of them and def.relLabelSide puts the level labels on opposite sides.
+    const colR = REL_COLUMN_RADIUS * (def.relRadiusScale ?? 1)
+    const side = def.relLabelSide === -1 ? -1 : 1
     const colH = (m - 1) * REL_STEP + REL_COLUMN_PAD * 2
     const column = new THREE.Group()
     const cv = []
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2
-      const x = Math.cos(a) * REL_COLUMN_RADIUS, z = Math.sin(a) * REL_COLUMN_RADIUS
+      const x = Math.cos(a) * colR, z = Math.sin(a) * colR
       cv.push(x, -colH / 2, z, x, colH / 2, z)
     }
     const colGeo = new THREE.BufferGeometry()
@@ -929,12 +1082,12 @@ export default class OmniAxinator {
     def.levels.forEach((lv, j) => {
       const y = this._yOf(t, j)
       const tickMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.4, depthWrite: false })
-      const tick = new THREE.Mesh(new THREE.TorusGeometry(REL_COLUMN_RADIUS * 1.15, 0.5 * GEO_SCALE, 6, 40), tickMat)
+      const tick = new THREE.Mesh(new THREE.TorusGeometry(colR * 1.15, 0.5 * GEO_SCALE, 6, 40), tickMat)
       tick.rotation.x = Math.PI / 2
       tick.position.y = y
       const lbl = makeLabelSprite(lv.name, hex(def.color), LABEL_FIXED_LEVEL)
-      lbl.center.set(0, 0.5)                    // left-aligned: grows away from the column
-      lbl.position.set(REL_COLUMN_RADIUS * 1.15 + 12 * GEO_SCALE, y, 0)
+      lbl.center.set(side > 0 ? 0 : 1, 0.5)     // grows away from the column (left side: right-aligned)
+      lbl.position.set(side * (colR * 1.15 + 12 * GEO_SCALE), y, 0)
       column.add(tick, lbl)
       const tk = { y, tickMat, labelMat: lbl.material, pulse: 0 }
       t.ticks.push(tk)
@@ -962,6 +1115,7 @@ export default class OmniAxinator {
     t.tunnelGroup.scale.y = Math.max(grow, 1e-4)
     t.bodyMat.opacity = tunnelBodyOpacity(t.def) * grow
     t.gridMat.opacity = tunnelGridOpacity(t.def) * grow
+    if (t.contrastMat) t.contrastMat.opacity = tunnelGridOpacity(t.def) * grow * CONTRAST_FRAC
 
     let near = -1
     if (t.steppable) {
@@ -987,6 +1141,7 @@ export default class OmniAxinator {
       })
     }
 
+    const ns = nodeOpacityScale(t.def)   // V166: base values scaled, glow / pulse / hover additions are not
     t.nodeRecs.forEach((nd, i) => {
       const target = i === near ? 1 : 0
       nd.glow += (target - nd.glow) * (delta > 0 ? k : 0)
@@ -995,12 +1150,13 @@ export default class OmniAxinator {
       nd.hov += (hovT - nd.hov) * (delta > 0 ? Math.min(1, delta * 14) : 0)
       const e = Math.max(nd.glow, nd.pulse, nd.hov * 0.8)
       const a = clamp(nd.appear, 0, 1)
-      nd.fillMat.opacity = (NODE_FILL_OPACITY + 0.14 * e) * a
-      nd.edgeMat.opacity = Math.min(1, (NODE_EDGE_OPACITY + 0.35 * e)) * a
-      nd.darkMat.opacity = Math.min(1, (NODE_DARK_OPACITY + 0.4 * e)) * a
+      nd.fillMat.opacity = (NODE_FILL_OPACITY * ns + 0.14 * e) * a
+      nd.edgeMat.opacity = Math.min(1, NODE_EDGE_OPACITY * ns + 0.35 * e) * a
+      nd.darkMat.opacity = Math.min(1, NODE_DARK_OPACITY * ns + 0.4 * e) * a
       nd.labelMat.opacity = Math.min(1, 0.85 + 0.15 * e) * a
       nd.group.scale.setScalar(Math.max(nd.appear, 1e-4) * (1 + 0.04 * nd.glow))
     })
+    this._syncOriginCore()
   }
 
   _labelFactors (cam) {
@@ -1015,6 +1171,7 @@ export default class OmniAxinator {
    *  width = frac * (visible world width at that distance), clamped. */
   _scaleLabels (t, cam, lf) {
     const p = this._tmpP
+    const rank = t.def.originRoot ? this._rootRank(t) : 0
     t.labels.forEach(lb => {
       const sp = lb.sprite
       const parent = lb.kind === 'node' ? lb.node.group : t.column
@@ -1032,7 +1189,21 @@ export default class OmniAxinator {
       }
       const local = w / ps
       sp.scale.set(local, local * sp.userData.aspect, 1)
+      // V166: the origin roots' labels share one point: stack them upward, one label height each,
+      // by rank among the origin-root tunnels currently shown (so no gap when one is hidden).
+      if (lb.stack) sp.position.y = lb.baseY + (rank * local * sp.userData.aspect * ROOT_LABEL_GAP)
     })
+  }
+
+  /** Rank of tunnel t among the currently shown origin-root tunnels, in registry order. */
+  _rootRank (t) {
+    let r = 0
+    for (const id of this._order) {
+      if (id === t.id) break
+      const o = this._tunnels.get(id)
+      if (o.def.originRoot && o.built && o.group.visible && (o.nodeRecs[0]?.appear ?? 0) > 0.35) r++
+    }
+    return r
   }
 
   // ── Stepping state (steppable tunnels) ──────────────────────────────────────
@@ -1066,10 +1237,11 @@ export default class OmniAxinator {
   }
 
   /** V165: the hand's eased Speed (utils/OmniHandSpeed.js) divides the step durations;
-   *  1x (the default, and every non-hand tunnel) leaves them exactly as before. */
+   *  1x (the default, and every non-hand tunnel) leaves them exactly as before.
+   *  V166: speed goes up to 25x; durations are floored at MIN_STEP_S (0.04 s). */
   _speed (t) { return t.def.padHand && this.opts.handSettings !== false ? getEffectiveSpeed(t.def.padHand) : 1 }
-  _travelDur (t) { return (this._hs(t, 'travelDuration') ?? TRAVEL_DURATION) / this._speed(t) }
-  _relDur (t) { return (this._hs(t, 'relDuration') ?? REL_DURATION) / this._speed(t) }
+  _travelDur (t) { return Math.max(MIN_STEP_S, (this._hs(t, 'travelDuration') ?? TRAVEL_DURATION) / this._speed(t)) }   // V166: floor so 25x still animates
+  _relDur (t) { return Math.max(MIN_STEP_S, (this._hs(t, 'relDuration') ?? REL_DURATION) / this._speed(t)) }
   _staggerOn (t) { return !!(this._hs(t, 'stagger') ?? t.def.stagger) }
 
   _setState (t, p, r, animate) {
@@ -1216,7 +1388,7 @@ export default class OmniAxinator {
     const isRoot = hit.index === hit.t.def.rootIndex
     const n = hit.t.def.nodes.length
     this._tooltipEl.innerHTML =
-      `<b>${esc(hit.t.def.labelPrefix ?? '')}${esc(nd.name)}</b>\n` +
+      `<b>${esc(nodeText(hit.t.def, nd))}</b>\n` +
       `${esc(hit.t.def.symbol)} ${esc(hit.t.def.title)} · node ${hit.index + 1}/${n}` +
       (isRoot ? '\nRoot' : '')
     if (e) {
@@ -1251,7 +1423,7 @@ export default class OmniAxinator {
     el.className = 'oax-menu'
     // Title ABOVE the root tooltip line, then the actions.
     el.innerHTML =
-      `<div class="oax-menu-title">${esc(t.def.symbol)} ${esc(t.def.labelPrefix ?? '')}${esc(nd.name)}</div>` +
+      `<div class="oax-menu-title">${esc(t.def.symbol)} ${esc(nodeText(t.def, nd))}</div>` +
       `<div class="oax-menu-root" data-role="root-tooltip" title="${esc(rootText)}">${isRoot ? 'ROOT — ' : 'Root: '}${esc(rootText)}</div>` +
       `<button class="oax-action-btn" data-action="take-me-there">🎯 TakeMeThere</button>` +
       `<button class="oax-action-btn" data-action="root" title="${esc(rootText)}"${root ? '' : ' disabled'}>⟐ Root</button>`

@@ -30,7 +30,7 @@
  *   omni:orbiter     →  { hand }   (stub — behaviour undefined)
  *
  * The ⚇ Pad cell opens that hand's movement pad (ui/MovementPad.js). V165: every
- * movable pad carries FOUR satellite buttons on its rim — ⏏ Release, » Speed (a 1x-10x
+ * movable pad carries FOUR satellite buttons on its rim — ⏏ Release, » Speed (a 1x-25x
  * slider popover, per hand), Activate (the hand's FX: the dimensional tunnel on
  * ⟐OmniHand / ⟐ConsciousHand; node-behaviour "ammo" on ⟐LH / ⟐RH) and ⚙ Settings (opens
  * ⟐OmniHands on this hand's view). The old Dash toggle and the inert 3rd slot are gone.
@@ -162,7 +162,7 @@ const STYLES = /* css */`
 
   position          : fixed;
   /* V160: was 40, BELOW the MiniMap (42, a 154px box at top:60/right:16 by
-     default, pointer-events:auto) and the pad satellites (42). Geometry:
+     default, pointer-events:auto); V166 moved the pad satellites above to 47. Geometry:
      ConsciousHand's ⚇ cell spans x W-102..W-52, y 49..99; the minimap box spans
      x W-170..W-16, y 60..214, so when the minimap is shown it silently ate
      clicks on the lower part of ConsciousHand's ⚇. 43 keeps the hands above

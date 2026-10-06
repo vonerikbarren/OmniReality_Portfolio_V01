@@ -35,7 +35,7 @@
  *
  *   id: omni-pad-sat-${hand}-${role}, in this order along the arc:
  *     1 release   ⏏  detach the pad into a free-floating, draggable group (unchanged)
- *     2 speed     »  opens ui/HandSpeedPanel.js: slider 1.0x..10.0x, per hand, stored in
+ *     2 speed     »  opens ui/HandSpeedPanel.js: slider 1.0x..25.0x, per hand, stored in
  *                    utils/OmniHandsSettings.js `speed`. Replaces the V150-V164 Dash toggle.
  *                    The systems follow the EASED value (utils/OmniHandSpeed.js, ~0.15 s):
  *                    lh translate, rh altitude/orbit, conscious/omnihand axis tween
@@ -181,6 +181,18 @@ const _SAT_ANGLES = {
   omnihand:  { release: 90,  speed: 60,  activate: 30,  settings: 0   },
   conscious: { release: 270, speed: 300, activate: 330, settings: 0   },
 }
+// V166 phone layout (<= 460px). The inward arcs above put each bottom pad's Release / Speed on
+// top of the OTHER bottom pad's (two 180px pads leave a 22px gap, 111px-radius clusters reach
+// the centre line), so on a phone the Speed buttons of the two pads sat on top of each other.
+// Mobile therefore fans the four buttons over the arc facing the screen's vertical middle
+// (above the bottom pads, below the top pads), 24 degrees apart, Release innermost as before.
+// Mirror rules are unchanged: RH = 360 - LH, top hands = 180 - bottom hands.
+const _SAT_ANGLES_MOBILE = {
+  lh:        { release: 30,  speed: 6,   activate: 342, settings: 318 },
+  rh:        { release: 330, speed: 354, activate: 18,  settings: 42  },
+  omnihand:  { release: 150, speed: 174, activate: 198, settings: 222 },
+  conscious: { release: 210, speed: 186, activate: 162, settings: 138 },
+}
 const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'right' }
 const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
 const CHIP_W = 64
@@ -192,13 +204,13 @@ function _clockOffset (clockDeg, r) {
   return { dx: r * Math.sin(rad), dy: -r * Math.cos(rad) }
 }
 
-function _buildSatGeom (padHalf, satHalf) {
+function _buildSatGeom (padHalf, satHalf, angles = _SAT_ANGLES, chipOutside = false) {
   const R = padHalf + PAD_OFFSET + satHalf
   const center = padHalf + 4 // pad's own left/right CSS offset is 4px
   const bottomBase = DOCK_H + HAND_WH + PAD_OFFSET + padHalf
   const topBase    = BAR_H  + HAND_WH + PAD_OFFSET + padHalf
   const out = {}
-  Object.keys(_SAT_ANGLES).forEach(hand => {
+  Object.keys(angles).forEach(hand => {
     out[hand] = {}
     const side   = _SAT_SIDE[hand]
     const anchor = _SAT_ANCHOR[hand]
@@ -215,7 +227,7 @@ function _buildSatGeom (padHalf, satHalf) {
       return { d: Math.round(d), v: Math.round(v), side, anchor }
     }
     _SAT_ROLES.forEach(role => {
-      const clockDeg = _SAT_ANGLES[hand][role]
+      const clockDeg = angles[hand][role]
       const { dx, dy } = _clockOffset(clockDeg, R)
       out[hand][role] = { ...place(dx, dy, satHalf, satHalf), dx, dy }
     })
@@ -224,9 +236,10 @@ function _buildSatGeom (padHalf, satHalf) {
       // outward away from the pad so it also clears the 180° Settings button. A 4 px gap keeps the
       // two boxes from touching.
       const a = out[hand].activate
-      const rad = (_SAT_ANGLES[hand].activate * Math.PI) / 180
+      const rad = (angles[hand].activate * Math.PI) / 180
       const dx = a.dx + Math.sign(Math.sin(rad)) * 8
-      const dy = a.dy + satHalf + CHIP_H / 2 + 4
+      // desktop: below Activate. Phone: ABOVE it (the phone arc is above the pad, so "below" would land on the pad's rim).
+      const dy = chipOutside ? a.dy - satHalf - CHIP_H / 2 - 4 : a.dy + satHalf + CHIP_H / 2 + 4
       out[hand].chip = { ...place(dx, dy, CHIP_W / 2, CHIP_H / 2), dx, dy }
     }
   })
@@ -234,13 +247,13 @@ function _buildSatGeom (padHalf, satHalf) {
 }
 
 const _SAT_GEOM        = _buildSatGeom(110, 20) // desktop: 220px pad, 40px satellite buttons
-const _SAT_GEOM_MOBILE = _buildSatGeom(90, 17)  // mobile:  180px pad, 34px satellite buttons
+const _SAT_GEOM_MOBILE = _buildSatGeom(90, 17, _SAT_ANGLES_MOBILE, true)  // mobile: 180px pad, 34px buttons, fanned toward screen middle
 
 /** Test / tooling hook: the computed geometry, and the sizes it was built for. */
 export const SAT_LAYOUT = {
   roles: _SAT_ROLES, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H },
   desktop: { geom: _SAT_GEOM, padHalf: 110, satHalf: 20 },
-  mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: 17 },
+  mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: 17, angles: _SAT_ANGLES_MOBILE },
   barH: BAR_H, dockH: DOCK_H, handWH: HAND_WH, padOffset: PAD_OFFSET,
 }
 
@@ -395,15 +408,22 @@ const STYLES = `
   line-height      : 1;
   letter-spacing   : 0.02em;
   cursor           : pointer;
-  pointer-events   : auto;
+  /* V166: none at rest. A closed pad's satellites are opacity 0; with auto they were
+     invisible hit targets (GSAP's inline style flips this to auto while the pad is open
+     and back to none once the retract finishes). */
+  pointer-events   : none;
   padding          : 0;
   /* Rest state — hidden until its own pad is toggled visible. _animateSatellitesIn/Out
      fade this to 1 and back via GSAP, mirroring the pad's own opacity choreography. */
   opacity          : 0;
   /* Strictly above the pad (.omni-pad is 41): a square button's corner can dip a few px
      inside the pad's bounding circle at a diagonal slot and would otherwise eat clicks
-     (V151). Above the minimap / hand (42-43 are handled in their own files). */
-  z-index          : 42;
+     (V151). V166: 47 — above the minimap (42; same value + later DOM order covered the
+     ConsciousHand ⚙ button), the hand wrappers (43) and the drawers (44/45); below the
+     tooltips / dock (50) and every WindowManager panel (those start at z 200 by design, so
+     a floating panel such as the Inspector, which auto-opens over x 202-542 when a node is
+     selected, still covers the left pads' Release / Speed buttons — drag it away). */
+  z-index          : 47;
   font-family      : 'Courier New', Courier, monospace;
   transition       : background 120ms ease, color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
 }
@@ -450,9 +470,9 @@ const STYLES = `
   overflow         : hidden;
   text-overflow    : ellipsis;
   cursor           : pointer;
-  pointer-events   : auto;
+  pointer-events   : none;   /* V166: see .omni-pad-sat (inline auto while the pad is open) */
   opacity          : 0;
-  z-index          : 42;
+  z-index          : 47;
   -webkit-tap-highlight-color: transparent;
 }
 .omni-pad-chip:hover { background: rgba(255, 255, 255, 0.18); }

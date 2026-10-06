@@ -21,7 +21,7 @@
  * the user edits a value.
  *
  * V165 additions (all four hands unless noted; defaults reproduce V164 at 1x):
- *   speed        1..10   the ⟫ Speed satellite's multiplier (ui/HandSpeedPanel.js slider).
+ *   speed        1..25   the ⟫ Speed satellite's multiplier (ui/HandSpeedPanel.js slider).
  *                        Consumers read the EASED value from utils/OmniHandSpeed.js,
  *                        never this raw target (lh translate, rh nav/altitude, axis
  *                        tween durations + hold-repeat for conscious/omnihand).
@@ -80,7 +80,7 @@ export const LIMITS = {
   relDuration:    { min: 0.1, max: 3 },
   holdRepeatMs:   { min: 100, max: 2000 },
   clockHour:      { min: 0, max: 12 },
-  speed:          { min: 1, max: 10 },      // V165: hard limit 10x
+  speed:          { min: 1, max: 25 },      // V166: hard limit 25x (V165: 10x)
   maxActive:      { min: 1, max: 32 },
   anchorCount:    { min: 1, max: 8 },
 }

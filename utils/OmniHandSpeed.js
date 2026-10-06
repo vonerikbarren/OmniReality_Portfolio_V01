@@ -1,7 +1,7 @@
 /**
  * utils/OmniHandSpeed.js — the EASED per-hand speed multiplier (V165).
  *
- * The ⟫ Speed satellite's slider writes the TARGET speed (1..10x) into
+ * The ⟫ Speed satellite's slider writes the TARGET speed (1..25x) into
  * utils/OmniHandsSettings.js (`speed`). Systems never read that raw target: they read
  * getEffectiveSpeed(hand), which eases toward it so a slider drag (or a preset chip)
  * never makes movement jump. ui/MovementPad.js calls stepSpeeds(dt) once per frame.
@@ -23,11 +23,11 @@ import { getHandSetting, HAND_IDS } from './OmniHandsSettings.js'
 export const TAU = 0.15
 export const SNAP = 0.002
 export const MIN_REPEAT_MS = 60
-export const MAX_SPEED = 10
+export const MAX_SPEED = 25   // V166: was 10
 
 const eff = {}
 
-/** The slider value (target) for a hand, clamped 1..10. */
+/** The slider value (target) for a hand, clamped 1..25. */
 export function getTargetSpeed (hand) {
   const v = Number(getHandSetting(hand, 'speed'))
   return Number.isFinite(v) ? Math.min(MAX_SPEED, Math.max(1, v)) : 1

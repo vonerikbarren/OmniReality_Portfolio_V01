@@ -167,6 +167,13 @@ const STYLES = /* css */`
   z-index         : 65;
   pointer-events  : none;
   opacity         : 0;
+  /* V166: a closed radial must not be hit-testable. Its .radial-item children set
+     pointer-events:auto (which wins over this container's none), and _hide() resets
+     them to scale 1 / opacity 1 for the next open, so a CLOSED menu used to leave
+     invisible discs on top of whatever sat under its 420px box (the pad's Speed /
+     Settings satellites at 768px and on phones). visibility:hidden removes the
+     whole subtree from hit-testing; _show() sets it to visible, _hide() back. */
+  visibility      : hidden;
   user-select     : none;
 
   -webkit-font-smoothing: antialiased;
@@ -1027,6 +1034,7 @@ export default class RadialMenu {
       { opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(1.6)' }
     )
     el.style.pointerEvents = 'auto'
+    el.style.visibility    = 'visible'   // V166: only an open radial is hit-testable
 
     // ── SVG rings draw in ──────────────────────────────────────────────────
     gsap.to(centCirc,  { strokeDashoffset: 0, duration: 0.30, ease: 'power2.out', delay: 0.06 })
@@ -1075,6 +1083,7 @@ export default class RadialMenu {
       delay  : 0.10,
       onComplete: () => {
         el.style.pointerEvents = 'none'
+        el.style.visibility    = 'hidden'   // V166: see .omni-radial
         el.style.transform     = ''
         // Reset children — _show will re-override if already reopening
         gsap.set([...toolEls, ...pageEls], { scale: 1, opacity: 1 })

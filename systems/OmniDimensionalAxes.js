@@ -5,12 +5,16 @@
  * systems/OmniAxinator.js. This module now only
  *   - instantiates ONE OmniAxinator (the "main" channel) with the built-in tunnels
  *     from data/OmniAxinatorData.js: the two hand tunnels the top-hand pads drive
- *       Conscious Hand (Δ)  world-fixed diagonal toward 2 o'clock, one-sided,
- *                           nodes = perspectives, relative (Υ) axis = scale degrees
- *       OmniHand (⟐)        toward 11 o'clock, one-sided, nodes = OmniProducts,
- *                           relative (Υ) axis = product tier
- *     plus X / Y / Z axis tunnels and the 2↔8 / 11↔5 clock diagonals (view only,
- *     default off, toggled from the ⟐OmniAxinator panel);
+ *       Conscious Hand (Δ)  full-length two-sided 2↔8 tunnel through the origin;
+ *                           node 0 = the ⟐ConsciousHand ROOT at 0,0,0, then the perspectives;
+ *                           relative (Υ) axis = 10 scale degrees
+ *       OmniHand (⟐)        11↔5, node 0 = ⟐OmniHand ROOT at 0,0,0, then the OmniProducts;
+ *                           relative (Υ) axis = 8 product tiers
+ *     the two VIEW-ONLY hand tunnels shown with the lower pads (V166)
+ *       LogicalHand (Λ) 7↔1, CreativeHand (Ψ) 4↔10, each a root + three behaviour-class nodes
+ *     plus X / Y / Z axis tunnels (view only, default off, toggled from the
+ *     ⟐OmniAxinator panel; V166 removed the 2↔8 / 11↔5 clock diagonals, which the hand
+ *     tunnels now occupy);
  *   - keeps the pad-facing API, persistence, readout HUD and events exactly as V159.
  *
  * Every hand position is still a STATE {primary, relative} (integer indices,
@@ -63,7 +67,11 @@ export { CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL, HOLD_REPEAT_MS }
 
 // v2: V159 moved the axes to start at the origin; old saved positions (V158 centred the
 // axis on the origin) would start the markers mid-tunnel, so they are not reused.
-const STORE_KEY = 'omni:dimension-axes-v2'
+// v3 (V166): node 0 is now the origin ROOT, so every saved primary index shifts by +1. A v2
+// record is migrated once (p + 1, clamped on load); v3 is the only key written from now on
+// (the v2 record is left in place, harmless).
+const STORE_KEY = 'omni:dimension-axes-v3'
+const OLD_STORE_KEY = 'omni:dimension-axes-v2'
 
 const HAND_IDS = ['conscious', 'omnihand']
 
@@ -113,6 +121,21 @@ function esc (s) {
 }
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0')
+
+/** V166: v2 saved the primary index without the origin root; shift it by one (the relative
+ *  index is unchanged). Returns a v3-shaped record, or {} for anything unreadable. */
+export function migrateV2 (raw) {
+  try {
+    const old = raw ? JSON.parse(raw) : null
+    if (!old || typeof old !== 'object') return {}
+    const hands = {}
+    Object.keys(old.hands ?? {}).forEach(id => {
+      const h = old.hands[id]
+      if (h && Number.isFinite(h.p)) hands[id] = { p: Math.max(0, Math.round(h.p)) + 1, r: Number.isFinite(h.r) ? h.r : 0 }
+    })
+    return { visible: old.visible, hands }
+  } catch (_) { return {} }
+}
 
 export default class OmniDimensionalAxes {
   constructor (context) {
@@ -201,7 +224,7 @@ export default class OmniDimensionalAxes {
     this._axinator?.goTo(hand, primaryIndex, relativeIndex)
   }
 
-  /** Back to the first node. V163: optional `hand` ('conscious'|'omnihand') resets
+  /** Back to the first node (V166: the origin root). V163: optional `hand` ('conscious'|'omnihand') resets
    *  just that marker (⟐OmniHands "Reset marker"); no argument resets both. */
   reset (hand) {
     if (!this._axinator) return
@@ -217,7 +240,8 @@ export default class OmniDimensionalAxes {
     try {
       const raw = localStorage.getItem(STORE_KEY)
       const parsed = raw ? JSON.parse(raw) : null
-      return parsed && typeof parsed === 'object' ? parsed : {}
+      if (parsed && typeof parsed === 'object') return parsed
+      return migrateV2(localStorage.getItem(OLD_STORE_KEY))
     } catch (_) { return {} }
   }
 

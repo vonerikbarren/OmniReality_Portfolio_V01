@@ -16,7 +16,7 @@
  * V160: the toggle now means "Tunnels follow the pads" (ON, the default: a hand's
  * tunnel shows while its pad is open; OFF: never shown automatically). Per-tunnel
  * manual toggles live in ui/OmniAxinatorPanel.js. The persisted value lives in the
- * axes system's own localStorage key ('omni:dimension-axes-v2'); this panel only
+ * axes system's own localStorage key ('omni:dimension-axes-v3', V166; was -v2); this panel only
  * reads it to draw the initial checkbox state, defaulting ON like the system does.
  */
 
@@ -98,7 +98,8 @@ function injectStyles () {
 
 function readSavedVisible () {
   try {
-    const raw = localStorage.getItem('omni:dimension-axes-v2')   // V160: was the stale 'omni:dimension-axes' (the system has stored under -v2 since V159)
+    // V166: the system now stores under -v3 (primary index shifted by the origin root); -v2 is only the fallback for a first run after the upgrade
+    const raw = localStorage.getItem('omni:dimension-axes-v3') ?? localStorage.getItem('omni:dimension-axes-v2')
     return raw ? JSON.parse(raw)?.visible !== false : true
   } catch (_) { return true }
 }

@@ -1555,6 +1555,83 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Hand tunnels: origin roots, LH/RH tunnels, 25x speed, Speed button fix (V166)",
+      "items": [
+        {
+          "feature": "Speed limit 25x",
+          "howToReach": "Press » on any pad, or ⟐OmniHands > Speed",
+          "whatToCheck": "Slider runs 1.0 to 25.0, scale label ×1 ... ×25, chips 1 2 5 10 25 and Reset; a value saved above 10 (e.g. 18) reloads as 18; at 25x ConsciousHand / OmniHand steps still visibly animate (about 0.04 s, never an instant jump), hold-to-repeat does not go faster than every 60 ms, LogicalHand walks / CreativeHand rises and orbits 25x as fast and eases in with no jump",
+          "tested": false
+        },
+        {
+          "feature": "Speed button is hoverable and clickable on all four pads",
+          "howToReach": "Open all four pads (⚇ on each hand); hover then click » on each; try desktop, a 768 px tablet and a phone",
+          "whatToCheck": "The » button highlights on hover on all four pads (it used to be covered by the invisible closed radial menus at 768 px / phone width), clicking opens the popover; the popover's slider drags, the chips and Reset and × respond (it used to ignore the mouse because its parent shell is pointer-events:none); ConsciousHand ⚙ is clickable with the minimap visible; ⚙ ◎ ✦ ⏏ are each the topmost element at their centre",
+          "tested": false
+        },
+        {
+          "feature": "Floating panels over the left pads",
+          "howToReach": "Select a node so the Inspector opens at its default place beside the left pads",
+          "whatToCheck": "KNOWN: panels (z 200+) deliberately sit above the pads, so an open Inspector still covers the left pads' ⏏ and » buttons; drag the panel away. Confirm this is acceptable or say if satellites should float above panels",
+          "tested": false
+        },
+        {
+          "feature": "Phone layout of the satellites",
+          "howToReach": "Open all four pads at 390x844 (and 360x740)",
+          "whatToCheck": "Buttons fan over the arc facing the screen middle (above the bottom pads, below the top pads); none overlaps another pad's buttons, the ammo chip sits above ✦ and clears everything; glyphs » ◎ ✦ ⚙ ⏏ and the ×N text are legible. At 640 px height the two rows of pads themselves overlap (known)",
+          "tested": false
+        },
+        {
+          "feature": "Hand tunnels are barely there",
+          "howToReach": "Open the pads; view on a white wallpaper and on a black one (⟐WallpaperSettings)",
+          "whatToCheck": "Tunnel body ≈ 7 %, grid ≈ 43 % opacity: tunnels are faint but findable on both; nodes (silver + dark outline) a little fainter than the tunnel (63 % of the old values); the active node still glows clearly; X / Y / Z tunnels look exactly as before. Tune HAND_TUNNEL_OPACITY_SCALE / HAND_NODE_OPACITY_SCALE in data/OmniAxinatorData.js if too faint or strong",
+          "tested": false
+        },
+        {
+          "feature": "Tunnel colours",
+          "howToReach": "Open all four pads",
+          "whatToCheck": "ConsciousHand tunnel violet, OmniHand white (with faint dark guide lines so it shows on a white wallpaper), LogicalHand green, CreativeHand grid alternates red / green / blue (longitudes and rings); OmniHand marker / orb / label border stay orange",
+          "tested": false
+        },
+        {
+          "feature": "LogicalHand and CreativeHand tunnels",
+          "howToReach": "Open the lower-left / lower-right pad; or ⟐OmniAxinator panel > Hand tunnels; or ⟐OmniHands LH / RH view > Tunnel (view only)",
+          "whatToCheck": "LogicalHand tunnel runs 7↔1 o'clock, CreativeHand 4↔10; each shows a root plus three nodes (Mechanic / Relational / Transformational, Temporal / Emergent / Expressive; placeholders); they grow in when their pad opens and out when it closes; pin checkbox keeps them on; the ✦ button fires ammo and does NOT toggle the tunnel; pads still move the camera; the panel swatch for CreativeHand is an R/G/B gradient",
+          "tested": false
+        },
+        {
+          "feature": "Full-length tunnels meet at the origin",
+          "howToReach": "Open all four pads, look down from above (y 5000+) and from beside the origin",
+          "whatToCheck": "OmniHand (11↔5), ConsciousHand (2↔8), LogicalHand (7↔1), CreativeHand (4↔10) all run both ways through 0,0,0; four nested root shells (320 / 280 / 240 / 200) around one small white core with a dark ring; their root labels are stacked one above the other, never overlapping; you can fly the camera through the grids freely (nothing blocks); clock diagonals tunnels and the 'Clock diagonals' group are gone",
+          "tested": false
+        },
+        {
+          "feature": "Root node is node 0",
+          "howToReach": "Step the OmniHand / ConsciousHand pad left and right",
+          "whatToCheck": "Marker starts at the origin on ⟐OmniHand / ⟐ConsciousHand (readout 1/11 and 1/9), first product / perspective is 800 units out; pad ◄ at the root bumps and stays; the readout, ⟐OmniHands position line and omni:dimension-state counts (11 / 9 primary) agree",
+          "tested": false
+        },
+        {
+          "feature": "Vertical (Υ) nodes 8 and 10, double spacing",
+          "howToReach": "Press ▲ / ▼ on both top pads",
+          "whatToCheck": "OmniHand column has exactly 8 tiers (4 real + Tier 5-8 placeholders), ConsciousHand exactly 10 (5 real + Scale 6-10), 320 units between levels (twice V165), pad stops at the top / bottom; the two columns share the origin without overlapping (Conscious column slightly wider, labels on opposite sides); column centred on the marker as before",
+          "tested": false
+        },
+        {
+          "feature": "TakeMeThere / Root",
+          "howToReach": "Click any node > TakeMeThere; click a node > ⟐ Root",
+          "whatToCheck": "Root lands you 160 units back along the tunnel, inside the smallest root shell (not on the shared centre); far nodes land 40 units before their centre; LogicalHand / CreativeHand nodes work too; marker and readout follow on the top two hands",
+          "tested": false
+        },
+        {
+          "feature": "Saved axis position survives the upgrade",
+          "howToReach": "Load the app with an old saved 'omni:dimension-axes-v2' record",
+          "whatToCheck": "Positions come across shifted by one (the old first node is now node 1), nothing starts out of range; the v2 record is left alone, the new one is 'omni:dimension-axes-v3'; stale d2_8 / d11_5 pins in 'omni:axinator-v1' are ignored",
+          "tested": false
+        }
+      ]
     }
   ]
 }

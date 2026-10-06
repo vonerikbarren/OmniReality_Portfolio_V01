@@ -2,8 +2,8 @@
  * ui/HandSpeedPanel.js — the ⟫ Speed popover of a hand's pad (V165)
  *
  * A small floating panel opened by the Speed satellite (2nd button of every movable pad,
- * ui/MovementPad.js). Title "⟐<HandName> Speed"; a large continuous range slider 1.0x..10.0x
- * (step 0.1, hard limit 10x), a live "×3.4" readout, preset chips (1x 2x 3x 5x 10x) and a
+ * ui/MovementPad.js). Title "⟐<HandName> Speed"; a large continuous range slider 1.0x..25.0x
+ * (step 0.1, hard limit 25x, V166), a live "×3.4" readout, preset chips (1x 2x 5x 10x 25x) and a
  * Reset-to-1x button. The slider writes `speed` for that hand straight into
  * utils/OmniHandsSettings.js on every `input` event (no debounce); the systems follow it
  * through the eased value in utils/OmniHandSpeed.js, so a drag never makes movement jump.
@@ -23,7 +23,7 @@
 
 import { getHandSetting, setHandSetting, CHANGE_EVENT, LIMITS } from '../utils/OmniHandsSettings.js'
 
-export const SPEED_PRESETS = [1, 2, 3, 5, 10]
+export const SPEED_PRESETS = [1, 2, 5, 10, 25]
 export const HAND_NAMES = { lh: 'LogicalHand', rh: 'CreativeHand', conscious: 'ConsciousHand', omnihand: 'OmniHand' }
 const MARGIN = 8
 
@@ -36,6 +36,10 @@ const STYLES = `
   --hs-dim: var(--omni-theme-text-dim, rgba(255, 255, 255, 0.65));
   --mono: 'Courier New', Courier, monospace;
   position: fixed; left: 0; top: 0; width: 244px; z-index: 62;
+  /* V166: #omni-ui (this popover's parent) is pointer-events:none so the canvas stays interactive;
+     without an explicit auto here every click / hover / drag on the popover fell through to the
+     canvas (found in real Chromium: elementFromPoint on the slider and chips returned the canvas). */
+  pointer-events: auto;
   display: none; flex-direction: column;
   background: var(--hs-bg); border: 1px solid var(--hs-border); border-radius: 12px;
   backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5);
@@ -172,7 +176,7 @@ export default class HandSpeedPanel {
       <div class="ohs-body">
         <div class="ohs-readout" data-role="readout">×1.0</div>
         <input class="ohs-slider" type="range" min="${LIMITS.speed.min}" max="${LIMITS.speed.max}" step="0.1" value="1" aria-label="Speed multiplier">
-        <div class="ohs-scale"><span>×1</span><span>×10</span></div>
+        <div class="ohs-scale"><span>×1</span><span>×25</span></div>
         <div class="ohs-chips"></div>
         <button class="ohs-reset" type="button">Reset to ×1</button>
         <div class="ohs-note"></div>

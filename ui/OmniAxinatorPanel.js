@@ -76,7 +76,7 @@ const STYLES = `
 .oaxp-rows { display: flex; flex-direction: column; gap: 5px; }
 .oaxp-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--oaxp-text); cursor: pointer; }
 .oaxp-row input { margin: 0; cursor: pointer; }
-.oaxp-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.5); }
+.oaxp-swatch { width: 10px; height: 10px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.5); }
 .oaxp-sym { min-width: 22px; text-align: center; font-size: 11px; }
 .oaxp-name { flex: 1; }
 .oaxp-badge {
@@ -123,7 +123,9 @@ export default class OmniAxinatorPanel {
     this._onList = (e) => {
       const d = e.detail ?? {}
       if (typeof d.followPads === 'boolean') this._followPads = d.followPads
-      ;(d.tunnels ?? []).forEach(t => this._tunnels.set(t.id, t))
+      // V166: rebuild in the registry's order so the rows never depend on which event arrived first
+      const prev = this._tunnels
+      this._tunnels = new Map((d.tunnels ?? []).map(t => [t.id, { ...(prev.get(t.id) ?? {}), ...t }]))
       if (this._el) this._renderList()
     }
     this._onTunnelVisible = (e) => {
@@ -265,7 +267,7 @@ export default class OmniAxinatorPanel {
     })
     const sw = document.createElement('span')
     sw.className = 'oaxp-swatch'
-    sw.style.background = hex(t.color)
+    sw.style.background = t.swatch || hex(t.color)   // V166: the RGB tunnel carries a gradient swatch
     const sym = document.createElement('span')
     sym.className = 'oaxp-sym'
     sym.textContent = t.symbol
