@@ -1,5 +1,11 @@
 # Build Log
 
+## 2026-10-07 — V173: top hands shown again by default
+
+- V171 hid the top ⟐OmniHand / ⟐ConsciousHand matrices by default; the person then reported both hands missing. `utils/OmniHandBanner.js` default is shown again; storage key bumped to `omni:hands-banner-v3` so a V171/V172 hidden state does not persist. The ⟐Hands dock icon, ribbon Hands tab and ⟐OmniHands panel still toggle it.
+- Open question: what exactly sat in the "top middle" the person wanted removed (nothing hand-related is in the top middle in a fresh boot); not changed.
+
+
 ## 2026-10-07 — V172: OmniChronos player, Premiere-style sequencer, node "Time" property
 
 The playhead IS Primary Time: playing or scrubbing the timeline moves `utils/PrimaryTime.js`, which `modules/ChronosFloorClock.js` and `modules/ChronosRealityNode.js` already read every frame (verified: neither caches or keeps its own timer, so neither was changed).

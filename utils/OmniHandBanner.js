@@ -10,13 +10,13 @@
  *
  * Events:  omni:hands-banner-set   { visible }   (in)
  *          omni:hands-banner-state { visible }   (out, after every change and once at init)
- * Storage: localStorage 'omni:hands-banner-v2' = '1' | '0'  (the person's explicit choice, either way)
- * Default (no stored choice): HIDDEN everywhere (V171; was shown on desktop in V169/V170). Key bumped to -v2 so an older stored choice does not keep it visible.
+ * Storage: localStorage 'omni:hands-banner-v3' = '1' | '0'  (the person's explicit choice, either way)
+ * Default (no stored choice): SHOWN everywhere (V173). V171 hid it by default, which removed both top hands; reverted. Key bumped to -v3 so the V171/V172 stored state cannot keep it hidden.
  */
 
 import { setHandsBannerHeight, HANDS_BANNER_H } from './OmniLayout.js'
 
-export const STORAGE_KEY = 'omni:hands-banner-v2'
+export const STORAGE_KEY = 'omni:hands-banner-v3'
 export const OFF_CLASS   = 'omni-hands-banner-off'
 const STYLE_ID = 'omni-hands-banner-styles'
 const STYLES = `
@@ -41,7 +41,7 @@ export function readStored () {
   return null
 }
 
-export function getDefaultVisible () { return false }   // V171: hidden by default everywhere; the dock / ribbon / OmniHands panel bring it back
+export function getDefaultVisible () { return true }   // V173: shown again (V171 hid it and the person lost both top hands); dock / ribbon / OmniHands panel still toggle it
 export function isVisible () { return visible }
 
 function apply () {
