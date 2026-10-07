@@ -24,12 +24,23 @@ export function advance (delta) {
   currentSeconds += delta * speedMultiplier
 }
 
-export function play () { playing = true }
-export function pause () { playing = false }
+/** V172: announce play/pause/speed changes (the ribbon's Play button and the OmniChronos player listen);
+ *  seeking is reported by the timeline (omni:timeline-playhead). Backward compatible: nothing else listens. */
+function announce () {
+  try {
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('omni:primarytime-state', { detail: { playing, speed: speedMultiplier } }))
+  } catch (_) {}
+}
+
+export function play () { const ch = !playing; playing = true; if (ch) announce() }
+export function pause () { const ch = playing; playing = false; if (ch) announce() }
 export function isPlaying () { return playing }
 
 export function setSpeed (multiplier) {
-  speedMultiplier = Math.max(0, multiplier)
+  const m = Number.isFinite(multiplier) ? Math.max(0, multiplier) : speedMultiplier
+  const ch = m !== speedMultiplier
+  speedMultiplier = m
+  if (ch) announce()
 }
 export function getSpeed () { return speedMultiplier }
 

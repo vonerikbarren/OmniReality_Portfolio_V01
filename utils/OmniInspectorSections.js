@@ -16,6 +16,7 @@ export const INSPECTOR_SECTIONS = Object.freeze([
   { id: 'appearance', label: 'Appearance', glyph: '◐', desc: 'Color, material, geometry, wireframe, sides, position, rotation and scale.' },
   { id: 'automation', label: 'Automation', glyph: '⟳', desc: 'Auto-rotate, look-at and the behavior / program the node runs on its own.' },
   { id: 'behavior',   label: 'Behavior',   glyph: '⚙', desc: 'The behavior attached to the node and whether it is enabled.' },
+  { id: 'time',       label: 'Time',       glyph: '◔', desc: 'Puts the node on the OmniChronos timeline: track, start, duration, loop and keyframes at the playhead.' },
   { id: 'program',    label: 'Program',    glyph: '▶', desc: 'The OmniProgram bound to the node: run mode and auto-persist.' },
   { id: 'media',      label: 'Media',      glyph: '▣', desc: 'Images, sound and other media attached to the node.' },
   { id: 'data',       label: 'Data',       glyph: '≣', desc: 'Internal and external data, GoTo / TravelTo, and the info plane shown in the scene.' },

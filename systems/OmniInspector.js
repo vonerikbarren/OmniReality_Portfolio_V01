@@ -112,6 +112,8 @@ import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
 import { createBehaviorForm } from '../ui/OmniNodeBehaviorForm.js'
+import * as TL from '../utils/OmniTimeline.js'
+import { getPlayer as getTimelinePlayer, getNodeValue as getTimelineNodeValue } from './OmniTimelinePlayer.js'
 import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath } from './OmniProgramCommands.js'
 // this._programTimeline (per-Inspector, not per-node — only one node's
 // Program section can be open at a time) tracks a currently-running
@@ -1864,6 +1866,7 @@ export default class OmniInspector {
     window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
     window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
     window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+    window.removeEventListener('omni:timeline-changed', this._onTimelineChanged)
     window.removeEventListener('omni:node-deselected', this._onDeselect)
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
@@ -2577,6 +2580,7 @@ export default class OmniInspector {
       ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
       ${this._sectionHTML('automation', '▶ Automation', this._automationHTML(data))}
       ${this._sectionHTML('behavior',   '▶ Behavior',   this._behaviorHTML(data))}
+      ${this._sectionHTML('time',       '▶ Time',       this._timeHTML(data))}
       ${this._sectionHTML('program',    '▶ Program',    this._programHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
       ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
@@ -2611,6 +2615,7 @@ export default class OmniInspector {
     this._wireAppearance(body, data, ext)
     this._wireAutomation(body, data)
     this._wireBehavior(body, data)
+    this._wireTime(body, data)
     this._wireProgram(body, data, ext)
     this._wireMedia(body, ext)
     this._wireData(body, data, ext)
@@ -2916,6 +2921,153 @@ export default class OmniInspector {
         dispatch({ lookAtCoordinate: coord })
       })
     })
+  }
+
+
+  // ── TIME section (V172) — puts the node on the OmniChronos timeline. The clip / keyframes live in
+  // utils/OmniTimeline.js (NOT in node data), so this works the same for nodes of either registry; the
+  // timeline view and this section stay in step through omni:timeline-changed (two-way). ──────────────────
+
+  _timeHTML (data) {
+    return /* html */`<div id="oi-time-root" data-node="${data.id}"></div>
+      <div class="oi-domain-note">A node with a clip is shown only while the playhead (Primary Time) is inside it; keyframes animate position, scale, rotation Y, opacity and colour. Nodes without a clip are never touched. Edit here or drag the clip in ⟐OmniChronos.</div>`
+  }
+
+  _wireTime (body, data) {
+    this._timeRoot = body.querySelector('#oi-time-root')
+    this._renderTime()
+  }
+
+  /** Re-render only the Time section's inner DOM (cheap; keeps the other sections and their open state). */
+  _renderTime () {
+    const root = this._timeRoot?.isConnected ? this._timeRoot : this._el?.querySelector('#oi-time-root')
+    const id = this._currentId
+    if (!root || !id) return
+    this._timeRoot = root
+    root.textContent = ''
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e }
+    const row = (label) => { const r = mk('div', 'oi-row'); const l = mk('span', 'oi-label', label); l.style.width = 'auto'; r.appendChild(l); return r }
+    const player = getTimelinePlayer()
+    const clips = TL.getClipsForNode(id)
+    if (!this._timeClipId || !clips.some(c => c.id === this._timeClipId)) this._timeClipId = clips[0]?.id ?? null
+    const clip = clips.find(c => c.id === this._timeClipId) ?? null
+    const refresh = () => this._renderTime()
+
+    // switch rows use the Inspector's own label + checkbox structure (the .oi-toggle button style used by older sections has no CSS)
+    const switchRow = (label, id, checked, onChange) => {
+      const r = row(label)
+      const wrap = mk('div', 'oi-toggle-wrap'); const lab = mk('label', 'oi-toggle')
+      const inp = mk('input'); inp.type = 'checkbox'; inp.id = id; inp.checked = !!checked; inp.setAttribute('role', 'switch')
+      lab.append(inp, mk('div', 'oi-toggle-track'), mk('div', 'oi-toggle-thumb'))
+      inp.addEventListener('change', () => onChange(inp.checked))
+      wrap.appendChild(lab); r.appendChild(wrap); root.appendChild(r)
+    }
+    switchRow('On timeline', 'oi-time-on', clips.length > 0, (on) => {
+      if (!on) TL.removeClipsForNode(id)
+      else {
+        const c = TL.addClip({ nodeId: id, start: TL.getT(), duration: 5, label: this._currentData?.label ?? id })
+        if (c) this._timeClipId = c.id
+      }
+      player?.evaluateNow()
+      refresh()
+    })
+    if (!clip) {
+      root.appendChild(mk('div', 'oi-domain-note', 'Not on the timeline. Switch it on to create a 5-second clip at the playhead.'))
+      return
+    }
+    // several clips of this node: pick one
+    if (clips.length > 1) {
+      const r = row('Clip')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-clip'
+      clips.forEach((c, i) => { const o = mk('option', null, `${i + 1} / ${clips.length} · ${TL.toTimecode(c.start)}`); o.value = c.id; sel.appendChild(o) })
+      sel.value = clip.id
+      sel.addEventListener('change', () => { this._timeClipId = sel.value; refresh() })
+      r.appendChild(sel); root.appendChild(r)
+    }
+    // Track
+    {
+      const r = row('Track')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-track'
+      for (const t of TL.getTracks().filter(x => x.kind === 'node')) { const o = mk('option', null, t.name + (t.locked ? ' 🔒' : '')); o.value = t.id; sel.appendChild(o) }
+      const nw = mk('option', null, '＋ New track'); nw.value = '__new'; sel.appendChild(nw)
+      sel.value = clip.trackId
+      sel.addEventListener('change', () => {
+        let tid = sel.value
+        if (tid === '__new') tid = TL.addTrack()?.id ?? clip.trackId
+        TL.updateClip(clip.id, { trackId: tid })
+        player?.evaluateNow(); refresh()
+      })
+      r.appendChild(sel); root.appendChild(r)
+    }
+    // Start / Duration (seconds, with the timecode beside them)
+    const numRow = (label, key, min, idSuffix) => {
+      const r = row(label)
+      const i = mk('input', 'oi-num-input'); i.type = 'number'; i.step = '0.1'; i.min = String(min); i.id = `oi-time-${idSuffix}`
+      i.value = String(+clip[key].toFixed(3))
+      const tc = mk('span', 'oi-row-label', TL.toTimecode(clip[key]))
+      i.addEventListener('change', () => {
+        const v = parseFloat(i.value)
+        if (Number.isFinite(v)) TL.updateClip(clip.id, { [key]: v })
+        player?.evaluateNow(); refresh()
+      })
+      r.append(i, tc); root.appendChild(r)
+    }
+    numRow('Start (s)', 'start', 0, 'start')
+    numRow('Duration (s)', 'duration', TL.MIN_DUR, 'duration')
+    switchRow('Loop', 'oi-time-loop', clip.loop, (on) => { TL.updateClip(clip.id, { loop: on }); player?.evaluateNow(); refresh() })
+    // Keyframes
+    {
+      const r = row('Keyframe')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-prop'
+      for (const p of TL.KEY_PROPS) { const o = mk('option', null, p.label); o.value = p.id; sel.appendChild(o) }
+      sel.value = this._timeProp ?? 'position.y'
+      sel.addEventListener('change', () => { this._timeProp = sel.value })
+      const add = mk('button', 'oi-btn-small', '◇ At playhead'); add.id = 'oi-time-addkey'
+      add.title = 'Add a keyframe at the playhead with the node\'s current value (the playhead must be inside the clip)'
+      add.addEventListener('click', () => {
+        const prop = sel.value; this._timeProp = prop
+        const t = TL.getT()
+        const list = TL.getKeysForClip(clip.id).filter(k => k.property === prop)
+        const v = list.length ? TL.evalKeyList(list, TL.sourceTime(clip, t, clip.loop ? TL.cycleLength(clip) : 0), prop) : getTimelineNodeValue(id, prop)
+        const k = v == null ? null : TL.addKeyAtTime(clip.id, prop, t, v)
+        if (!k) window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: 'Inspector · Time', desc: v == null ? 'That node is not in the scene, so there is no value to key.' : 'Move the playhead inside the clip first.', holdMs: 3000 } }))
+        player?.evaluateNow(); refresh()
+      })
+      r.append(sel, add); root.appendChild(r)
+    }
+    const keys = TL.getKeysForClip(clip.id)
+    for (const k of keys.slice(0, 60)) {
+      const p = TL.getKeyProp(k.property)
+      const r = mk('div', 'oi-row'); r.dataset.key = k.id
+      const tt = clip.start + (k.t - clip.inPoint)
+      const go = mk('button', 'oi-btn-small', TL.toTimecode(tt)); go.title = 'Move the playhead to this keyframe'
+      go.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:timeline-seek', { detail: { t: tt } })))
+      const lab = mk('span', 'oi-row-label', p?.label ?? k.property)
+      const vi = mk('input', 'oi-num-input'); vi.type = p?.kind === 'color' ? 'color' : 'number'
+      if (p?.kind === 'color') vi.value = k.value; else { vi.step = String(p?.step ?? 0.1); vi.value = String(+k.value.toFixed(3)) }
+      vi.addEventListener('change', () => { TL.updateKey(k.id, { value: p?.kind === 'color' ? vi.value : parseFloat(vi.value) }); player?.evaluateNow(); refresh() })
+      const del = mk('button', 'oi-btn-small oi-btn-small--danger', '✕'); del.title = 'Delete this keyframe'
+      del.addEventListener('click', () => { TL.removeKey(k.id); player?.evaluateNow(); refresh() })
+      r.append(go, lab, vi, del); root.appendChild(r)
+    }
+    if (!keys.length) root.appendChild(mk('div', 'oi-domain-note', 'No keyframes on this clip yet.'))
+    const rv = mk('button', 'oi-btn-small oi-btn-small--full', 'Reveal on timeline'); rv.id = 'oi-time-reveal'
+    rv.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { drawer: 'inspector', item: '⟐OmniChronos', parent: null, path: 'inspector/⟐OmniChronos' } }))
+      window.dispatchEvent(new CustomEvent('omni:timeline-reveal', { detail: { nodeId: id } }))
+    })
+    root.appendChild(rv)
+  }
+
+  /** omni:timeline-changed (a clip was dragged in the timeline, a key was added ...): refresh the Time section unless
+   *  the user is typing in it right now. */
+  _refreshTimeSection () {
+    if (!this._currentId || !this._isOpen) return
+    const root = this._el?.querySelector('#oi-time-root')
+    if (!root) return
+    const a = document.activeElement
+    if (a && root.contains(a) && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) return
+    this._renderTime()
   }
 
   // ── BEHAVIOR section — NodeBehavior (systems/OmniNodeBehavior.js). Works for
@@ -5943,6 +6095,9 @@ export default class OmniInspector {
       this._saveExt()
     }
     window.addEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+
+    this._onTimelineChanged = () => this._refreshTimeSection()
+    window.addEventListener('omni:timeline-changed', this._onTimelineChanged)
 
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)

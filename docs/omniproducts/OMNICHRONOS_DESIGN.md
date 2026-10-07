@@ -18,9 +18,12 @@ recursive philosophy (OmniCryptx's drill-in, OmniExpression's
 
 ## What already exists in real code
 
-`ui/OmniChronos.js` — a real, small, working panel: two toggles
-(Enabled, Z-axis mode) controlling `modules/RootSpace.js`'s vertical
-tunnel, Admin-style staged save. Confirmed directly: **kept, not
+(V172 update: the panel is no longer small — see "V172 — player,
+sequencer and the node Time property" below for what is now real.)
+
+`ui/OmniChronos.js` — a real, working panel: the toggles
+(Enabled, Z-axis mode, Transparency, Time Format) controlling `modules/RootSpace.js`'s vertical
+tunnel, Admin-style staged save (now the SETTINGS tab of a larger window). Confirmed directly: **kept, not
 replaced** — merged into the bigger vision below where it fits,
 rather than scrapped.
 
@@ -300,3 +303,25 @@ flow as a control (speed with a reverse range) rather than a spatial axis,
 and avoid bare X/Y/Z names in code because the existing vertical Master
 Tunnel is already called "Z-axis mode". Spaces and OmniChronos are expected
 to merge "to some degree": share the traversal component first.
+
+## V172 — player, sequencer and the node Time property (built 2026-10-07)
+
+Detail: `OMNICHRONOS_SEQUENCER_DESIGN.md`. Summary of what changed in the picture above:
+
+**Now real**
+- A **player**: `ui/OmniChronos.js` shows a Program Monitor (HH:MM:SS:FF timecode at 30 fps, the real clock in the saved military / AM-PM format, the traveller's height in the tunnel) with transport: to start, frame step back / forward, play / pause, to end, loop, speed 0.25x-8x, work-area in / out, add marker. The same controls exist in the ribbon (Realities > Chronos group) and work with the window closed.
+- A **sequencer** (`ui/OmniTimelineView.js`, Premiere-like): tracks, clips of nodes, keyframes on node properties, playhead, markers, work area, snapping, trim / split / duplicate, zoom. Data in `utils/OmniTimeline.js`, evaluated against the scene by `systems/OmniTimelinePlayer.js`.
+- **OmniTime is a property of a node**: the Inspector has a Time section (on timeline, track, start, duration, loop, keyframes). A node that has a clip is only present in the scene while the playhead is inside it. This is the first working version of "creating a node locks it to the ruler": it is opt-in per node (a node without a clip is never touched) and sits beside, not instead of, the automatic `TimeData` / `TimeDataRegistry` lock every node already has.
+- **The playhead is Primary Time.** Seeking, stepping, scrubbing and playing the timeline move `PrimaryTime`; the floor clock and the travelling reality node follow because they already read it (neither was changed). Scrubbing pauses Primary Time and resumes it on release if it was playing; stepping pauses.
+- The tunnel toggles (Enabled, Z-axis, Transparency) stay independent of the playhead.
+- "Real, requested next feature — JSON timeline navigation" is partly met: markers (name, time) are a user-authored list that jumps the playhead. They are not yet drawn as labelled markers along the tunnel, and there is no JSON import / export.
+
+**Still design only**
+- The ten sub-panels (OmniChronos-Dev, TimeLive, TimeTool with concentric tunnels, Calendar, Planner, TimeLine, TimeAxisBuilder, Story, Series) and OmniBook(Time). The "OmniTimeLine" item overlaps with the sequencer's data; whether it becomes the same thing is undecided.
+- Natural vs manipulated time per node (Stasis-style) is not exposed by the sequencer; clips and keyframes are in Primary Time only. `TimeData` is untouched.
+- Recursive sequences (a clip containing a sequence), nested timelines.
+- Time functions, the OmniDraw / OmniCell data on the floor clock, the light-cone profile.
+- Video clips and video-texture sync driven by clips (the reality node's video sync still follows Primary Time directly).
+- Audio, render / export, multi-camera, speed ramping, reverse play (Primary Time never reverses).
+- Correlating time data (via OmniDraw(Jsonifier)) with nodes along a time path: the stated end goal; the timeline is the first piece of it ("build a timeline").
+

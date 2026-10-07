@@ -1,5 +1,27 @@
 # Build Log
 
+## 2026-10-07 — V172: OmniChronos player, Premiere-style sequencer, node "Time" property
+
+The playhead IS Primary Time: playing or scrubbing the timeline moves `utils/PrimaryTime.js`, which `modules/ChronosFloorClock.js` and `modules/ChronosRealityNode.js` already read every frame (verified: neither caches or keeps its own timer, so neither was changed).
+
+- `utils/OmniTimeline.js` (new, no DOM): the project timeline store — tracks, clips (start / duration / inPoint / loop / label / colour), keyframes (clip-source time, 5 ease modes), markers, work area, zoom, snap. Persisted in `omni:timeline-v1` (versioned, sanitised on load, capped, debounced save). Events `omni:timeline-changed {kind}` and `omni:timeline-playhead {t}`. Also snapping math, split / duplicate / trim helpers, keyframe interpolation, timecode (HH:MM:SS:FF at 30 fps) and the transport (`seek`, `step`, play, speed, scrub pause / resume).
+- `utils/PrimaryTime.js`: `play()` / `pause()` / `setSpeed()` now announce `omni:primarytime-state {playing, speed}` when the value really changes (backward compatible; nothing else listens).
+- `systems/OmniTimelinePlayer.js` (new module, added in `main.js` right after OmniChronos): evaluates the timeline every frame against the real scene. Handles `omni:timeline-play-set / -step / -seek / -add-selected / -marker-add`, so the ribbon works with the Chronos window closed. A node with a clip on an audible track is shown only while the playhead is inside it; keyframes write straight to the node's mesh. Nodes without clips are never touched; muted / non-soloed tracks, a deleted clip, a disabled timeline or `destroy()` restore the node's pre-timeline visibility, position, scale, rotation, opacity and colour. Work-area out / loop handled while playing.
+- `ui/OmniTimelineView.js` (new): the Premiere-style timeline. Canvas ruler (ticks adapt frames → seconds → minutes → hours), red playhead moved by `transform` only, markers, work-area bar, track headers (rename on double-click, M / S / L, ▸ keyframe sub-lanes), clips as coloured blocks (drag, edge trim, snapping, locked tracks refuse edits), diamonds on the sub-lanes (drag, right-click for ease / delete), context menu, ctrl+wheel / buttons / pinch zoom, culled to the visible range.
+- `ui/OmniChronos.js`: now a larger, resizable, maximisable window. Desktop: EDITOR tab (Program Monitor + project / selected-clip strip on top, timeline below) and SETTINGS; phones (<= 700 px): PLAYER | TIMELINE | SETTINGS. The four old toggles moved to SETTINGS and keep their staged 💾 save and the `omni:chronos-toggle / -axis-set / -transparency-set` events. Keys (Space, ←/→, Shift+←/→, Home/End, I/O, M, C, Delete, +/-) are taken ONLY while the pointer is over the window or focus is inside it (capture listener + `stopImmediatePropagation`, so `m`, `c` etc. do not also hit main.js). CSS classes renamed `oc-*` → `chr-*` (OmniChat also defines `.oc-tab` / `.oc-header`).
+- `utils/OmniInspectorSections.js` + `systems/OmniInspector.js`: new section `time` (◔, after Behavior; 12 sections): On timeline switch, Track (or New track), Start / Duration (+ timecode), Loop, property + "◇ At playhead", the clip's keyframes (value edit, delete, jump), Reveal on timeline. Two-way through `omni:timeline-changed`. Strip and ribbon Inspector tab pick it up from the shared list.
+- `ui/OmniRibbon.js` Realities tab: new Chronos group (Chronos, Play with pressed state, Step ◀, Step ▶, To start, Add node, Marker). Key hints are "—" because the shortcuts only exist while the Chronos window is hovered (the ribbon honesty rule).
+- Keyframe properties (applied to the mesh, so identical for OmniNode and NodeLoader nodes): position x / y / z, uniform scale, rotation Y (degrees), opacity, colour. Not supported: rotation X / Z, non-uniform scale, anything per-material.
+- Tests: jsdom `v172_test.mjs` (204 checks, all pass); real Chromium `v172_real.mjs` at 1280x720 and 390x844; earlier suites re-run against V172 (differences listed in DeveloperQueue item 56).
+
+---
+
+## 2026-10-07 — V171: hands banner hidden by default
+
+- `utils/OmniHandBanner.js`: default is now hidden on every screen size (V169/V170 showed it on desktop). Storage key bumped to `omni:hands-banner-v2` so an older stored choice cannot keep it visible. The ⟐Hands dock icon, the ribbon Hands tab and the ⟐OmniHands panel still bring it back, and the choice persists.
+- Not run in a browser: change is a default value and key name only; `node --check` passed.
+
+
 A chronological record of what's actually been built and shipped,
 version by version — kept "just in case," separate from
 `DeveloperQueue.md` (which is forward-looking, not historical). If

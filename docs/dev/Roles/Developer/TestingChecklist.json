@@ -1856,6 +1856,89 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniChronos player + sequencer + Time property (V172)",
+      "items": [
+        {
+          "feature": "Ribbon Chronos group works with the window closed",
+          "howToReach": "Ribbon > Realities > Chronos group (do NOT open the Chronos window)",
+          "whatToCheck": "Play toggles Primary Time and shows pressed; Step ◀ / ▶ move one frame and pause; To start goes to 0 (or the work-area in point); Add node adds the node selected in the scene as a 5 s clip (OmniNotify explains when nothing is selected); Marker adds a marker. Every button has a tooltip (name, key '—', description)",
+          "tested": false
+        },
+        {
+          "feature": "OmniChronos window layout",
+          "howToReach": "Ribbon > Realities > Chronos, or the mniMenu item ⟐OmniChronos; try 1280x720 and 390x844",
+          "whatToCheck": "Desktop: EDITOR (monitor + selected-clip strip on top, timeline below) and SETTINGS tabs, window clear of the ribbon and the dock, draggable by the header, resizable by the corner handle, maximise works. Phone (<= 700 px): PLAYER | TIMELINE | SETTINGS tabs filling the width under the ribbon",
+          "tested": false
+        },
+        {
+          "feature": "Program Monitor / transport",
+          "howToReach": "Chronos > EDITOR (or PLAYER on phones)",
+          "whatToCheck": "Timecode HH:MM:SS:FF follows Primary Time; ⇤ ◂ ▶/❚❚ ▸ ⇥ work; loop ↻; speed 0.25x-8x also speeds the floor clock and the reality node; I / O set the work area; ⚑ adds a marker; 'Active:' lists the clips under the playhead",
+          "tested": false
+        },
+        {
+          "feature": "Playhead drives the Master Tunnel",
+          "howToReach": "Play / scrub in Chronos while looking at the tunnel floor clock and the large travelling disc",
+          "whatToCheck": "Floor clock label and disc height follow the playhead; pressing the ruler pauses Primary Time and releasing resumes it only if it was playing",
+          "tested": false
+        },
+        {
+          "feature": "Timeline: clips",
+          "howToReach": "Select a node, ＋ Selected (or Add node…) in the timeline toolbar",
+          "whatToCheck": "A coloured clip with the node label appears at the playhead on the first unlocked track (Track 1 is created if needed); drag moves it (and between tracks), edges trim (left edge keeps the end and raises the in-point), Snap toggles snapping to playhead / markers / clip edges, locked track refuses edits, right-click menu (split, duplicate, loop, select node in scene, delete)",
+          "tested": false
+        },
+        {
+          "feature": "Timeline: evaluation in the scene",
+          "howToReach": "Put a node on the timeline, then play or scrub",
+          "whatToCheck": "The node is visible only while the playhead is inside its clip; nodes with no clip are untouched; muting a track (M) or deleting the clip returns the node to its normal look and place; solo (S) plays only soloed tracks; Clear Scene removes the clips",
+          "tested": false
+        },
+        {
+          "feature": "Timeline: keyframes",
+          "howToReach": "Select a clip, pick a property in the toolbar, ◇ Key; expand the track with ▸",
+          "whatToCheck": "Diamonds appear on the sub-lane; drag moves in time; right-click for ease / delete; Delete key removes the selected one; position / scale / rotation Y / opacity / colour animate the node between keys (hold the first / last value outside them); Loop repeats the key cycle inside the clip",
+          "tested": false
+        },
+        {
+          "feature": "Timeline: ruler, zoom, markers, work area",
+          "howToReach": "Chronos > timeline",
+          "whatToCheck": "Ruler ticks and labels stay readable at every zoom (frames to hours); ctrl+wheel / + / - / ⤢ zoom; drag the ruler to scrub; right-click the ruler for marker and work-area actions; the playhead pages along while playing",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard shortcuts only over the Chronos window",
+          "howToReach": "Hover the Chronos window, press Space, ←/→, Shift+←/→, Home/End, I, O, M, C, Delete, + / -",
+          "whatToCheck": "They act on the timeline; M does NOT toggle the minimap and C does NOT fly to the landing point while the pointer is over the window; with the pointer elsewhere those keys keep their global meaning; typing in a text field is never intercepted",
+          "tested": false
+        },
+        {
+          "feature": "Inspector Time section",
+          "howToReach": "Select a node > Inspector strip ◔ (or ribbon Inspector tab > Time)",
+          "whatToCheck": "On timeline switch adds / removes the clip; Track / Start / Duration / Loop edit the clip live; ◇ At playhead adds a key (playhead must be inside the clip); key list edits / deletes; Reveal on timeline opens Chronos and selects the clip; dragging the clip in Chronos updates the Inspector fields. 12 strip icons, 12 ribbon Inspector buttons",
+          "tested": false
+        },
+        {
+          "feature": "Settings tab keeps the staged save",
+          "howToReach": "Chronos > SETTINGS",
+          "whatToCheck": "Tunnel Enabled, Z-axis, Transparency, Time Format change only the staged copy (unsaved banner) until 💾 is pressed; Save fires omni:chronos-toggle / -axis-set / -transparency-set and persists omni:chronos:settings as before",
+          "tested": false
+        },
+        {
+          "feature": "Persistence",
+          "howToReach": "Build a timeline, reload the page",
+          "whatToCheck": "Tracks, clips, keyframes, markers, work area, zoom survive (omni:timeline-v1); clips of existing nodes re-attach lazily; a clip whose node is gone shows hatched with a ⚠",
+          "tested": false
+        },
+        {
+          "feature": "Touch (not verified on hardware)",
+          "howToReach": "A phone or touch screen",
+          "whatToCheck": "Drag the playhead on the ruler, drag / trim clips, scroll the tracks, pinch to zoom (buttons always work), tap targets are 32-44 px",
+          "tested": false
+        }
+      ]
     }
   ]
 }

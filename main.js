@@ -121,6 +121,7 @@ import OmniSelectorInspector from './ui/OmniSelectorInspector.js'
 import OmniEdgeInspector from './ui/OmniEdgeInspector.js'
 import OmniChronos from './ui/OmniChronos.js'
 import ChronosFloorClock from './modules/ChronosFloorClock.js'
+import OmniTimelinePlayer from './systems/OmniTimelinePlayer.js'
 import CameraTravelSettingsPanel from './ui/CameraTravelSettingsPanel.js'
 import OmniStructurePanel from './ui/OmniStructurePanel.js'
 import ChronosRealityNode from './modules/ChronosRealityNode.js'
@@ -498,6 +499,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniChronos = new OmniChronos(base.context)
   base.addModule(omniChronos)
+  // V172: the OmniTime player — evaluates the timeline and answers the ribbon's Chronos buttons with the window closed.
+  // Added AFTER OmniChronos (whose update() advances Primary Time) so each frame it sees the new playhead.
+  base.addModule(new OmniTimelinePlayer(base.context))
   base.addModule(new ChronosFloorClock(base.context))
   base.addModule(new CameraTravelSettingsPanel())
   base.addModule(new OmniStructurePanel(base.context, omniJsonifier))

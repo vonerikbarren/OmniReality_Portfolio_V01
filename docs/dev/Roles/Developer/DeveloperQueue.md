@@ -1105,3 +1105,20 @@ See `docs/architecture/RIBBON_AND_NOTIFY_DESIGN.md` (Inspector strip section). F
 6. The extra four `Hand` modules in main.js were removed; if something is later found to rely on a second hand set, `ui.hands` is the one to use.
 7. Not checked on hardware: touch scrolling inside an open section, prefers-reduced-motion, rotating a phone while a section is open (only the resize path was simulated).
 8. Pre-existing: older suites (axinator_test, behavior_integ) fail identically on V169 when pointed at it; hands_test position readout, integ_test groups, v165 speed-limit checks as already known.
+
+
+## 56. OmniChronos player + sequencer + node Time property — V172
+See `docs/omniproducts/OMNICHRONOS_SEQUENCER_DESIGN.md` and `OMNICHRONOS_DESIGN.md`. Follow-ups:
+1. Behaviours: a clip only shows / hides its node (the behaviour engine skips hidden nodes). Starting / stopping a configured behaviour or auto-rotate exactly at clip in / out (and restoring its rest pose) is not done; position / rotation keyframes fight an active behaviour or auto-rotate on the same node.
+2. No reverse play and no speed ramping (`PrimaryTime` never reverses, by design); `loop` repeats a clip's keyframe cycle only, there is no nested sequence.
+3. Overlaps on one track are allowed (the later-starting clip wins); no ripple / roll / slip tools, no marquee select, no copy / paste of clips, no undo / redo of timeline edits.
+4. Clips of a node that no longer exists (deleted while the app was closed) stay as hatched "missing" blocks; deleting the node in the running app removes its clips, as does Clear Scene.
+5. Not checked on hardware: touch drag on clips / ruler, two-finger pinch zoom (best effort via touchmove), phone keyboards (shortcuts are desktop only).
+6. The Inspector strip now holds 12 icons; check tap size on a 340 px panel (item 55.1).
+7. Marker rename uses `prompt()`; replace with an inline editor. Markers have no timeline-lane of their own (the data model has a `marker` track kind, unused).
+8. Window opacity (Admin "panel opacity") applies to the whole window including the timeline lanes.
+9. Older suites expect 11 Inspector sections / no Chronos ribbon buttons: `v170_test` (3 checks) and `v169_test` (section-count, "every ribbon button exercised", icon order) need their counts updated; the v169 banner checks and the already-known v165 / hands / integ / axinator / behavior_integ failures are unchanged.
+10. The ten future sub-panels (TimeLive, TimeTool, Calendar, Planner ...), audio, video clips / texture-video sync, render / export, multi-camera: out of scope, still design only.
+11. Pre-existing, found while building the Time section: the Inspector's `<button class="oi-toggle">` switches (Domain, Auto-Rotate axes, Behavior enabled) have no matching CSS (the `.oi-toggle` rule styles the label + checkbox structure), so they render as plain white boxes. The Time section uses the label + checkbox structure; the older ones were left alone.
+12. `oc-*` CSS class names are shared between OmniChat and (before V172) OmniChronos (`.oc-header`, `.oc-tab`); OmniChronos now uses `chr-*`. Other panels may share short prefixes the same way.
+

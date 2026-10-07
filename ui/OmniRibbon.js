@@ -39,6 +39,8 @@ import {
   RIBBON_STORAGE_KEY as STORAGE_KEY,
 } from '../utils/OmniLayout.js'
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
+import * as PrimaryTime from '../utils/PrimaryTime.js'
+import * as TL from '../utils/OmniTimeline.js'
 
 export { STORAGE_KEY, PHONE_MAX, TABS_H_DESKTOP, TABS_H_PHONE, BODY_H }
 export { INSPECTOR_SECTIONS }   // V170: the list lives in utils/OmniInspectorSections.js (shared with the Inspector's own icon strip)
@@ -140,11 +142,19 @@ function buildTabs () {
           b('domain-grid', '⊞', 'Domain grid', '0 / 9', "Toggles the domain grid sphere's visibility.", () => ev('omni:domaingrid-toggle-visible')),
         ] },
         { caption: 'Scopes', btns: [
-          b('chronos', '◔', 'Chronos', '—', 'Opens OmniChronos.', nav('⟐OmniChronos'), { name: 'OmniChronos' }),
           b('visor', '◉', 'Visor', '—', 'Opens OmniVisor: inspect what you are looking at.', nav('⟐OmniVisor'), { name: 'OmniVisor' }),
           b('select', '▭', 'Select', '—', 'Opens OmniSelect: multi-select nodes.', nav('⟐OmniSelect'), { name: 'OmniSelect' }),
           b('floors', '▤', 'Floors', '—', 'Opens the Floor manager.', nav('⟐FloorManager'), { name: 'Floor manager' }),
           b('userspace', '○', 'User space', 'o', 'Toggles the User Space sphere (Shift+O toggles its spin).', () => ev('omni:userspace-toggle-visible')),
+        ] },
+        { caption: 'Chronos', btns: [
+          b('chronos', '◔', 'Chronos', '—', 'Opens OmniChronos: the Program Monitor (player) and the Premiere-style timeline. Primary Time is the playhead.', nav('⟐OmniChronos'), { name: 'OmniChronos' }),
+          b('chronos-play', '▶', 'Play', '—', 'Plays or pauses Primary Time — the timeline playhead, the floor clock and the travelling reality node. Works with the Chronos window closed. (Space does the same while the pointer is over the Chronos window.)', () => ev('omni:timeline-play-set', { toggle: true }), { name: 'Chronos play / pause', pressed: (s) => s.timeline.playing }),
+          b('chronos-back', '◂', 'Step ◀', '—', 'Steps the playhead back one frame (1/30 s) and pauses. (← while the pointer is over the Chronos window.)', () => ev('omni:timeline-step', { frames: -1 }), { name: 'Chronos step back' }),
+          b('chronos-fwd', '▸', 'Step ▶', '—', 'Steps the playhead forward one frame (1/30 s) and pauses. (→ while the pointer is over the Chronos window.)', () => ev('omni:timeline-step', { frames: 1 }), { name: 'Chronos step forward' }),
+          b('chronos-start', '⇤', 'To start', '—', 'Moves the playhead to the work-area in point, or to 0. (Home while the pointer is over the Chronos window.)', () => ev('omni:timeline-seek', { t: TL.getState().workArea.in ?? 0 }), { name: 'Chronos to start' }),
+          b('chronos-add', '＋', 'Add node', '—', 'Adds the node selected in the scene to the timeline as a 5-second clip at the playhead (first unlocked track).', () => ev('omni:timeline-add-selected'), { name: 'Add selected node to timeline' }),
+          b('chronos-marker', '⚑', 'Marker', '—', 'Adds a marker at the playhead. (M while the pointer is over the Chronos window; M elsewhere still toggles the minimap.)', () => ev('omni:timeline-marker-add', { t: TL.getT() }), { name: 'Chronos add marker' }),
         ] },
         { caption: 'Save', btns: [
           b('save', '⤓', 'Save nodes', '—', 'Writes all nodes and edges to this browser now (they also auto-save). There is no Open / import button because no such handler exists yet.', () => ev('omni:force-save')),
@@ -310,6 +320,7 @@ export default class OmniRibbon {
     this.state = {
       minimap: false, tray: false, banner: HandBanner.isVisible(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
+      timeline: { playing: PrimaryTime.isPlaying() },
       inspector: { open: false, loaded: false, sections: [], openSections: {} },
     }
     this._listeners = []
@@ -455,6 +466,7 @@ export default class OmniRibbon {
     on('omni:hands-banner-state', d => { st.banner = !!d.visible })
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
+    on('omni:primarytime-state', d => { st.timeline = { playing: !!d.playing } })
     on('omni:inspector-state', d => {
       st.inspector = { open: !!d.open, loaded: !!d.loaded, sections: Array.isArray(d.sections) ? d.sections : [], openSections: d.openSections ?? {} }
     })
