@@ -53,7 +53,7 @@ const STYLES = `
 /* ── Vertical (Y) — right edge, reused from OmniVerticalMeter ────────── */
 
 .omni-meter-vertical {
-  top              : 80px;
+  top              : calc(var(--omni-top-offset, 48px) + 32px);   /* V169: below the ribbon */
   bottom           : 80px;
   right            : 16px;
   width            : 46px;
@@ -174,7 +174,7 @@ const STYLES = `
 
 .om-settings-panel {
   position         : fixed;
-  top              : 48px;
+  top              : var(--omni-top-offset, 48px);   /* V169: below the ribbon */
   right            : 16px;
   width            : 190px;
   background       : rgba(10, 10, 14, 0.92);

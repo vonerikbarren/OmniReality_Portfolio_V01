@@ -3245,3 +3245,41 @@ Fixed along the way: RadialMenu ran its init twice (guard added) and used stale 
 
 Verified: node + jsdom suite (194 checks, scratchpad harness) and real Chromium (Playwright, software WebGL at ~1 fps; the app's gsap lagSmoothing(500,33) had to be turned off in the harness): centre-button hit tests on desktop and 390x844 (incl. a touch tap), real clicks, radial slot lists, DataTypes opening the panel, payload creation at 300 ms, RH / LH fire with a node selected (flow-fired targetId = the selected node, 3-chain linked) and with nothing selected (centre-ray / HUD point), words rising and cleaned up from the DOM. See the final report of the session for what was NOT verified (real hardware, touch, photo wallpaper).
 Not built: array / object payloads, per-word panels, incoming mode, flowchart execution, Fire on OmniHand / ConsciousHand. RH Activation still fires V164 behaviours (queue item 53).
+
+
+## V169 — Ribbon toolbar, OmniNotify hub, one Hands dock icon, shared layout offset (2026-10-07)
+
+Built on V168 (V168 untouched).
+
+- **OmniRibbon** (`ui/OmniRibbon.js`): Excel-Home style toolbar under the global bar, the "File replacement" for realities. Tabs Home (dashboard icon), Inspector, Realities, Hands; 66 buttons, each with `data-omni-tip` (name / key / description); keys only where a real binding exists. Collapse chevron; tab + collapsed persisted in `omni:ribbon-v1`. Phone (<=700px): tabs only, tap a tab to drop the body as an overlay.
+- **Inspector tab**: one button per section (Identity, Location, Hierarchy, Domain, Appearance, Automation, Behavior, Program, Media, Data, Create New). Dim (not hidden) until a node is loaded; Location is dim when not applicable. Opens the inspector if closed and expands/scrolls via the existing accordion (`OmniInspector.openSection`, events `omni:inspector-section-open`, `omni:inspector-state`, `omni:inspector-state-request`).
+- **OmniNotify hub + box** (`utils/OmniNotifyHub.js`, `ui/OmniNotifyBox.js`): delegated capture listeners for `data-omni-tip[-key|-desc|-source]`; 120 ms hover intent, ~1.2 s revert, focus, touch long-press. API `OmniNotifyHub.setInfo`, event `omni:notify-info`. Box is draggable and resizable (`omni:notify-box-v1`), clamped to the viewport, docked under Current State by default (ribbon fills the rest; if moved, ribbon goes full width; double-click header re-docks). Mobile: collapsed header with current name inline, no resize. The existing Notify feed and address bar are kept (`omni:notify-push`, `omni:notify-panel-toggle`).
+- **Hands banner -> one dock icon**: new `utils/OmniHandBanner.js` (`omni:hands-banner-set` / `-state`, `omni:hands-banner-v1`). One pinned dock icon (⟐Hands) toggles both top hands; a "Show hands banner" row added to `ui/OmniHandsPanel.js`. Default shown on desktop, hidden at <=700px; the choice is persisted either way. Pads, tunnels, `omni:pad-toggle` unchanged.
+- **Shared layout offset** (`utils/OmniLayout.js`): CSS vars `--omni-bar-h`, `--omni-ribbon-h`, `--omni-top-offset`, `--omni-hands-banner-h`, `--omni-top-stack`, `--omni-ribbon-left`; event `omni:layout-changed`. Ribbon 97px docked, 29px collapsed, 37px phone.
+- Consumers moved onto the vars: OmniInspector, Hand (top hands), MovementPad (top pads, satellites, chips), RadialMenu, OmniPanelTray, Drawer, OmniNode panels, OmniNotifyPanel, MiniMap, WindowManager cascade, AccountDashboardPanel, OmniSystemCreatorPanel, OmniKeys, OmniVerticalMeter, OmniMeter, OmniMixerPanel, OmniDimensionalAxes, OmniPlayerDashboard. Stale 36px bar-height constants corrected to 48.
+- main.js: new listeners `omni:minimap-toggle-request`, `omni:return-to-landing` (ribbon buttons need them).
+- Guards: `ui/index.js` ran UI.init twice (pre-existing); ribbon and notify box have `_dup` guards. The duplicate GlobalBar / Dock the double init still creates is NOT fixed.
+- Not bound: Ctrl/Cmd+F1 (F1 is already the terminal).
+
+Intentionally left: a user-dragged minimap and dragged floating panels keep their saved px positions.
+
+Verified: node + jsdom suite (188+ checks, scratchpad) and real Chromium via Playwright (software GL). See the session's final report for what was not verified.
+
+
+## V170 — One UI.init, condensed Inspector with a section icon strip (2026-10-07)
+
+**Double init (root cause and fix).** `main.js` called `ui.init()` by hand and then `base.addModule(ui)`, which calls `init()` itself (`scene/BaseScene.js addModule`). The same pattern existed for `movementPad`, `miniMap`, `treeView` and `radialMenu`. On top of that `main.js` built a second set of four `Hand` modules next to the four `UI.init` already creates (`ui.hands`), so with the double init each hand existed three times (same `#omni-hand-*` ids). Measured in Chromium on V169: 2 `#omni-global-bar`, 2 `#omni-dock`, 3 of each Hand, 2 drawers, 2 panels, 2 panel trays, 2 MiniMaps, ~50 duplicate ids.
+- `main.js`: removed the manual `init()` calls (ui, movementPad, miniMap, treeView, radialMenu; `addModule` runs them once) and the extra `new Hand(...)` x4. Nothing else referenced those instances (no `ui.hands/ui.bar/...` use outside `ui/index.js`).
+- `ui/index.js`: `init()` is re-entrant-safe (`_initStarted`, reset in `destroy()`); the ribbon is created unconditionally again. `ui/MiniMap.js`: `init()` returns if already built. The V169 `_dup` guards in `OmniRibbon` / `OmniNotifyBox` stay as defence only.
+- After: 1 of every UI module and no duplicate ids in real Chromium; one `omni:nav-select` = one UI handler call; one `omni:pad-toggle` = one `omni:pad-state`.
+
+**Inspector condensed** (`systems/OmniInspector.js`, new `utils/OmniInspectorSections.js`).
+- One shared section list (`id, label, glyph, desc, onlyFor`), used by both the Inspector strip and the ribbon's Inspector tab (`OmniRibbon.INSPECTOR_SECTIONS` re-exports it).
+- Icon strip under the header: 11 buttons, `data-omni-tip` (name + description for OmniNotify), dim when a section does not apply (no node; Location on a non-location node), lit when open. No "non-default content" dot (skipped).
+- `activateSection(id)` is the single entry for strip taps and the ribbon buttons (the ribbon now sends `omni:inspector-section-open {section, toggle:true}`; without `toggle` the event still only opens, as in V169). Header buttons inside the panel use the same `_toggleSection`. Phones (<=700px, `PHONE_MAX`): one section at a time, tapping the open one closes it. Desktop: independent sections as before. Scroll-to-section is manual on the body (not `scrollIntoView`).
+- Panel is content-sized (`height:auto`) with a cap: desktop = free height below the panel's real top (`--oi-cap-h`, set on open / drag / snap / resize; was a fixed full height that ran under the Dock once cascaded), phone = `min(45vh, cap)`, scrolling inside. No section open -> `data-collapsed="true"` -> header + strip + node badge only. Preview canvas is 48px on phones.
+- Defaults: desktop keeps Identity / Location / Appearance; phone starts with none. Last choice per device in `localStorage 'omni:inspector-open-v1'` (`{d:{...}, m:id}`); crossing the 700px breakpoint collapses to the most recently opened section.
+- Phone placement: WindowManager's cascade left the 340px panel at x=202 (half off a 390px screen, pre-existing). On a phone it is docked at left 0 under the bar+ribbon on open; on any screen it is clamped inside the viewport.
+- Resize handle now sets `max-height` (not a fixed `height`), so the panel still collapses to the thin bar. Maximize keeps its old 90vh ceiling. Drag, close/minimize/attach/save/maximize, drawer/grid integration unchanged. `omni:layout-changed` not needed: only the ribbon and notify box listen to it and neither depends on the Inspector's footprint.
+
+Verified: node --check on every .js, jsdom suite `v170_test` (single instances, listener counts, strip, exclusivity, persistence, ribbon/strip same function), V165-V169 and earlier suites re-run (only the known pre-existing failures), real Chromium at 390x844 and 1280x720 (screenshots). See DeveloperQueue item 55 for what was not verified.

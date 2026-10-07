@@ -97,7 +97,7 @@ import * as WindowManager from './WindowManager.js'
 // ── Layout constants ─────────────────────────────────────────────────────────
 
 const DOCK_H       = 52
-const BAR_H        = 48   // GlobalBar height, top anchor
+const BAR_H        = 48   // GlobalBar height, top anchor (V169: fallback only — the tray anchors to --omni-top-offset, bar + ribbon)
 const ROW_H        = 40   // px per row (flat form)
 const COL_W        = 168  // px per column when oriented left/right
 const HEADER_H     = 32
@@ -179,17 +179,17 @@ const STYLES = /* css */`
   border-left: none; border-right: none; border-bottom: none;
 }
 #omni-panel-tray[data-orientation="top"] {
-  left: 0; right: 0; top: ${BAR_H}px;
+  left: 0; right: 0; top: var(--omni-top-offset, ${BAR_H}px);
   flex-direction: column;
   border-left: none; border-right: none; border-top: none;
 }
 #omni-panel-tray[data-orientation="left"] {
-  left: 0; top: ${BAR_H}px; bottom: ${DOCK_H}px;
+  left: 0; top: var(--omni-top-offset, ${BAR_H}px); bottom: ${DOCK_H}px;
   flex-direction: row;
   border-left: none; border-top: none; border-bottom: none;
 }
 #omni-panel-tray[data-orientation="right"] {
-  right: 0; top: ${BAR_H}px; bottom: ${DOCK_H}px;
+  right: 0; top: var(--omni-top-offset, ${BAR_H}px); bottom: ${DOCK_H}px;
   flex-direction: row;
   border-right: none; border-top: none; border-bottom: none;
 }

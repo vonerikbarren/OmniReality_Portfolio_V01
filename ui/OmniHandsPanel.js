@@ -29,6 +29,8 @@
  *   lh              px / py / pz step   -> 'omni:admin:settings' (the SAME store
  *                   ui/CameraMovementOptionsPanel.js edits; dispatches omni:admin-settings-saved)
  *   rh              altitude-up / -down + vertical / horizontal orbit speed -> same admin store
+ *   all four (V169) Show hands banner       utils/OmniHandBanner.js (omni:hands-banner-set / -state): the top
+ *                   ⟐OmniHand + ⟐ConsciousHand matrices. One shared switch, also the dock's ⟐Hands icon.
  *   conscious,      tunnel pin (omni:axinator-tunnel-visible-set), tunnels-follow-pads (shared master,
  *   omnihand        omni:dimension-axes-visible-set), step travel / relative-axis duration, hold-repeat
  *                   interval, clock hour (live re-aim), OmniHand stagger, Reset marker
@@ -47,6 +49,7 @@ import {
 import { listPayloads, getCurrentId, setCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES } from '../systems/OmniNodeBehavior.js'
 import { formatSpeed, SPEED_PRESETS } from './HandSpeedPanel.js'
+import * as HandBanner from '../utils/OmniHandBanner.js'
 
 export const NAV_TO_HAND = {
   '⟐LogicalHand':   'lh',
@@ -267,6 +270,7 @@ export default class OmniHandsPanel {
     this._onFlowState = (e) => { const d = e.detail; if (d?.hand) { this._flow[d.hand] = d; this._refresh() } }
     this._onFlowMaster = (e) => { this._flowOn = !!e.detail?.enabled; this._refresh() }
     this._onClose = () => this.close()
+    this._onBanner = () => this._refresh()
     this._onAdminSaved = () => this._refresh()
     window.addEventListener('omni:nav-select', this._onNavSelect)
     window.addEventListener('omni:hand-ammo-state', this._onAmmoState)
@@ -275,6 +279,7 @@ export default class OmniHandsPanel {
     window.addEventListener(PAYLOAD_CHANGED, this._onSetting)
     window.addEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.addEventListener('omni:hands-panel-close', this._onClose)
+    window.addEventListener('omni:hands-banner-state', this._onBanner)
     window.addEventListener('omni:panel-restore', this._onRestore)
     window.addEventListener('omni:axinator-list', this._onList)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -296,6 +301,7 @@ export default class OmniHandsPanel {
     window.removeEventListener(PAYLOAD_CHANGED, this._onSetting)
     window.removeEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.removeEventListener('omni:hands-panel-close', this._onClose)
+    window.removeEventListener('omni:hands-banner-state', this._onBanner)
     window.removeEventListener('omni:panel-restore', this._onRestore)
     window.removeEventListener('omni:axinator-list', this._onList)
     window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -408,6 +414,7 @@ export default class OmniHandsPanel {
     if (hand === 'lh' || hand === 'rh') this._viewFlow(body, hand)   // V168: the centre Fire button
     if (hand === 'lh' || hand === 'rh') this._viewTunnel(body, hand)   // V166: view-only tunnel pin
     if (hand === 'conscious' || hand === 'omnihand') this._viewAxis(body, hand)
+    this._viewBanner(body)
     this._viewPad(body, hand)
 
     const reset = el('button', 'omh-btn omh-btn--reset', `Reset ${meta.product} settings to defaults`)
@@ -706,6 +713,15 @@ export default class OmniHandsPanel {
     rb.dataset.action = 'reset-marker'
     rb.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:dimension-axes-reset', { detail: { hand } })))
     p.appendChild(rb)
+  }
+
+  /** V169: the ONE shared switch for the top hands banner (same as the dock's ⟐Hands icon). */
+  _viewBanner (body) {
+    const g = this._group(body, '⟐Hands banner (top hands)')
+    this._toggleRow(g, 'Show hands banner', 'handsBanner',
+      () => HandBanner.isVisible(),
+      (on) => window.dispatchEvent(new CustomEvent('omni:hands-banner-set', { detail: { visible: on } })))
+    g.appendChild(el('div', 'omh-note', 'Shows or hides the ⟐OmniHand (top-left) and ⟐ConsciousHand (top-right) matrices. Hiding it does not close their pads or tunnels; their ☰ menus and ⬢ tools stay on the ribbon\'s Hands tab and on keys 1-4. Default: shown on desktop, hidden on phones (<= 700px); your choice is remembered.'))
   }
 
   _viewPad (body, hand) {

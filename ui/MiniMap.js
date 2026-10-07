@@ -104,7 +104,8 @@ const WORLD_HALF_DEFAULT = OUTER_R + 2   // 40 world units
 // Corner-anchoring offsets — below GlobalBar (48px) up top, above
 // Dock (52px) down low, matching this project's own real header/dock
 // heights rather than a guessed value.
-const TOP_OFFSET  = 60
+const TOP_OFFSET  = 60   // fallback only; V169: below the ribbon = --omni-top-offset + 12 (TOP_CSS)
+const TOP_CSS     = 'calc(var(--omni-top-offset, 48px) + 12px)'
 const SIDE_OFFSET = 16
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ const STYLES = /* css */`
      real position immediately on init from saved settings; these are
      just a same-corner fallback so there's no flash at the old
      bottom-center spot before JS runs. */
-  top             : ${TOP_OFFSET}px;
+  top             : ${TOP_CSS};
   right           : ${SIDE_OFFSET}px;
   z-index         : 42;
   pointer-events  : auto;
@@ -335,6 +336,7 @@ export default class MiniMap {
   // ── Module contract ──────────────────────────────────────────────────────
 
   init () {
+    if (this._el) return   // V170: already built (init() used to run twice from main.js)
     injectStyles()
     this._dpr = Math.min(window.devicePixelRatio || 1, 2)
     this._buildDOM()
@@ -432,10 +434,10 @@ export default class MiniMap {
     el.style.left = el.style.right = el.style.top = el.style.bottom = 'auto'
     switch (corner) {
       case 'top-left':
-        el.style.top = `${TOP_OFFSET}px`; el.style.left = `${SIDE_OFFSET}px`
+        el.style.top = TOP_CSS; el.style.left = `${SIDE_OFFSET}px`
         break
       case 'top':
-        el.style.top = `${TOP_OFFSET}px`; el.style.left = '50%'
+        el.style.top = TOP_CSS; el.style.left = '50%'
         el.style.transform = 'translateX(-50%)'
         break
       case 'bottom-left':
@@ -458,7 +460,7 @@ export default class MiniMap {
         break
       case 'top-right':
       default:
-        el.style.top = `${TOP_OFFSET}px`; el.style.right = `${SIDE_OFFSET}px`
+        el.style.top = TOP_CSS; el.style.right = `${SIDE_OFFSET}px`
         break
     }
   }

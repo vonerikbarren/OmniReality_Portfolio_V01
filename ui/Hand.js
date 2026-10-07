@@ -134,7 +134,7 @@ const SYMBOLS = {
 }
 
 // Positioning constants — should match GlobalBar and Dock heights
-const BAR_H  = 48   // px — GlobalBar collapsed height (Hand top offset)
+const BAR_H  = 48   // px — GlobalBar height. V169: only the fallback; the top hands anchor to --omni-top-offset (bar + ribbon, utils/OmniLayout.js)
 const DOCK_H = 52   // px — Dock height (Hand bottom offset)
 const CELL   = 50   // px — each button cell size (generous touch target)
 const GAP    = 2    // px — gap between cells
@@ -189,7 +189,7 @@ const STYLES = /* css */`
 /* ── Corner-specific anchoring + border-radius ───────────────────────────── */
 
 .omni-hand--tl {
-  top              : ${BAR_H}px;
+  top              : var(--omni-top-offset, ${BAR_H}px);
   left             : 0;
   border-top       : none;
   border-left      : none;
@@ -197,7 +197,7 @@ const STYLES = /* css */`
 }
 
 .omni-hand--tr {
-  top              : ${BAR_H}px;
+  top              : var(--omni-top-offset, ${BAR_H}px);
   right            : 0;
   border-top       : none;
   border-right     : none;
@@ -602,6 +602,12 @@ export default class Hand {
     // Tooltip content (context-aware per hand)
     btn.dataset.tooltip = this._tooltipFor(key)
 
+    // V169: ⟐OmniNotify hover info (data attributes only). Keys are the real main.js bindings (1-4 / Shift).
+    const KEYS = { omnihand: { hamburger: '1', radial: '3' }, conscious: { hamburger: '2', radial: '4' }, lh: { radial: 'Left Shift' }, rh: { radial: 'Right Shift' } }
+    btn.dataset.omniTip = `${cfg.productName} ${sym.label}`
+    btn.dataset.omniTipKey = KEYS[cfg.id]?.[key] ?? '—'
+    btn.dataset.omniTipDesc = key === 'orbiter' ? 'Orbiter — undefined for all four hands (DeveloperQueue item 38).' : this._tooltipFor(key)
+    btn.dataset.omniTipSource = 'Hand'
     // Orbiter is undefined — cursor: default, slightly muted
     if (key === 'orbiter') {
       btn.setAttribute('disabled', '')

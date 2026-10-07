@@ -46,7 +46,7 @@ import gsap from 'gsap'
 
 // ── Layout constants (must match GlobalBar and Dock) ──────────────────────────
 
-const BAR_H   = 36    // px — GlobalBar collapsed height
+const BAR_H   = 48    // px — GlobalBar height (was a stale 36). V169: fallback only — drawers anchor to --omni-top-offset (bar + ribbon, utils/OmniLayout.js)
 const DOCK_H  = 52    // px — Dock height
 const WIDTH   = 300   // px — drawer width (desktop)
 const OPEN_D  = 0.34  // s  — open tween duration
@@ -136,10 +136,10 @@ const STYLES = /* css */`
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : ${BAR_H}px;
+  top              : var(--omni-top-offset, ${BAR_H}px);
   width            : ${WIDTH}px;
-  height           : calc(100% - ${BAR_H}px - ${DOCK_H}px);
-  max-height       : calc(100% - ${BAR_H}px - ${DOCK_H}px);
+  height           : calc(100% - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px);
+  max-height       : calc(100% - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px);
 
   display          : flex;
   flex-direction   : column;

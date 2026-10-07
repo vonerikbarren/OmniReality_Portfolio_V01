@@ -78,7 +78,7 @@ const HAND_IDS = ['conscious', 'omnihand']
 const STYLES = /* css */`
 .omni-dim-readout {
   position        : fixed;
-  top             : 56px;
+  top             : calc(var(--omni-top-offset, 48px) + 8px);   /* V169: below the ribbon */
   left            : 50%;
   transform       : translateX(-50%);
   z-index         : 40;

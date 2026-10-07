@@ -99,7 +99,7 @@ const STYLES = /* css */`
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 80px;
+  top              : calc(var(--omni-top-offset, 48px) + 32px);   /* V169: below the ribbon */
   left             : 140px;
   width            : 420px;
   min-width        : 360px;

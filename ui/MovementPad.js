@@ -276,14 +276,21 @@ export const SAT_LAYOUT = {
   barH: BAR_H, dockH: DOCK_H, handWH: HAND_WH, padOffset: PAD_OFFSET,
 }
 
+// V169: a top-anchored satellite's offset was measured from the screen top (BAR_H + hands banner + ...).
+// It now rides --omni-top-stack (bar + ribbon + banner, utils/OmniLayout.js) so the ribbon and a hidden
+// banner move it; the geometry numbers (SAT_LAYOUT) are unchanged, and the fallback equals the old value.
+const _vCss = (g) => g.anchor === 'top'
+  ? `calc(${g.v - BAR_H - HAND_WH}px + var(--omni-top-stack, ${BAR_H + HAND_WH}px))`
+  : `${g.v}px`
+
 const _satRules = (geom) => Object.keys(_SAT_ANGLES).map(hand => {
   const rules = _SAT_ROLES.map(role => {
     const g = geom[hand][role]
-    return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`
+    return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${_vCss(g)}; }`
   })
   if (geom[hand].chip) {
     const g = geom[hand].chip
-    rules.push(`.omni-pad-chip--${hand} { ${g.side}: ${g.d}px; ${g.anchor}: ${g.v}px; }`)
+    rules.push(`.omni-pad-chip--${hand} { ${g.side}: ${g.d}px; ${g.anchor}: ${_vCss(g)}; }`)
   }
   return rules.join('\n')
 }).join('\n')
@@ -387,8 +394,8 @@ const STYLES = `
 
 /* ── Corner anchoring ──────────────────────────────────────────────────────── */
 
-.omni-pad--tl { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: top left; }
-.omni-pad--tr { top: ${BAR_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: top right; }
+.omni-pad--tl { top: calc(var(--omni-top-stack, ${BAR_H + HAND_WH}px) + ${PAD_OFFSET}px); left: 4px; transform-origin: top left; }
+.omni-pad--tr { top: calc(var(--omni-top-stack, ${BAR_H + HAND_WH}px) + ${PAD_OFFSET}px); right: 4px; transform-origin: top right; }
 .omni-pad--bl { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; left: 4px; transform-origin: bottom left; }
 .omni-pad--br { bottom: ${DOCK_H + HAND_WH + PAD_OFFSET}px; right: 4px; transform-origin: bottom right; }
 
@@ -1042,6 +1049,11 @@ export default class MovementPad {
       el.dataset.hand = handId
       el.dataset.role = role
       el.setAttribute('aria-label', spec.label)
+      // V169: ⟐OmniNotify hover info (data attributes only)
+      el.dataset.omniTip = spec.label
+      el.dataset.omniTipKey = '—'
+      el.dataset.omniTipDesc = spec.title
+      el.dataset.omniTipSource = 'Pad satellite'
       if (spec.pressed) el.setAttribute('aria-pressed', 'false')
       el.innerHTML = `<span class="sat-glyph">${spec.glyph}</span>` + (spec.sub ? `<span class="sat-sub">${spec.sub}</span>` : '')
       if (role === 'release')  el.addEventListener('click', () => this._toggleDetach(handId))
@@ -1208,6 +1220,11 @@ export default class MovementPad {
       : handId === 'lh' ? `Fire — shoot a ${label} flowchart element at the target (or the HUD centre). Space / Enter when focused.`
       : name ? `Fire — display "${label}" at the target (or the HUD centre). Space / Enter when focused.`
         : 'Fire — no payload yet: RH radial ⟐1 > DataTypes creates one'
+    // V169: ⟐OmniNotify hover info (utils/OmniNotifyHub.js) — data attributes only, mirrors the title.
+    btn.dataset.omniTip = `Fire ${label}`
+    btn.dataset.omniTipKey = 'Space / Enter (focused)'
+    btn.dataset.omniTipDesc = btn.title
+    btn.dataset.omniTipSource = 'Pad centre'
   }
 
   _handleFireFeedback ({ hand, kind }) {

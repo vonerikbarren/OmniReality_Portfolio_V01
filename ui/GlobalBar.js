@@ -35,10 +35,12 @@ import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { flashHeaderLine } from './Panel.js'
 import OmniAddressBar from './OmniAddressBar.js'
+import OmniNotifyBox from './OmniNotifyBox.js'
+import { initLayout } from '../utils/OmniLayout.js'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const COLLAPSED_H = 48   // px — bar height (fixed now — no more expand/collapse)
+const COLLAPSED_H = 48   // px — bar height (fixed now — no more expand/collapse). Shared with the layout vars: utils/OmniLayout.js BAR_H
 const CATEGORIES  = ['Realities', 'Experiences', 'Perspectives', 'Times', 'Spaces', 'Objects', 'Windows', 'Assistance']
 
 // ── Stylesheet (injected once) ───────────────────────────────────────────────
@@ -546,10 +548,15 @@ export default class GlobalBar {
   // ── Module contract ─────────────────────────────────────────────────────
 
   init () {
+    initLayout()   // V169: --omni-bar-h / --omni-top-offset ... exist before anything anchors to them
     injectStyles()
     this._buildDOM()
     this._bindEvents()
     this._mountNotifyAddressBar()
+    // V169: ⟐OmniNotify hover-info box (docked under Current State). The old ⟐Notify column above
+    // (address bar + feed toggle) is untouched.
+    this._notifyBox = new OmniNotifyBox(this.ctx)
+    this._notifyBox.init()
     this._clockInterval = setInterval(() => this._tickClock(), 1000)
   }
 
@@ -596,6 +603,7 @@ export default class GlobalBar {
   destroy () {
     clearInterval(this._clockInterval)
     this._notifyAddressBar?.destroy()
+    this._notifyBox?.destroy()
     window.removeEventListener('omni:frontmost-changed', this._onFrontmostChanged)
     document.removeEventListener('click', this._onDocumentClick)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
@@ -627,12 +635,12 @@ export default class GlobalBar {
 
       <!-- Col00 — Identity -->
       <div class="ob-col" id="ob-col00">
-        <span class="ob-logo">⟐</span>
+        <span class="ob-logo" data-omni-tip="⟐OmniReality" data-omni-tip-key="—" data-omni-tip-desc="The Global Bar: your profile, the current space and clock, live position / rotation / scale, and the menus.">⟐</span>
       </div>
 
       <!-- Col01 — User avatar -->
       <div class="ob-col" id="ob-col01">
-        <div class="ob-avatar" id="ob-avatar" title="User">
+        <div class="ob-avatar" id="ob-avatar" title="User" data-omni-tip="User" data-omni-tip-key="—" data-omni-tip-desc="Your profile picture slot.">
           <span>⟐</span>
         </div>
       </div>
@@ -677,7 +685,7 @@ export default class GlobalBar {
            Deliberately living in GlobalBar's own, already-reserved
            space rather than a new floating top-right element, which
            would otherwise collide with ConsciousHand directly below. -->
-      <div class="ob-col" id="ob-col-notify">
+      <div class="ob-col" id="ob-col-notify" data-omni-tip="⟐Notify" data-omni-tip-key="—" data-omni-tip-desc="Notification trail. Click to open or close the notification feed (new notifications also open it for a moment).">
         <div class="ob-label-row">
           <span class="ob-label">⟐Notify</span>
         </div>
@@ -714,7 +722,7 @@ export default class GlobalBar {
 
     container.innerHTML = CATEGORIES.map(cat => /* html */`
       <div class="ob-menu-cat" data-cat="${cat}">
-        <button class="ob-menu-cat-btn" data-cat-btn="${cat}">${cat}</button>
+        <button class="ob-menu-cat-btn" data-cat-btn="${cat}" data-omni-tip="${cat} menu" data-omni-tip-key="—" data-omni-tip-desc="${cat === 'Windows' ? 'Lists every panel; click one to bring it to the front.' : cat === 'Assistance' ? 'Help items, e.g. the keyboard shortcut list.' : 'Actions of the panel that is in front (changes with the focused panel).'}" data-omni-tip-source="Global Bar">${cat}</button>
         <div class="ob-menu-dropdown" data-dropdown="${cat}">
           <span class="panel-glitch-line" aria-hidden="true"></span>
           <div class="ob-menu-dropdown-list" data-list="${cat}"></div>
@@ -776,7 +784,7 @@ export default class GlobalBar {
         const windows = WindowManager.getRegisteredWindows()
         list.innerHTML = windows.length
           ? windows.map(w => /* html */`
-              <div class="ob-menu-item ${w.isOpen ? '' : 'is-window-closed'}" data-window-id="${w.id}">
+              <div class="ob-menu-item ${w.isOpen ? '' : 'is-window-closed'}" data-window-id="${w.id}" data-omni-tip="${w.label}" data-omni-tip-key="—" data-omni-tip-desc="Bring this window to the front.">
                 <span>${w.label}</span>
               </div>`).join('')
           : `<div class="ob-menu-empty">No windows open</div>`
@@ -792,7 +800,7 @@ export default class GlobalBar {
 
       const items = categories[cat] ?? []
       list.innerHTML = items.length
-        ? items.map((it, i) => `<div class="ob-menu-item" data-action-idx="${i}"><span>${it.label}</span></div>`).join('')
+        ? items.map((it, i) => `<div class="ob-menu-item" data-action-idx="${i}" data-omni-tip="${it.label}" data-omni-tip-key="—" data-omni-tip-desc="${cat} action for ${WindowManager.getLabel(frontmostId) ?? 'this panel'}."><span>${it.label}</span></div>`).join('')
         : `<div class="ob-menu-empty">No actions here</div>`
       list.querySelectorAll('[data-action-idx]').forEach(item => {
         const idx = Number(item.dataset.actionIdx)

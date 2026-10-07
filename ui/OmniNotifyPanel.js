@@ -27,7 +27,7 @@ const STYLES = `
   top              : 0;
   left             : 0;
   right            : 0;
-  height           : 320px;
+  height           : calc(var(--omni-top-offset, 48px) + 272px);   /* V169: 320px at the old 48px bar; grows with the ribbon */
   max-height       : 60vh;
 
   background       : var(--omni-theme-bg, rgba(8, 8, 12, 0.94));
@@ -40,7 +40,7 @@ const STYLES = `
   z-index          : 55;   /* below GlobalBar's own stacking, above ordinary panels */
   transform        : translateY(-100%);
   pointer-events   : auto;
-  padding          : ${BAR_H + 16}px 24px 20px;
+  padding          : calc(var(--omni-top-offset, ${BAR_H}px) + 16px) 24px 20px;   /* V169: content starts under bar + ribbon */
   box-sizing       : border-box;
   overflow-y       : auto;
 }

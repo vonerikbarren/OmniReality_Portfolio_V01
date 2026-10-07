@@ -108,6 +108,8 @@ import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as GridWidgets   from '../ui/GridWidgets.js'
 import { goToObject } from '../utils/CameraTravel.js'
+import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
+import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
 import { createBehaviorForm } from '../ui/OmniNodeBehaviorForm.js'
 import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath } from './OmniProgramCommands.js'
@@ -119,7 +121,7 @@ import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath
 
 // ── Layout constants (must match OmniNode.js and GlobalBar.js) ────────────────
 
-const BAR_H     = 36    // px — GlobalBar collapsed height
+const BAR_H     = 48    // px — GlobalBar height; V169: only the fallback now — the live value is --omni-top-offset (bar + ribbon, utils/OmniLayout.js). Was a stale 36.
 const DOCK_H    = 52    // px — Dock height
 const PANEL_W   = 340   // px — inspector panel width
 const SLIDE_DUR = 0.30  // s  — slide animation
@@ -213,6 +215,8 @@ const texLoader = new THREE.TextureLoader()
 // ── Storage ───────────────────────────────────────────────────────────────────
 
 const STORE_PREFIX = 'omni:inspector:'
+const OPEN_KEY     = 'omni:inspector-open-v1'   // V170: { d: {sectionId: bool} (desktop), m: sectionId|null (phone) }
+const DESKTOP_OPEN_DEFAULT = { identity: true, location: true, appearance: true }   // what was open before V170 — desktop expectations unchanged
 
 // ── Color utilities ───────────────────────────────────────────────────────────
 
@@ -259,14 +263,16 @@ const STYLES = /* css */`
   --mono            : 'Courier New', Courier, monospace;
 
   position          : fixed;
-  top               : ${BAR_H}px;
+  top               : var(--omni-top-offset, ${BAR_H}px);
   left              : 0;
   width             : ${PANEL_W}px;
   min-width         : 260px;
   max-width         : 640px;
-  height            : calc(100vh - ${BAR_H}px - ${DOCK_H}px);
-  min-height        : 240px;
-  max-height        : 90vh;
+  /* V170: content-sized (header + icon strip + whatever sections are open), capped at the free height.
+     With no section open it collapses to header + strip (+ node badge). Phones cap lower, see the media query. */
+  height            : auto;
+  min-height        : 0;
+  max-height        : var(--oi-cap-h, calc(100vh - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px));   /* --oi-cap-h: free height below the panel's real top (set by _updateCap) */
 
   display           : flex;
   flex-direction    : column;
@@ -1591,10 +1597,74 @@ const STYLES = /* css */`
   opacity           : 0;
 }
 
+/* ── Section icon strip (V170) — one icon per section, same list/glyphs as the ribbon's Inspector tab ── */
+
+.oi-strip {
+  flex-shrink       : 0;
+  display           : flex;
+  align-items       : stretch;
+  gap               : 2px;
+  padding           : 3px 6px;
+  border-bottom     : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.015);
+  overflow-x        : auto;
+  scrollbar-width   : none;
+}
+.oi-strip::-webkit-scrollbar { display: none; }
+
+.oi-strip-btn {
+  flex              : 1 1 0;
+  min-width         : 26px;
+  height            : 30px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  padding           : 0;
+  font-family       : var(--mono);
+  font-size         : 14px;
+  line-height       : 1;
+  color             : var(--oi-text-dim);
+  background        : transparent;
+  border            : 1px solid transparent;
+  border-radius     : 6px;
+  cursor            : pointer;
+  transition        : background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.oi-strip-btn:hover { background: var(--oi-ctrl-hover); color: var(--oi-text); }
+.oi-strip-btn.is-open {
+  color             : var(--oi-text);
+  background        : var(--oi-ctrl-active);
+  border-color      : var(--oi-focus-border);
+}
+.oi-strip-btn.is-dim { opacity: 0.38; }
+
+/* Maximized (ui/WindowManager.js makeMaximizable sets an inline 94vh height): same 90vh ceiling the panel always had. */
+.oi-panel.win-maximized { max-height: 90vh; }
+.oi-panel.win-maximized .oi-strip { display: none; }   /* the dashboard grid shows every section as a card */
+
+/* Thin-bar state: no section open -> header + strip (+ node badge) only. */
+.oi-panel[data-collapsed="true"] .oi-body,
+.oi-panel[data-collapsed="true"] .oi-inspect-preview-wrap,
+.oi-panel[data-collapsed="true"] .oi-footer { display: none; }
+
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 560px) {
   .oi-panel { width: min(${PANEL_W}px, 90vw); }
+}
+
+/* Phones (same breakpoint as utils/OmniLayout.js PHONE_MAX): the panel never covers more than 45% of the screen
+   and scrolls inside; the live preview shrinks so it does not eat the little room there is. */
+@media (max-width: ${PHONE_MAX}px) {
+  .oi-panel { max-height: min(45vh, var(--oi-cap-h, calc(100vh - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px))); }
+  .oi-strip-btn { height: 34px; }
+  .oi-inspect-preview-wrap { padding: 4px 0; }
+  .oi-inspect-canvas { width: 48px; height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oi-strip-btn { transition: none; }
 }
 
 `
@@ -1669,16 +1739,15 @@ export default class OmniInspector {
     this._ext = null
 
     // ── Section open states ────────────────────────────────────────────
-    this._sectionOpen = {
-      identity   : true,
-      location   : true,   // only ever rendered for a locationNode (see _renderLoaded) — open by default so a freshly "Highlight and Edit"'d OmniPointing node shows its coordinate immediately
-      hierarchy  : false,
-      appearance : true,
-      media      : false,
-      domain     : false,
-      data       : false,
-      create     : false,
-    }
+    // Desktop default (unchanged): Identity, Location (only rendered for a locationNode — open so a freshly
+    // "Highlight and Edit"'d OmniPointing node shows its coordinate immediately) and Appearance.
+    // V170: phones start with NO section open (the scene stays visible) and keep ONE at a time; the last
+    // choice per device is remembered in localStorage OPEN_KEY.
+    this._sectionOpen = {}
+    this._lastOpened  = null
+    this._onResizeWin = null
+    this._wasPhone    = this._isPhone()
+    this._loadOpenState()
 
     // ── Bound event handlers for cleanup ────────────────────────────────
     this._onToggle    = null
@@ -1778,6 +1847,9 @@ export default class OmniInspector {
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniinspector')
     window.removeEventListener('omni:system-toggle', this._onToggle)
+    window.removeEventListener('resize', this._onResizeWin)
+    window.removeEventListener('omni:inspector-section-open', this._onSectionOpen)
+    window.removeEventListener('omni:inspector-state-request', this._onStateRequest)
     window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
     window.removeEventListener('omni:node-program-set', this._onProgramSet)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
@@ -1805,6 +1877,7 @@ export default class OmniInspector {
   open () {
     if (this._isOpen) return
     this._isOpen = true
+    this._placeForViewport()
     this._el.style.visibility = 'visible'
     const targetOpacity = WindowManager.getPanelOpacity()
     gsap.fromTo(this._el,
@@ -1818,6 +1891,7 @@ export default class OmniInspector {
       }
     )
     this._playSound('open')
+    this._announceState()
   }
 
   close () {
@@ -1835,10 +1909,172 @@ export default class OmniInspector {
     })
     this._isOpen = false
     this._playSound('close')
+    this._announceState()
   }
 
   toggle () {
     this._isOpen ? this.close() : this.open()
+  }
+
+  /** V169: the ribbon's Inspector tab mirrors this (dim icons when nothing is loaded, which sections
+   *  exist — Location only for a location node — and which are expanded). Event only, no polling. */
+  _announceState () {
+    const body = this._el?.querySelector('#oi-body')
+    const sections = this._currentData
+      ? [...(body?.querySelectorAll('.oi-section-toggle') ?? [])].map(b => b.dataset.section)
+      : []
+    const openSections = {}
+    sections.forEach(id => { openSections[id] = !!this._sectionOpen[id] })
+    this._syncStrip()
+    this._applyCollapsed()
+    window.dispatchEvent(new CustomEvent('omni:inspector-state', {
+      detail: { open: this._isOpen, loaded: !!this._currentData, nodeId: this._currentId, sections, openSections },
+    }))
+  }
+
+  /** V169/V170: open the panel if closed, expand one section (never toggles it off) and scroll to it.
+   *  Returns false when nothing is loaded or the section does not exist for this node (e.g. location). */
+  openSection (id) {
+    if (!this._currentData) return false
+    if (!this._el?.querySelector(`[data-section="${id}"]`)) return false
+    if (!this._isOpen) this.open()
+    if (!this._sectionOpen[id]) this._toggleSection(id)
+    else this._scrollToSection(id)
+    return true
+  }
+
+  /** V170: THE entry point for the strip icons and the ribbon's Inspector-tab buttons. Opens the panel if it
+   *  is closed, then toggles that section (phones: exclusive — opening one closes the others, tapping the open
+   *  one closes it; desktop: sections stay independent). Dim / unavailable sections explain themselves in
+   *  OmniNotify instead. Returns true when a section was toggled. */
+  activateSection (id) {
+    const sec = INSPECTOR_SECTIONS.find(x => x.id === id)
+    if (!sec) return false
+    const exists = !!this._currentData && !!this._el?.querySelector(`[data-section="${id}"]`)
+    if (!exists) {
+      const why = !this._currentData
+        ? 'Select a node first — the Inspector sections appear once a node is loaded.'
+        : `The selected node is not a ${sec.onlyFor ?? 'node that has this section'}.`
+      window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: `Inspector · ${sec.label}`, desc: why, holdMs: 3500 } }))
+      if (!this._isOpen) this.open()
+      return false
+    }
+    if (!this._isOpen) this.open()
+    this._toggleSection(id)
+    return true
+  }
+
+  // ── V170: open-section state (per device), phone exclusivity ──────────────
+
+  _isPhone () { return (typeof window !== 'undefined' ? (window.innerWidth || 1024) : 1024) <= PHONE_MAX }
+
+  _reducedMotion () {
+    try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch (_) { return false }
+  }
+
+  _loadOpenState () {
+    let saved = null
+    try { saved = JSON.parse(localStorage.getItem(OPEN_KEY) ?? 'null') } catch (_) {}
+    this._savedDesktop = saved && typeof saved.d === 'object' && saved.d ? { ...saved.d } : { ...DESKTOP_OPEN_DEFAULT }
+    this._savedPhone   = typeof saved?.m === 'string' ? saved.m : null
+    if (this._isPhone()) {
+      this._sectionOpen = this._savedPhone ? { [this._savedPhone]: true } : {}
+      this._lastOpened = this._savedPhone
+    } else {
+      this._sectionOpen = { ...this._savedDesktop }
+    }
+  }
+
+  _persistOpenState () {
+    if (this._isPhone()) {
+      this._savedPhone = Object.keys(this._sectionOpen).find(k => this._sectionOpen[k]) ?? null
+    } else {
+      this._savedDesktop = { ...this._sectionOpen }
+    }
+    try { localStorage.setItem(OPEN_KEY, JSON.stringify({ d: this._savedDesktop, m: this._savedPhone })) } catch (_) {}
+  }
+
+  /** On a phone keep at most one section open: the one opened last (else the first in panel order). */
+  _enforcePhoneExclusive (stateOnly = false) {
+    if (!this._isPhone()) return
+    const open = INSPECTOR_SECTIONS.map(s => s.id).filter(id => this._sectionOpen[id])
+    if (open.length <= 1) return
+    const keep = open.includes(this._lastOpened) ? this._lastOpened : open[0]
+    open.forEach(id => { if (id === keep) return; if (stateOnly) this._sectionOpen[id] = false; else this._setSectionOpen(id, false) })
+  }
+
+  /** V170: WindowManager.register() cascades the panel to an inline left/top (about x=202 on a fresh load),
+   *  which pushed the 340px panel half off a 390px phone screen. On a phone it is docked at the left edge under
+   *  the bar + ribbon; on any screen it is kept inside the viewport horizontally. */
+  _placeForViewport () {
+    const el = this._el
+    if (!el) return
+    const w = el.getBoundingClientRect().width || PANEL_W
+    if (this._isPhone()) {
+      gsap.set(el, { left: 0, top: getTopOffset(), right: 'auto' })
+    } else {
+      const left = parseFloat(el.style.left)
+      if (Number.isFinite(left) && left + w > window.innerWidth) gsap.set(el, { left: Math.max(0, window.innerWidth - w) })
+    }
+    this._updateCap()
+  }
+
+  /** The height cap is "free height below where the panel really is" (it is cascaded / dragged, not always at the
+   *  top offset), so a tall panel never runs under the Dock. Re-run after open, drag, snap and window resize. */
+  _updateCap () {
+    const el = this._el
+    if (!el) return
+    const top = el.getBoundingClientRect().top
+    const free = Math.max(160, window.innerHeight - (Number.isFinite(top) ? top : getTopOffset()) - DOCK_H)
+    el.style.setProperty('--oi-cap-h', `${Math.round(free)}px`)
+  }
+
+  /** Crossing the phone breakpoint (rotate / resize): collapse to one section, re-sync the strip. */
+  _onViewportChange () {
+    const phone = this._isPhone()
+    this._updateCap()
+    if (phone === this._wasPhone) return
+    this._wasPhone = phone
+    if (phone) { this._enforcePhoneExclusive(); this._persistOpenState() }
+    if (this._isOpen) this._placeForViewport()
+    else this._updateCap()
+    this._announceState()
+  }
+
+  /** Scroll the (single) scrolling body so the section header is at the top — manual, because
+   *  scrollIntoView could also scroll the overflow:hidden panel itself. */
+  _scrollToSection (id) {
+    const body = this._el?.querySelector('#oi-body')
+    const sec  = this._el?.querySelector(`[data-section="${id}"]`)?.closest('.oi-section')
+    if (!body || !sec || this._gridEl) return
+    const top = sec.offsetTop - body.offsetTop
+    if (typeof body.scrollTo === 'function') body.scrollTo({ top, behavior: this._reducedMotion() ? 'auto' : 'smooth' })
+    else body.scrollTop = top
+  }
+
+  /** Strip icons: dim = does not apply right now (no node, or Location on a non-location node); lit = open. */
+  _syncStrip () {
+    const strip = this._el?.querySelector('#oi-strip')
+    if (!strip) return
+    strip.querySelectorAll('.oi-strip-btn').forEach(btn => {
+      const id = btn.dataset.strip
+      const exists = !!this._currentData && !!this._el.querySelector(`.oi-section-toggle[data-section="${id}"]`)
+      const open = exists && !!this._sectionOpen[id]
+      btn.classList.toggle('is-dim', !exists)
+      btn.classList.toggle('is-open', open)
+      btn.setAttribute('aria-pressed', String(open))
+    })
+  }
+
+  /** Thin bar (header + strip + badge) when a node is loaded and no section is open. Expanding applies at
+   *  once; collapsing waits until the closing tween is done so the body does not vanish mid-animation. */
+  _applyCollapsed () {
+    const anyOpen = !!this._currentData && !!this._el?.querySelector('.oi-section-toggle.is-open')
+    const collapsed = !!this._currentData && !anyOpen
+    // a section whose toggle is off but whose content still carries is-open is mid-close: wait for it
+    const closing = this._el.querySelectorAll('.oi-section-content.is-open').length > this._el.querySelectorAll('.oi-section-toggle.is-open').length
+    if (collapsed && closing) return
+    this._el.dataset.collapsed = String(collapsed)
   }
 
   /**
@@ -1968,6 +2204,7 @@ export default class OmniInspector {
     this._el?.querySelector('#oi-inspect-preview-wrap')?.classList.remove('is-visible')
     this._showEmpty()
     this._updateFooter()
+    this._announceState()
   }
 
   // ── Panel DOM ────────────────────────────────────────────────────────────
@@ -1993,6 +2230,15 @@ export default class OmniInspector {
           <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
         </div>
         <span class="oi-title">OmniInspector ⟐i</span>
+      </div>
+
+      <!-- V170: section icon strip — one button per section (utils/OmniInspectorSections.js, same list as the ribbon) -->
+      <div class="oi-strip" id="oi-strip" data-omni-tip-source="OmniInspector" role="toolbar" aria-label="Inspector sections">
+        ${INSPECTOR_SECTIONS.map(sec => /* html */`
+          <button class="oi-strip-btn is-dim" data-strip="${sec.id}" aria-label="${sec.label}" aria-pressed="false"
+                  data-omni-tip="${sec.label}" data-omni-tip-key="—"
+                  data-omni-tip-desc="${sec.desc}${sec.onlyFor ? ' Only for a ' + sec.onlyFor + '.' : ''} Tap to open or close it.">${sec.glyph}</button>
+        `).join('')}
       </div>
 
       <!-- Change/action notification — same idea as Admin's unsaved banner,
@@ -2049,6 +2295,13 @@ export default class OmniInspector {
       }
     })
 
+    el.querySelector('#oi-strip').addEventListener('click', (e) => {
+      const btn = e.target.closest('.oi-strip-btn')
+      if (btn) this.activateSection(btn.dataset.strip)
+    })
+    this._onResizeWin = () => this._onViewportChange()
+    window.addEventListener('resize', this._onResizeWin)
+
     this._bindDrag(el)
 
     el.dataset.winId = 'omniinspector'
@@ -2091,8 +2344,10 @@ export default class OmniInspector {
       gsap.set(el, { left: this._drag.originX + dx, top: this._drag.originY + dy, right: 'auto' })
     }
     const onUp = () => {
+      const wasDragging = this._drag.active
       this._drag.active = false
       header.classList.remove('is-dragging')
+      if (wasDragging) this._updateCap()
     }
 
     header.addEventListener('mousedown', onDown)
@@ -2134,8 +2389,12 @@ export default class OmniInspector {
       const cx = e.touches?.[0]?.clientX ?? e.clientX
       const cy = e.touches?.[0]?.clientY ?? e.clientY
       const newW = resize.startW + (cx - resize.startX)   // left-docked now — dragging right grows it
-      const newH = resize.startH + (cy - resize.startY)   // dragging down grows it
-      gsap.set(el, { width: newW, height: newH })
+      // V170: the panel is content-sized now, so the handle sets the height CAP (max-height), not a fixed height —
+      // it still collapses to the thin bar when no section is open. Clamped to the free height (phones: 45vh).
+      const free = window.innerHeight - getTopOffset() - DOCK_H
+      const cap  = this._isPhone() ? Math.min(0.45 * window.innerHeight, free) : free
+      const newH = Math.max(120, Math.min(cap, resize.startH + (cy - resize.startY)))   // dragging down grows it
+      gsap.set(el, { width: newW, maxHeight: newH })
     }
     const onUp = () => { resize.active = false }
 
@@ -2233,7 +2492,8 @@ export default class OmniInspector {
    */
   _snapToRight (btn) {
     const width = this._el?.getBoundingClientRect().width || PANEL_W
-    gsap.set(this._el, { left: `calc(100vw - ${width}px)`, top: BAR_H, right: 'auto' })
+    gsap.set(this._el, { left: `calc(100vw - ${width}px)`, top: getTopOffset(), right: 'auto' })
+    this._updateCap()
     this._playSound('click')
 
     const target = btn ?? this._el?.querySelector('.oi-ctrl--snap-right')
@@ -2323,7 +2583,8 @@ export default class OmniInspector {
       ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
     `
 
-    // Restore open states
+    // Restore open states (phones: at most one)
+    this._enforcePhoneExclusive(true)
     Object.entries(this._sectionOpen).forEach(([id, isOpen]) => {
       const toggle  = body.querySelector(`[data-section="${id}"]`)
       const content = body.querySelector(`#oisec-${id}`)
@@ -2356,6 +2617,7 @@ export default class OmniInspector {
     this._wireCreateSection(body)
 
     if (this._isMaximized) this._toGridDashboard()
+    this._announceState()
   }
 
   // ── Section scaffold HTML ─────────────────────────────────────────────────
@@ -2376,24 +2638,42 @@ export default class OmniInspector {
     `
   }
 
-  _toggleSection (id) {
+  /** Open or close one section (state + DOM + animation). Does not enforce exclusivity — _toggleSection does. */
+  _setSectionOpen (id, open) {
     const btn     = this._el.querySelector(`[data-section="${id}"]`)
     const content = this._el.querySelector(`#oisec-${id}`)
+    this._sectionOpen[id] = open
     if (!btn || !content) return
-
-    const isOpen = this._sectionOpen[id]
-    this._sectionOpen[id] = !isOpen
-
-    if (isOpen) {
+    const dur = this._reducedMotion() ? 0 : 1
+    gsap.killTweensOf(content)
+    if (!open) {
       btn.classList.remove('is-open')
-      gsap.to(content, { maxHeight: 0, duration: 0.22, ease: 'power2.in',
-        onComplete: () => content.classList.remove('is-open') })
+      gsap.to(content, { maxHeight: 0, duration: 0.22 * dur, ease: 'power2.in',
+        onComplete: () => { content.classList.remove('is-open'); this._applyCollapsed() } })
     } else {
       content.classList.add('is-open')
       btn.classList.add('is-open')
-      gsap.fromTo(content, { maxHeight: 0 }, { maxHeight: 2000, duration: 0.28, ease: 'power2.out' })
+      gsap.fromTo(content, { maxHeight: content.style.maxHeight ? parseFloat(content.style.maxHeight) || 0 : 0 }, { maxHeight: 2000, duration: 0.28 * dur, ease: 'power2.out',
+        onComplete: () => { if (id === this._scrollTarget) { this._scrollTarget = null; this._scrollToSection(id) } } })
     }
+  }
+
+  _toggleSection (id) {
+    if (!this._el.querySelector(`[data-section="${id}"]`) || !this._el.querySelector(`#oisec-${id}`)) return
+    const open = !this._sectionOpen[id]
+    if (open) {
+      this._lastOpened = id
+      this._scrollTarget = id
+      if (this._isPhone()) {
+        // exclusive: close every other open section first
+        INSPECTOR_SECTIONS.forEach(s => { if (s.id !== id && this._sectionOpen[s.id]) this._setSectionOpen(s.id, false) })
+      }
+    }
+    this._setSectionOpen(id, open)
+    this._persistOpenState()
     this._playSound('click')
+    this._announceState()
+    if (open && this._reducedMotion()) this._scrollToSection(id)
   }
 
   // ── IDENTITY section HTML ─────────────────────────────────────────────────
@@ -5473,6 +5753,16 @@ export default class OmniInspector {
     }
 
     window.addEventListener('omni:system-toggle', this._onToggle)
+    // V169: ribbon (ui/OmniRibbon.js) Inspector tab.
+    // toggle:true is what the ribbon's Inspector-tab buttons send — the same activateSection() the strip icons call.
+    this._onSectionOpen = (e) => {
+      const d = e.detail
+      if (!d?.section) return
+      if (d.toggle) this.activateSection(d.section); else this.openSection(d.section)
+    }
+    this._onStateRequest = () => this._announceState()
+    window.addEventListener('omni:inspector-section-open', this._onSectionOpen)
+    window.addEventListener('omni:inspector-state-request', this._onStateRequest)
     // Internal panel (ui/OmniInternalPanel.js) save — this is a REAL,
     // unconditional persist the moment it fires, not staged behind
     // this Inspector's own save/auto-save. Also updates in-memory

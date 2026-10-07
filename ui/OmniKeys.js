@@ -333,7 +333,7 @@ const STYLES = /* css */`
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 70px;
+  top              : calc(var(--omni-top-offset, 48px) + 22px);   /* V169: below the ribbon */
   left             : 70px;
   width            : 820px;
   min-width        : 560px;

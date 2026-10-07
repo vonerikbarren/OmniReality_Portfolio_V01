@@ -32,6 +32,11 @@
  *
  *   dock.getHeight() → number   (px — useful for panels to avoid overlap)
  *
+ *   dock.addPinned({ id, label, tip, key, desc, onClick, pressed })   (V169)
+ *     → A PERMANENT app icon in the left wing (never removed by restore, no entry animation).
+ *       Used for ⟐Hands (shows / hides the top hands banner; pressed = banner visible).
+ *   dock.setPinnedPressed(id, bool)
+ *
  * Events dispatched on window:
  *   omni:panel-restore  →  detail: { id }
  *
@@ -41,6 +46,7 @@
  */
 
 import gsap from 'gsap'
+import * as HandBanner from '../utils/OmniHandBanner.js'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -113,6 +119,14 @@ const STYLES = /* css */`
   border-left        : 1px solid var(--dock-separator);
   justify-content    : flex-end;
 }
+
+/* V169 — permanent (pinned) app icons in the left wing */
+#dock-pinned { display: flex; align-items: center; gap: ${ICON_GAP}px; }
+.dock-icon.dock-icon--pinned { transform: none; opacity: 1; overflow: visible; }
+.dock-icon.dock-icon--pinned .dock-icon-label { font-size: 15px; }
+.dock-icon.dock-icon--pinned::after { display: none; }   /* ⟐OmniNotify shows the name / description instead */
+.dock-icon.dock-icon--pinned.is-pressed { background: var(--dock-icon-active); border-color: rgba(255,255,255,0.45); box-shadow: var(--dock-glow); }
+.dock-icon.dock-icon--pinned:active { transform: scale(0.94) !important; }
 
 /* Wing label — ⟐ glyph, very muted */
 .dock-wing-label {
@@ -284,6 +298,7 @@ const STYLES = /* css */`
     width            : 40px;
     padding          : 0 6px;
   }
+  .dock-icon.dock-icon--pinned { --sz: 28px; }
 }
 
 `
@@ -311,6 +326,7 @@ export default class Dock {
     this._tray  = null         // #dock-tray
     this._hint  = null         // #dock-tray-hint
     this._icons = new Map()    // id → { el, onRestore }
+    this._pinned = new Map()   // id → button (V169 permanent icons)
   }
 
   // ── Module contract ─────────────────────────────────────────────────────
@@ -329,6 +345,18 @@ export default class Dock {
       btn?.classList.toggle('is-active', !!e.detail?.open)
     }
     window.addEventListener('omni:paneltray-state', this._onTrayState)
+
+    // V169: ONE permanent ⟐Hands icon — shows / hides the top hands banner (⟐OmniHand + ⟐ConsciousHand).
+    // Pressed = banner visible. State comes from utils/OmniHandBanner.js (omni:hands-banner-state).
+    this.addPinned({
+      id: 'hands', label: '⚇', tip: '⟐Hands',
+      key: '—',
+      desc: 'Shows or hides the top hands banner (⟐OmniHand and ⟐ConsciousHand). Hiding it never closes a pad or tunnel; their menus stay on the ribbon\'s Hands tab.',
+      pressed: HandBanner.isVisible(),
+      onClick: () => window.dispatchEvent(new CustomEvent('omni:hands-banner-set', { detail: { visible: !HandBanner.isVisible() } })),
+    })
+    this._onBannerState = (e) => this.setPinnedPressed('hands', !!e.detail?.visible)
+    window.addEventListener('omni:hands-banner-state', this._onBannerState)
   }
 
   /** No per-frame work needed yet — reserved for future badge animations. */
@@ -336,6 +364,7 @@ export default class Dock {
 
   destroy () {
     window.removeEventListener('omni:paneltray-state', this._onTrayState)
+    window.removeEventListener('omni:hands-banner-state', this._onBannerState)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
     const style = document.getElementById('omni-dock-styles')
     if (style) style.remove()
@@ -360,6 +389,10 @@ export default class Dock {
     el.className     = 'dock-icon'
     el.dataset.id    = id
     el.dataset.tooltip = tooltip || label
+    el.dataset.omniTip = `Restore ${tooltip || label}`
+    el.dataset.omniTipKey = '—'
+    el.dataset.omniTipDesc = 'A minimized panel. Click to re-open it.'
+    el.dataset.omniTipSource = 'Dock'
     el.setAttribute('aria-label', `Restore ${tooltip || label}`)
 
     el.innerHTML = /* html */`
@@ -405,6 +438,39 @@ export default class Dock {
     })
   }
 
+  /**
+   * V169: a permanent app icon in the left wing.
+   * @param {object} o  { id, label (glyph), tip, key, desc, onClick, pressed }
+   */
+  addPinned ({ id, label, tip = '', key = '—', desc = '', onClick = null, pressed = false }) {
+    const host = this._el?.querySelector('#dock-pinned')
+    if (!host || this._pinned.has(id)) return null
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'dock-icon dock-icon--pinned'
+    el.dataset.id = id
+    el.dataset.omniTip = tip || label
+    el.dataset.omniTipKey = key
+    el.dataset.omniTipDesc = desc
+    el.dataset.omniTipSource = 'Dock'
+    el.setAttribute('aria-label', tip || label)
+    el.setAttribute('aria-pressed', String(!!pressed))
+    el.classList.toggle('is-pressed', !!pressed)
+    el.innerHTML = `<span class="dock-icon-label">${label}</span>`
+    el.addEventListener('click', () => { this._playSound('click'); onClick?.(id) })
+    host.appendChild(el)
+    this._el.querySelector('.dock-wing-label')?.remove()   // the wing is no longer "reserved"
+    this._pinned.set(id, el)
+    return el
+  }
+
+  setPinnedPressed (id, pressed) {
+    const el = this._pinned.get(id)
+    if (!el) return
+    el.classList.toggle('is-pressed', !!pressed)
+    el.setAttribute('aria-pressed', String(!!pressed))
+  }
+
   /** @returns {boolean} */
   hasIcon (id) {
     return this._icons.has(id)
@@ -436,8 +502,9 @@ export default class Dock {
     el.innerHTML = /* html */`
 
       <!-- Left wing — reserved for future permanent slots -->
-      <div class="dock-wing dock-wing--left" aria-hidden="true">
+      <div class="dock-wing dock-wing--left">
         <span class="dock-wing-label">⟐</span>
+        <div id="dock-pinned" role="toolbar" aria-label="Pinned apps"></div>
       </div>
 
       <!-- Centre tray — docked ⟐ icons live here -->
@@ -449,7 +516,8 @@ export default class Dock {
            from, regardless of which edge the Tray itself is currently
            oriented to (left/right/top/bottom) — per direct request. -->
       <div class="dock-wing dock-wing--right">
-        <button class="dock-tray-toggle" id="dock-tray-toggle" title="⟐ Panel Tray" aria-label="Toggle Panel Tray">▲</button>
+        <button class="dock-tray-toggle" id="dock-tray-toggle" title="⟐ Panel Tray" aria-label="Toggle Panel Tray"
+                data-omni-tip="Panel Tray" data-omni-tip-key="—" data-omni-tip-desc="Opens or closes the OmniPanelTray, where minimized panels wait." data-omni-tip-source="Dock">▲</button>
       </div>
 
     `

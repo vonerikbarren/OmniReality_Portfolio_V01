@@ -7,6 +7,7 @@
  *
  * Mount order (z-index ascending, back → front):
  *   1. GlobalBar     z-50  — top, full width
+ *   1b. OmniRibbon   z-49  — V169: tabs + toolbar right under the bar (+ the OmniNotify box, z-51)
  *   2. Dock          z-50  — bottom, full width
  *   3. Hands ×4      z-40  — four corners, above canvas, below drawers
  *   4. Drawers ×2    z-45  — left / right top-level sliding panels
@@ -58,6 +59,7 @@
  *                    dimTime, dimSpace, dimObject })
  *
  *   ui.bar       — GlobalBar instance
+ *   ui.ribbon    — OmniRibbon instance (V169; tabs under the bar)
  *   ui.dock      — Dock instance
  *   ui.hands     — { omnihand, conscious, lh, rh }
  *   ui.drawers   — { left, right }
@@ -91,6 +93,8 @@
 
 import { injectOmniTheme }      from './OmniTheme.js'
 import GlobalBar                from './GlobalBar.js'
+import OmniRibbon               from './OmniRibbon.js'
+import * as HandBanner          from '../utils/OmniHandBanner.js'
 import Dock                     from './Dock.js'
 import { createAllHands }       from './Hand.js'
 import { createDrawers }        from './Drawer.js'
@@ -116,6 +120,7 @@ export default class UI {
 
     // ── Component instances (populated in init) ──────────────────────────
     this.bar       = null
+    this.ribbon    = null   // V169 OmniRibbon
     this.dock      = null
     this.hands     = null   // { omnihand, conscious, lh, rh }
     this.drawers   = null   // { left, right }
@@ -144,6 +149,10 @@ export default class UI {
 
   /** Mount all UI regions in order. Call once after BaseScene.start(). */
   init () {
+    // V170: re-entry guard. main.js used to call init() and then base.addModule() called it again (a second
+    // GlobalBar / Dock / Hands / Drawers / Panels / PanelTray); the cause is fixed in main.js, this keeps it safe.
+    if (this._initStarted) return
+    this._initStarted = true
     this._ensureShell()
 
     // ── 0. Shared theme — :root CSS vars every panel's own injected
@@ -154,6 +163,13 @@ export default class UI {
     // ── 1. GlobalBar ───────────────────────────────────────────────────
     this.bar = new GlobalBar(this._ctx)
     this.bar.init()
+
+    // ── 1b. OmniRibbon (V169) — tabs + toolbar right under the bar; owns --omni-ribbon-h ──
+    this.ribbon = new OmniRibbon(this._ctx)
+    this.ribbon.init()
+
+    // ── 1c. Hands banner visibility (V169) — before the Dock / Hands so their first state is right ──
+    HandBanner.init()
 
     // ── 2. Dock ────────────────────────────────────────────────────────
     this.dock = new Dock(this._ctx)
@@ -238,8 +254,11 @@ export default class UI {
     this.drawers?.right.destroy()
     Object.values(this.hands ?? {}).forEach(h => h.destroy())
     this.dock?.destroy()
+    HandBanner.destroy()
+    this.ribbon?.destroy()
     this.bar?.destroy()
     this._ready = false
+    this._initStarted = false
     console.log('⟐mniReality UI shell destroyed.')
   }
 

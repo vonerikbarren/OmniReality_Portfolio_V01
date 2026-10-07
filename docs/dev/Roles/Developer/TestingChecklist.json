@@ -1726,6 +1726,136 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Ribbon / OmniNotify / Hands banner (V169)",
+      "items": [
+        {
+          "feature": "Ribbon tabs",
+          "howToReach": "Row under the global bar: Home, Inspector, Realities, Hands",
+          "whatToCheck": "Active tab underlined; groups with captions and separators; clicking the active tab folds the ribbon; chevron toggles; tab + collapsed survive reload",
+          "tested": false
+        },
+        {
+          "feature": "Ribbon buttons fire real events",
+          "howToReach": "Click each button on all four tabs",
+          "whatToCheck": "Every button does what its tooltip says; none is dead; no invented features",
+          "tested": false
+        },
+        {
+          "feature": "Inspector tab section icons",
+          "howToReach": "Ribbon > Inspector",
+          "whatToCheck": "Dim with nothing selected; lit with a node; each opens the inspector if closed and expands + scrolls to its section; Location dim when not applicable",
+          "tested": false
+        },
+        {
+          "feature": "OmniNotify box hover",
+          "howToReach": "Hover any ribbon button, dock icon, pad satellite, Fire centre button, radial tool, top hand cell",
+          "whatToCheck": "Name, shortcut chip and description appear after ~120 ms; reverts to idle ~1.2 s after leaving; keyboard focus also shows it",
+          "tested": false
+        },
+        {
+          "feature": "OmniNotify box drag / resize",
+          "howToReach": "Drag header; drag bottom-right grip; double-click header",
+          "whatToCheck": "Clamped to viewport, never above the global bar; position persists on reload; double-click docks under Current State; ribbon goes full width while it is floating",
+          "tested": false
+        },
+        {
+          "feature": "OmniNotify on mobile (<=700px)",
+          "howToReach": "Phone width or device emulation",
+          "whatToCheck": "Collapsed header with current name inline; chevron expands; no resize; long-press on a control shows its info",
+          "tested": false
+        },
+        {
+          "feature": "Existing Notify feed and address bar",
+          "howToReach": "Click Notify column; type in the address bar",
+          "whatToCheck": "Feed still lists notes; address bar still works; notes link opens the panel",
+          "tested": false
+        },
+        {
+          "feature": "Hands dock icon",
+          "howToReach": "Left end of the dock (⟐Hands)",
+          "whatToCheck": "One click hides/shows both top hands; pressed state follows; choice persists; default shown on desktop, hidden on phone",
+          "tested": false
+        },
+        {
+          "feature": "Hands banner toggle in OmniHands panel",
+          "howToReach": "Open OmniHands panel, any hand view",
+          "whatToCheck": "'Show hands banner' row mirrors the dock icon; keys 1-4 and Shift still work with the banner hidden; pads and tunnels unaffected",
+          "tested": false
+        },
+        {
+          "feature": "Layout offset (no overlap)",
+          "howToReach": "Open inspector, drawers, panel tray, minimap, top pads, radial menu with ribbon open, collapsed and on phone",
+          "whatToCheck": "Nothing sits under the ribbon; collapsing/expanding moves top hands and pads; minimap does not overlap",
+          "tested": false
+        },
+        {
+          "feature": "Phone ribbon overlay",
+          "howToReach": "390px wide: tap a tab",
+          "whatToCheck": "Body drops as an overlay, scrolls horizontally, 44px targets; Escape or outside tap closes it",
+          "tested": false
+        },
+        {
+          "feature": "Light theme legibility",
+          "howToReach": "Switch theme to a light one",
+          "whatToCheck": "Ribbon, box and tooltips readable on white and on dark",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "One UI.init + condensed Inspector (V170)",
+      "items": [
+        {
+          "feature": "One of every UI module",
+          "howToReach": "Load the app; DevTools console: document.querySelectorAll('#omni-global-bar').length, '.omni-dock', '#omni-ribbon', '#omni-notify-box', '.omni-hand'",
+          "whatToCheck": "1, 1, 1, 1 and 4 (one per hand); no duplicate ids (run [...document.querySelectorAll('[id]')] grouped by id); one omni:nav-select logs one 'nav-select [' line",
+          "tested": false
+        },
+        {
+          "feature": "Inspector section icon strip",
+          "howToReach": "Select a node (the Inspector opens), look under its header",
+          "whatToCheck": "11 icons in the ribbon's order and glyphs; dim with no node, Location dim on a non-location node; hover shows name + description in OmniNotify; lit when open",
+          "tested": false
+        },
+        {
+          "feature": "Phone: one section at a time",
+          "howToReach": "Width <= 700px (or a real phone): select a node, tap strip icons",
+          "whatToCheck": "Starts with no section open (thin bar, scene visible); tapping a section opens it and closes the others; tapping the open one closes it; the panel never exceeds 45% of the screen height and scrolls inside; sits at the left edge under the ribbon, not off-screen",
+          "tested": false
+        },
+        {
+          "feature": "Desktop: independent sections",
+          "howToReach": "Width > 700px: select a node, tap strip icons / section headers",
+          "whatToCheck": "Identity and Appearance (and Location for a location node) open by default as before; each icon toggles only its own section; all closed -> panel shrinks to header + strip + badge; panel bottom stays above the dock",
+          "tested": false
+        },
+        {
+          "feature": "Ribbon Inspector tab = strip",
+          "howToReach": "Ribbon > Inspector, press a section icon",
+          "whatToCheck": "Same behaviour as the strip icon (toggle; exclusive on phones); pressed state follows the open sections; dim state matches",
+          "tested": false
+        },
+        {
+          "feature": "Open sections remembered",
+          "howToReach": "Open some sections, reload, select a node",
+          "whatToCheck": "Same sections open again (desktop: several; phone: one); localStorage 'omni:inspector-open-v1'",
+          "tested": false
+        },
+        {
+          "feature": "Inspector resize / maximize / drag / snap",
+          "howToReach": "Header controls, bottom-right handle",
+          "whatToCheck": "Resize changes width and the height cap (never a fixed height); maximize/restore returns to content size; dragging keeps the cap below the panel; snap-right uses the ribbon-aware top",
+          "tested": false
+        },
+        {
+          "feature": "Reduced motion",
+          "howToReach": "OS setting 'reduce motion', open / close sections",
+          "whatToCheck": "Sections open and close without animation and the scroll jumps instead of gliding",
+          "tested": false
+        }
+      ]
     }
   ]
 }

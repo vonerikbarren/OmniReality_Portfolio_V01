@@ -1081,3 +1081,27 @@ See `docs/omniproducts/OMNI_FLOW_FIRE_DESIGN.md`. Follow-ups:
 7. Camera-start oddity: in the headless run the camera starts looking up, so a HUD-centre shot lands above the horizon; check on real hardware.
 8. Judge readability on a photo wallpaper and on a touch device; harness (jsdom + Playwright) is still scratchpad-only (see 49.13).
 9. Seen only in screenshots (V168): node labels of neighbouring fired elements overlap each other (OmniNode tooltip labels), anchors show their own node label next to the words, and radial page-1 labels are truncated by the existing `splitName` ("Termina", "Decisio", "Materia"). Fixes: hide the label on anchors, wider radial labels.
+
+
+## 54. Ribbon / OmniNotify / Hands banner — V169 first pass
+See `docs/architecture/RIBBON_AND_NOTIFY_DESIGN.md`. Follow-ups:
+1. ~~Inspector icon-strip redesign~~ done in V170 (item 55).
+2. ~~Fix the double `UI.init`~~ done in V170 (item 55).
+3. A user-dragged minimap and dragged floating panels keep px positions; relayout them on `omni:layout-changed` if wanted.
+4. No real Open / import handler exists, so the ribbon has no Open button; add one when a loader exists.
+5. The disabled Orbiter cell gets no tip (disabled buttons swallow mouse events); wrap or use pointer-events handling.
+6. Ctrl/Cmd+F1 not bound: F1 is the terminal. Pick another key if a ribbon toggle shortcut is wanted.
+7. No start-menu app list exists, so the Home tab has none.
+8. Real-touch long-press and the HandSpeed popover tip not checked on hardware.
+
+
+## 55. One UI.init + condensed Inspector — V170
+See `docs/architecture/RIBBON_AND_NOTIFY_DESIGN.md` (Inspector strip section). Follow-ups:
+1. Real-device check: the strip icons are 28x34 px at 390px wide (11 icons in 340px); confirm they are comfortable to tap, widen or let the strip scroll if not.
+2. No "non-default content" dot on strip icons (skipped as not cheap: every section would need its own default test).
+3. The Inspector title wraps to two lines next to the 8 header buttons on a 340px panel (pre-existing); shorten the title or drop it on phones.
+4. Phone drag: the header can still be dragged on a phone; it is re-docked at the left edge only when the panel is opened or the breakpoint is crossed.
+5. WindowManager's cascade puts other panels at x ~200+ too; on phones several of them are partly off-screen (seen: FloorManager at 390px). Same fix as the Inspector's `_placeForViewport` could be generalised in `WindowManager.register`.
+6. The extra four `Hand` modules in main.js were removed; if something is later found to rely on a second hand set, `ui.hands` is the one to use.
+7. Not checked on hardware: touch scrolling inside an open section, prefers-reduced-motion, rotating a phone while a section is open (only the resize path was simulated).
+8. Pre-existing: older suites (axinator_test, behavior_integ) fail identically on V169 when pointed at it; hands_test position readout, integ_test groups, v165 speed-limit checks as already known.

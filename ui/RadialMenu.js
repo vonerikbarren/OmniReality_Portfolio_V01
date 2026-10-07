@@ -28,6 +28,7 @@
  */
 
 import gsap from 'gsap'
+import { getTopOffset } from '../utils/OmniLayout.js'
 import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 
 // ── Geometry constants ────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ const HALF      = CONTAINER / 2   // 210
 
 const MARGIN    = 150
 
-const BAR_H  = 48   // must match GlobalBar COLLAPSED_H
+const BAR_H  = 48   // GlobalBar COLLAPSED_H. V169: top-corner anchors use getTopOffset() (bar + ribbon) instead
 const DOCK_H = 52
 
 // ── Angle distributions ───────────────────────────────────────────────────────
@@ -760,6 +761,10 @@ export default class RadialMenu {
       slot.tabIndex = 0
       slot.setAttribute('role', 'button')
       slot.setAttribute('aria-label', toolName)
+      slot.dataset.omniTip = toolName   // V169: ⟐OmniNotify hover info (kept in sync in _switchPage below)
+      slot.dataset.omniTipKey = '—'
+      slot.dataset.omniTipDesc = `Radial tool of ${TOOLS[handId]?.abbr ?? handId}: click to select it (click again to deselect).`
+      slot.dataset.omniTipSource = 'Radial menu'
 
       // Use GSAP set for positioning so rotation tweens can tween x/y directly
       gsap.set(slot, {
@@ -989,6 +994,7 @@ export default class RadialMenu {
           }
 
           slot.setAttribute('aria-label', name)
+          slot.dataset.omniTip = name
         })
 
         gsap.to(toolEls, { scale: 1, opacity: 1, duration: 0.18, stagger, ease: 'back.out(1.6)' })
@@ -1015,8 +1021,8 @@ export default class RadialMenu {
     const h = window.innerHeight
     const m = Math.max(20, Math.min(MARGIN, w * 0.13))
     switch (corner) {
-      case 'tl': return { x: m,     y: BAR_H + m }
-      case 'tr': return { x: w - m, y: BAR_H + m }
+      case 'tl': return { x: m,     y: getTopOffset() + m }
+      case 'tr': return { x: w - m, y: getTopOffset() + m }
       case 'bl': return { x: m,     y: h - DOCK_H - m }
       case 'br': return { x: w - m, y: h - DOCK_H - m }
     }

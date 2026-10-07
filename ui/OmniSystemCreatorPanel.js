@@ -262,7 +262,7 @@ const STYLES = `
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 60px;
+  top              : calc(var(--omni-top-offset, 48px) + 12px);   /* V169: below the ribbon */
   left             : 120px;
   width            : 480px;
   min-width        : 380px;

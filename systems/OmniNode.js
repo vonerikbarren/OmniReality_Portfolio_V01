@@ -102,7 +102,7 @@ import * as WindowManager from '../ui/WindowManager.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
-const BAR_H      = 36    // px — GlobalBar collapsed height (must match GlobalBar.js)
+const BAR_H      = 48    // px — GlobalBar height (was a stale 36). V169: fallback only — anchored to --omni-top-offset (bar + ribbon)
 const PANEL_W    = 340   // px — system panel width
 const SLIDE_DUR  = 0.30  // s  — panel slide animation
 const GLITCH_DUR = 0.20  // s  — glitch sequence total
@@ -278,10 +278,10 @@ const STYLES = /* css */`
   --mono            : 'Courier New', Courier, monospace;
 
   position          : fixed;
-  top               : ${BAR_H}px;
+  top               : var(--omni-top-offset, ${BAR_H}px);
   left              : 0;
   width             : ${PANEL_W}px;
-  height            : calc(100vh - ${BAR_H}px - 52px); /* fill between bar and dock */
+  height            : calc(100vh - var(--omni-top-offset, ${BAR_H}px) - 52px); /* fill between bar and dock */
   max-height        : 520px;
 
   display           : flex;
@@ -687,7 +687,7 @@ const STYLES = /* css */`
 
 .on-geo-picker {
   position          : fixed;
-  top               : ${BAR_H}px;
+  top               : var(--omni-top-offset, ${BAR_H}px);
   left              : 0;
   width             : ${PANEL_W}px;
   max-height        : 520px;

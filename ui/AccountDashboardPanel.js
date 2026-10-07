@@ -36,7 +36,7 @@ const STYLES = `
   --mono           : 'Courier New', Courier, monospace;
 
   position         : fixed;
-  top              : 80px;
+  top              : calc(var(--omni-top-offset, 48px) + 32px);   /* V169: below the ribbon */
   left             : 50%;
   transform        : translateX(-50%);
   width            : 420px;

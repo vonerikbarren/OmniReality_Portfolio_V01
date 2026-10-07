@@ -14,7 +14,7 @@ const STYLES = `
 .omni-vertical-meter {
   pointer-events   : none;
   position         : fixed;
-  top              : 80px;
+  top              : calc(var(--omni-top-offset, 48px) + 32px);   /* V169: below the ribbon */
   bottom           : 80px;
   right            : 16px;
   width            : 46px;

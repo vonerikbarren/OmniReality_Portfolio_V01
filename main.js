@@ -98,7 +98,6 @@ import OmniCommandTerminalPanel from './ui/OmniCommandTerminalPanel.js'
 import OmniEmotionParticles from './modules/OmniEmotionParticles.js'
 import Dev_FPS_Exp_ListOfEmotions from './ui/Dev_FPS_Exp_ListOfEmotions.js'
 import TestCallStackPanel from './ui/TestCallStackPanel.js'
-import Hand from './ui/Hand.js'
 import { registerOmniCommandTerminalCommands } from './systems/OmniCommandTerminalCommands.js'
 import OmniTranslator from './ui/OmniTranslator.js'
 import { getAllJsonifiers } from './utils/JsonifierRegistry.js'
@@ -230,16 +229,16 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(new PortfolioXD(base.context))
 
   // ── Phase 3 — UI shell ───────────────────────────────────
+  // V170: base.addModule() calls init() itself — the old manual `ui.init()` before it ran the whole shell twice
+  // (two GlobalBars, Docks, Hands, Drawers, Panels, PanelTrays). Same for the pad / MiniMap / TreeView / RadialMenu below.
   const ui = new UI(base.context)
-  ui.init()
   base.addModule(ui)
 
   // ── Movement pad ─────────────────────────────────────────
   const movementPad = new MovementPad(base.context)
-  movementPad.init()
+  base.addModule(movementPad)
   movementPad.setVisible('lh', false)
   movementPad.setVisible('rh', false)
-  base.addModule(movementPad)
 
   // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
   // The two top hands' pads drive these instead of the camera.
@@ -356,16 +355,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   // after ui.init() inside the async IIFE
   const miniMap = new MiniMap(base.context)
-  miniMap.init()
   base.addModule(miniMap)
   base.addModule(new MiniMapSettingsPanel())
 
   const treeView = new TreeView(base.context)
-  treeView.init()
   base.addModule(treeView)
 
   const radialMenu = new RadialMenu(base.context)
-  radialMenu.init()
   base.addModule(radialMenu)
 
   const omniDraw = new OmniDraw(base.context)
@@ -401,10 +397,7 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   base.addModule(omniEmotionParticles)
   base.addModule(new Dev_FPS_Exp_ListOfEmotions(omniEmotionParticles))
   base.addModule(new TestCallStackPanel())
-  base.addModule(new Hand(base.context, 'omnihand'))
-  base.addModule(new Hand(base.context, 'conscious'))
-  base.addModule(new Hand(base.context, 'lh'))
-  base.addModule(new Hand(base.context, 'rh'))
+  // V170: the four Hands are built once by UI.init() (ui.hands) — a second set of four here duplicated them.
   const omniTranslator = new OmniTranslator()
   base.addModule(omniTranslator)
   toolTipMenu.setJsonifier(omniJsonifier)
@@ -856,6 +849,9 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
     })
   }
 
+  // V169: the ribbon's Landing button — same function the 'c' key runs.
+  window.addEventListener('omni:return-to-landing', () => returnToLanding())
+
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'KeyC' || e.repeat) return
     const active = document.activeElement
@@ -1022,6 +1018,10 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
   window.addEventListener('omni:minimap-visibility-set', (e) => {
     miniMap.setVisible(!!e.detail?.visible)
   })
+
+  // V169: the ribbon's MiniMap button — same real toggle() the 'm' key calls (MiniMap announces the
+  // new state with omni:minimap-toggle, which the ribbon uses for its pressed state).
+  window.addEventListener('omni:minimap-toggle-request', () => miniMap.toggle())
 
   // ── 'F2' — refresh the page ─────────────────────────────────
   window.addEventListener('keydown', (e) => {

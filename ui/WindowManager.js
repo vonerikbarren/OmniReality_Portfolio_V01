@@ -29,6 +29,7 @@
  */
 
 import gsap from 'gsap'
+import { getRibbonHeight, estimateRibbonHeight } from '../utils/OmniLayout.js'
 
 const MAX_WINDOWS  = 50   // was 10 — far too low now that 24+ distinct panels exist and register here; raised with real headroom for continued growth (more OmniSystem formations, more OmniHUDs, multiple OmniBrowser windows at once)
 const BASE_Z       = 200
@@ -159,7 +160,9 @@ function _headerHeight () {
   // Measures the real header rather than hardcoding its height, so this
   // keeps working correctly even if the header's own height ever changes.
   const header = document.getElementById('omni-global-bar')
-  return header ? header.getBoundingClientRect().height : 48
+  // V169: the ribbon sits under the bar — new panels must cascade below both.
+  // (Panels registered before ui.init() build the ribbon use the estimate: same viewport + saved fold state.)
+  return (header ? header.getBoundingClientRect().height : 48) + (getRibbonHeight() || estimateRibbonHeight())
 }
 
 /**
