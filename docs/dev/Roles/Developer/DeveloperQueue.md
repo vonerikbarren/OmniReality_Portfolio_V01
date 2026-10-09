@@ -1122,3 +1122,19 @@ See `docs/omniproducts/OMNICHRONOS_SEQUENCER_DESIGN.md` and `OMNICHRONOS_DESIGN.
 11. Pre-existing, found while building the Time section: the Inspector's `<button class="oi-toggle">` switches (Domain, Auto-Rotate axes, Behavior enabled) have no matching CSS (the `.oi-toggle` rule styles the label + checkbox structure), so they render as plain white boxes. The Time section uses the label + checkbox structure; the older ones were left alone.
 12. `oc-*` CSS class names are shared between OmniChat and (before V172) OmniChronos (`.oc-header`, `.oc-tab`); OmniChronos now uses `chr-*`. Other panels may share short prefixes the same way.
 
+## 57. OmniValue + OmniStore + exchange radial (sandbox) — V176
+See `docs/omniproducts/OMNIVALUE_STORE_EXCHANGE_BUILD.md`. Follow-ups:
+1. V177: D3 views in `#exchange-chart-slot` fed by `toHierarchy()` / `toFlows()` (treemap, sankey, sunburst); not started.
+2. Lifecycle tunnel scene reading `product.lifecycle`.
+3. Quality assessment is self-reported; a real method is an open question.
+4. Video textures are untested on real devices; image data URLs degrade (dropped) when the 1.5MB store quota is exceeded.
+5. `produce` as payment (a `produce -> credits` edge) is not built; `produce` and `reputation` are `payable:false`.
+6. No product CRUD, no buy-price editing, no several-stores-per-identity.
+7. Real two-account trades and entities are not built; PrimaryForce (backward purpose), affidavit and the wellness-delta of a trade are not built.
+8. Arbitrage loops between edges are unguarded (quote only looks at paths up to 3 edges).
+9. `omni:orbit-target-set` makes main.js treat the shelf as the selected pivot until a node is deselected.
+10. The store HUD (z-index 44) sits under the Inspector; `--omni-dock-h` does not exist (52px fallback in `OmniStoreLayout`).
+11. No hover on touch; the 390px bottom sheet needs a scroll to reach the fourth spoke; touch is unverified.
+12. Fees are rounded up to the type step, so tiny quantities pay a whole step.
+13. Older suites: v169 / v170 section-count checks are unchanged by this version.
+

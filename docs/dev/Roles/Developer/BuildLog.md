@@ -1,5 +1,28 @@
 # Build Log
 
+## 2026-10-08 — V176: OmniValue + OmniStore + exchange radial (sandbox only)
+
+- New `utils/OmniValueModel.js` (no DOM, `omni:value-v1`): value types with tiers, graded quality scales and channels; pairwise conversion edges (no global currency); `quote()` finds paths up to 3 edges, applies quality weighting and fees (rounded UP to the type step) and STATES the per-type remainder; per-identity accounts, ledger and transaction log; `declaredIntent` hook (Desire, forward only). Events `omni:value-changed`, `omni:value-trade`. All value is fake; no payments, no network.
+- New `utils/OmniStoreModel.js` (`omni:store-v1`): per-identity store (4 identity sections + 3 media lenses), 16 fruit/veg products, one list model (window / wish / cart), compare, checkout, `buyNow` / `sellNow`, `toHierarchy()` / `toFlows()` for V177.
+- New `systems/OmniStoreScene.js`: 24-slot pooled shelf of cubes and double-sided discs (emoji / image / video textures, ref-counted, video cap 4); hover, click, pagination; opens on `omni:store-open` / `omni:store-close`; products are not OmniNodes. `utils/OmniStoreLayout.js` keeps the HUD, panel and camera framing clear of the hands.
+- New `ui/OmniExchangeRadial.js` (product centre, exchange-form spokes, buy / sell, 3 descend levels, list tab with compare, `#exchange-chart-slot`, draggable panel, bottom sheet at <= 700px) and `ui/OmniWalletPanel.js`. Drawer entries ⟐OmniStore / ⟐OmniValue, ribbon Realities "Value" group, modules added once in `main.js`.
+- Found in Chromium: the first exchange panel overlapped the right hands and scrolled the wheel away (fixed: hand-aware placement, one action row); a full-height phone sheet hid the shelf (sheet now 66vh and the HUD steps aside while it is open).
+- Not checked: real GPU, video textures on real devices, touch input. On 390x844 the fourth spoke needs a scroll inside the sheet.
+- Docs: `omniproducts/OMNIVALUE_DESIGN.md`, `OMNISTORE_DESIGN.md`, new `OMNIVALUE_STORE_EXCHANGE_BUILD.md`.
+
+## 2026-10-08 — V175: tunnels less transparent, icosahedron nodes more transparent
+
+- `data/OmniAxinatorData.js`: `HAND_TUNNEL_OPACITY_SCALE` 0.7 -> 1.2 (tunnel body 0.07 -> 0.12, grid 0.434 -> 0.744) and `HAND_NODE_OPACITY_SCALE` 0.63 -> 0.3 (node fill 0.0504 -> 0.024, edge 0.4095 -> 0.195, dark outline 0.315 -> 0.15). The node scale is no longer derived from the tunnel scale. No engine change; both are multipliers read by `systems/OmniAxinator.js`.
+- Node labels, hover/pulse glow and the root core are unchanged (only base opacities scale). Not checked by eye: feel on a white vs black wallpaper; if the nodes are too faint or the tunnels too strong, these two constants are the only knobs.
+
+
+## 2026-10-07 — V174: summon button for the bottom hands (LH / RH)
+
+- The ⟐Hands dock icon (V169) shows/hides the top hands. Added the same for the bottom pair: a second pinned dock icon ⚉ "⟐Hands (LH / RH)", a ribbon Hands-tab button, and a "Show bottom hands (LH / RH)" row in the ⟐OmniHands panel. Events `omni:hands-bottom-set` / `omni:hands-bottom-state`; `utils/OmniHandBanner.js` adds class `omni-hands-bottom-off`; stored in `omni:hands-bottom-v1`; default shown. Hiding never closes a pad.
+- `ui/Dock.js`: the left wing was a fixed 64px, which left a second pinned icon underneath `#dock-tray` (found in Chromium: not topmost). It now grows to fit (min 64px / 40px on phones).
+- Checked in real Chromium at 1280x720: both dock icons are topmost, clicking hides/shows bl+br independently of tl+tr, no new page errors. Not checked: phone width, the ribbon button and settings row clicked in the browser, pad state while bottom hands are hidden.
+
+
 ## 2026-10-07 — V173: top hands shown again by default
 
 - V171 hid the top ⟐OmniHand / ⟐ConsciousHand matrices by default; the person then reported both hands missing. `utils/OmniHandBanner.js` default is shown again; storage key bumped to `omni:hands-banner-v3` so a V171/V172 hidden state does not persist. The ⟐Hands dock icon, ribbon Hands tab and ⟐OmniHands panel still toggle it.

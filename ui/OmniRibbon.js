@@ -156,6 +156,11 @@ function buildTabs () {
           b('chronos-add', '＋', 'Add node', '—', 'Adds the node selected in the scene to the timeline as a 5-second clip at the playhead (first unlocked track).', () => ev('omni:timeline-add-selected'), { name: 'Add selected node to timeline' }),
           b('chronos-marker', '⚑', 'Marker', '—', 'Adds a marker at the playhead. (M while the pointer is over the Chronos window; M elsewhere still toggles the minimap.)', () => ev('omni:timeline-marker-add', { t: TL.getT() }), { name: 'Chronos add marker' }),
         ] },
+        { caption: 'Value', btns: [
+          b('store', '⟐', 'Store', '—', 'SANDBOX. Opens the ⟐OmniStore shelf (fruit and veg test store) in the scene: sections, media lenses, click a product for its exchange.', nav('⟐OmniStore'), { name: 'OmniStore (sandbox)' }),
+          b('exchange', '◎', 'Exchange', '—', 'SANDBOX. Opens the radial exchange panel: the product in the middle, every accepted exchange form around it; buy, sell, and the window / wish / cart list.', nav('⟐OmniExchange'), { name: 'OmniExchange (sandbox)' }),
+          b('wallet', '▤', 'Wallet', '—', 'SANDBOX. Opens the wallet: balances per value type, the stated remainder ledger, transactions, grant / reset sandbox value.', nav('⟐Wallet'), { name: 'Wallet (sandbox)' }),
+        ] },
         { caption: 'Save', btns: [
           b('save', '⤓', 'Save nodes', '—', 'Writes all nodes and edges to this browser now (they also auto-save). There is no Open / import button because no such handler exists yet.', () => ev('omni:force-save')),
         ] },
@@ -172,6 +177,7 @@ function buildTabs () {
         ] },
         { caption: 'Banner', btns: [
           b('banner', '⚇', '⟐Hands', '—', 'Shows or hides the top hands banner (⟐OmniHand + ⟐ConsciousHand). Hiding it never closes a pad or tunnel.', () => ev('omni:hands-banner-set', { visible: !HandBanner.isVisible() }), { name: '⟐Hands banner', pressed: (s) => s.banner }),
+          b('banner-bottom', '⚉', '⟐Hands LH/RH', '—', 'Shows or hides the bottom hands (⟐LogicalHand + ⟐CreativeHand). Hiding them never closes a pad.', () => ev('omni:hands-bottom-set', { visible: !HandBanner.isBottomVisible() }), { name: '⟐Hands (LH / RH)', pressed: (s) => s.bannerBottom }),
         ] },
         { caption: 'Menus', btns: [
           b('menu-omnimenu', '☰', '⟐mniMenu', '1', "Opens the ⟐mniMenu drawer (the ⟐OmniHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tl .hand-cell--hamburger', '⟐mniMenu')),
@@ -318,7 +324,7 @@ export default class OmniRibbon {
     this._s = { tab: 'home', collapsed: false }
     this._open = false         // overlay open (phone / collapsed)
     this.state = {
-      minimap: false, tray: false, banner: HandBanner.isVisible(), follow: true,
+      minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
       timeline: { playing: PrimaryTime.isPlaying() },
       inspector: { open: false, loaded: false, sections: [], openSections: {} },
@@ -464,6 +470,7 @@ export default class OmniRibbon {
     on('omni:minimap-toggle', d => { st.minimap = !!d.visible })
     on('omni:paneltray-state', d => { st.tray = !!d.open })
     on('omni:hands-banner-state', d => { st.banner = !!d.visible })
+    on('omni:hands-bottom-state', d => { st.bannerBottom = !!d.visible })
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
     on('omni:primarytime-state', d => { st.timeline = { playing: !!d.playing } })

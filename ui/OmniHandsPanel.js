@@ -280,6 +280,7 @@ export default class OmniHandsPanel {
     window.addEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.addEventListener('omni:hands-panel-close', this._onClose)
     window.addEventListener('omni:hands-banner-state', this._onBanner)
+    window.addEventListener('omni:hands-bottom-state', this._onBanner)
     window.addEventListener('omni:panel-restore', this._onRestore)
     window.addEventListener('omni:axinator-list', this._onList)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -302,6 +303,7 @@ export default class OmniHandsPanel {
     window.removeEventListener(PAYLOAD_CURRENT, this._onSetting)
     window.removeEventListener('omni:hands-panel-close', this._onClose)
     window.removeEventListener('omni:hands-banner-state', this._onBanner)
+    window.removeEventListener('omni:hands-bottom-state', this._onBanner)
     window.removeEventListener('omni:panel-restore', this._onRestore)
     window.removeEventListener('omni:axinator-list', this._onList)
     window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -721,6 +723,9 @@ export default class OmniHandsPanel {
     this._toggleRow(g, 'Show hands banner', 'handsBanner',
       () => HandBanner.isVisible(),
       (on) => window.dispatchEvent(new CustomEvent('omni:hands-banner-set', { detail: { visible: on } })))
+    this._toggleRow(g, 'Show bottom hands (LH / RH)', 'handsBottom',
+      () => HandBanner.isBottomVisible(),
+      (on) => window.dispatchEvent(new CustomEvent('omni:hands-bottom-set', { detail: { visible: on } })))
     g.appendChild(el('div', 'omh-note', 'Shows or hides the ⟐OmniHand (top-left) and ⟐ConsciousHand (top-right) matrices. Hiding it does not close their pads or tunnels; their ☰ menus and ⬢ tools stay on the ribbon\'s Hands tab and on keys 1-4. Default: shown on desktop, hidden on phones (<= 700px); your choice is remembered.'))
   }
 

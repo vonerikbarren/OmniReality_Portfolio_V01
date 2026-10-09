@@ -120,6 +120,8 @@ const STYLES = /* css */`
   justify-content    : flex-end;
 }
 
+/* V174 — the left wing grows to fit its pinned icons (two now); it was a fixed 64px, which left the second icon under #dock-tray */
+.dock-wing--left { width: auto; min-width: 64px; }
 /* V169 — permanent (pinned) app icons in the left wing */
 #dock-pinned { display: flex; align-items: center; gap: ${ICON_GAP}px; }
 .dock-icon.dock-icon--pinned { transform: none; opacity: 1; overflow: visible; }
@@ -298,6 +300,7 @@ const STYLES = /* css */`
     width            : 40px;
     padding          : 0 6px;
   }
+  .dock-wing--left { width: auto; min-width: 40px; }
   .dock-icon.dock-icon--pinned { --sz: 28px; }
 }
 
@@ -357,6 +360,17 @@ export default class Dock {
     })
     this._onBannerState = (e) => this.setPinnedPressed('hands', !!e.detail?.visible)
     window.addEventListener('omni:hands-banner-state', this._onBannerState)
+
+    // V174: the same summon for the bottom pair (⟐LogicalHand + ⟐CreativeHand).
+    this.addPinned({
+      id: 'hands-bottom', label: '⚉', tip: '⟐Hands (LH / RH)',
+      key: '—',
+      desc: 'Shows or hides the bottom hands (⟐LogicalHand and ⟐CreativeHand). Hiding them never closes a pad; their tools stay on the ribbon\'s Hands tab and Shift keys.',
+      pressed: HandBanner.isBottomVisible(),
+      onClick: () => window.dispatchEvent(new CustomEvent('omni:hands-bottom-set', { detail: { visible: !HandBanner.isBottomVisible() } })),
+    })
+    this._onBottomState = (e) => this.setPinnedPressed('hands-bottom', !!e.detail?.visible)
+    window.addEventListener('omni:hands-bottom-state', this._onBottomState)
   }
 
   /** No per-frame work needed yet — reserved for future badge animations. */
@@ -365,6 +379,7 @@ export default class Dock {
   destroy () {
     window.removeEventListener('omni:paneltray-state', this._onTrayState)
     window.removeEventListener('omni:hands-banner-state', this._onBannerState)
+    window.removeEventListener('omni:hands-bottom-state', this._onBottomState)
     if (this._el?.parentNode) this._el.parentNode.removeChild(this._el)
     const style = document.getElementById('omni-dock-styles')
     if (style) style.remove()

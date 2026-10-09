@@ -1,8 +1,10 @@
 # OmniValue
 
-Nothing in this document is built. Captures an idea raised while
-brainstorming OmniBrowserSpace/spatial browsing — noted here per
-explicit request so it isn't lost, not designed in depth yet.
+Mostly design; V176 builds the first sandbox slice (see **What is now
+real (V176, sandbox only)** below — everything else in this document is
+still unbuilt). Captures an idea raised while brainstorming
+OmniBrowserSpace/spatial browsing — noted here per explicit request so it
+isn't lost.
 
 ## The idea
 
@@ -234,6 +236,67 @@ mismatch between what was promised and what actually happened is.
 
 
 
+## What is now real (V176, sandbox only)
+
+**Everything below is SANDBOX: all value is fake, there are no real
+payments and no network. The word SANDBOX is shown in every panel.** Code:
+`utils/OmniValueModel.js` (types, edges, accounts, ledger, `quote()`),
+`utils/OmniStoreModel.js` (store, products, the one shopping list),
+`systems/OmniStoreScene.js` (3D shelf), `ui/OmniExchangeRadial.js` (the
+exchange panel), `ui/OmniWalletPanel.js`. Build notes and decisions:
+`OMNIVALUE_STORE_EXCHANGE_BUILD.md`.
+
+- **Value types** are a registry `{id, name, tier, unit, step, emoji, payable,
+  qualityScale, refQuality, channels}`. Ten sandbox types: Credits and USD (sim)
+  (primary), Bells, Nook Tickets, Gold, Flowers, Service-hours, Produce
+  (secondary), Reputation (quaternary), Access Tokens (quinary). Tertiary
+  (intentions) has no type yet. There is **no default currency**: nothing
+  sums two types into one number. Reputation and Produce are `payable:false`
+  (reputation is earned, not spent; produce is the catalogue, not money).
+- **Quality is a graded scale per type** (Poor / Fair / Good / Excellent /
+  Mint; Underripe / Ripe / Overripe / Spoiled; Wilted / Fresh / Vibrant /
+  Perfect; Novice / Skilled / Expert / Master). A grade's weight multiplies
+  the quantity (3 Excellent = 3.75 reference units). **How a grade is
+  assessed is still the open question below**; for now every grade is
+  self-reported (`type.assessment === 'self-reported'`).
+- **Conversion edges are pairwise and directional** `{fromType, toType,
+  rateNum, rateDen, minQty, qualityRule, owner}` (toQty = fromQty x rateNum /
+  rateDen). Several methods per pair are allowed, and `quote()` also finds
+  indirect routes through up to two intermediate types, picking the route
+  with the best yield. A `minQty` and a `qualityRule` (minimum grade weight)
+  can refuse a route; an `owner` edge is usable only by that account or its
+  counterparty.
+- **`quote(offer, want)`** answers "does N of type A at grade Q cover M of
+  type B?" and returns `{covers, surplus, shortfall, remainder:{type, qty,
+  statedLine}, path, alternatives, fees, debit, balanceOk, offerNeeded, ...}`.
+  The remainder is a **stated line**, kept in the payer's **per-type
+  remainder ledger** (10 bells against 3 credits at 3:1 leaves 1/3 credit,
+  recorded under Credits, never merged with a bells ledger). The account
+  decides what to do with it: apply it to a later quote
+  (`applyRemainder`), or `claimRemainder()` whole steps into the balance.
+- **Channels** are per type (Credits: Venmo-sim, Bank-sim, Cash, Cash-app
+  vehicle-sim; USD: Venmo / Bank / Cash / Card; each with a fee % and settle
+  hours). The payer splits the offered quantity across channels (must total
+  the offer); a channel's fee is charged on top and rounded UP to the type's
+  smallest step. This is the "how much of the USD went via Venmo vs Bank vs
+  Cash" view, for buying and for selling.
+- **Accounts** use the active OmniIdentity id (`utils/OmniIdentity.js`) or
+  `sandbox-user`: balances per type, remainder ledger per type, inventory,
+  transaction log `{id, t, kind:'buy'|'sell', legs, remainder, status:
+  'sandbox-settled'}`. Settlement is instant; an insufficient balance blocks.
+  Persisted at `omni:value-v1` (versioned, sanitised, bounded).
+- **Intent**: each executed trade (and each list item) stores
+  `declaredIntent {note, t}` and fires `declareDesire()` — the forward half
+  only. The backward `PrimaryForce()` pattern and the affidavit are **not
+  built** (documented hooks), and nothing renders a verdict.
+- **Derived views for charts** (no D3 yet): `toHierarchy(quote)` and
+  `toFlows(quote)` (and the store's own `toHierarchy()` / `toFlows()`).
+
+Not real yet: Enforcement / Security / Governance / Cultural nodes, the
+wellness-delta of a trade, entities of several users, real currency of any
+kind, trades between two real accounts (the sandbox store plays the other
+side), and any assessment of quality beyond self-report.
+
 ## Open questions, unresolved
 
 - ~~Is there a "default" or common value type objects/services get
@@ -242,7 +305,8 @@ mismatch between what was promised and what actually happened is.
   → 1 credit, etc.).
 - How is an object's condition actually assessed/recorded as a value
   input - self-reported, inspected by another OmniPlayer, something
-  else?
+  else? (V176: graded scales exist; every grade is self-reported, the
+  method itself is still undecided.)
 - Does OmniValue have any relationship to real-world currency at all,
   or is it entirely internal to the reality?
 - ~~Is there any mechanic for telling a legitimate remainder apart
@@ -252,11 +316,12 @@ mismatch between what was promised and what actually happened is.
 
 ## Status
 
-Purely conceptual, no code — but now genuinely fuller: the OmniValeux
-Protocol gives this a real 8-node architecture and answers one of
-its own open questions directly. Still no data model, no exchange
-logic, no relationship to any other real system (OmniPlayer,
-OmniBrowserSpace stores, etc.) implemented. Enforcement/Security/
-Governance specifically are flagged as needing real, careful design
-before anything live depends on them — not rushed to match the pace
-of the more conceptual tiers.
+V176 adds a sandbox slice: the value-type registry with graded quality,
+pairwise conversion edges, `quote()` with stated per-type remainders, a
+per-identity ledger and the OmniStore / exchange UI on top (see "What is now
+real (V176, sandbox only)"). The OmniValeux protocol as a whole is still
+mostly design: of the eight node types only Value (as the type registry)
+and Conversion (as edges) have any code; Intention nodes exist only as
+`declaredIntent`. Enforcement / Security / Governance specifically are
+flagged as needing real, careful design before anything live depends on
+them — not rushed to match the pace of the more conceptual tiers.

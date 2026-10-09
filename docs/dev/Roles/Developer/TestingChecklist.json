@@ -1939,6 +1939,95 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStore / OmniValue sandbox (V176)",
+      "items": [
+        {
+          "feature": "Open the store",
+          "howToReach": "Ribbon Realities > Value > Store, or drawer ⟐OmniStore",
+          "whatToCheck": "Shelf of 16 products appears in clear space, HUD shows SANDBOX, clear of ribbon and hands",
+          "tested": false
+        },
+        {
+          "feature": "Cubes and discs",
+          "howToReach": "Look at the shelf; orbit behind it",
+          "whatToCheck": "Cube faces and both disc faces show the emoji; the back is not mirrored",
+          "tested": false
+        },
+        {
+          "feature": "Sections and media lenses",
+          "howToReach": "HUD chips Physical / Life / Social / Emotional / Emoji / Images / Videos",
+          "whatToCheck": "Section changes the products; a lens with no media is empty; media switch changes every texture",
+          "tested": false
+        },
+        {
+          "feature": "Hover and click",
+          "howToReach": "Hover then click a product",
+          "whatToCheck": "Ring and tooltip on hover; a drag does not click; click opens the exchange radial",
+          "tested": false
+        },
+        {
+          "feature": "Radial wheel and 3 levels",
+          "howToReach": "Select a product, tap a spoke, press the down arrow",
+          "whatToCheck": "Wheel > Form > Channels > Line detail; USD split and Venmo fee appear at level 3",
+          "tested": false
+        },
+        {
+          "feature": "Stated remainder",
+          "howToReach": "Buy Grapes paying Bells",
+          "whatToCheck": "Receipt and the line below state the remainder in Credits; it appears in the wallet ledger",
+          "tested": false
+        },
+        {
+          "feature": "One list model",
+          "howToReach": "Window / Wish / Cart buttons, List tab",
+          "whatToCheck": "One item per product and state; moving merges; compare view shows window vs cart",
+          "tested": false
+        },
+        {
+          "feature": "Checkout and buy now",
+          "howToReach": "List tab Checkout; Buy now",
+          "whatToCheck": "Balances change once per type; transaction log grows; no network",
+          "tested": false
+        },
+        {
+          "feature": "Sell with editable accept forms",
+          "howToReach": "Radial SELL tab",
+          "whatToCheck": "Accept forms editable; sell now credits the account and reduces inventory",
+          "tested": false
+        },
+        {
+          "feature": "Wallet",
+          "howToReach": "Ribbon Wallet or drawer ⟐OmniValue",
+          "whatToCheck": "Balances, remainder claim, inventory, last 20 transactions, grant, starter pack, two-click reset",
+          "tested": false
+        },
+        {
+          "feature": "Persistence",
+          "howToReach": "Reload the page",
+          "whatToCheck": "Balances, list, media and current section survive (omni:value-v1, omni:store-v1)",
+          "tested": false
+        },
+        {
+          "feature": "Mobile layout (390px)",
+          "howToReach": "Open the store and a product on a phone",
+          "whatToCheck": "Bottom sheet clear of the dock, HUD steps aside, shelf stays visible above the sheet, buttons are 44px",
+          "tested": false
+        },
+        {
+          "feature": "No overlap with hands",
+          "howToReach": "Open store + radial at 1280x720",
+          "whatToCheck": "HUD, radial and shelf do not overlap the four hands, ribbon or dock",
+          "tested": false
+        },
+        {
+          "feature": "Sandbox banners",
+          "howToReach": "Open the store, radial and wallet",
+          "whatToCheck": "SANDBOX is visible in each",
+          "tested": false
+        }
+      ]
     }
   ]
 }

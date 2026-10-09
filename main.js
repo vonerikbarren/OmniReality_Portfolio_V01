@@ -151,6 +151,9 @@ import InputMonitorPanel from './ui/InputMonitorPanel.js'
 import CameraMovementOptionsPanel from './ui/CameraMovementOptionsPanel.js'
 import OmniSystemCreatorPanel from './ui/OmniSystemCreatorPanel.js'
 import ComingSoonPanel from './ui/ComingSoonPanel.js'
+import OmniStoreScene from './systems/OmniStoreScene.js'
+import OmniExchangeRadial from './ui/OmniExchangeRadial.js'
+import OmniWalletPanel from './ui/OmniWalletPanel.js'
 
 
 
@@ -521,6 +524,13 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 
   const omniInspectionHUD = new OmniInspectionHUD(base.context)
   base.addModule(omniInspectionHUD)
+
+  // ── V176 ⟐OmniStore / ⟐OmniValue (SANDBOX): shelf in the scene, radial exchange panel, wallet ──
+  // Each is added exactly once (BaseScene.addModule calls init(); the modules also ignore a second init()).
+  // Data lives in utils/OmniValueModel.js + utils/OmniStoreModel.js (no init; lazy-loaded from localStorage).
+  base.addModule(new OmniStoreScene(base.context))
+  base.addModule(new OmniExchangeRadial())
+  base.addModule(new OmniWalletPanel())
 
   // ── Spaces: real save-a-coordinate / teleport-there system ──
   // An empty slot saves the current camera position there; a saved

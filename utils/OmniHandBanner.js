@@ -18,15 +18,24 @@ import { setHandsBannerHeight, HANDS_BANNER_H } from './OmniLayout.js'
 
 export const STORAGE_KEY = 'omni:hands-banner-v3'
 export const OFF_CLASS   = 'omni-hands-banner-off'
+export const BOTTOM_STORAGE_KEY = 'omni:hands-bottom-v1'
+export const BOTTOM_OFF_CLASS   = 'omni-hands-bottom-off'
 const STYLE_ID = 'omni-hands-banner-styles'
 const STYLES = `
 html.${OFF_CLASS} .omni-hand--tl,
-html.${OFF_CLASS} .omni-hand--tr { display: none !important; pointer-events: none !important; }
+html.${OFF_CLASS} .omni-hand--tr,
+html.${BOTTOM_OFF_CLASS} .omni-hand--bl,
+html.${BOTTOM_OFF_CLASS} .omni-hand--br { display: none !important; pointer-events: none !important; }
 `
 
 let visible = true
 let inited  = false
 let onSet   = null
+
+// V174: the bottom pair (⟐LogicalHand bl + ⟐CreativeHand br) gets the same show / hide summon as the top pair.
+// Layout is unaffected (the bottom hands are corner-anchored; nothing is measured from them).
+let bottomVisible = true
+let onBottomSet   = null
 
 function isPhone () {
   return typeof window !== 'undefined' && (window.innerWidth || 1024) <= 700
@@ -66,6 +75,24 @@ export function setVisible (v, { persist = true } = {}) {
 
 export function toggle () { setVisible(!visible) }
 
+export function isBottomVisible () { return bottomVisible }
+export function readBottomStored () {
+  try { const v = localStorage.getItem(BOTTOM_STORAGE_KEY); if (v === '1') return true; if (v === '0') return false } catch (_) {}
+  return null
+}
+function announceBottom () {
+  window.dispatchEvent(new CustomEvent('omni:hands-bottom-state', { detail: { visible: bottomVisible } }))
+}
+export function setBottomVisible (v, { persist = true } = {}) {
+  const next = !!v
+  const changed = next !== bottomVisible
+  bottomVisible = next
+  if (persist) { try { localStorage.setItem(BOTTOM_STORAGE_KEY, next ? '1' : '0') } catch (_) {} }
+  if (typeof document !== 'undefined') document.documentElement.classList.toggle(BOTTOM_OFF_CLASS, !bottomVisible)
+  if (changed || persist) announceBottom()
+}
+export function toggleBottom () { setBottomVisible(!bottomVisible) }
+
 export function init () {
   if (inited) return
   inited = true
@@ -81,6 +108,11 @@ export function init () {
   onSet = (e) => { if (typeof e.detail?.visible === 'boolean') setVisible(e.detail.visible) }
   window.addEventListener('omni:hands-banner-set', onSet)
   announce()
+  bottomVisible = readBottomStored() ?? true
+  document.documentElement.classList.toggle(BOTTOM_OFF_CLASS, !bottomVisible)
+  onBottomSet = (e) => { if (typeof e.detail?.visible === 'boolean') setBottomVisible(e.detail.visible) }
+  window.addEventListener('omni:hands-bottom-set', onBottomSet)
+  announceBottom()
 }
 
 export function destroy () {
@@ -88,6 +120,8 @@ export function destroy () {
   inited = false
   window.removeEventListener('omni:hands-banner-set', onSet)
   onSet = null
-  document.documentElement.classList.remove(OFF_CLASS)
+  window.removeEventListener('omni:hands-bottom-set', onBottomSet)
+  onBottomSet = null
+  document.documentElement.classList.remove(OFF_CLASS, BOTTOM_OFF_CLASS)
   document.getElementById(STYLE_ID)?.remove()
 }

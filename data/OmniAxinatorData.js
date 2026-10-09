@@ -59,8 +59,13 @@ import {
 // there", nodes 10% more transparent than the tunnel itself. Both are multipliers on the
 // V160 base opacities in systems/OmniAxinator.js (body 0.10, grid 0.62; node fill 0.08,
 // edge 0.65, dark outline 0.5) -> tunnel body 0.07 / grid 0.434, node 0.0504 / 0.4095 / 0.315.
-export const HAND_TUNNEL_OPACITY_SCALE = 0.7
-export const HAND_NODE_OPACITY_SCALE   = HAND_TUNNEL_OPACITY_SCALE * 0.9   // 0.63
+// V175: the tunnels should read more clearly (less transparent) while the icosahedron nodes inside
+// them become much fainter ("barely see them, but still visibly there"). The two are now set
+// independently (V166 tied the node scale to the tunnel scale).
+//   tunnel 1.2  -> body 0.12 / grid 0.744 (V166 was 0.7 -> 0.07 / 0.434)
+//   node   0.3  -> fill 0.024 / edge 0.195 / dark outline 0.15 (V166 was 0.63 -> 0.0504 / 0.4095 / 0.315)
+export const HAND_TUNNEL_OPACITY_SCALE = 1.2
+export const HAND_NODE_OPACITY_SCALE   = 0.3
 
 // Origin-root shell radii: all four roots are concentric at 0,0,0, so each gets its own
 // radius (nested, no coincident surfaces). All are <= NODE_RADIUS (320) and the first real
