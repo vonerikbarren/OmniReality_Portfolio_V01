@@ -1,4 +1,4 @@
-# OmniStore settings: user vs dev (V177; user catalog import + manual editing V178, sandbox store)
+# OmniStore settings: user vs dev (V177; user catalog import + manual editing V178; layouts V179, sandbox store)
 
 ## The convention (decided 2026-10-09)
 
@@ -15,7 +15,7 @@
 | Opens from | drawer ⟐Admin slot 19, ribbon Realities > Value > "Store Settings", `omni:nav-select ⟐OmniStoreSettings` | drawer ⟐Developer slot 6, ribbon Realities > Value > "Dev Store" (DEV in the tooltip), `omni:nav-select ⟐DevOmniStoreSettings` |
 | Module | `ui/OmniStoreSettingsPanel.js` (WindowManager id `omnistoresettings`) + `ui/OmniStoreCatalogUI.js` (the Catalog tab) | `ui/DevOmniStoreSettingsPanel.js` (id `devomnistoresettings`) |
 | Data | `utils/OmniStoreSettings.js`, `omni:store-settings-v1` | `utils/DevOmniStoreData.js`, `omni:dev-store-v1` |
-| Owns | **Look tab:** store name, colours (hover and selected selector, shelf rim / back / planks), backdrop (none / solid / gradient, opacity), presets (4 built-in + own), reset, read-only layout row. **Catalog tab (V178):** the guided AI-assisted import and manual product editing (below) | store type records, catalog JSON export / validate / import / undo, "Copy AI prompt + schema", items per page, grant / reset sandbox value, live readout, Dump state, Notes for Claude |
+| Owns | **Look tab:** store name, colours (hover and selected selector, shelf rim / back / planks), backdrop (none / solid / gradient, opacity), presets (4 built-in + own), reset, **layout selector (V179: Shelf wall / Ring / Aisle / Island table, live, saved per store)**. **Catalog tab (V178):** the guided AI-assisted import and manual product editing (below) | store type records (V179: `layout` select + "Preview layout"), catalog JSON export / validate / import / undo, "Copy AI prompt + schema", items per page, grant / reset sandbox value, live readout + per-layout readout (V179), Dump state (with layout stats), Notes for Claude |
 | Does not own | catalog data, test knobs, raw JSON | anything the user needs in order to use the store |
 
 Why the Dev panel sits in the existing ⟐Developer drawer group (slot 6, after `Dev_FPS_Exp_ListOfEmotions` and `TestCallStack`): that group already holds the dev tools, so no new menu was needed. The ribbon button carries "[DEV]" in its name and "DEV ONLY." at the start of its description.
@@ -24,7 +24,7 @@ Why the Dev panel sits in the existing ⟐Developer drawer group (slot 6, after 
 
 | Key | Content |
 |---|---|
-| `omni:store-settings-v1` | `{version:1, stores:{<storeId>:{name, colors, backdrop}}, presets:[user presets]}`. Sanitised field by field on load, corrupt data falls back to defaults. User presets are shared by every store (max 20). Store id = the store's owner id (one store per identity today; the key is a plain string so several stores can follow). |
+| `omni:store-settings-v1` | `{version:1, stores:{<storeId>:{name, colors, backdrop, layout}}, presets:[user presets]}`. V179: `layout` is `shelf` / `ring` / `aisle` / `island`; missing or unknown reads as `shelf` (data saved before V179 loads unchanged, the version stays 1); presets never contain it. Sanitised field by field on load, corrupt data falls back to defaults. User presets are shared by every store (max 20). Store id = the store's owner id (one store per identity today; the key is a plain string so several stores can follow). |
 | `omni:dev-store-v1` | `{version:1, records, notes, perf:{itemsPerPage}}`. |
 | `omni:store-v1` | the store itself (unchanged key). V177 changes: products cap 200 -> 500, product name cap 60 -> 80, optional `note` field per product. V178: `category` is free text (<= 24); a store emptied on purpose (an empty product list) stays empty after a reload instead of being re-seeded. |
 | `omni:store-undo-v1` | V178: the ONE-step undo of the last catalog import: `{v:1, t, label, snap:{ownerId, name, products, listItems}}`, capped at 1,000,000 characters (see "Undo persistence"). |
@@ -33,19 +33,29 @@ Why the Dev panel sits in the existing ⟐Developer drawer group (slot 6, after 
 
 | Event | Direction | Detail |
 |---|---|---|
-| `omni:store-settings-changed` | out | `{storeId, key, keys}`; `key` is the single changed path (`colors.hover`, `backdrop.mode`, `name`, `presets`) or `all` |
+| `omni:store-settings-changed` | out | `{storeId, key, keys}`; `key` is the single changed path (`colors.hover`, `backdrop.mode`, `name`, `layout`, `presets`) or `all` |
+| `omni:store-layout-set` | in | V179 `{layout}` saves the layout (through the settings); `{layout, preview:true}` shows it temporarily in the OPEN store (not saved; ends on close, on `{layout:null, preview:true}` or when the user picks a layout); unknown ids are ignored |
 | `omni:store-settings-set` | in | `{patch, storeId?}` partial patch; needs `attach()` (the scene and the user panel both attach, ref-counted) |
 | `omni:dev-store-changed` | out | `{key}`: `records`, `notes` or `perf` |
-| `omni:store-stats-get` | request / reply | the dev panel dispatches it with `detail:{}`; the scene fills `detail.out` (open, per page, shown, meshes, textures cached, active videos, draw calls, triangles, GPU geometries / textures, fps, backdrop) |
-| `omni:store-panel-changed` | out | `{id, open}` from either panel; the scene re-frames the shelf into the part of the screen the open panel leaves free (the panel carries `data-store-panel`) |
+| `omni:store-stats-get` | request / reply | the dev panel dispatches it with `detail:{}`; the scene fills `detail.out` (open, per page, shown, meshes, textures cached, active videos, draw calls, triangles, GPU geometries / textures, fps, backdrop; V179: `furnitureMeshes`, `furnitureBuilt`, `layout` {id, preview, setting, placements, furnitureMeshes, slotMeshes, totalMeshes, bounds, stops, stop, view, domeOk}) |
+| `omni:store-panel-changed` | out | `{id, open}` from either panel; the scene re-frames the layout (V179: the CURRENT stop / ring view) into the part of the screen the open panel leaves free (the panel carries `data-store-panel`) |
 
 ## Look settings
 
 - Colours are `#rrggbb` (`#rgb` accepted and expanded); anything else is ignored and the old value stays. Defaults are the V176 hard-coded colours: hover `#ffb02e`, selected `#2e9bff`, rim `#5b4a36`, back `#d8cdb9`, plank `#a57d52`.
 - `colors.backdrop` is an optional override of `backdrop.color` (null = use `backdrop.color`). The panel edits `backdrop.color`; the override is reserved for store-type themes.
-- Presets: Market Wood (the V176 look), Fresh Green, Night Market, Clean White. A preset sets colours and backdrop, not the name. "Reset to default" resets the look to Market Wood and keeps the name.
-- The scene applies a change without rebuilding the shelf: it only sets the five shared material colours, the HUD accent variables and the backdrop. Hover and selected colours drive both shelf selector rings and the HUD chip accents. The SANDBOX badge colour is fixed in CSS and is not a setting.
+- Presets: Market Wood (the V176 look), Fresh Green, Night Market, Clean White. A preset sets colours and backdrop, not the name and **not the layout** (V179 decision: the layout is independent of the colour look; a saved user preset has no `layout` either). "Reset to default" resets the look to Market Wood and keeps the name AND the layout.
+- The scene applies a colour change without rebuilding anything: it only sets the five shared material colours (plus the floor colour, the plank colour x 0.72), the HUD accent variables and the backdrop. Hover and selected colours drive both shelf selector rings and the HUD chip accents. The SANDBOX badge colour is fixed in CSS and is not a setting.
 - Backdrop: ONE inward-facing sphere (radius 120) centred on the shelf anchor, a child of the shelf group (so it follows the anchor and is hidden whenever the store is). Chosen over a back panel because orbiting never shows an edge and it is one unlit draw call (`MeshBasicMaterial`, `BackSide`, `depthWrite:false`, `renderOrder -1000`, vertex colours for the gradient). The camera far plane is 1e5 with a logarithmic depth buffer, so radius 120 is far inside it. It is disposed when the store closes or the mode is none, and hidden while the camera is further than 0.92 x radius from the anchor, so it cannot become a coloured ball over the app wallpaper.
+
+## Layout (V179, BuildOrder item 4)
+
+Full design: `OMNISTORE_LAYOUTS_DESIGN.md`. In the settings:
+
+- **User panel, Look tab, "Layout" section:** four radio cards (`role=radio` in a `radiogroup`): an inline SVG icon, the name and a one-line description (Shelf wall: "Products in rows on one wall. The classic view."; Ring: "A carousel circle of products. See it from outside, or step inside."; Aisle: "A corridor with shelves on both sides. Walk along it, stop by stop."; Island table: "A tiered display table. Orbit around it."). A click saves `layout` for the store and the OPEN store switches at once (rebuild in place, the camera flies to the layout's default pose). The panel and the HUD chip edit the same setting. Layout is not part of the presets and survives "Reset to default".
+- **HUD** (third row of the store HUD): a chip that cycles shelf -> ring -> aisle -> island and saves through the same setting; the aisle adds `◀ label ▶`, the ring adds `Enter / Exit`.
+- **Dev panel:** each store-type record's `layout` is a select of the four ids. Selecting a record does NOT switch the active store (store types driving layouts is BuildOrder item 6). "Preview layout" applies the record's layout to the OPEN store temporarily (`omni:store-layout-set {layout, preview:true}`, not saved, ends on close / "End preview" / the user choosing a layout). Test data & perf shows, for the current page size, one line per layout (placements, furniture meshes, bounds radius / height, stops) and the live readout names the active layout (with PREVIEW); Dump state includes `layouts.active` and `layouts.all` plus `scene.layout`.
+- **Data modules:** `utils/OmniStoreSettings.js` and `utils/DevOmniStoreData.js` both import the id list from the pure `utils/OmniStoreLayouts.js` (neutral: no dev dependency for the user side).
 
 ## Catalog schema `omni-store-catalog/1`
 
@@ -125,8 +135,8 @@ The description the user types, the pasted AI answer and the catalog stay on the
 
 ## Not built (carried)
 
-- Layouts other than the shelf wall. The store-type record has a `layout` field (`shelf`, `ring`, `aisle`, `island`) as DATA only; only `shelf` exists (BuildOrder item 4).
+- (V179) Layouts exist: shelf, ring, aisle, island (`OMNISTORE_LAYOUTS_DESIGN.md`). Still NOT built there: walk-through movement, collision, several rooms, floor signage, per-section layouts, a layout editor, custom furniture models / glTF, lighting, shadows. The store-type record's `layout` field exists but does not drive a store (item 6).
 - Item 3 is built (V178). Still NOT built there: CSV / spreadsheet import, image upload or hosting (links and small data URLs only), several stores per identity, layouts, store-type templates (a "bakery" starter), editing the section list, and calling an AI from inside the app (none, by design).
-- Store types driving anything: a record's theme ids are not applied to a store yet (item 6).
+- Store types driving anything: a record's theme ids AND its layout are not applied to a store yet (item 6; the dev "Preview layout" button is the only bridge).
 - Several stores per identity (the settings are keyed per store id; the model still has one store per identity).
 - **Item 5, OmniValue radial + D3 views** (not built here, recorded): a standalone panel framed as a component of the global object **OmniTalent** (Greek *talent*: value entrusted to be grown; `BACKEND_COMPONENTS_ONTOLOGY.md`), with radial / treemap / sankey views over `toHierarchy()` and `toFlows()`, the user's distributed value across types and tiers, feeding `#exchange-chart-slot`, plus the arbitrage-loop guard.

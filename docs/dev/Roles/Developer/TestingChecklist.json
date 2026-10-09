@@ -2224,6 +2224,148 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
+      "items": [
+        {
+          "feature": "Layout selector in OmniStoreSettings",
+          "howToReach": "Open ⟐OmniStoreSettings (drawer ⟐Admin slot 19 or ribbon Realities > Value > Store Settings), Look tab, scroll to Layout",
+          "whatToCheck": "Four cards: Shelf wall, Ring, Aisle, Island table, each with an icon and a one-line description; the current one is highlighted (aria-checked); clicking one switches the OPEN store at once and survives closing / reopening the store and a page reload; the old read-only 'Layout: Shelf wall' row is gone; on a phone the cards are one column and at least 44 px tall",
+          "tested": false
+        },
+        {
+          "feature": "Shelf wall is unchanged",
+          "howToReach": "Open the store (ribbon Realities > Value > Store) with the layout on Shelf wall",
+          "whatToCheck": "Looks exactly like V178: 6 columns (4 on a narrow screen), back panel and one plank per row, products face you, same framing; hover ring, select ring, page buttons, and framing around an open settings panel all as before",
+          "tested": false
+        },
+        {
+          "feature": "Ring layout",
+          "howToReach": "Settings > Layout > Ring, or the layout chip in the store HUD",
+          "whatToCheck": "Products stand on a circle with a floor disc and a shelf band under each tier; the radius grows with the product count (spacing stays even); 30+ products make two tiers (phone: 12 per tier); the default view is from outside, in front and above; the whole ring fits in the free part of the screen (clear of the HUD, hands, dock and an open settings / exchange panel)",
+          "tested": false
+        },
+        {
+          "feature": "Ring: Enter / Exit and recentre",
+          "howToReach": "In the Ring layout use the HUD button Enter, drag to look around, then Exit and the ⌖ button",
+          "whatToCheck": "Enter moves the camera to the middle of the ring and the button reads Exit; dragging turns the view; Exit and ⌖ return to the outside overview; switching layout always returns to outside",
+          "tested": false
+        },
+        {
+          "feature": "Aisle layout",
+          "howToReach": "Settings > Layout > Aisle, or the HUD chip",
+          "whatToCheck": "A corridor: shelves on both sides facing the walkway (angled toward you), a floor strip, uprights and an end wall; the camera starts at the entrance; the HUD shows ◀ Entrance ▶; products are in bays of up to 6 (phone 4)",
+          "tested": false
+        },
+        {
+          "feature": "Aisle: stop stepping",
+          "howToReach": "In the Aisle layout press ▶ and ◀ in the HUD; drag the view while it glides",
+          "whatToCheck": "▶ glides about 0.9 s to Bay 1/n, then Bay 2/n ...; ◀ at the entrance and ▶ at the last stop are disabled; grabbing the view (pointer down) stops the glide where it is; ⌖ returns to the entrance; with more products per page there are more stops; arrow keys do nothing (they belong to the movement pad)",
+          "tested": false
+        },
+        {
+          "feature": "Island layout",
+          "howToReach": "Settings > Layout > Island table, or the HUD chip",
+          "whatToCheck": "A tiered display table: rows rise toward the back, products are tilted up and face you; the default view is 3/4 from the front and above; drag to orbit around it; from behind the products still read (cubes identical, discs two-sided)",
+          "tested": false
+        },
+        {
+          "feature": "HUD layout chip",
+          "howToReach": "Open the store; the third row of the store HUD",
+          "whatToCheck": "The chip shows the current layout (icon + name); each click cycles Shelf -> Ring -> Aisle -> Island -> Shelf, saves it (the settings panel follows), and flies the camera to the new layout's pose; the tooltip names the layout and the next one; tap target at least 28 px (36 on a phone)",
+          "tested": false
+        },
+        {
+          "feature": "Hover and select in every layout",
+          "howToReach": "In each layout hover a product (desktop) and click / tap it",
+          "whatToCheck": "The hover ring appears in the hover colour and faces the product (also on the ring, the aisle and the tilted island); clicking shows the selected ring in the selected colour and opens the exchange radial for that product; a product hidden behind a rail / wall / table is not picked through it",
+          "tested": false
+        },
+        {
+          "feature": "Paging in every layout",
+          "howToReach": "Import a catalog of 40 products (Store Settings > Catalog), use the ‹ › buttons in each layout",
+          "whatToCheck": "24 products on page 1 and 16 on page 2; the layout rebuilds for the smaller page (the aisle may have fewer stops: a stop past the end is clamped and the camera flies there); nothing is clipped by the near / far planes",
+          "tested": false
+        },
+        {
+          "feature": "Items per page 60 in every layout",
+          "howToReach": "DevOmniStoreSettings > Test data & perf > items per page 60, with 60+ products",
+          "whatToCheck": "All 60 products shown in each layout; the aisle becomes 5 pairs of bays (about 26 units long), the ring two tiers; the camera frames everything; everything is inside the backdrop dome (turn a backdrop on: no product or furniture pokes out)",
+          "tested": false
+        },
+        {
+          "feature": "Backdrop dome encloses every layout",
+          "howToReach": "Settings > Backdrop > gradient, then try each layout and orbit all around",
+          "whatToCheck": "The dome (radius 120) surrounds the whole layout and the camera; no furniture leaves it; zooming out beyond 0.92 x the radius hides the dome as before",
+          "tested": false
+        },
+        {
+          "feature": "Dev panel: record layout + Preview layout",
+          "howToReach": "Open ⟐DevOmniStoreSettings (⟐Developer slot 6 / ribbon Dev Store), section a) Store type records, open record #1",
+          "whatToCheck": "The layout select lists shelf / ring / aisle / island (none marked 'not built'); selecting a layout in a record does NOT change the open store; 'Preview layout' shows it in the OPEN store without saving (say so when the store is closed); 'End preview', closing the store, or the user picking a layout ends the preview; the saved layout in Store Settings is unchanged",
+          "tested": false
+        },
+        {
+          "feature": "Dev panel: per-layout readout and Dump state",
+          "howToReach": "DevOmniStoreSettings > c) Test data & perf",
+          "whatToCheck": "'Layouts at the current page size' lists a line per layout (placements, furniture meshes, bounds radius / height, stops); the live readout has a 'layout' row naming the active layout (PREVIEW when previewing); Dump state contains layouts.active, layouts.all and scene.layout",
+          "tested": false
+        },
+        {
+          "feature": "Layout is independent of colour presets",
+          "howToReach": "Settings > Presets, Reset to default",
+          "whatToCheck": "Applying a preset or Reset to default never changes the layout (Reset keeps the name and the layout); a saved user preset has no layout",
+          "tested": false
+        },
+        {
+          "feature": "Saved settings from before V179",
+          "howToReach": "Settings saved by V178 (no layout key) then open V179",
+          "whatToCheck": "The store opens as Shelf wall with the old name and colours; nothing is lost",
+          "tested": false
+        },
+        {
+          "feature": "Switching layouts repeatedly",
+          "howToReach": "Click the HUD chip 20+ times, also while hovering and with the exchange panel open",
+          "whatToCheck": "No flicker or growth (the frame rate does not drop with each switch), the selected ring follows the selected product, the exchange panel stays usable; closing the store releases the extra furniture",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "User guide (V180)",
+      "items": [
+        {
+          "feature": "Guide pages open and link",
+          "howToReach": "docs/user-guide/README.md",
+          "whatToCheck": "Every page link opens; Previous/Next links work",
+          "tested": false
+        },
+        {
+          "feature": "Getting Started steps",
+          "howToReach": "01_Getting_Started.md",
+          "whatToCheck": "Follow Enter, camera, select a node on a fresh browser profile; steps match what you see",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard cheatsheet",
+          "howToReach": "10_Keyboard_and_Touch_Cheatsheet.md",
+          "whatToCheck": "Try each key; the table matches behaviour; check R/F do not move twice",
+          "tested": false
+        },
+        {
+          "feature": "Phone behaviour in the guide",
+          "howToReach": "Real phone, width 700px or less",
+          "whatToCheck": "Ribbon overlay, one-section Inspector, Chronos tabs, Exchange sheet match the guide",
+          "tested": false
+        },
+        {
+          "feature": "Troubleshooting steps",
+          "howToReach": "11_Troubleshooting.md",
+          "whatToCheck": "Hands dock icons, store reset, Clear Scene work as described",
+          "tested": false
+        }
+      ]
     }
   ]
 }

@@ -1139,7 +1139,7 @@ See `docs/omniproducts/OMNIVALUE_STORE_EXCHANGE_BUILD.md`. Follow-ups:
 13. Older suites: v169 / v170 section-count checks are unchanged by this version.
 
 ## 58. OmniStoreSettings (user) + DevOmniStoreSettings (dev only) — V177
-See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` (the `<System>Settings` / `Dev<System>Settings` convention) and `BuildOrder.md` items 1 and 2 (DONE). Follow-ups:
+See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` (the `<System>Settings` / `Dev<System>Settings` convention) and `buildOrder_OmniStore_V01.md` items 1 and 2 (DONE). Follow-ups:
 1. (DONE in V178, see item 59.) BuildOrder item 3: the user-facing catalog import + AI template inside OmniStoreSettings (paste / upload, the same preview and undo as the dev panel). The schema, validator and the dev "Copy AI prompt + schema" prototype exist; the user flow, manual product add / edit / delete and section editing do not.
 2. BuildOrder item 4: layouts. Store-type records carry `layout` (`shelf`, `ring`, `aisle`, `island`) as data only; nothing reads it. OmniStoreSettings shows "Layout: Shelf wall" read-only.
 3. Store-type records do not drive a store yet: a record's `theme.colors` / `theme.backdrop` ids are not applied (item 6).
@@ -1155,7 +1155,7 @@ See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` (the `<System>Settings` / `
 
 
 ## 59. Catalog import + AI template + manual product editing (user) — V178
-See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` ("User catalog import") and `BuildOrder.md` item 3 (DONE). Follow-ups:
+See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` ("User catalog import") and `buildOrder_OmniStore_V01.md` item 3 (DONE). Follow-ups:
 1. CSV / spreadsheet import (a second input beside the AI JSON), and a "starter" store-type template (BuildOrder item 6) that pre-fills the description step.
 2. Image upload / hosting: products take https links or small data URLs only; the 1.5 MB per-store data-URL budget is unchanged.
 3. The AI step is outside the app by design; test with several real assistants (reply variety: fences, prose, curly quotes, truncated long lists, 100+ products) and tune `buildAiPrompt` / `extractJson`. Replies with curly quotes are reported, not repaired (decision); revisit if real replies make that common.
@@ -1167,3 +1167,23 @@ See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` ("User catalog import") and
 9. Merge by name matches case-insensitive full names only (no fuzzy matching); two catalog rows with the same name collapse onto one existing product (the first wins, the second is added as new).
 10. `WindowManager.watchPanelOpacity` never unregisters its `omni:admin-settings-saved` listener (one leak per panel destroy; panels are normally never destroyed).
 11. Manual edit of `accept` (sell-side forms), lifecycle and reviews is not in the form (they are kept untouched on edit; lifecycle can only arrive through an import).
+
+## 60. Swappable store layouts: shelf / ring / aisle / island — V179
+See `docs/omniproducts/OMNISTORE_LAYOUTS_DESIGN.md` and `buildOrder_OmniStore_V01.md` item 4 (DONE). Follow-ups:
+1. BuildOrder item 6: store types should write their record's `layout` into the store's settings when a store is created (`Look.setSettings({layout})`); today only the dev "Preview layout" button reads a record's layout. The mall hub (item 10) keeps one anchor + one layout id per store.
+2. Real GPU / phone / touch: only software GL was available. Measure frame rate and draw calls per layout at 24 and 60 products on real hardware; the mesh counts (a cube is 1 mesh, a disc 3) are the main cost, furniture is 2..26 meshes. Touch hover does not exist, the phone sheet hides the HUD, so on a phone the aisle stop buttons and the ring Enter button need the sheet closed (the selector in the sheet and the HUD chip are two ways to switch).
+3. Aisle: a stop camera stands in the walkway, so the nearest bay's products are large at the edges of the view (normal corridor perspective). If that reads badly on a real device try a higher camera, a wider walkway, or hiding the previous bay. Arrow-key stepping is not bound (ui/MovementPad.js and ui/OmniKeys.js own the arrow keys globally); a focus-scoped binding on the HUD would be safe if wanted.
+4. Ring: products face the centre, so from outside you see their backs (identical on cubes, two-sided on discs); with few products the ring is sparse (radius floor 2.6). No central pillar (the inside camera stands there). Inside view is a close-up on small rings.
+5. Island: tiers rise toward the back and products face +z / up; from behind they are tilted away. A round island or a double-sided gable would read better from all sides.
+6. Furniture is flat unlit colours from the three shelf colours (the floor is the plank colour x 0.72); no per-layout colours, textures, lighting or shadows.
+7. A layout is per store, not per section: the section chips still only filter the products. Per-section layouts are not built.
+8. The selected / hover rings are placed from the slot's base pose and ignore the idle sway (like V178); the products sway +-0.35 rad around their base facing in every layout.
+9. `omni:store-layout-set {preview:true}` is ignored while the store is closed; the dev panel says so.
+10. `_trimFurniture()` runs on close; slot meshes are never shrunk (a store that once showed 60 products keeps 60 pooled slots, 4 meshes each).
+11. Older suites: the retargeted v177 UI suite had two assertions rewritten (read-only layout row -> 4-card selector; "not built" options -> none). Pre-existing failures are unchanged (v165 speed limits, hands_test readout, integ_test groups, axinator_test, behavior_integ, v166 opacity, v169 / v170 section counts).
+
+## 61. Keep the user guide in sync — V180
+See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
+1. Fix or decide the doc/code mismatches listed in `docs/user-guide/README.md` (shortcuts panel omissions, six-vs-eight picker modes in the Create tooltip, empty LH GRID tab, RH placeholder panel, stale header comments, "D3 views arrive in V177" text, possible R/F double move). Then update the guide.
+2. Unverified items (touch, phone layout, GPU, fullscreen, audio, file pickers) need a human on a real device; then drop them from the guide's Unverified appendix.
+3. When DeeperSettings D5 (Undo Options, undo/redo, clipboard) ships, add an undo/redo and clipboard chapter and update the keyboard cheatsheet's "keys that do NOT exist yet" table.

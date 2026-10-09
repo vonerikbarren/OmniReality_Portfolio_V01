@@ -108,9 +108,30 @@ V177 adds the store's look and its dev tooling, split by the convention
   opacity), 4 built-in presets (Market Wood = the V176 look, Fresh Green, Night
   Market, Clean White) plus the user's own, applied live in the open store.
 - **DevOmniStoreSettings** (⟐Developer slot 6, DEV ONLY): store type records (data
-  only; layouts other than `shelf` are not built), catalog JSON export /
+  only; V179: `layout` select + "Preview layout"), catalog JSON export /
   validate / import (merge or replace, preview first, undo), "Copy AI prompt +
   schema" (a prototype of the later user template), items per page (6..60), test
   data, live readout, Dump state, Notes for Claude.
 - The shelf reads its colours from the settings (no rebuild on change) and its
   per-page count from the dev knob (default 24). D3 views: BuildOrder item 5.
+
+V179 adds swappable layouts (BuildOrder item 4); full design in
+`OMNISTORE_LAYOUTS_DESIGN.md`:
+
+- A **layout** separates where the products go from what the store looks like:
+  a pure function (`utils/OmniStoreLayouts.js`) from the product count of the
+  page to placements, furniture and camera framing. Four exist: **shelf wall**
+  (the default, unchanged to the pixel), **ring** (a carousel circle, outside
+  view or step inside), **aisle** (a corridor with shelves on both sides, the
+  camera glides stop by stop), **island** (a tiered display table to orbit).
+- The user picks one in OmniStoreSettings (Look tab, four cards with a one-line
+  description) or with the chip in the store HUD; it is saved per store and
+  independent of the colour presets. The scene switches in place: the same
+  pooled product meshes and pooled furniture meshes are re-assigned (no growth).
+- The dev panel can preview a store-type record's layout in the open store
+  temporarily. Store types do not drive layouts yet (BuildOrder item 6) and a mall
+  hub (item 10) will pick a layout per store through the same setting.
+- Not built: walking through the store, collision, several rooms, floor signage,
+  per-section layouts, a layout editor, custom furniture models, lighting,
+  shadows. Only software GL was available, so frame rate on a real GPU / phone
+  is unmeasured.

@@ -23,6 +23,15 @@
  * Events dispatched: omni:store-state {open, sectionId, page, pages, count}, omni:store-product-select {productId},
  *   omni:exchange-open {productId, mode:'buy'}, omni:notify-info, omni:orbit-target-set (when it flies the camera).
  *
+ * V179 — SWAPPABLE LAYOUTS (BuildOrder item 4). Where the products go and what the store looks like come from
+ * utils/OmniStoreLayouts.js (pure data: placements + furniture + camera). This module only APPLIES a layout in place:
+ * the pooled slot meshes are re-positioned / re-oriented, the pooled FURNITURE meshes (plank, wall, floor, pillar, table, rail;
+ * shared geometries + the settings-coloured shared materials) are re-assigned, extra pooled furniture is released on close.
+ * Layout id = the store's `layout` setting (OmniStoreSettings), or a temporary dev preview (omni:store-layout-set {layout, preview:true}).
+ * Events consumed (added): omni:store-layout-set {layout, preview?}  (layout persists via OmniStoreSettings; preview does not).
+ * Camera: flyToLayout() (flyToShelf is kept as an alias); ring: setView('inside'|'outside'); aisle: stepStop(+1|-1). Arrow keys are NOT
+ * bound (ui/MovementPad.js / OmniKeys.js own them globally): the HUD buttons are the way.
+ *
  * Module contract: constructor(ctx, opts) / init / update / destroy / onResize.
  */
 
@@ -32,6 +41,7 @@ import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import { handsSafe, DOCK_H, isPhone } from '../utils/OmniStoreLayout.js'
 import * as Look from '../utils/OmniStoreSettings.js'
+import * as Layouts from '../utils/OmniStoreLayouts.js'   // V179: pure layout engine
 import * as DevData from '../utils/DevOmniStoreData.js'   // V177: ONLY the per-page knob (default 24 when no dev data); nothing user-facing depends on the dev panel
 
 export const PER_PAGE = 24   // the default; the live value comes from DevOmniStoreData.getItemsPerPage() (6..60)
@@ -40,7 +50,8 @@ export const BACKDROP_ORDER = -1.5   // after the wallpaper sphere (-2, modules/
 export const MAX_VIDEOS = 4
 export const TEX_SIZE = 256
 export const DEFAULT_ANCHOR = [0, 3, -40]
-const SPACING = 1.5
+const SPACING = Layouts.SPACING
+export const STOP_GLIDE_S = 0.9
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif'
 const FACE_TINT = [0.82, 0.82, 1, 0.6, 1, 0.82]   // +x -x +y -y +z -z
 
@@ -66,6 +77,9 @@ const STYLES = `
 .osh-chip.is-media { border-style: dashed; }
 .osh-chip:hover { border-color: var(--osh-hover, rgba(255,255,255,.5)); }
 .osh-chip.is-active { background: rgba(255,255,255,.24); border-color: var(--osh-select, rgba(255,255,255,.75)); box-shadow: 0 0 0 1px var(--osh-select, transparent); }
+.osh-layoutrow { flex-wrap: wrap; }
+.osh-stop { white-space: nowrap; min-width: 64px; text-align: center; }
+.osh [hidden] { display: none !important; }
 .osh-pager { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .osh-tip { position: fixed; z-index: 46; pointer-events: none; display: none; max-width: 240px; padding: 4px 8px; border-radius: 6px;
   font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #fff; background: rgba(8,8,12,.88); border: 1px solid rgba(255,255,255,.22); }
@@ -118,6 +132,15 @@ export default class OmniStoreScene {
     this._backdrop = null
     this._fps = 0
     this._look = null
+    this._layoutId = Layouts.DEFAULT_LAYOUT   // V179: the layout currently built (setting, or the dev preview)
+    this._previewLayout = null
+    this._spec = null                         // the last Layouts.build() result
+    this._view = 'outside'                    // ring: 'outside' | 'inside'
+    this._stop = 0                            // aisle: index into spec.camera.stops (0 = entrance)
+    this._pools = null                        // furniture mesh pools by geometry: plank, plane, box, cyl, annulus
+    this._occ = []                            // visible furniture meshes (occluders for picking, non-shelf layouts)
+    this._opening = false
+    this._snapRot = false
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -140,14 +163,20 @@ export default class OmniStoreScene {
       nav: (e) => { if (e.detail?.item === '⟐OmniStore') this.open({}) },
       changed: () => { this._dirty = true },
       identity: () => { this._dirty = true; this._applyLook() },
-      look: (e) => { const id = e.detail?.storeId; if (!id || id === Look.currentStoreId()) this._applyLook() },
+      look: (e) => {
+        const id = e.detail?.storeId
+        if (id && id !== Look.currentStoreId()) return
+        if (this._previewLayout && (e.detail?.key === 'layout' || e.detail?.keys?.includes('layout'))) this._previewLayout = null   // the user picked a layout: a dev preview ends
+        this._applyLook()
+      },
       dev: (e) => { if (!e.detail?.key || e.detail.key === 'perf') this._setPerPage(DevData.getItemsPerPage()) },
       stats: (e) => { if (e.detail && typeof e.detail === 'object') e.detail.out = this.getStats() },
       select: (e) => { this._selectedId = e.detail?.productId ?? null; this._placeRings() },
       exchangeClosed: () => { this._selectedId = null; this._placeRings() },
-      xrState: (e) => { const was = this._xr; this._xr = e.detail ?? null; this._placeHud(); if (this._open && this._xr?.open && !was?.open) this.flyToShelf() },
+      xrState: (e) => { const was = this._xr; this._xr = e.detail ?? null; this._placeHud(); if (this._open && this._xr?.open && !was?.open) this.flyToLayout() },
       layout: () => { if (this._open) this._placeHud() },
-      panel: () => { if (this._open) { this._placeHud(); this.flyToShelf() } },
+      panel: () => { if (this._open) { this._placeHud(); this.flyToLayout() } },
+      layoutSet: (e) => this._onLayoutSet(e.detail ?? {}),
     }
     window.addEventListener('omni:store-open', this._on.open)
     window.addEventListener('omni:store-close', this._on.close)
@@ -162,6 +191,7 @@ export default class OmniStoreScene {
     window.addEventListener('omni:exchange-state', this._on.xrState)
     window.addEventListener('omni:layout-changed', this._on.layout)
     window.addEventListener('omni:store-panel-changed', this._on.panel)
+    window.addEventListener('omni:store-layout-set', this._on.layoutSet)
     window.addEventListener('resize', this._on.layout)
 
     const el = this.ctx.renderer?.domElement
@@ -197,6 +227,7 @@ export default class OmniStoreScene {
     window.removeEventListener('omni:exchange-state', this._on.xrState)
     window.removeEventListener('omni:layout-changed', this._on.layout)
     window.removeEventListener('omni:store-panel-changed', this._on.panel)
+    window.removeEventListener('omni:store-layout-set', this._on.layoutSet)
     window.removeEventListener('resize', this._on.layout)
     if (this._canvas && this._ptr) {
       this._canvas.removeEventListener('pointermove', this._ptr.move)
@@ -229,12 +260,16 @@ export default class OmniStoreScene {
       ring: new THREE.RingGeometry(0.56, 0.63, 40),
       unit: new THREE.PlaneGeometry(1, 1),
       plank: new THREE.BoxGeometry(1, 0.1, 0.7),
+      box1: new THREE.BoxGeometry(1, 1, 1),                         // V179 furniture: table slabs / risers (scaled)
+      cyl: new THREE.CylinderGeometry(1, 1, 1, 40),                 // pillars, round floors (scaled)
+      annulus: new THREE.RingGeometry(0.86, 1, 64),                 // ring-shelf band (scaled, laid flat)
     }
     this._geo.rim.rotateX(Math.PI / 2)
     this._mats = {
       rim: new THREE.MeshBasicMaterial({ color: 0x5b4a36, toneMapped: false }),
       back: new THREE.MeshBasicMaterial({ color: 0xd8cdb9, toneMapped: false }),
       plank: new THREE.MeshBasicMaterial({ color: 0xa57d52, toneMapped: false }),
+      floor: new THREE.MeshBasicMaterial({ color: 0x7b5e3d, toneMapped: false, side: THREE.DoubleSide }),   // V179: floors / ring shelf band: the plank colour, darker
       hover: new THREE.MeshBasicMaterial({ color: 0xffb02e, toneMapped: false, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }),
       select: new THREE.MeshBasicMaterial({ color: 0x2e9bff, toneMapped: false, transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide }),
     }
@@ -249,6 +284,7 @@ export default class OmniStoreScene {
     this.back.position.z = -0.65
     g.add(this.back)
     this.planks = []
+    this._pools = { plank: this.planks, plane: [this.back], box: [], cyl: [], annulus: [] }
     this.group = g
     this._ensurePlanks(6)
     this._ensurePool(this._perPage, g)
@@ -269,6 +305,67 @@ export default class OmniStoreScene {
     while (this.planks.length < n) { const p = new THREE.Mesh(this._geo.plank, this._mats.plank); p.visible = false; this.group.add(p); this.planks.push(p) }
   }
 
+  // ── Furniture pools (V179) ───────────────────────────────────────────────────
+  // geometry per pool; the shared materials come from the store settings. `back` is plane[0] (the shelf's back panel, as before).
+  static get POOL_GEO () { return { plank: 'plank', plane: 'unit', box: 'box1', cyl: 'cyl', annulus: 'annulus' } }
+  _addFurnitureMesh (pool) {
+    const m = new THREE.Mesh(this._geo[OmniStoreScene.POOL_GEO[pool]], this._mats.plank)
+    m.visible = false
+    m.userData.furniture = pool
+    this.group.add(m)
+    this._pools[pool].push(m)
+    return m
+  }
+  _furnitureCount () { return Object.values(this._pools).reduce((n, a) => n + a.length, 0) }
+  _furnitureVisible () { return Object.values(this._pools).reduce((n, a) => n + a.filter(m => m.visible).length, 0) }
+
+  /** Re-assign the pooled furniture meshes to a layout's furniture list (grows a pool only when a layout needs more). */
+  _applyFurniture (list) {
+    const used = { plank: 0, plane: 0, box: 0, cyl: 0, annulus: 0 }
+    const M = this._mats
+    this._occ.length = 0
+    for (let k = 0; k < list.length; k++) {
+      const f = list[k]
+      let pool, mat = 'plank'
+      switch (f.kind) {
+        case 'plank': pool = 'plank'; break
+        case 'wall': pool = 'plane'; mat = 'back'; break
+        case 'floor': pool = f.shape === 'plane' ? 'plane' : 'cyl'; mat = 'floor'; break
+        case 'pillar': pool = 'cyl'; mat = M[f.mat] ? f.mat : 'plank'; break
+        case 'table': pool = 'box'; break
+        case 'rail': pool = 'annulus'; mat = 'floor'; break
+        default: continue
+      }
+      const arr = this._pools[pool]
+      const i = used[pool]++
+      const m = i < arr.length ? arr[i] : this._addFurnitureMesh(pool)
+      m.material = M[mat]
+      m.visible = true
+      m.rotation.set(0, 0, 0)
+      m.position.set(f.x, f.y, f.z)
+      switch (f.kind) {
+        case 'plank': m.rotation.y = f.ry ?? 0; m.scale.set(f.sx ?? 1, 1, f.sz ?? 1); break
+        case 'wall': m.rotation.y = f.ry ?? 0; m.scale.set(f.sx ?? 1, f.sy ?? 1, 1); break
+        case 'floor': if (f.shape === 'plane') { m.rotation.x = -Math.PI / 2; m.scale.set(f.sx ?? 1, f.sz ?? 1, 1) } else m.scale.set(f.r ?? 1, f.h ?? 0.06, f.r ?? 1); break
+        case 'pillar': m.scale.set(f.r ?? 0.1, f.h ?? 1, f.r ?? 0.1); break
+        case 'table': m.rotation.y = f.ry ?? 0; m.scale.set(f.sx ?? 1, f.sy ?? 1, f.sz ?? 1); break
+        case 'rail': m.rotation.x = -Math.PI / 2; m.scale.set(f.r ?? 1, f.r ?? 1, 1); break
+      }
+      if (this._layoutId !== 'shelf') this._occ.push(m)
+    }
+    for (const key in this._pools) { const arr = this._pools[key]; for (let i = used[key]; i < arr.length; i++) arr[i].visible = false }
+  }
+
+  /** Drop the pooled furniture beyond the shelf's baseline (6 planks + the back panel) and the other pools: frees the meshes of the old layout. Geometries / materials are shared and disposed in destroy(). */
+  _trimFurniture () {
+    for (const key in this._pools) {
+      const arr = this._pools[key]
+      const keep = key === 'plank' ? 6 : key === 'plane' ? 1 : 0
+      while (arr.length > keep) { const m = arr.pop(); this.group.remove(m) }
+    }
+    this._occ.length = 0
+  }
+
   _buildSlot (i) {
     const group = new THREE.Group()
     group.visible = false
@@ -285,7 +382,7 @@ export default class OmniStoreScene {
     const disc = new THREE.Group()
     disc.add(faceA, faceB, rim)
     group.add(cube, disc)
-    const slot = { i, group, cube, disc, faceA, faceB, mats, productId: null, held: [], shownKey: '', wantKey: '', baseX: 0, baseY: 0, shape: 'cube', hoverAmt: 0, scale: 1 }
+    const slot = { i, group, cube, disc, faceA, faceB, mats, productId: null, held: [], shownKey: '', wantKey: '', baseX: 0, baseY: 0, baseZ: 0, ry: 0, rx: 0, baseScale: 1, shape: 'cube', hoverAmt: 0, scale: 1 }
     cube.userData.slot = i; faceA.userData.slot = i; faceB.userData.slot = i
     this._slots.push(slot)
     return slot
@@ -305,6 +402,7 @@ export default class OmniStoreScene {
     this._mats.rim.color.setHex(Look.hexToInt(c.shelfRim))
     this._mats.back.color.setHex(Look.hexToInt(c.shelfBack))
     this._mats.plank.color.setHex(Look.hexToInt(c.shelfPlank))
+    this._mats.floor.color.setHex(Look.hexToInt(c.shelfPlank)).multiplyScalar(0.72)   // V179: floors are the plank colour, darker
     this._mats.hover.color.setHex(Look.hexToInt(c.hover))
     this._mats.select.color.setHex(Look.hexToInt(c.selected))
     if (this._hud) {
@@ -314,6 +412,57 @@ export default class OmniStoreScene {
     this._syncTitle()
     if (this._open) this._applyBackdrop(L)
     else this._disposeBackdrop()
+    const want = this._previewLayout ?? Layouts.normalizeId(L.layout)
+    if (want !== this._layoutId) {
+      this._layoutId = want
+      if (this._open && !this._opening) this._afterLayoutChange()
+    }
+  }
+
+  // ── Layout switching (V179) ──────────────────────────────────────────────────
+
+  get layoutId () { return this._layoutId }
+  get layoutSpec () { return this._spec }
+  get previewLayout () { return this._previewLayout }
+
+  /** The layout changed while the store is open: rebuild in place, reset the camera state and fly to the new layout's default pose. */
+  _afterLayoutChange () {
+    this._view = 'outside'
+    this._stop = 0
+    this._snapRot = true
+    this._rebuild()
+    this._emitState()
+    this.flyToLayout()
+  }
+
+  _onLayoutSet (d) {
+    if (d.preview === true) { if (d.layout === null || d.layout === undefined) this.clearPreview(); else this.previewLayoutSet(d.layout); return }
+    if (d.preview === false && (d.layout === null || d.layout === undefined)) { this.clearPreview(); return }
+    this.setLayout(d.layout)
+  }
+
+  /** Persist a layout for the current store (OmniStoreSettings). Unknown ids are ignored. Ends a dev preview. */
+  setLayout (id) {
+    if (!Layouts.isLayoutId(id)) return false
+    if (this._previewLayout) { this._previewLayout = null; this._applyLook() }
+    Look.setSettings({ layout: id })
+    return true
+  }
+
+  /** TEMPORARY layout (dev preview): not persisted; ends on close, on clearPreview(), or when the user picks a layout. */
+  previewLayoutSet (id) {
+    if (!Layouts.isLayoutId(id) || !this._open) return false   // a preview applies to the OPEN store only
+    this._previewLayout = id
+    this._applyLook()
+    this._syncHud()
+    return true
+  }
+  clearPreview () {
+    if (!this._previewLayout) return false
+    this._previewLayout = null
+    this._applyLook()
+    this._syncHud()
+    return true
   }
 
   _syncTitle () {
@@ -399,7 +548,17 @@ export default class OmniStoreScene {
       texturesCached: this._cache.size, activeVideos: this._videoCount(), backdrop: !!this._backdrop,
       drawCalls: info?.render?.calls ?? null, triangles: info?.render?.triangles ?? null, gpuGeometries: info?.memory?.geometries ?? null, gpuTextures: info?.memory?.textures ?? null,
       fps: this._open && this._fps > 0 ? Math.round(this._fps) : null,
+      furnitureMeshes: this._furnitureVisible(), furnitureBuilt: this._furnitureCount(),
+      layout: this._layoutStats(),
     }
+  }
+
+  _layoutStats () {
+    const sp = this._spec
+    if (!sp) return { id: this._layoutId, preview: !!this._previewLayout, built: false }
+    const discs = this._slots.filter(s => s.productId && s.shape === 'disc').length
+    const st = Layouts.layoutStats(sp, discs)
+    return { ...st, preview: !!this._previewLayout, setting: Layouts.normalizeId(this._look?.layout), view: this._view, stop: this._stop, domeOk: !!sp.bounds.ok && sp.bounds.radius < BACKDROP_RADIUS * 0.5, visibleFurniture: this._furnitureVisible() }
   }
 
   // ── Open / close / page ─────────────────────────────────────────────────────
@@ -412,7 +571,10 @@ export default class OmniStoreScene {
   open ({ sectionId, productId, fly = true } = {}) {
     if (sectionId) Store.setCurrentSection(sectionId)
     this._open = true
+    this._opening = true
     this.group.visible = true
+    this._view = 'outside'
+    this._stop = 0
     this._applyLook()
     this._ensureHud()
     this._hud.classList.add('is-open')
@@ -423,8 +585,12 @@ export default class OmniStoreScene {
     if (productId) {
       const idx = this._products().findIndex(p => p.id === productId)
       if (idx >= 0) { this._page = Math.floor(idx / this._perPage); this._rebuild() }
+      const stops = this._spec?.camera.stops   // aisle: start at the stop that holds the product
+      const sl = stops ? this._slotOf(productId) : null
+      if (sl) { const k = stops.findIndex((s2, i) => i > 0 && sl.i >= s2.slotRange[0] && sl.i < s2.slotRange[1]); if (k > 0) this._stop = k }
     }
-    if (fly) this.flyToShelf()
+    this._opening = false
+    if (fly) this.flyToLayout()
     this._emitState()
   }
 
@@ -433,6 +599,9 @@ export default class OmniStoreScene {
     this._open = false
     this.group.visible = false
     this._disposeBackdrop()
+    this._previewLayout = null   // a dev preview never outlives the open store
+    this._applyLook()
+    this._trimFurniture()
     this._hud?.classList.remove('is-open')
     this._setHover(-1)
     this._hideTip()
@@ -481,34 +650,68 @@ export default class OmniStoreScene {
     return { W, H, x0, x1: Math.max(x0 + 120, x1), y0: rt, y1: Math.max(rt + 120, y1) }
   }
 
-  /**
-   * Fly the camera to face the shelf, sized to the free part of the viewport (_usable) and shifted so the shelf is centred in
-   * it. Sets the orbit target to the (shifted) shelf centre.
-   */
-  flyToShelf () {
+  /** What a layout's camera needs to know: the camera and the FREE part of the viewport (_usable). */
+  _viewInfo () {
     const cam = this.ctx.camera
-    const aspect = cam.aspect || 1.78
-    const { W, H, x0, x1, y0, y1 } = this._usable()
-    const uw = x1 - x0, uh = y1 - y0
-    const w = this._cols * SPACING + 1, h = this._rows * SPACING + 1.2
-    const tanV = Math.tan((cam.fov || 60) * Math.PI / 360)
-    const needV = h * (H / uh), needW = w * (W / uw)
-    const dist = Math.max(needV / 2 / tanV, needW / 2 / (tanV * aspect)) * 1.04 + 1
-    const visH = 2 * dist * tanV, visW = visH * aspect
-    const ox = (x0 + uw / 2) - W / 2, oy = (y0 + uh / 2) - H / 2     // where the shelf should sit, from the screen centre
-    const dx = -ox / W * visW, dy = oy / H * visH                       // the camera moves the opposite way
-    const cx = this.anchor[0] + dx, cy = this.anchor[1] + dy, cz = this.anchor[2]
-    this._lastFly = { dist, dx, dy }
-    window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: cx, y: cy, z: cz } }))
+    const u = this._usable()
+    return { fov: cam.fov || 60, aspect: cam.aspect || 1.78, W: u.W, H: u.H, x0: u.x0, x1: u.x1, y0: u.y0, y1: u.y1 }
+  }
+
+  /**
+   * Fly the camera to the current layout's pose (shelf: face the wall; ring: outside overview or inside the ring; aisle:
+   * the current stop; island: 3/4 view from above), sized to the free part of the viewport (_usable) and shifted so the
+   * subject is centred in it. Sets the orbit target (the pose's target, in anchor space). The shelf maths are V178's flyToShelf.
+   */
+  flyToLayout (duration = 1.1) {
+    if (!this._spec) this._rebuild()
+    const spec = this._spec
+    if (!spec) return 0
+    const pose = spec.camera.pose(this._viewInfo(), { mode: this._view, stop: this._stop })
+    return this._flyTo(pose, duration)
+  }
+  flyToShelf () { return this.flyToLayout() }   // V178 name, kept
+
+  _flyTo (pose, duration) {
+    const cam = this.ctx.camera
+    const a = this.anchor
+    const tx = a[0] + pose.target[0], ty = a[1] + pose.target[1], tz = a[2] + pose.target[2]
+    const px = a[0] + pose.pos[0], py = a[1] + pose.pos[1], pz = a[2] + pose.pos[2]
+    this._lastFly = { dist: pose.dist, dx: pose.dx, dy: pose.dy, pos: [px, py, pz], target: [tx, ty, tz], mode: pose.mode ?? null, stop: pose.stop ?? null }
+    window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: tx, y: ty, z: tz } }))
     this._flyTween?.kill()
-    this._flyTween = gsap.to(cam.position, { x: cx, y: cy, z: cz + dist, duration: 1.1, ease: 'power2.inOut', onUpdate: () => cam.lookAt(cx, cy, cz) })
-    return dist
+    this._flyTween = gsap.to(cam.position, { x: px, y: py, z: pz, duration, ease: 'power2.inOut', onUpdate: () => cam.lookAt(tx, ty, tz) })   // cancelled by the user's own pointer-down (orbit)
+    return pose.dist
+  }
+
+  /** Ring: 'inside' puts the camera at the centre of the ring, 'outside' is the default overview. */
+  setView (mode) {
+    const m = mode === 'inside' ? 'inside' : 'outside'
+    if (!this._spec?.camera.modes) return false
+    this._view = m
+    this.flyToLayout()
+    this._syncHud()
+    return true
+  }
+  toggleView () { return this.setView(this._view === 'inside' ? 'outside' : 'inside') }
+
+  /** Aisle: glide to the previous (-1) / next (+1) stop (0.9 s, GSAP). Returns false at an end or when the layout has no stops. */
+  stepStop (d) { const n = this._spec?.camera.stops?.length ?? 0; return n ? this.goToStop(this._stop + d) : false }
+  goToStop (i) {
+    const stops = this._spec?.camera.stops
+    if (!stops) return false
+    const k = Math.max(0, Math.min(stops.length - 1, i | 0))
+    if (k === this._stop) return false
+    this._stop = k
+    this._flyTo(this._spec.camera.pose(this._viewInfo(), { stop: k }), STOP_GLIDE_S)
+    this._syncHud()
+    this._emitState()
+    return true
   }
 
   _products () { return Store.productsFor() }
 
   _emitState () {
-    window.dispatchEvent(new CustomEvent('omni:store-state', { detail: { open: this._open, sectionId: Store.getCurrentSectionId(), page: this._page, pages: this.pages, count: this._open ? this._visibleCount() : 0 } }))
+    window.dispatchEvent(new CustomEvent('omni:store-state', { detail: { open: this._open, sectionId: Store.getCurrentSectionId(), page: this._page, pages: this.pages, count: this._open ? this._visibleCount() : 0, layout: this._layoutId, stop: this._stop, view: this._view } }))
     this._syncHud()
   }
   _visibleCount () { return this._slots.filter(s => s.productId).length }
@@ -519,26 +722,31 @@ export default class OmniStoreScene {
     this._dirty = false
     if (!this._open) return
     const aspect = this.ctx.camera?.aspect || 1.78
-    this._cols = aspect < 0.85 ? 4 : 6
     const per = this._perPage
     this._ensurePool(per)
     const list = this._products()
     const pages = Math.max(1, Math.ceil(list.length / per))
     if (this._page >= pages) this._page = pages - 1
     const pageItems = list.slice(this._page * per, (this._page + 1) * per)
-    const rowsUsed = Math.max(1, Math.ceil(pageItems.length / this._cols))
-    this._rows = Math.max(rowsUsed, Math.min(Math.ceil(per / this._cols), 4))   // framing: at least 4 rows (the V176 look), more for big pages
-    this._ensurePlanks(rowsUsed)
-    const w = this._cols * SPACING, h = rowsUsed * SPACING
+    const spec = Layouts.build(this._layoutId, { count: pageItems.length, perPage: per, aspect, isPhone: isPhone(), settings: this._look })
+    this._spec = spec
+    if (spec.id === 'shelf') { this._cols = spec.meta.cols; this._rows = spec.meta.rows }
+    const nStops = spec.camera.stops ? spec.camera.stops.length : 0
+    const stopLost = nStops > 0 && this._stop > nStops - 1   // a page with fewer products has fewer stops
+    if (!nStops) this._stop = 0
+    else if (stopLost) this._stop = nStops - 1
+    this._ensurePlanks(6)
+    const order = spec.id === 'shelf' ? 'XYZ' : 'YXZ'   // YXZ: yaw first, then tilt about the product's own x axis
     this._hit.length = 0
     for (let i = 0; i < this._slots.length; i++) {
       const slot = this._slots[i]
       const p = i < per ? pageItems[i] : null
-      if (!p) { this._releaseHeld(slot); slot.productId = null; slot.group.visible = false; continue }
-      const col = i % this._cols, row = Math.floor(i / this._cols)
-      slot.baseX = (col - (this._cols - 1) / 2) * SPACING
-      slot.baseY = ((rowsUsed - 1) / 2 - row) * SPACING + 0.15
-      slot.group.position.set(slot.baseX, slot.baseY, 0)
+      const pl = p ? spec.slots[i] : null
+      if (!p || !pl) { this._releaseHeld(slot); slot.productId = null; slot.group.visible = false; continue }
+      slot.baseX = pl.x; slot.baseY = pl.y; slot.baseZ = pl.z; slot.ry = pl.ry; slot.rx = pl.rx; slot.baseScale = pl.scale
+      if (slot.group.rotation.order !== order) slot.group.rotation.order = order
+      slot.group.position.set(pl.x, pl.y, pl.z)
+      if (this._snapRot) { slot.group.rotation.set(pl.rx, pl.ry, 0); slot.hoverAmt = 0 }
       slot.group.visible = true
       slot.productId = p.id
       slot.shape = p.shape
@@ -547,25 +755,31 @@ export default class OmniStoreScene {
       this._showMedia(slot, p)
       if (p.shape === 'cube') this._hit.push(slot.cube); else this._hit.push(slot.faceA, slot.faceB)
     }
-    this.back.scale.set(w + 0.8, h + 0.8, 1)
-    this.back.position.y = 0.15
-    this.planks.forEach((pl, r) => {
-      pl.visible = r < rowsUsed
-      if (pl.visible) { pl.scale.set(w + 0.6, 1, 1); pl.position.set(0, ((rowsUsed - 1) / 2 - r) * SPACING + 0.15 - 0.55, -0.25) }
-    })
+    this._snapRot = false
+    this._applyFurniture(spec.furniture)
+    if (stopLost && !this._opening) this.flyToLayout(STOP_GLIDE_S)
+    this.hoverRing.rotation.order = this.selectRing.rotation.order = order
     this._placeRings()
     this._syncHud()
   }
 
   _slotOf (productId) { return this._slots.find(s => s.productId === productId) ?? null }
 
+  /** Selector rings sit just in front of the slot, turned to face the slot's normal (so they work on a ring wall, an aisle, a tilted table). */
+  _placeRing (ring, sl, off) {
+    const rx = sl.rx || 0, ry = sl.ry || 0
+    const cx = Math.cos(rx)
+    ring.position.set(sl.baseX + Math.sin(ry) * cx * off, sl.baseY - Math.sin(rx) * off, (sl.baseZ || 0) + Math.cos(ry) * cx * off)
+    ring.rotation.set(rx, ry, 0)
+  }
+
   _placeRings () {
     const sel = this._selectedId ? this._slotOf(this._selectedId) : null
     this.selectRing.visible = !!sel
-    if (sel) this.selectRing.position.set(sel.baseX, sel.baseY, 0.25)
+    if (sel) this._placeRing(this.selectRing, sel, 0.25)
     const h = this._hover >= 0 ? this._slots[this._hover] : null
     this.hoverRing.visible = !!(h && h.productId)
-    if (h && h.productId) this.hoverRing.position.set(h.baseX, h.baseY, 0.3)
+    if (h && h.productId) this._placeRing(this.hoverRing, h, 0.3)
   }
 
   // ── Textures ────────────────────────────────────────────────────────────────
@@ -712,7 +926,12 @@ export default class OmniStoreScene {
     this.group.updateMatrixWorld(true)
     this._ray.setFromCamera(this._ndc, this.ctx.camera)
     const hits = this._ray.intersectObjects(this._hit, false)
-    return hits.length ? hits[0].object.userData.slot : -1
+    if (!hits.length) return -1
+    if (this._occ.length) {   // V179: furniture in front of a product (a rail, a wall, the table slab) hides it from the pointer too
+      const oc = this._ray.intersectObjects(this._occ, false)
+      if (oc.length && oc[0].distance < hits[0].distance - 1e-4) return -1
+    }
+    return hits[0].object.userData.slot
   }
 
   _onPointerMove (e) {
@@ -721,7 +940,10 @@ export default class OmniStoreScene {
     this._setHover(this._pick(e))
   }
 
-  _onPointerDown (e) { this._down = { x: e.clientX, y: e.clientY, t: performance.now() } }
+  _onPointerDown (e) {
+    this._down = { x: e.clientX, y: e.clientY, t: performance.now() }
+    if (this._flyTween) { this._flyTween.kill(); this._flyTween = null }   // V179: the user's own orbit / click cancels a glide
+  }
 
   _onPointerUp (e) {
     const d = this._down
@@ -802,10 +1024,19 @@ export default class OmniStoreScene {
     const next = btn('›', 'next', 'Next page', 'Next page of products.')
     pager.append(prev, label, next)
     r2.append(chips, pager)
-    hud.append(r1, r2)
+    // V179 row 3: layout chip (cycles shelf -> ring -> aisle -> island), aisle stop buttons, ring enter / exit
+    const r3 = mkEl('div', 'osh-row osh-layoutrow')
+    const layoutBtn = btn('', 'layout', 'Layout', 'Switch the store layout.')
+    layoutBtn.classList.add('osh-layout')
+    const stopPrev = btn('◀', 'stop-prev', 'Previous stop', 'Glide to the previous stop along the aisle.')
+    const stopLabel = mkEl('span', 'osh-stop', 'Entrance'); stopLabel.setAttribute('aria-live', 'polite')
+    const stopNext = btn('▶', 'stop-next', 'Next stop', 'Glide to the next stop along the aisle.')
+    const enter = btn('Enter', 'view', 'Enter the ring', 'Moves the camera to the middle of the ring so you look out at the products. Recentre (⌖) returns to the overview.')
+    r3.append(layoutBtn, stopPrev, stopLabel, stopNext, enter)
+    hud.append(r1, r2, r3)
     ;(document.getElementById('omni-ui') ?? document.body).appendChild(hud)
     this._hud = hud
-    this._hudRefs = { chips, prev, next, label, title }
+    this._hudRefs = { chips, prev, next, label, title, layoutBtn, stopPrev, stopLabel, stopNext, enter }
     this._applyLook()
   }
 
@@ -837,7 +1068,11 @@ export default class OmniStoreScene {
 
   _hudAction (a) {
     if (a === 'close') window.dispatchEvent(new CustomEvent('omni:store-close'))
-    else if (a === 'recenter') this.flyToShelf()
+    else if (a === 'recenter') { this._view = 'outside'; this._stop = 0; this.flyToLayout(); this._syncHud() }   // the default pose of the layout
+    else if (a === 'layout') this.setLayout(Layouts.nextLayoutId(this._layoutId))
+    else if (a === 'stop-prev') this.stepStop(-1)
+    else if (a === 'stop-next') this.stepStop(1)
+    else if (a === 'view') this.toggleView()
     else if (a === 'prev') this.setPage(this._page - 1)
     else if (a === 'next') this.setPage(this._page + 1)
     else if (a === 'list') window.dispatchEvent(new CustomEvent('omni:exchange-open', { detail: { tab: 'list' } }))
@@ -866,6 +1101,36 @@ export default class OmniStoreScene {
     label.textContent = `${this._page + 1}/${this.pages} · ${n}`
     prev.disabled = this._page <= 0
     next.disabled = this._page >= this.pages - 1
+    this._syncLayoutRow()
+  }
+
+  /** The layout chip (always) + the controls only some layouts have (aisle stops, ring enter / exit). */
+  _syncLayoutRow () {
+    const r = this._hudRefs
+    if (!r?.layoutBtn) return
+    const lay = Layouts.getLayout(this._layoutId), nxt = Layouts.getLayout(Layouts.nextLayoutId(this._layoutId))
+    r.layoutBtn.textContent = `${lay.icon} ${lay.short}`
+    const tip = `Layout: ${lay.name}${this._previewLayout ? ' (preview)' : ''}`
+    r.layoutBtn.dataset.omniTip = tip
+    r.layoutBtn.dataset.omniTipDesc = `${lay.description} Click for ${nxt.name}.`
+    r.layoutBtn.setAttribute('aria-label', `${tip}. Click for ${nxt.name}.`)
+    r.layoutBtn.dataset.layout = lay.id
+    const stops = this._spec?.camera.stops
+    r.stopPrev.hidden = r.stopNext.hidden = r.stopLabel.hidden = !stops
+    if (stops) {
+      r.stopLabel.textContent = stops[this._stop]?.label ?? ''
+      r.stopPrev.disabled = this._stop <= 0
+      r.stopNext.disabled = this._stop >= stops.length - 1
+    }
+    const modes = this._spec?.camera.modes
+    r.enter.hidden = !modes
+    if (modes) {
+      const inside = this._view === 'inside'
+      r.enter.textContent = inside ? 'Exit' : 'Enter'
+      r.enter.dataset.omniTip = inside ? 'Leave the ring' : 'Enter the ring'
+      r.enter.setAttribute('aria-label', r.enter.dataset.omniTip)
+      r.enter.setAttribute('aria-pressed', String(inside))
+    }
   }
 
   // ── Frame ───────────────────────────────────────────────────────────────────
@@ -882,16 +1147,16 @@ export default class OmniStoreScene {
       if (!s.productId) continue
       const hov = i === this._hover
       s.hoverAmt += ((hov ? 1 : 0) - s.hoverAmt) * k
-      const sc = 1 + 0.14 * s.hoverAmt
+      const sc = (s.baseScale || 1) * (1 + 0.14 * s.hoverAmt)
       s.group.scale.set(sc, sc, sc)
-      const sway = Math.sin(this._time * 0.7 + i * 0.9) * 0.35
+      const sway = s.ry + Math.sin(this._time * 0.7 + i * 0.9) * 0.35
       if (hov) s.group.rotation.y += delta * 2.4
       else {
         let diff = sway - s.group.rotation.y
         diff -= Math.PI * 2 * Math.round(diff / (Math.PI * 2))
         s.group.rotation.y += diff * k
       }
-      s.group.rotation.x = Math.sin(this._time * 0.5 + i) * 0.06 * (1 - s.hoverAmt)
+      s.group.rotation.x = s.rx + Math.sin(this._time * 0.5 + i) * 0.06 * (1 - s.hoverAmt)
     }
     for (let i = 0; i < this._videoEntries.length; i++) { const e = this._videoEntries[i]; if (e.state === 'ready' && e.tex) e.tex.update() }
   }

@@ -6,11 +6,14 @@
  * user's panel (ui/OmniStoreSettingsPanel.js) depends on it.
  *
  * Sections (collapsible):
- *   a) Store type records  (data only: layout other than 'shelf' is NOT built; the field exists for BuildOrder item 4)
+ *   a) Store type records  (data only; V179: `layout` is a select of the four layouts and each record has a "Preview layout" button
+ *                          that applies it to the OPEN store temporarily (not persisted, not switching the active store: store types
+ *                          driving layouts = BuildOrder item 6))
  *   b) Catalog JSON        export / validate / import (merge | replace) with a preview BEFORE applying, undo of the last
  *                          import (one snapshot, kept in memory), "Copy AI prompt + schema" (a PROTOTYPE of item 3's
  *                          user-facing template; the user flow itself is not built)
- *   c) Test data & perf    items per page (6..60), grant sandbox value, reset sandbox ledger / store, live readout, Dump state
+ *   c) Test data & perf    items per page (6..60), grant sandbox value, reset sandbox ledger / store, live readout, per-layout readout
+ *                          (placements, furniture meshes, bounds for all four layouts at the current page size), Dump state (includes layout stats)
  *   d) Notes for Claude    free text, saved, included in Dump state
  * Data: utils/DevOmniStoreData.js ('omni:dev-store-v1'); schema + validator: utils/OmniStoreCatalogSchema.js (pure).
  * Live numbers come from the scene through the event omni:store-stats-get (the scene fills detail.out).
@@ -21,6 +24,7 @@ import * as Look from '../utils/OmniStoreSettings.js'
 import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import * as Schema from '../utils/OmniStoreCatalogSchema.js'
+import * as Layouts from '../utils/OmniStoreLayouts.js'
 import OmniSettingsPanelBase, { esc, debounce } from './OmniSettingsPanelBase.js'
 
 export const PANEL_ID = 'devomnistoresettings'
@@ -95,7 +99,8 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
   buildBody (body) {
     body.innerHTML = `
       <details class="dsp-det" data-sec="records"><summary>a) Store type records <span class="oss-dim">(data only)</span></summary>
-        <div class="oss-dim">Layouts other than <b>shelf</b> are NOT built yet (BuildOrder item 4); the field exists so that item can read it. Record #1 is the current produce store.</div>
+        <div class="oss-dim">V179: all four layouts exist (<b>shelf, ring, aisle, island</b>). A record does NOT switch the active store (store types driving layouts = BuildOrder item 6); "Preview layout" applies it to the open store until the store closes or you press End preview. Record #1 is the current produce store.</div>
+        <div class="oss-msg" role="status" aria-live="polite" data-ref="prev-msg"></div>
         <div data-ref="records"></div>
         <div class="oss-row"><button type="button" class="oss-btn" data-act="rec-add">+ Add record</button></div>
         <div class="oss-sec">JSON view</div>
@@ -122,6 +127,8 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
         <div class="oss-row"><button type="button" class="oss-btn" data-act="reset-ledger">Reset sandbox ledger</button><button type="button" class="oss-btn" data-act="reset-store">Reset sandbox store</button></div>
         <div class="oss-sec">Live readout</div>
         <div class="dsp-kv" data-ref="stats"></div>
+        <div class="oss-sec">Layouts at the current page size</div>
+        <div class="dsp-kv" data-ref="layout-stats"></div>
         <div class="oss-row"><button type="button" class="oss-btn" data-act="dump">Dump state (copy)</button></div>
         <textarea class="oss-text" data-field="dump" readonly spellcheck="false" aria-label="State dump" style="min-height:60px" placeholder="Dump state fills this and copies it."></textarea>
         <div class="oss-msg" role="status" aria-live="polite" data-ref="test-msg"></div>
@@ -163,10 +170,10 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
     const presetIds = Look.getPresets().map(p => p.id)
     const known = new Set(presetIds)
     this._q('[data-ref="records"]').innerHTML = recs.map((r, i) => `
-      <details class="dsp-rec" data-rec="${esc(r.id)}"><summary>#${i + 1} ${esc(r.name)} <span class="oss-dim">· ${esc(r.layout)}${Dev.LAYOUTS_BUILT.includes(r.layout) ? '' : ' (not built)'} · ${esc(r.productClass)}</span></summary>
+      <details class="dsp-rec" data-rec="${esc(r.id)}"><summary>#${i + 1} ${esc(r.name)} <span class="oss-dim">· ${esc(r.layout)} · ${esc(r.productClass)}</span></summary>
         <div class="oss-row"><label>id</label><input class="oss-input" type="text" value="${esc(r.id)}" readonly aria-label="Record id"></div>
         <div class="oss-row"><label>name</label><input class="oss-input" type="text" maxlength="${Dev.LIMITS.name}" value="${esc(r.name)}" data-rec-field="name" aria-label="Record name"></div>
-        <div class="oss-row"><label>layout</label><select class="oss-select" data-rec-field="layout" aria-label="Record layout">${Dev.LAYOUTS.map(l => `<option value="${l}"${l === r.layout ? ' selected' : ''}>${l}${Dev.LAYOUTS_BUILT.includes(l) ? '' : ' (not built)'}</option>`).join('')}</select></div>
+        <div class="oss-row"><label>layout</label><select class="oss-select" data-rec-field="layout" aria-label="Record layout">${Dev.LAYOUTS.map(l => `<option value="${l}"${l === r.layout ? ' selected' : ''}>${l}</option>`).join('')}</select><button type="button" class="oss-btn" data-act="rec-preview" data-id="${esc(r.id)}">Preview layout</button><button type="button" class="oss-btn" data-act="rec-preview-end">End preview</button></div>
         <div class="oss-row"><label>productClass</label><input class="oss-input" type="text" maxlength="${Dev.LIMITS.productClass}" value="${esc(r.productClass)}" data-rec-field="productClass" aria-label="Product class"></div>
         <div class="oss-row"><label>theme.colors</label><input class="oss-input" type="text" list="dsp-presets" value="${esc(r.theme.colors)}" data-rec-field="theme.colors" aria-label="Theme colours preset id">${known.has(r.theme.colors) ? '' : '<span class="dsp-st-warn">unknown preset id</span>'}</div>
         <div class="oss-row"><label>theme.backdrop</label><input class="oss-input" type="text" list="dsp-presets" value="${esc(r.theme.backdrop)}" data-rec-field="theme.backdrop" aria-label="Theme backdrop preset id">${known.has(r.theme.backdrop) ? '' : '<span class="dsp-st-warn">unknown preset id</span>'}</div>
@@ -266,8 +273,19 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
       ['store open', s.open ? 'yes' : 'no'], ['products shown', `${s.productsShown} (section has ${s.productsInSection})`], ['page', `${s.page + 1}/${s.pages} · ${s.perPage} per page`],
       ['meshes (visible)', s.meshes], ['slots built', s.slotsBuilt], ['textures cached', s.texturesCached], ['active videos', s.activeVideos],
       ['draw calls', s.drawCalls ?? 'n/a'], ['triangles', s.triangles ?? 'n/a'], ['GPU geometries / textures', `${s.gpuGeometries ?? 'n/a'} / ${s.gpuTextures ?? 'n/a'}`], ['fps (scene update)', s.fps ?? 'n/a'], ['backdrop mesh', s.backdrop ? 'yes' : 'no'],
+      ['layout', s.layout ? `${s.layout.id}${s.layout.preview ? ' (PREVIEW)' : ''}${s.layout.built === false ? ' (not built yet)' : ` · ${s.layout.placements} placements · ${s.layout.furnitureMeshes} furniture · ${s.layout.totalMeshes} meshes`}` : 'n/a'],
     ]
     el.innerHTML = rows.map(([k, v]) => `<span class="oss-dim">${esc(k)}</span><span data-stat="${esc(k)}">${esc(v)}</span>`).join('')
+    const le = this.body.querySelector('[data-ref="layout-stats"]')
+    if (le) le.innerHTML = this.layoutTable(s).map(r => `<span class="oss-dim">${esc(r.id)}${r.active ? ' *' : ''}</span><span data-layout-stat="${esc(r.id)}">${esc(`${r.placements} placements · ${r.furnitureMeshes} furniture meshes · radius ${r.bounds.radius} · height ${r.bounds.height}${r.stops ? ` · ${r.stops} stops` : ''}`)}</span>`).join('')
+  }
+
+  /** The engine's numbers for ALL four layouts at the current page (count = products shown, falling back to the page size). Pure maths, no scene needed. */
+  layoutTable (s = this.readStats()) {
+    const per = s?.perPage ?? Dev.getItemsPerPage()
+    const count = Math.max(0, s?.productsShown || Math.min(per, Store.getProducts().length))
+    const aspect = (window.innerWidth || 1280) / Math.max(1, window.innerHeight || 720)
+    return Layouts.LAYOUT_IDS.map(id => { const sp = Layouts.build(id, { count, perPage: per, aspect, isPhone: (window.innerWidth || 1280) <= 700 }); return { ...Layouts.layoutStats(sp), active: s?.layout?.id === id, count } })
   }
 
   dumpState () {
@@ -279,6 +297,7 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
         bySection: Object.fromEntries(Store.getSections().map(s => [s.id, Store.productsFor(s.id).length])), valueTypes: Value.getTypes().length, account: Value.currentAccountId(), balances: Value.getBalances(),
       },
       scene: this.readStats(),
+      layouts: { active: this.readStats()?.layout ?? null, all: this.layoutTable() },
     })
     return JSON.stringify(dump)
   }
@@ -294,7 +313,15 @@ export default class DevOmniStoreSettingsPanel extends OmniSettingsPanelBase {
     if (act === 'rec-add') { Dev.addRecord(); this._msg('rec-msg', 'Record added.', 'is-ok') }
     else if (act === 'rec-del') { if (Dev.deleteRecord(b.dataset.id)) this._msg('rec-msg', 'Record deleted.', 'is-ok'); else this._msg('rec-msg', 'At least one record must stay.', 'is-err') }
     else if (act === 'rec-json') { const r = Dev.setRecordsFromJson(this._q('[data-field="records-json"]').value); this._msg('rec-msg', r.ok ? `Applied ${r.count} record(s)${r.dropped ? `, ${r.dropped} invalid dropped` : ''}.` : r.error, r.ok ? 'is-ok' : 'is-err'); this._renderRecords() }
-    else if (act === 'rec-copy') this._msg('rec-msg', (await copyText(this._q('[data-field="records-json"]').value)) ? 'Copied.' : 'Copy failed: select the text and copy by hand.', 'is-ok')
+    else if (act === 'rec-preview') {
+      const rec = Dev.getRecords().find(r => r.id === b.dataset.id)
+      const open = !!this.readStats()?.open
+      window.dispatchEvent(new CustomEvent('omni:store-layout-set', { detail: { layout: rec?.layout ?? 'shelf', preview: true } }))
+      this._msg('prev-msg', open ? `Previewing layout "${rec?.layout}" in the open store (not saved; ends when the store closes).` : 'The store is closed: open it first (the preview applies to the open store).', open ? 'is-ok' : 'is-err')
+    } else if (act === 'rec-preview-end') {
+      window.dispatchEvent(new CustomEvent('omni:store-layout-set', { detail: { layout: null, preview: true } }))
+      this._msg('prev-msg', 'Preview ended: the store is back on its saved layout.', 'is-ok')
+    } else if (act === 'rec-copy') this._msg('rec-msg', (await copyText(this._q('[data-field="records-json"]').value)) ? 'Copied.' : 'Copy failed: select the text and copy by hand.', 'is-ok')
     else if (act === 'cat-export') {
       const t = this.exportText(); this._q('[data-field="catalog"]').value = t; this._validated = null
       const c = await copyText(t); const d = download('omni-store-catalog.json', t)

@@ -1,5 +1,17 @@
 # Build Log
 
+## 2026-10-09 — V179: swappable store layouts: shelf / ring / aisle / island (BuildOrder item 4)
+
+- **New pure module `utils/OmniStoreLayouts.js`** (distinct from `utils/OmniStoreLayout.js`): registry `{id,name,short,icon,description,build(ctx)}` returning `{slots[{x,y,z,ry,rx,scale}], furniture[{kind plank|pillar|floor|table|wall|rail}], camera{pose(sizeCtx),stops|null}, bounds, perPageMax}`. Unknown id falls back to shelf; count is clamped to 60. Shared `fitDistance` / `shiftFor` camera maths (shelf equals V178's flyToShelf maths). `computeBounds`, `layoutStats`, `slotNormal`.
+- **Layouts:** shelf (unchanged), ring (tiers of 30, phone 12, faces the centre, outside pose or inside pose at the centre, Enter toggle), aisle (pairs of bays of up to 6, phone 4, products tilted toward the entrance, stops entrance + bay 1..P, buttons not arrow keys), island (tiered table, columns ceil(sqrt(1.5n)) 3..10, phone 5, rows rise and tilt).
+- **Scene (`systems/OmniStoreScene.js`):** in-place rebuild with pooled slot meshes and pooled furniture meshes (plank, plane, box, cylinder, annulus), 9 shared geometries, shared materials (floor = plank colour x0.72), `flyToLayout` (free viewport, orbit-target semantics, 80-unit rule; `flyToShelf` kept as alias), `setLayout` / `previewLayoutSet` / `clearPreview`, selector rings oriented along the slot normal, furniture occludes picking in non-shelf layouts, furniture trimmed to the shelf baseline on close, stats gain layout/furniture mesh counts. HUD third row: layout chip (cycles), stop prev/next, Enter/Exit; the recentre button resets view and stop.
+- **Settings:** `layout` per store in `omni:store-settings-v1` (version stays 1, missing or unknown -> shelf, presets and Reset look keep it). User Look tab has a 4-card radiogroup (icon, name, description, live). Dev panel: record layout select (all 4), Preview layout / End preview (temporary, not persisted, only while open, does not switch the active store), per-layout readout, layouts in Dump state.
+- **Docs:** new `docs/omniproducts/OMNISTORE_LAYOUTS_DESIGN.md`; OMNISTORE_SETTINGS_DESIGN.md and OMNISTORE_DESIGN.md updated; BuildOrder item 4 DONE; DeveloperQueue item 60; TestingChecklist category added.
+- **Found and fixed:** preview set while closed leaked into the next open (now needs open); picking a layout in the user panel did not end a preview (look handler now clears it); island columns off by one at 60 (ceil with epsilon); stale aisle stop after the page size shrank (clamped and flown); ring bounds over-estimated by sqrt2 (circles use r); aisle uprights occluded products (moved behind them); test pick checks wrongly flagged legitimate occlusion.
+- **Verification:** `node --check` on every .js; new `v179_test` ALL OK (182+ checks); snapshot of 96 shelf scenarios V178 vs V179 byte-identical; V170-V178 suites retargeted at V179 with FAIL counts equal to the V178 baselines (known pre-existing failures unchanged); two V177 UI assertions that were obsolete (read-only layout row, "not built" options) rewritten. Real Chromium (Playwright, software GL) at 1280x720 and 390x844: all four layouts via selector and chip, hover and select, paging with a 40-product catalog, 60 per page (no clipping, dome encloses), close/reopen and reload keep the layout.
+- **Meshes (visible, half discs, jsdom):** at 24: shelf 53, ring 50, aisle 62, island 55; at 60: shelf 131, ring 123, aisle 140, island 130. Worst case all discs at 60: 193 / 185 / 202 / 191. Geometries stay at 9.
+- **Not verified:** real GPU, real phone, real touch (software GL only; the frame rate is meaningless); the visual quality of ring-inside at phone size (products large on a small ring); arrow-key navigation (deliberately unbound).
+
 ## 2026-10-09 — V178: user-facing catalog import + AI template + manual product editing (BuildOrder item 3)
 
 - **Catalog tab in `OmniStoreSettings`** (`ui/OmniStoreCatalogUI.js`, mounted lazily by `ui/OmniStoreSettingsPanel.js`, which now has tabs Look | Catalog and the wide 460 px panel): a four-step accordion with check marks. 1 Describe your store (textarea, count chips 10 / 25 / 50 / 100, category hint, payment-form checkboxes from the real payable value types; Copy AI prompt, Copy blank template, Download template .json; a "Show the prompt" viewer as the clipboard fallback). 2 Paste the AI's answer (textarea or .json file, auto-check). 3 Check (preview table with emoji, name, category, shape, accepted forms + grades, stock, status; counts; plain-language per-row messages; Copy fix-it prompt). 4 Import (Merge: same id OR same name updates; Replace: inline confirm with counts; success summary; Undo last import). The user panel and the new UI import nothing from a Dev module (a test greps the imports and loads the panel with the dev modules blocked).
@@ -3141,6 +3153,15 @@ version. Entries should stay short and factual: what changed, and any
 real bugs caught and fixed in the same pass, since those are exactly
 the kind of thing worth being able to trace back to later.
 
+
+## V180 — docs only: user guide (2026-10-09)
+
+- New `docs/user-guide/` (README + pages 00-11): getting started, hands, nodes and Inspector, firing, tunnels, Chronos, ribbon/OmniNotify/dock, OmniStore/OmniValue, settings/admin, keyboard and touch cheatsheet, troubleshooting.
+- Written from the code, not older docs; 12 doc/code mismatches recorded in the guide index.
+- `docs/README.md` links the guide. Build-order files moved to `docs/dev/Roles/Developer/` (`buildOrder_OmniStore_V01.md`, `buildOrder_DeeperSettings_V01.md`); old `BuildOrder.md` removed and links fixed.
+- No .js changed.
+
+Verified: diff against V179 shows only docs/ changes; node --check on every .js; cited labels grepped in code. Not verified: any real device.
 
 ## V159 — Dimensional axes: 5x size, half-size labels, start at 11/2, white tunnels (2026-10-05)
 

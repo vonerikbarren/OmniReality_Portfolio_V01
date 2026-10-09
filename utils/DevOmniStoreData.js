@@ -9,7 +9,8 @@
  * No DOM. localStorage 'omni:dev-store-v1' (versioned, sanitised, try/catch):
  *   records  store-type records (data only for now). {id, name, theme:{colors, backdrop}, layout, productClass, notes}
  *            theme.colors / theme.backdrop = ids of OmniStoreSettings presets (free ids; unknown ones are only flagged).
- *            layout is one of LAYOUTS; ONLY 'shelf' is built (BuildOrder item 4). Record #1 = the produce stand.
+ *            layout is one of LAYOUTS (V179: shelf, ring, aisle, island all exist). A record does NOT switch the active store (store
+ *            types driving layouts = BuildOrder item 6); the dev panel's "Preview layout" applies it temporarily. Record #1 = the produce stand.
  *   notes    "Notes for Claude": free text the developer hands over (<= 20000 chars).
  *   perf     { itemsPerPage }  products per shelf page, clamped 6..60 (the scene reads it).
  * Events: omni:dev-store-changed {key}   key = 'records' | 'notes' | 'perf'
@@ -18,8 +19,9 @@
 export const STORAGE_KEY = 'omni:dev-store-v1'
 export const VERSION = 1
 export const CHANGED_EVENT = 'omni:dev-store-changed'
-export const LAYOUTS = ['shelf', 'ring', 'aisle', 'island']
-export const LAYOUTS_BUILT = ['shelf']
+import { LAYOUT_IDS } from './OmniStoreLayouts.js'   // pure module shared with the user side
+export const LAYOUTS = [...LAYOUT_IDS]
+export const LAYOUTS_BUILT = [...LAYOUT_IDS]   // V179: all four exist
 export const PER_PAGE_MIN = 6
 export const PER_PAGE_MAX = 60
 export const PER_PAGE_DEFAULT = 24
@@ -156,12 +158,12 @@ export function setNotes (t) {
  * Compact JSON for pasting to Claude: user store settings + dev records + notes + counts. `extra` = what the caller
  * could measure (live scene stats, store counts). Pure.
  */
-export function buildDump ({ settings = null, presets = null, counts = null, scene = null, perf = null } = {}) {
+export function buildDump ({ settings = null, presets = null, counts = null, scene = null, perf = null, layouts = null } = {}) {
   ensureLoaded()
   return {
-    dump: 'omni-store-dev-dump/1', app: 'OmniReality V177', at: new Date().toISOString(),
+    dump: 'omni-store-dev-dump/1', app: 'OmniReality V179', at: new Date().toISOString(),
     storeSettings: settings, userPresets: presets,
     dev: { records: clone(S.records), perf: { itemsPerPage: S.perf.itemsPerPage, ...(perf ?? {}) }, notesForClaude: S.notes },
-    counts, scene,
+    counts, scene, layouts,
   }
 }

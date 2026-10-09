@@ -14,6 +14,24 @@ filename, and renaming would have silently broken those links.
   designed but not built, and an honest list of what hasn't been
   audited yet.
 
+## User Guide
+
+Plain-language instructions for using the app, verified against the code (V180).
+
+- [`user-guide/README.md`](user-guide/README.md) — Index, 60-second tour, glossary, mismatches
+- [`user-guide/00_How_To_Maintain_This_Guide.md`](user-guide/00_How_To_Maintain_This_Guide.md) — Rules and page template
+- [`user-guide/01_Getting_Started.md`](user-guide/01_Getting_Started.md) — Enter, camera, select, saving
+- [`user-guide/02_The_Four_Hands.md`](user-guide/02_The_Four_Hands.md) — Hands, pads, satellites
+- [`user-guide/03_Nodes_and_Inspector.md`](user-guide/03_Nodes_and_Inspector.md) — OmniDraw picker, Inspector
+- [`user-guide/04_Firing_and_Payloads.md`](user-guide/04_Firing_and_Payloads.md) — Fire and payloads
+- [`user-guide/05_Tunnels_and_Axes.md`](user-guide/05_Tunnels_and_Axes.md) — Tunnels and axes panels
+- [`user-guide/06_Chronos_Player_and_Timeline.md`](user-guide/06_Chronos_Player_and_Timeline.md) — Timeline and player
+- [`user-guide/07_Ribbon_Notify_and_Dock.md`](user-guide/07_Ribbon_Notify_and_Dock.md) — Ribbon, OmniNotify, dock
+- [`user-guide/08_OmniStore_and_OmniValue.md`](user-guide/08_OmniStore_and_OmniValue.md) — Sandbox store and wallet
+- [`user-guide/09_Settings_and_Admin.md`](user-guide/09_Settings_and_Admin.md) — Admin, Developer, resets
+- [`user-guide/10_Keyboard_and_Touch_Cheatsheet.md`](user-guide/10_Keyboard_and_Touch_Cheatsheet.md) — All keys
+- [`user-guide/11_Troubleshooting.md`](user-guide/11_Troubleshooting.md) — Fixes and bug reports
+
 ## Architecture
 
 - [`architecture/BACKEND_ARCHITECTURE_DESIGN.md`](architecture/BACKEND_ARCHITECTURE_DESIGN.md)

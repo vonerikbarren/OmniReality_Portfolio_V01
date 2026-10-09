@@ -11,7 +11,9 @@
  * plain string so several stores can follow):
  *   { name: '',                                   // display name shown in the HUD ('' = the default "⟐OmniStore")
  *     colors:   { hover, selected, shelfRim, shelfBack, shelfPlank, backdrop|null },   // '#rrggbb'
- *     backdrop: { mode:'none'|'solid'|'gradient', color, color2, opacity } }
+ *     backdrop: { mode:'none'|'solid'|'gradient', color, color2, opacity },
+ *     layout:   'shelf'|'ring'|'aisle'|'island' }      // V179: how the store is arranged (utils/OmniStoreLayouts.js); default 'shelf',
+ *                                                      // unknown / missing (data saved before V179) -> 'shelf'. NOT part of presets.
  *   colors.backdrop is an optional OVERRIDE of backdrop.color (null = use backdrop.color); the panel only edits
  *   backdrop.color; the override is reserved for store-type themes (BuildOrder item 6).
  * PRESETS  4 built-in (Market Wood = the V176 look, Fresh Green, Night Market, Clean White; not stored, cannot be
@@ -26,6 +28,7 @@
  */
 
 import { currentOwnerId } from './OmniStoreModel.js'
+import { LAYOUT_IDS, DEFAULT_LAYOUT, isLayoutId } from './OmniStoreLayouts.js'   // V179: the one list of layout ids (pure module)
 
 export const STORAGE_KEY = 'omni:store-settings-v1'
 export const VERSION = 1
@@ -34,6 +37,7 @@ export const SET_EVENT = 'omni:store-settings-set'
 export const COLOR_KEYS = ['hover', 'selected', 'shelfRim', 'shelfBack', 'shelfPlank']
 export const COLOR_LABELS = { hover: 'Hover selector', selected: 'Selected selector', shelfRim: 'Shelf rim (disc edge)', shelfBack: 'Shelf back panel', shelfPlank: 'Shelf planks', backdrop: 'Backdrop colour override' }
 export const BACKDROP_MODES = ['none', 'solid', 'gradient']
+export { LAYOUT_IDS, DEFAULT_LAYOUT }
 export const LIMITS = { name: 40, presets: 20, presetName: 32, stores: 16 }
 
 export const DEFAULT_COLORS = Object.freeze({ hover: '#ffb02e', selected: '#2e9bff', shelfRim: '#5b4a36', shelfBack: '#d8cdb9', shelfPlank: '#a57d52', backdrop: null })
@@ -69,7 +73,7 @@ export function normalizeHex (v) {
 }
 export const hexToInt = (hex) => parseInt((normalizeHex(hex) ?? '#000000').slice(1), 16)
 
-export function defaultSettings () { return { name: '', colors: { ...DEFAULT_COLORS }, backdrop: { ...DEFAULT_BACKDROP } } }
+export function defaultSettings () { return { name: '', colors: { ...DEFAULT_COLORS }, backdrop: { ...DEFAULT_BACKDROP }, layout: DEFAULT_LAYOUT } }
 
 /** Untrusted -> a complete, valid settings object (always `{...DEFAULTS, ...saved}` per field, never throws). */
 export function sanitize (raw) {
@@ -84,6 +88,7 @@ export function sanitize (raw) {
   const c1 = normalizeHex(b.color); if (c1) out.backdrop.color = c1
   const c2 = normalizeHex(b.color2); if (c2) out.backdrop.color2 = c2
   if (finite(b.opacity)) out.backdrop.opacity = Math.min(1, Math.max(0, b.opacity))
+  out.layout = isLayoutId(raw.layout) ? raw.layout : DEFAULT_LAYOUT
   return out
 }
 
@@ -134,13 +139,14 @@ export function getSettings (storeId) {
 function diffKeys (a, b) {
   const keys = []
   if (a.name !== b.name) keys.push('name')
+  if (a.layout !== b.layout) keys.push('layout')
   ;[...COLOR_KEYS, 'backdrop'].forEach(k => { if (a.colors[k] !== b.colors[k]) keys.push('colors.' + k) })
   Object.keys(DEFAULT_BACKDROP).forEach(k => { if (a.backdrop[k] !== b.backdrop[k]) keys.push('backdrop.' + k) })
   return keys
 }
 
 /**
- * Apply a PARTIAL patch ({name?, colors?:{...}, backdrop?:{...}}) to a store. Invalid values are ignored (the old value
+ * Apply a PARTIAL patch ({name?, colors?:{...}, backdrop?:{...}, layout?}) to a store. Invalid values are ignored (the old value
  * stays), valid ones are normalised. Returns the list of changed keys ([] = nothing changed, no event).
  */
 export function setSettings (patch, storeId) {
@@ -152,6 +158,7 @@ export function setSettings (patch, storeId) {
     name: Object.prototype.hasOwnProperty.call(patch, 'name') ? patch.name : cur.name,
     colors: { ...cur.colors, ...(patch.colors && typeof patch.colors === 'object' ? onlyValid(patch.colors, cur.colors) : {}) },
     backdrop: { ...cur.backdrop, ...(patch.backdrop && typeof patch.backdrop === 'object' ? patch.backdrop : {}) },
+    layout: isLayoutId(patch.layout) ? patch.layout : cur.layout,   // an unknown layout id in a patch is ignored (the old one stays)
   }
   const next = sanitize(merged)
   // sanitize() resets an invalid field to its DEFAULT; keep the previous value instead
@@ -182,6 +189,7 @@ export function resetSettings (storeId) {
   const cur = S.stores[id] ?? defaultSettings()
   const next = defaultSettings()
   next.name = cur.name   // "Reset to default" resets the LOOK; the name the user chose stays
+  next.layout = cur.layout   // V179: the layout is not part of the colour look either; it stays
   const keys = diffKeys(cur, next)
   if (!keys.length) return []
   S.stores[id] = next
