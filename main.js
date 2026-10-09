@@ -154,6 +154,8 @@ import ComingSoonPanel from './ui/ComingSoonPanel.js'
 import OmniStoreScene from './systems/OmniStoreScene.js'
 import OmniExchangeRadial from './ui/OmniExchangeRadial.js'
 import OmniWalletPanel from './ui/OmniWalletPanel.js'
+import OmniStoreSettingsPanel from './ui/OmniStoreSettingsPanel.js'          // V177 user settings (Admin slot 19)
+import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // V177 DEV ONLY (Developer slot 6)
 
 
 
@@ -531,6 +533,10 @@ import OmniWalletPanel from './ui/OmniWalletPanel.js'
   base.addModule(new OmniStoreScene(base.context))
   base.addModule(new OmniExchangeRadial())
   base.addModule(new OmniWalletPanel())
+  // V177: the convention is <System>Settings (user, Admin) vs Dev<System>Settings (developer + Claude, ⟐Developer group). The user
+  // panel does not import the dev panel; each is added once (BaseScene.addModule calls init()).
+  base.addModule(new OmniStoreSettingsPanel())
+  base.addModule(new DevOmniStoreSettingsPanel())
 
   // ── Spaces: real save-a-coordinate / teleport-there system ──
   // An empty slot saves the current camera position there; a saved
@@ -589,6 +595,8 @@ import OmniWalletPanel from './ui/OmniWalletPanel.js'
         3: { label: 'OmniInputMonitor', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniInputMonitor' } })) },
         4: { label: 'Dev_FPS_Exp_ListOfEmotions', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐Dev_FPS_Exp_ListOfEmotions' } })) },
         5: { label: 'TestCallStack', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TestCallStack' } })) },
+        // V177: DEV ONLY (store type records, catalog JSON import/export, perf knobs, notes for Claude, dump state).
+        6: { label: 'DevOmniStoreSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevOmniStoreSettings' } })) },
       },
     },
     {
@@ -631,6 +639,8 @@ import OmniWalletPanel from './ui/OmniWalletPanel.js'
         16: { label: 'FloorManager', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorManager' } })) },
         17: { label: 'DimensionalAxesSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DimensionalAxesSettings' } })) },
         18: { label: 'OmniAxinator', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniAxinator' } })) },
+        // V177: the USER's store look (colours, backdrop, presets). Its dev twin is ⟐Developer slot 6.
+        19: { label: 'OmniStoreSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniStoreSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },

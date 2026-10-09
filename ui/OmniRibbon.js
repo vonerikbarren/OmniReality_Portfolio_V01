@@ -160,6 +160,8 @@ function buildTabs () {
           b('store', '⟐', 'Store', '—', 'SANDBOX. Opens the ⟐OmniStore shelf (fruit and veg test store) in the scene: sections, media lenses, click a product for its exchange.', nav('⟐OmniStore'), { name: 'OmniStore (sandbox)' }),
           b('exchange', '◎', 'Exchange', '—', 'SANDBOX. Opens the radial exchange panel: the product in the middle, every accepted exchange form around it; buy, sell, and the window / wish / cart list.', nav('⟐OmniExchange'), { name: 'OmniExchange (sandbox)' }),
           b('wallet', '▤', 'Wallet', '—', 'SANDBOX. Opens the wallet: balances per value type, the stated remainder ledger, transactions, grant / reset sandbox value.', nav('⟐Wallet'), { name: 'Wallet (sandbox)' }),
+          b('store-settings', '✎', 'Store Settings', '—', "Opens ⟐OmniStoreSettings (Admin): your store's colours, backdrop, presets and name. Changes show live in the open store.", nav('⟐OmniStoreSettings'), { name: 'Store Settings' }),
+          b('dev-store', '⌘', 'Dev Store', '—', 'DEV ONLY. Opens ⟐DevOmniStoreSettings: store type records, catalog JSON import / export, items per page, test data, notes for Claude, dump state. Not part of the user settings.', nav('⟐DevOmniStoreSettings'), { name: 'Dev Store [DEV]' }),
         ] },
         { caption: 'Save', btns: [
           b('save', '⤓', 'Save nodes', '—', 'Writes all nodes and edges to this browser now (they also auto-save). There is no Open / import button because no such handler exists yet.', () => ev('omni:force-save')),

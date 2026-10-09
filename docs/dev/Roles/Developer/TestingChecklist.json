@@ -2028,6 +2028,202 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
+      "items": [
+        {
+          "feature": "Open the user settings",
+          "howToReach": "Drawer ⟐Admin slot 19 OmniStoreSettings, or ribbon Realities > Value > Store Settings",
+          "whatToCheck": "Draggable panel opens left of the shelf, below the ribbon, clear of the hands and the dock; the open shelf re-frames into the free space; on a phone it is a bottom sheet",
+          "tested": false
+        },
+        {
+          "feature": "Live colours",
+          "howToReach": "Open the store, then change Hover selector, Selected selector, Shelf rim / back / planks (picker or hex field)",
+          "whatToCheck": "Shelf, disc rims and selector rings recolour at once with no flicker or rebuild; hover a product to see the hover ring colour, click one for the selected ring; HUD chip accents follow; the SANDBOX badge stays orange",
+          "tested": false
+        },
+        {
+          "feature": "Invalid hex",
+          "howToReach": "Type #zzz into a hex field",
+          "whatToCheck": "Field is flagged, nothing changes, the old colour stays",
+          "tested": false
+        },
+        {
+          "feature": "Backdrop",
+          "howToReach": "Backdrop mode: Solid / Gradient, colours, opacity",
+          "whatToCheck": "A dome fills the view behind the shelf and hides the wallpaper; gradient is top colour to bottom colour; opacity below 100% lets the wallpaper show through; orbit around and behind the shelf; no edge or seam",
+          "tested": false
+        },
+        {
+          "feature": "Backdrop goes away",
+          "howToReach": "Close the store (HUD ✕) or set mode None; zoom far out",
+          "whatToCheck": "Dome is gone after close and with None; far zoom-out hides it so it never covers the wallpaper as a ball",
+          "tested": false
+        },
+        {
+          "feature": "Presets",
+          "howToReach": "Market Wood / Fresh Green / Night Market / Clean White",
+          "whatToCheck": "Each applies colours and backdrop together; the active preset is highlighted; Market Wood is exactly the V176 look",
+          "tested": false
+        },
+        {
+          "feature": "Own presets",
+          "howToReach": "Type a name, Save current as…, then the × next to it",
+          "whatToCheck": "Preset appears and applies later; × deletes it; built-ins cannot be deleted",
+          "tested": false
+        },
+        {
+          "feature": "Store name and reset",
+          "howToReach": "Type a name; Reset to default",
+          "whatToCheck": "Name shows in the store HUD title; Reset restores the Market Wood look and keeps the name",
+          "tested": false
+        },
+        {
+          "feature": "Settings survive reload",
+          "howToReach": "Change colours, reload the page, open the store",
+          "whatToCheck": "Same colours, backdrop and name come back (per store id, 'omni:store-settings-v1')",
+          "tested": false
+        },
+        {
+          "feature": "Open the dev panel",
+          "howToReach": "Drawer ⟐Developer slot 6 DevOmniStoreSettings, or ribbon Realities > Value > Dev Store (DEV in the tooltip)",
+          "whatToCheck": "Panel shows the red DEV ONLY badge and banner; four collapsible sections; the user panel works the same with it never opened",
+          "tested": false
+        },
+        {
+          "feature": "Store type records",
+          "howToReach": "Dev panel a)",
+          "whatToCheck": "Record #1 = Produce stand (shelf); add / edit / delete; layouts other than shelf are marked (not built); JSON view applies and rejects bad JSON",
+          "tested": false
+        },
+        {
+          "feature": "Catalog export",
+          "howToReach": "Dev panel b) Export",
+          "whatToCheck": "JSON of the current 16 products appears, downloads and copies; schema 'omni-store-catalog/1'",
+          "tested": false
+        },
+        {
+          "feature": "Catalog validate and preview",
+          "howToReach": "Edit the JSON (e.g. a 3 product catalog), Validate",
+          "whatToCheck": "Counts ok / warnings / rejected, what merge and replace would add / update / remove, a row table with errors and warnings; nothing is applied yet; editing the text disables Import until Validate again",
+          "tested": false
+        },
+        {
+          "feature": "Catalog import merge / replace / undo",
+          "howToReach": "Import (merge), Import (replace: click twice), Undo last import",
+          "whatToCheck": "Products appear on the shelf (emoji visible); replace removes the rest; undo restores the previous catalog; undo is lost on reload",
+          "tested": false
+        },
+        {
+          "feature": "Invalid catalog",
+          "howToReach": "Paste products with an unknown value type, a wrong quality, <script> in a name, javascript: image URL, a 100-character name",
+          "whatToCheck": "Each row shows a specific error and is rejected; valid rows can still be imported; no HTML is ever rendered",
+          "tested": false
+        },
+        {
+          "feature": "Copy AI prompt + schema",
+          "howToReach": "Dev panel b) button",
+          "whatToCheck": "Clipboard holds a prompt with the schema, the value types with their qualities, the section ids, an example, and 'ONLY the JSON'; this is a prototype, the user-facing flow is not built",
+          "tested": false
+        },
+        {
+          "feature": "Items per page",
+          "howToReach": "Dev panel c) 6 / 12 / 60",
+          "whatToCheck": "Shelf shows that many per page, pages change, 60 fills ten rows and frames correctly; stays between 6 and 60",
+          "tested": false
+        },
+        {
+          "feature": "Test data",
+          "howToReach": "Dev panel c) Grant sandbox value, Starter pack, Reset ledger / store (two clicks)",
+          "whatToCheck": "Balances change in the Wallet; resets need a second click; store reset restores the 16 seed products",
+          "tested": false
+        },
+        {
+          "feature": "Live readout and Dump state",
+          "howToReach": "Dev panel c) readout, Dump state (copy)",
+          "whatToCheck": "Products shown, meshes, textures cached, videos, draw calls, triangles, fps update; the dump is one line of JSON with settings, presets, dev records, notes, counts and scene stats",
+          "tested": false
+        },
+        {
+          "feature": "Notes for Claude",
+          "howToReach": "Dev panel d)",
+          "whatToCheck": "Text persists across reload and appears in Dump state",
+          "tested": false
+        },
+        {
+          "feature": "Phone (390 px)",
+          "howToReach": "Open both panels on a phone",
+          "whatToCheck": "Bottom sheet above the dock, buttons at least 40 px, scrolls inside, the shelf stays visible above it; check by touch on a real phone (not done in V177)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
+      "items": [
+        {
+          "feature": "Open the Catalog tab",
+          "howToReach": "Open ⟐OmniStoreSettings (drawer ⟐Admin slot 19 or ribbon Realities > Value > Store Settings), press the Catalog tab",
+          "whatToCheck": "Tabs Look | Catalog; Catalog shows four steps (1 open), the privacy line, and 'Your products' below; the panel stays below the ribbon and clear of the dock and the hands; on a phone it is a 56vh bottom sheet (taller than the Look tab) with the shelf visible above it; it covers the bottom hands like the other sheets; Show in store minimises it",
+          "tested": false
+        },
+        {
+          "feature": "Copy AI prompt",
+          "howToReach": "Catalog > step 1: type a description (e.g. a bakery), tick 25, a category hint and credits + flowers, press Copy AI prompt, paste into any text box",
+          "whatToCheck": "The clipboard holds ~3-4k characters: rules, schema version, value types with their quality grades, sections, a valid example, your count / hint / forms, your description; no assistant or product names; 'Show the prompt' shows the same text; step 1 gets a green check",
+          "tested": false
+        },
+        {
+          "feature": "Blank template and download",
+          "howToReach": "Catalog > step 1: Copy blank template, Download template .json",
+          "whatToCheck": "JSON with schema 'omni-store-catalog/1', a store block and ONE filled example product that uses the ticked payment types; the file downloads",
+          "tested": false
+        },
+        {
+          "feature": "Paste a realistic AI answer",
+          "howToReach": "Catalog > step 2: paste a reply with chatty text and a ```json fence around the catalog (also try: a bare [ ... ] list, a reply with a trailing comma, curly quotes, text cut off in the middle, prose only)",
+          "whatToCheck": "It is read automatically and step 3 opens; the fence / prose is ignored and noted; a bare list is wrapped; trailing comma / curly quotes / comments / cut-off text give a plain red message with the line number and are NOT silently fixed",
+          "tested": false
+        },
+        {
+          "feature": "Check preview and fix-it prompt",
+          "howToReach": "Catalog > step 3 with some bad rows (unknown value type, unknown quality grade, HTML in a name)",
+          "whatToCheck": "Counts line (ready / with notes / with problems), a table with emoji, name, category, shape, accepted forms, stock and a ✓ / ! / ✗ mark, plain-language messages under each row; nothing is applied; Copy fix-it prompt puts every error and only the offending products on the clipboard and asks for the FULL corrected JSON",
+          "tested": false
+        },
+        {
+          "feature": "Import merge / replace",
+          "howToReach": "Catalog > step 4: choose Merge, Import N products; then paste again, choose Replace, Import",
+          "whatToCheck": "Merge adds new and updates same id OR same name (no duplicate when only the id differs); Replace shows an inline box with 'removes N, adds M' and needs 'Replace now'; success summary; the open shelf shows the products (24 per page, section Physical unless the answer named others)",
+          "tested": false
+        },
+        {
+          "feature": "Undo last import (also after reload)",
+          "howToReach": "After an import press Undo last import; or import, reload the page, open Catalog > step 4 and press Undo",
+          "whatToCheck": "The catalog (and store name) return to the state before the import; after a reload the Undo button is still enabled ('kept after a reload'); with browser storage full it says 'this session only'; undo discards manual edits made after the import",
+          "tested": false
+        },
+        {
+          "feature": "Manual: add / edit product",
+          "howToReach": "Catalog > Your products > + Add product; fill name, emoji (try the quick-picks), category, sections, shape, image link, forms, stock, note; Save; then Edit it",
+          "whatToCheck": "Live messages explain problems (javascript: link, qty 0, empty name) and Save stays disabled until valid; image / video can be chosen as 'shown' only once a link exists; the product appears on the open shelf at once; Edit keeps its reviews and stats",
+          "tested": false
+        },
+        {
+          "feature": "Manual: duplicate / delete / delete all / search / pages",
+          "howToReach": "Catalog > Your products: Copy, Del, Delete all products, the search box, with more than 20 products the pager",
+          "whatToCheck": "Copy puts '<name> (copy)' right after the original; Del and Delete all ask first and also clear the product from shopping lists; an emptied store stays empty after a reload; search filters by name / category; 20 rows per page",
+          "tested": false
+        },
+        {
+          "feature": "Export catalog",
+          "howToReach": "Catalog > Your products > Export catalog",
+          "whatToCheck": "File omni-store-catalog.json downloads and the same text is copied; it can be pasted back into step 2 with no errors",
+          "tested": false
+        }
+      ]
     }
   ]
 }

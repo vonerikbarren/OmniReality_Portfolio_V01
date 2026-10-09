@@ -15,7 +15,7 @@
  *
  * Interaction: hover = ring + spin + tooltip + `omni:notify-info`; click / tap = select -> `omni:store-product-select`
  * and `omni:exchange-open {productId}` (ui/OmniExchangeRadial.js opens). Products are NOT registered as OmniNodes: this
- * module owns its meshes. At most PER_PAGE (24) products are on screen, with pagination; all geometry is shared.
+ * module owns its meshes. At most `perPage` (default 24, dev knob 6..60) products are on screen, with pagination; all geometry is shared.
  * No per-frame allocation: update() only touches pooled slots.
  *
  * Events consumed: omni:store-open {sectionId?, productId?, fly?}, omni:store-close, omni:nav-select (⟐OmniStore),
@@ -31,8 +31,12 @@ import gsap from 'gsap'
 import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import { handsSafe, DOCK_H, isPhone } from '../utils/OmniStoreLayout.js'
+import * as Look from '../utils/OmniStoreSettings.js'
+import * as DevData from '../utils/DevOmniStoreData.js'   // V177: ONLY the per-page knob (default 24 when no dev data); nothing user-facing depends on the dev panel
 
-export const PER_PAGE = 24
+export const PER_PAGE = 24   // the default; the live value comes from DevOmniStoreData.getItemsPerPage() (6..60)
+export const BACKDROP_RADIUS = 120
+export const BACKDROP_ORDER = -1.5   // after the wallpaper sphere (-2, modules/WallpaperSphere.js: depthWrite false) so it is not painted over, before the domain grid (-1)
 export const MAX_VIDEOS = 4
 export const TEX_SIZE = 256
 export const DEFAULT_ANCHOR = [0, 3, -40]
@@ -53,14 +57,15 @@ const STYLES = `
 .osh-spacer { flex: 1; }
 .osh-btn { min-height: 28px; min-width: 28px; padding: 2px 8px; font: inherit; color: inherit; cursor: pointer; border-radius: 6px;
   background: rgba(255,255,255,.07); border: 1px solid var(--omni-theme-border, rgba(255,255,255,.18)); }
-.osh-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.osh-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); border-color: var(--osh-hover, rgba(255,255,255,.5)); }
 .osh-btn:disabled { opacity: .35; cursor: default; }
 .osh-chips { display: flex; gap: 4px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; padding-bottom: 1px; }
 .osh-chips::-webkit-scrollbar { display: none; }
 .osh-chip { flex: 0 0 auto; min-height: 28px; padding: 2px 9px; font: inherit; color: inherit; cursor: pointer; border-radius: 14px; white-space: nowrap;
   background: rgba(255,255,255,.05); border: 1px solid var(--omni-theme-border, rgba(255,255,255,.18)); }
 .osh-chip.is-media { border-style: dashed; }
-.osh-chip.is-active { background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.75); }
+.osh-chip:hover { border-color: var(--osh-hover, rgba(255,255,255,.5)); }
+.osh-chip.is-active { background: rgba(255,255,255,.24); border-color: var(--osh-select, rgba(255,255,255,.75)); box-shadow: 0 0 0 1px var(--osh-select, transparent); }
 .osh-pager { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .osh-tip { position: fixed; z-index: 46; pointer-events: none; display: none; max-width: 240px; padding: 4px 8px; border-radius: 6px;
   font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #fff; background: rgba(8,8,12,.88); border: 1px solid rgba(255,255,255,.22); }
@@ -109,6 +114,10 @@ export default class OmniStoreScene {
     this._geo = {}
     this._mats = {}
     this.group = null
+    this._perPage = PER_PAGE
+    this._backdrop = null
+    this._fps = 0
+    this._look = null
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -117,6 +126,8 @@ export default class OmniStoreScene {
     this._inited++   // BaseScene.addModule() calls init(); a second call must not double everything (V170 bug)
     if (this._inited > 1) return
     injectStyles()
+    Look.attach()
+    this._perPage = DevData.getItemsPerPage()
     this._buildShared()
     this._buildGroup()
     this._ray = new THREE.Raycaster()
@@ -128,20 +139,29 @@ export default class OmniStoreScene {
       close: () => this.close(),
       nav: (e) => { if (e.detail?.item === '⟐OmniStore') this.open({}) },
       changed: () => { this._dirty = true },
+      identity: () => { this._dirty = true; this._applyLook() },
+      look: (e) => { const id = e.detail?.storeId; if (!id || id === Look.currentStoreId()) this._applyLook() },
+      dev: (e) => { if (!e.detail?.key || e.detail.key === 'perf') this._setPerPage(DevData.getItemsPerPage()) },
+      stats: (e) => { if (e.detail && typeof e.detail === 'object') e.detail.out = this.getStats() },
       select: (e) => { this._selectedId = e.detail?.productId ?? null; this._placeRings() },
       exchangeClosed: () => { this._selectedId = null; this._placeRings() },
       xrState: (e) => { const was = this._xr; this._xr = e.detail ?? null; this._placeHud(); if (this._open && this._xr?.open && !was?.open) this.flyToShelf() },
       layout: () => { if (this._open) this._placeHud() },
+      panel: () => { if (this._open) { this._placeHud(); this.flyToShelf() } },
     }
     window.addEventListener('omni:store-open', this._on.open)
     window.addEventListener('omni:store-close', this._on.close)
     window.addEventListener('omni:nav-select', this._on.nav)
     window.addEventListener(Store.CHANGED_EVENT, this._on.changed)
-    window.addEventListener('omni:identity-changed', this._on.changed)
+    window.addEventListener('omni:identity-changed', this._on.identity)
+    window.addEventListener(Look.CHANGED_EVENT, this._on.look)
+    window.addEventListener(DevData.CHANGED_EVENT, this._on.dev)
+    window.addEventListener('omni:store-stats-get', this._on.stats)
     window.addEventListener('omni:store-product-select', this._on.select)
     window.addEventListener('omni:exchange-closed', this._on.exchangeClosed)
     window.addEventListener('omni:exchange-state', this._on.xrState)
     window.addEventListener('omni:layout-changed', this._on.layout)
+    window.addEventListener('omni:store-panel-changed', this._on.panel)
     window.addEventListener('resize', this._on.layout)
 
     const el = this.ctx.renderer?.domElement
@@ -168,11 +188,15 @@ export default class OmniStoreScene {
     window.removeEventListener('omni:store-close', this._on.close)
     window.removeEventListener('omni:nav-select', this._on.nav)
     window.removeEventListener(Store.CHANGED_EVENT, this._on.changed)
-    window.removeEventListener('omni:identity-changed', this._on.changed)
+    window.removeEventListener('omni:identity-changed', this._on.identity)
+    window.removeEventListener(Look.CHANGED_EVENT, this._on.look)
+    window.removeEventListener(DevData.CHANGED_EVENT, this._on.dev)
+    window.removeEventListener('omni:store-stats-get', this._on.stats)
     window.removeEventListener('omni:store-product-select', this._on.select)
     window.removeEventListener('omni:exchange-closed', this._on.exchangeClosed)
     window.removeEventListener('omni:exchange-state', this._on.xrState)
     window.removeEventListener('omni:layout-changed', this._on.layout)
+    window.removeEventListener('omni:store-panel-changed', this._on.panel)
     window.removeEventListener('resize', this._on.layout)
     if (this._canvas && this._ptr) {
       this._canvas.removeEventListener('pointermove', this._ptr.move)
@@ -181,6 +205,8 @@ export default class OmniStoreScene {
       this._canvas.removeEventListener('pointerleave', this._ptr.leave)
     }
     this._flyTween?.kill()
+    this._disposeBackdrop()
+    Look.detach()
     this._slots.forEach(s => this._releaseHeld(s))
     ;[...this._cache.keys()].forEach(k => this._disposeEntry(k))
     this._slots.forEach(s => s.mats.forEach(m => m.dispose()))
@@ -223,15 +249,24 @@ export default class OmniStoreScene {
     this.back.position.z = -0.65
     g.add(this.back)
     this.planks = []
-    for (let r = 0; r < 6; r++) { const p = new THREE.Mesh(this._geo.plank, this._mats.plank); p.visible = false; g.add(p); this.planks.push(p) }
-    for (let i = 0; i < PER_PAGE; i++) g.add(this._buildSlot(i).group)
+    this.group = g
+    this._ensurePlanks(6)
+    this._ensurePool(this._perPage, g)
     this.hoverRing = new THREE.Mesh(this._geo.ring, this._mats.hover)
     this.selectRing = new THREE.Mesh(this._geo.ring, this._mats.select)
     this.hoverRing.visible = this.selectRing.visible = false
     this.hoverRing.renderOrder = this.selectRing.renderOrder = 10
     g.add(this.hoverRing, this.selectRing)
-    this.group = g
     this.ctx.scene.add(g)
+    this._applyLook()
+  }
+
+  /** Grow the slot pool to n (never shrinks; slots past the per-page count stay hidden). New meshes are appended to the group. */
+  _ensurePool (n, g = this.group) {
+    while (this._slots.length < n) g.add(this._buildSlot(this._slots.length).group)
+  }
+  _ensurePlanks (n) {
+    while (this.planks.length < n) { const p = new THREE.Mesh(this._geo.plank, this._mats.plank); p.visible = false; this.group.add(p); this.planks.push(p) }
   }
 
   _buildSlot (i) {
@@ -256,16 +291,129 @@ export default class OmniStoreScene {
     return slot
   }
 
+  // ── Look (OmniStoreSettings) ────────────────────────────────────────────────
+
+  /**
+   * Read the user's OmniStoreSettings for the current store and apply them: material colours (no rebuild of the shelf),
+   * HUD accents and name, and the backdrop. Cheap, so it runs on every settings event.
+   */
+  _applyLook () {
+    if (!this._mats.rim) return
+    const L = Look.getSettings()
+    this._look = L
+    const c = L.colors
+    this._mats.rim.color.setHex(Look.hexToInt(c.shelfRim))
+    this._mats.back.color.setHex(Look.hexToInt(c.shelfBack))
+    this._mats.plank.color.setHex(Look.hexToInt(c.shelfPlank))
+    this._mats.hover.color.setHex(Look.hexToInt(c.hover))
+    this._mats.select.color.setHex(Look.hexToInt(c.selected))
+    if (this._hud) {
+      this._hud.style.setProperty('--osh-hover', c.hover)
+      this._hud.style.setProperty('--osh-select', c.selected)
+    }
+    this._syncTitle()
+    if (this._open) this._applyBackdrop(L)
+    else this._disposeBackdrop()
+  }
+
+  _syncTitle () {
+    const t = this._hudRefs?.title
+    if (!t) return
+    const nm = this._look?.name
+    t.textContent = nm ? `⟐${nm}` : '⟐OmniStore'
+    this._hud.setAttribute('aria-label', nm || 'OmniStore')
+  }
+
+  /**
+   * The store backdrop: ONE inward-facing sphere (radius BACKDROP_RADIUS) centred on the shelf anchor, a child of the
+   * shelf group (so it follows the anchor and is hidden whenever the store is). Why a dome and not a back panel: orbiting
+   * around the shelf never shows an edge, and one cheap unlit mesh (MeshBasicMaterial, BackSide, fog off) costs one draw call.
+   * renderOrder -1.5: the app's wallpaper sphere is renderOrder -2 with depthWrite false, so a dome drawn before it (first
+   * attempt, -1000) was painted over by the wallpaper (found in Chromium); -1.5 draws after it and before the domain grid (-1).
+   * depthWrite is ON while opaque (the wallpaper / stars beyond the dome then fail the depth test) and OFF while translucent
+   * (it only tints what is behind it). The camera far plane is 1e5 with a logarithmic
+   * depth buffer, so R=120 is far inside it. Outside the store nothing of it exists (disposed on close / mode none), and
+   * zoomed far out of the dome (> 0.92 R from the anchor) it is hidden so it can never become a coloured ball over the
+   * wallpaper. Gradient = vertex colours (colour at the top, second colour at the bottom); solid = both ends equal.
+   */
+  _applyBackdrop (L) {
+    const b = L.backdrop
+    if (b.mode === 'none') { this._disposeBackdrop(); return }
+    if (!this._backdrop) {
+      const geo = new THREE.SphereGeometry(BACKDROP_RADIUS, 32, 16)
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3))
+      const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: true, toneMapped: false, fog: false })
+      const m = new THREE.Mesh(geo, mat)
+      m.name = 'OmniStoreBackdrop'
+      m.renderOrder = BACKDROP_ORDER
+      m.frustumCulled = false
+      m.raycast = () => {}   // never intercepts a pick
+      this.group.add(m)
+      this._backdrop = m
+    }
+    const m = this._backdrop
+    const top = new THREE.Color(Look.hexToInt(L.colors.backdrop ?? b.color))
+    const bottom = b.mode === 'gradient' ? new THREE.Color(Look.hexToInt(b.color2)) : top
+    const pos = m.geometry.attributes.position, col = m.geometry.attributes.color
+    const tmp = new THREE.Color()
+    for (let i = 0; i < pos.count; i++) {
+      tmp.copy(bottom).lerp(top, (pos.getY(i) / BACKDROP_RADIUS + 1) / 2)
+      col.setXYZ(i, tmp.r, tmp.g, tmp.b)
+    }
+    col.needsUpdate = true
+    const transparent = b.opacity < 1
+    if (m.material.transparent !== transparent) { m.material.transparent = transparent; m.material.needsUpdate = true }
+    m.material.depthWrite = !transparent   // opaque: write depth so the scene's far objects (the wallpaper sphere, stars) cannot draw over the dome; translucent: tint what is behind
+    m.material.opacity = b.opacity
+    m.visible = true
+  }
+
+  _disposeBackdrop () {
+    const m = this._backdrop
+    if (!m) return
+    this.group?.remove(m)
+    m.geometry.dispose()
+    m.material.dispose()
+    this._backdrop = null
+  }
+
+  /** Dev knob: products per shelf page (6..60). Keeps the first product on screen where it can. */
+  _setPerPage (n) {
+    const v = DevData.clampPerPage(n)
+    if (v === this._perPage) return
+    const first = this._page * this._perPage
+    this._perPage = v
+    this._page = Math.floor(first / v)
+    this._ensurePool(v)
+    this._dirty = true
+    if (this._open) { this._rebuild(); this._emitState() }
+  }
+
+  /** Live numbers for the dev panel (read via the omni:store-stats-get event). */
+  getStats () {
+    const info = this.ctx.renderer?.info
+    const shown = this._visibleCount()
+    return {
+      open: this._open, perPage: this._perPage, page: this._page, pages: this.pages, productsShown: shown, productsInSection: this._products().length,
+      slotsBuilt: this._slots.length, meshes: this._slots.reduce((n, s) => n + (s.productId ? (s.shape === 'cube' ? 1 : 3) : 0), 0),
+      texturesCached: this._cache.size, activeVideos: this._videoCount(), backdrop: !!this._backdrop,
+      drawCalls: info?.render?.calls ?? null, triangles: info?.render?.triangles ?? null, gpuGeometries: info?.memory?.geometries ?? null, gpuTextures: info?.memory?.textures ?? null,
+      fps: this._open && this._fps > 0 ? Math.round(this._fps) : null,
+    }
+  }
+
   // ── Open / close / page ─────────────────────────────────────────────────────
 
   get isOpen () { return this._open }
   get page () { return this._page }
-  get pages () { return Math.max(1, Math.ceil(this._products().length / PER_PAGE)) }
+  get pages () { return Math.max(1, Math.ceil(this._products().length / this._perPage)) }
+  get perPage () { return this._perPage }
 
   open ({ sectionId, productId, fly = true } = {}) {
     if (sectionId) Store.setCurrentSection(sectionId)
     this._open = true
     this.group.visible = true
+    this._applyLook()
     this._ensureHud()
     this._hud.classList.add('is-open')
     this._placeHud()
@@ -274,7 +422,7 @@ export default class OmniStoreScene {
     this._rebuild()
     if (productId) {
       const idx = this._products().findIndex(p => p.id === productId)
-      if (idx >= 0) { this._page = Math.floor(idx / PER_PAGE); this._rebuild() }
+      if (idx >= 0) { this._page = Math.floor(idx / this._perPage); this._rebuild() }
     }
     if (fly) this.flyToShelf()
     this._emitState()
@@ -284,6 +432,7 @@ export default class OmniStoreScene {
     if (!this._open) return
     this._open = false
     this.group.visible = false
+    this._disposeBackdrop()
     this._hud?.classList.remove('is-open')
     this._setHover(-1)
     this._hideTip()
@@ -300,19 +449,34 @@ export default class OmniStoreScene {
     this._emitState()
   }
 
+  /** Rect of the open settings panel (any element `.oss-panel[data-store-panel][data-open="1"]`), or null. DOM-only: no import of the panels. */
+  _settingsPanelRect () {
+    if (typeof document === 'undefined') return null
+    const el = document.querySelector('.oss-panel[data-store-panel][data-open="1"]')
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    return r.width && r.height ? r : null
+  }
+
   /** The part of the viewport the shelf may use: clear of the HUD on top, the dock, the hands (desktop) and the exchange panel. */
   _usable () {
     const W = window.innerWidth || 1280, H = window.innerHeight || 720
     let rt = 0
     if (this._hud && this._open && this._hud.style.display !== 'none') { const hb = this._hud.getBoundingClientRect(); if (hb.height) rt = Math.max(0, hb.bottom + 6) }
     if (!rt && typeof document !== 'undefined') { const rb = document.getElementById('omni-ribbon')?.getBoundingClientRect(); rt = rb && rb.height ? rb.bottom + 6 : 0 }
+    if (isPhone() && typeof document !== 'undefined' && !(this._hud && this._open && this._hud.style.display !== 'none')) {
+      // HUD hidden (a sheet is open): still keep the shelf clear of the two top hands
+      document.querySelectorAll('.omni-hand--tl, .omni-hand--tr').forEach(h => { const r = h.getBoundingClientRect(); if (r.width && r.height && getComputedStyle(h).display !== 'none') rt = Math.max(rt, r.bottom + 22) })
+    }
     let x0 = 0, x1 = W, y1 = H - DOCK_H - 4
     const xr = this._xr
-    if (isPhone()) { if (xr?.open && xr.rect) y1 = Math.min(y1, xr.rect.y - 4) }
+    const sp = this._settingsPanelRect()   // V177: an open OmniStoreSettings / DevOmniStoreSettings panel takes its share of the screen
+    if (isPhone()) { if (xr?.open && xr.rect) y1 = Math.min(y1, xr.rect.y - 4); if (sp) y1 = Math.min(y1, sp.top - 4) }
     else {
       const sf = handsSafe(rt, y1)
       x0 = sf.left; x1 = sf.right
       if (xr?.open && xr.rect) x1 = Math.min(x1, xr.rect.x - 8)
+      if (sp) { if (sp.left + sp.width / 2 < W / 2) x0 = Math.max(x0, sp.right + 8); else x1 = Math.min(x1, sp.left - 8) }
     }
     return { W, H, x0, x1: Math.max(x0 + 120, x1), y0: rt, y1: Math.max(rt + 120, y1) }
   }
@@ -356,17 +520,20 @@ export default class OmniStoreScene {
     if (!this._open) return
     const aspect = this.ctx.camera?.aspect || 1.78
     this._cols = aspect < 0.85 ? 4 : 6
-    this._rows = PER_PAGE / this._cols
+    const per = this._perPage
+    this._ensurePool(per)
     const list = this._products()
-    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE))
+    const pages = Math.max(1, Math.ceil(list.length / per))
     if (this._page >= pages) this._page = pages - 1
-    const pageItems = list.slice(this._page * PER_PAGE, (this._page + 1) * PER_PAGE)
+    const pageItems = list.slice(this._page * per, (this._page + 1) * per)
     const rowsUsed = Math.max(1, Math.ceil(pageItems.length / this._cols))
+    this._rows = Math.max(rowsUsed, Math.min(Math.ceil(per / this._cols), 4))   // framing: at least 4 rows (the V176 look), more for big pages
+    this._ensurePlanks(rowsUsed)
     const w = this._cols * SPACING, h = rowsUsed * SPACING
     this._hit.length = 0
-    for (let i = 0; i < PER_PAGE; i++) {
+    for (let i = 0; i < this._slots.length; i++) {
       const slot = this._slots[i]
-      const p = pageItems[i]
+      const p = i < per ? pageItems[i] : null
       if (!p) { this._releaseHeld(slot); slot.productId = null; slot.group.visible = false; continue }
       const col = i % this._cols, row = Math.floor(i / this._cols)
       slot.baseX = (col - (this._cols - 1) / 2) * SPACING
@@ -612,7 +779,8 @@ export default class OmniStoreScene {
     hud.setAttribute('role', 'toolbar')
     hud.setAttribute('aria-label', 'OmniStore')
     const r1 = mkEl('div', 'osh-row')
-    r1.appendChild(mkEl('span', 'osh-title', '⟐OmniStore'))
+    const title = mkEl('span', 'osh-title', '⟐OmniStore')
+    r1.appendChild(title)
     const sb = mkEl('span', 'osh-sandbox', 'SANDBOX'); sb.title = 'All value here is fake. No real payments.'
     r1.appendChild(sb)
     r1.appendChild(mkEl('span', 'osh-spacer'))
@@ -637,7 +805,8 @@ export default class OmniStoreScene {
     hud.append(r1, r2)
     ;(document.getElementById('omni-ui') ?? document.body).appendChild(hud)
     this._hud = hud
-    this._hudRefs = { chips, prev, next, label }
+    this._hudRefs = { chips, prev, next, label, title }
+    this._applyLook()
   }
 
   /** Desktop: the HUD sits between the left hands and the exchange panel / right hands; phone: full width. */
@@ -651,7 +820,7 @@ export default class OmniStoreScene {
       let t = 0
       document.querySelectorAll('.omni-hand--tl, .omni-hand--tr').forEach(h => { const r = h.getBoundingClientRect(); if (r.width && r.height && getComputedStyle(h).display !== 'none') t = Math.max(t, r.bottom + 22) })
       hud.style.top = t ? t + 'px' : ''
-      hud.style.display = this._xr?.open ? 'none' : ''
+      hud.style.display = this._xr?.open || this._settingsPanelRect() ? 'none' : ''   // the exchange sheet or a settings sheet needs the room; the shelf stays visible above it
       return
     }
     hud.style.display = ''
@@ -705,8 +874,10 @@ export default class OmniStoreScene {
     if (!this._open) return
     if (this._dirty) { this._rebuild(); this._emitState() }
     this._time += delta
+    if (delta > 0) this._fps += (1 / delta - this._fps) * Math.min(1, delta * 2)   // smoothed frame rate from update(), for the dev readout
+    if (this._backdrop) this._backdrop.visible = this.ctx.camera.position.distanceTo(this.group.position) < BACKDROP_RADIUS * 0.92   // zoomed far outside the dome: hide it
     const k = Math.min(1, delta * 8)
-    for (let i = 0; i < PER_PAGE; i++) {
+    for (let i = 0; i < this._slots.length; i++) {
       const s = this._slots[i]
       if (!s.productId) continue
       const hov = i === this._hover

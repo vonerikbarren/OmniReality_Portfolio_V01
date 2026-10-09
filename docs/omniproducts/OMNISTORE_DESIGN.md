@@ -89,11 +89,28 @@ Code: `utils/OmniStoreModel.js`, `systems/OmniStoreScene.js`,
 
 Still undecided / not built: several stores or a marketplace per identity;
 listing by other users; selling to another real account; the tiered-naming
-product (`NAMING_TIER_SYSTEM_DESIGN.md`) as the thing being sold; D3 charts
-(V177) and the lifecycle tunnel scene.
+product (`NAMING_TIER_SYSTEM_DESIGN.md`) as the thing being sold; the D3 views
+(BuildOrder item 5, a standalone OmniTalent component panel) and the lifecycle
+tunnel scene.
 
 ## Status
 
 V176: a sandbox fruit/veg store, shelf and exchange panel exist (above). The
 rest is still conceptual. Supersedes the brief mention in
 `OMNIVALUE_DESIGN.md` as the fuller home for this idea going forward.
+
+V177 adds the store's look and its dev tooling, split by the convention
+`<System>Settings` (user) / `Dev<System>Settings` (developer and Claude); see
+`OMNISTORE_SETTINGS_DESIGN.md`:
+
+- **OmniStoreSettings** (Admin slot 19): store name, colours (hover / selected
+  selector, shelf rim / back / planks), a backdrop dome (none / solid / gradient,
+  opacity), 4 built-in presets (Market Wood = the V176 look, Fresh Green, Night
+  Market, Clean White) plus the user's own, applied live in the open store.
+- **DevOmniStoreSettings** (⟐Developer slot 6, DEV ONLY): store type records (data
+  only; layouts other than `shelf` are not built), catalog JSON export /
+  validate / import (merge or replace, preview first, undo), "Copy AI prompt +
+  schema" (a prototype of the later user template), items per page (6..60), test
+  data, live readout, Dump state, Notes for Claude.
+- The shelf reads its colours from the settings (no rebuild on change) and its
+  per-page count from the dev knob (default 24). D3 views: BuildOrder item 5.

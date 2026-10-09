@@ -1,6 +1,6 @@
-# OmniValue + OmniStore + Exchange radial: build notes (V176, sandbox only)
+# OmniValue + OmniStore + Exchange radial: build notes (V176, sandbox only; V177 addendum at the end)
 
-All value is fake. No real payments, no network. SANDBOX is shown in the store HUD, the exchange panel and the wallet. D3 charts are V177 and are not built.
+All value is fake. No real payments, no network. SANDBOX is shown in the store HUD, the exchange panel and the wallet. D3 charts are not built (BuildOrder item 5).
 
 ## Files
 - `utils/OmniValueModel.js` (no DOM, `omni:value-v1`), `utils/OmniStoreModel.js` (`omni:store-v1`), `utils/OmniStoreLayout.js` (hand-aware placement)
@@ -24,9 +24,16 @@ All value is fake. No real payments, no network. SANDBOX is shown in the store H
 ## Open question: quality assessment
 Grades are self-reported today. Who or what assesses quality (a peer, an instrument, a ledger of past trades) is undecided.
 
-## V177 hooks
+## Hooks for later (the D3 views are BuildOrder item 5, not V177)
 - `#exchange-chart-slot` (levels 1 and 2 of the radial), `OmniStoreModel.toHierarchy()` (treemap / sunburst) and `toFlows()` / `OmniValueModel.toFlows()` (sankey).
 - `product.lifecycle` for a lifecycle tunnel scene.
 
 ## Not verified
 Real GPU, video textures on real devices, touch input. Arbitrage loops are unguarded. On 390x844 the fourth spoke needs a scroll in the sheet. See `DeveloperQueue.md` item 57.
+
+## V177 addendum: store settings and dev tooling
+- New: `utils/OmniStoreSettings.js` (user look, `omni:store-settings-v1`), `utils/DevOmniStoreData.js` (`omni:dev-store-v1`), `utils/OmniStoreCatalogSchema.js` (pure schema, validator, AI prompt), `ui/OmniSettingsPanelBase.js`, `ui/OmniStoreSettingsPanel.js` (Admin slot 19), `ui/DevOmniStoreSettingsPanel.js` (Developer slot 6, DEV ONLY). Convention and rules: `OMNISTORE_SETTINGS_DESIGN.md`.
+- `systems/OmniStoreScene.js`: the five colours now come from the settings and are applied in place (no shelf rebuild); backdrop dome (child of the shelf group, disposed on close); per-page count from the dev knob (slot and plank pools grow on demand, default 24 unchanged); `omni:store-stats-get` reply with draw calls / fps / counts; the shelf is framed around an open settings panel; HUD title shows the store name, HUD chips use the hover / selected colours.
+- `utils/OmniStoreModel.js`: `importProducts`, `snapshotCatalog` / `restoreCatalog`, `resetStore`; products cap 200 -> 500, name cap 60 -> 80, optional product `note`.
+- The earlier V176 note "D3 charts are V177" is superseded: the OmniValue radial / D3 views are BuildOrder item 5 (a standalone OmniTalent component panel).
+- Not verified: see `DeveloperQueue.md` item 58.

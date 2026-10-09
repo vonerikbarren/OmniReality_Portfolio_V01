@@ -1129,7 +1129,7 @@ See `docs/omniproducts/OMNIVALUE_STORE_EXCHANGE_BUILD.md`. Follow-ups:
 3. Quality assessment is self-reported; a real method is an open question.
 4. Video textures are untested on real devices; image data URLs degrade (dropped) when the 1.5MB store quota is exceeded.
 5. `produce` as payment (a `produce -> credits` edge) is not built; `produce` and `reputation` are `payable:false`.
-6. No product CRUD, no buy-price editing, no several-stores-per-identity.
+6. (V178: product add / edit / delete / duplicate now exist.) No buy-price editing, no several-stores-per-identity.
 7. Real two-account trades and entities are not built; PrimaryForce (backward purpose), affidavit and the wellness-delta of a trade are not built.
 8. Arbitrage loops between edges are unguarded (quote only looks at paths up to 3 edges).
 9. `omni:orbit-target-set` makes main.js treat the shelf as the selected pivot until a node is deselected.
@@ -1138,3 +1138,32 @@ See `docs/omniproducts/OMNIVALUE_STORE_EXCHANGE_BUILD.md`. Follow-ups:
 12. Fees are rounded up to the type step, so tiny quantities pay a whole step.
 13. Older suites: v169 / v170 section-count checks are unchanged by this version.
 
+## 58. OmniStoreSettings (user) + DevOmniStoreSettings (dev only) — V177
+See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` (the `<System>Settings` / `Dev<System>Settings` convention) and `BuildOrder.md` items 1 and 2 (DONE). Follow-ups:
+1. (DONE in V178, see item 59.) BuildOrder item 3: the user-facing catalog import + AI template inside OmniStoreSettings (paste / upload, the same preview and undo as the dev panel). The schema, validator and the dev "Copy AI prompt + schema" prototype exist; the user flow, manual product add / edit / delete and section editing do not.
+2. BuildOrder item 4: layouts. Store-type records carry `layout` (`shelf`, `ring`, `aisle`, `island`) as data only; nothing reads it. OmniStoreSettings shows "Layout: Shelf wall" read-only.
+3. Store-type records do not drive a store yet: a record's `theme.colors` / `theme.backdrop` ids are not applied (item 6).
+4. Items per page and the readout need a real GPU / phone: software GL gave fps 1 and 92 draw calls for 16 products. No mesh-budget knob, no accepted-exchange-form or quality-scale editors (they were in the item 1 brief).
+5. The undo snapshot of a catalog import lives in memory only (lost on reload). (V178: the user panel persists it in `omni:store-undo-v1`; the dev panel's undo is still memory only.)
+6. User presets are shared by every store (max 20); settings are keyed per store id but the model still has one store per identity.
+7. `colors.backdrop` is a reserved override of `backdrop.color` (no UI); `schema.sections` is informational (custom sections cannot be imported); `category` is free text since V178 and `valueType` is still `produce` in the model.
+8. The dev panel is in the ⟐Developer group, which still has no access gating (no role system exists).
+9. Phones: both panels are a 42vh bottom sheet that covers the bottom hands (like the exchange sheet); the HUD hides while one is open. Touch is unverified.
+10. Backdrop: opaque dome writes depth, so objects beyond 120 units from the shelf are hidden while it is on; the translucent dome only tints. The camera is clamped by the app near the origin, so it cannot leave the dome today; if that clamp is ever lifted, the hide-when-far rule (0.92 R) takes over.
+11. Older suites: v169's "every ribbon button exercised" lists `store-settings` and `dev-store` as unexercised (same known-failure style as the Value group buttons).
+12. Settings are not synced live between two open browser tabs (localStorage is read on load; no storage event listener).
+
+
+## 59. Catalog import + AI template + manual product editing (user) — V178
+See `docs/omniproducts/OMNISTORE_SETTINGS_DESIGN.md` ("User catalog import") and `BuildOrder.md` item 3 (DONE). Follow-ups:
+1. CSV / spreadsheet import (a second input beside the AI JSON), and a "starter" store-type template (BuildOrder item 6) that pre-fills the description step.
+2. Image upload / hosting: products take https links or small data URLs only; the 1.5 MB per-store data-URL budget is unchanged.
+3. The AI step is outside the app by design; test with several real assistants (reply variety: fences, prose, curly quotes, truncated long lists, 100+ products) and tune `buildAiPrompt` / `extractJson`. Replies with curly quotes are reported, not repaired (decision); revisit if real replies make that common.
+4. Undo is one step: a new import replaces the snapshot and undo discards manual edits made after the import. A multi-step history would need a bounded list under `omni:store-undo-v1`.
+5. The empty store (after Delete all) shows an empty shelf wall with no hint in the scene; add an in-scene "No products yet" note. There is no "restore sample produce" button for users (the dev panel has Reset sandbox store).
+6. Sections are still not editable or importable (the schema ignores `sections`); a catalog can only use the four identity sections. Products land in the sections the answer names, default Physical.
+7. Category is free text but only `vegetable` changes the tile tint; `valueType` stays `produce` / `qualityScale` `ripeness` on every product, so a bakery's quality field is not meaningful yet.
+8. Phones: the Catalog sheet is 56vh and covers the bottom hands; the form and the preview table are scroll areas inside the sheet. Touch is unverified.
+9. Merge by name matches case-insensitive full names only (no fuzzy matching); two catalog rows with the same name collapse onto one existing product (the first wins, the second is added as new).
+10. `WindowManager.watchPanelOpacity` never unregisters its `omni:admin-settings-saved` listener (one leak per panel destroy; panels are normally never destroyed).
+11. Manual edit of `accept` (sell-side forms), lifecycle and reviews is not in the form (they are kept untouched on edit; lifecycle can only arrive through an import).

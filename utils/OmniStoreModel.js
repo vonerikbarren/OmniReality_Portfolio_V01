@@ -20,10 +20,14 @@
  * MEDIA     emoji always exists. image: URL or data URL (<= 512 KB each, <= 1.5 MB of data URLs per store); video: URL ONLY
  *           (a data URL would blow localStorage). setActiveMedia() only accepts a kind the product actually carries.
  *
+ * V178: addProduct / updateProduct / removeProduct / duplicateProduct (manual editing; validated by the catalog schema's validateProduct, the
+ * SAME rules as an import), importProducts matchBy 'id+name', previewImport(), and a bounded persisted undo snapshot ('omni:store-undo-v1').
+ *
  * Events (window): omni:store-changed {kind}.
  */
 
 import * as Value from './OmniValueModel.js'
+import * as Schema from './OmniStoreCatalogSchema.js'
 import { getActiveIdentity } from './OmniIdentity.js'
 import { WELLNESS_DIMENSIONS } from '../data/OmniUserWellness.js'
 
@@ -35,7 +39,8 @@ export const SHAPES = ['cube', 'disc']
 export const LIST_STATES = ['window', 'wish', 'cart']
 export const IMAGE_MAX_BYTES = 512 * 1024
 export const IMAGE_BUDGET_BYTES = 1.5 * 1024 * 1024
-export const LIMITS = { products: 200, listItems: 200, forms: 8, reviews: 20, lifecycle: 12, qty: 9999, name: 60 }
+// V177: products 200 -> 500 and name 60 -> 80 so the catalog schema's caps (utils/OmniStoreCatalogSchema.js) are never silently cut here
+export const LIMITS = { products: 500, listItems: 200, forms: 8, reviews: 20, lifecycle: 12, qty: 9999, name: 80, note: 300 }
 
 let S = null           // { stores:{ownerId:store}, section:{ownerId:sectionId} }
 let loaded = false
@@ -164,11 +169,12 @@ function sanitizeProduct (p) {
   const forms = (Array.isArray(p.price) ? p.price : []).map(sanitizeForm).filter(Boolean).slice(0, LIMITS.forms)
   const accept = Array.isArray(p.accept) ? p.accept.map(sanitizeForm).filter(Boolean).slice(0, LIMITS.forms) : null
   return {
-    id: p.id, name: str(p.name || p.id, LIMITS.name), emoji, category: p.category === 'vegetable' ? 'vegetable' : 'fruit',
+    id: p.id, name: str(p.name || p.id, LIMITS.name), emoji, category: typeof p.category === 'string' && p.category.trim() && !/[<>]/.test(p.category) ? p.category.trim().slice(0, Schema.LIMITS.category) : Schema.DEFAULT_CATEGORY,
     sectionIds: (Array.isArray(p.sectionIds) ? p.sectionIds : []).filter(idOk).slice(0, 12),
     media: { emoji, image: img, video: vid, active }, shape: SHAPES.includes(p.shape) ? p.shape : 'cube',
     price: forms, accept: accept && accept.length ? accept : null,
     stock: finite(p.stock) && p.stock >= 0 ? Math.min(p.stock, 1e6) : 0,
+    ...(typeof p.note === 'string' && p.note ? { note: str(p.note, LIMITS.note) } : {}),   // V177: catalog import keeps the seller's note
     valueType: 'produce', qualityScale: 'ripeness', quality: ['underripe', 'ripe', 'overripe', 'spoiled'].includes(p.quality) ? p.quality : 'ripe',
     lifecycle: (Array.isArray(p.lifecycle) ? p.lifecycle : []).slice(0, LIMITS.lifecycle).filter(l => l && typeof l.stage === 'string')
       .map(l => ({ stage: str(l.stage, 16), title: str(l.title, 60), note: str(l.note, 300), t: finite(l.t) ? l.t : 0 })),
@@ -189,7 +195,8 @@ function sanitizeStore (ownerId, raw) {
   const products = (Array.isArray(raw.products) ? raw.products : []).slice(0, LIMITS.products).map(sanitizeProduct).filter(Boolean)
   const ids = new Set()
   seed.products = products.filter(p => (ids.has(p.id) ? false : (ids.add(p.id), true)))
-  if (!seed.products.length) seed.products = buildSeedProducts()
+  // V178: a store the user emptied on purpose stays empty; only a missing / unusable product list is re-seeded
+  if (!seed.products.length && !(Array.isArray(raw.products) && raw.products.length === 0)) seed.products = buildSeedProducts()
   const pid = new Set(seed.products.map(p => p.id))
   const seen = new Set()
   seed.listItems = (Array.isArray(raw.listItems) ? raw.listItems : []).slice(0, LIMITS.listItems).filter(it => it && idOk(it.id) && pid.has(it.productId) && LIST_STATES.includes(it.state) && finite(it.qty) && it.qty > 0)
@@ -231,6 +238,8 @@ function changed (kind) { persist(); emit(kind) }
 export function _reset (clear = false) {
   if (clear) { try { localStorage.removeItem(STORAGE_KEY) } catch (_) { /* ignore */ } }
   S = { stores: {}, section: {} }; loaded = true; seq = 0; degraded = false
+  undoMem = null; undoRead = false   // the memory copy is forgotten; the stored copy is cleared with `clear`
+  if (clear) { try { localStorage.removeItem('omni:store-undo-v1') } catch (_) { /* ignore */ } }
 }
 
 // ── Store access ────────────────────────────────────────────────────────────────
@@ -549,6 +558,234 @@ export function sellNow (productId, { qty = 1, form = null, split = null, declar
   const res = Value.sell({ itemId: p.id, itemName: p.name, itemQty: qty, receive: f, split: split ?? undefined, declaredIntent: sanitizeIntent(declaredIntent) })
   if (res.ok) { p.stock += Math.max(1, Math.round(qty)); changed('sale') }
   return res
+}
+
+// ── Catalog import (V177; the validation lives in utils/OmniStoreCatalogSchema.js, this only APPLIES products) ──
+
+/** Dev: throw away THIS owner's store (products, list, section choice) and rebuild the seed. Other owners and the value ledger are untouched. */
+export function resetStore (ownerId) {
+  ensureLoaded()
+  const id = ownerId ?? currentOwnerId()
+  delete S.stores[id]; delete S.section[id]
+  getStore(id)
+  changed('reset')
+  return true
+}
+
+/** A deep copy of what an import can change, for one-step undo (kept by the caller). */
+export function snapshotCatalog () {
+  const st = getStore()
+  return JSON.parse(JSON.stringify({ ownerId: st.ownerId, name: st.name, products: st.products, listItems: st.listItems }))
+}
+export function restoreCatalog (snap) {
+  if (!snap || typeof snap !== 'object') return false
+  const st = getStore(snap.ownerId)
+  const cleaned = sanitizeStore(st.ownerId, { name: snap.name, products: snap.products, listItems: snap.listItems })
+  st.name = cleaned.name; st.products = cleaned.products; st.listItems = cleaned.listItems
+  changed('catalog-restore')
+  return true
+}
+/**
+ * Apply validated catalog products. mode 'merge': same id -> the imported fields replace the product (existing
+ * reviews / stats / lifecycle are kept when the import carries none), new ids are appended. mode 'replace': the product
+ * list becomes exactly the import; list items of vanished products are dropped. Everything goes through
+ * sanitizeProduct, so even a caller that skipped the validator cannot store an invalid product.
+ * Returns {ok, added, updated, removed, total, skipped} (ok:false when nothing valid or the store would exceed LIMITS.products).
+ */
+export function importProducts (rawProducts, { mode = 'merge', name = null, matchBy = 'id' } = {}) {
+  const st = getStore()
+  const incoming = resolveIncoming(rawProducts, matchBy)
+  const seen = new Set(incoming.map(p => p.id))
+  if (!incoming.length) return { ok: false, error: 'no valid product', added: 0, updated: 0, removed: 0, total: st.products.length, skipped: (rawProducts?.length ?? 0) }
+  let next, added = 0, updated = 0, removed = 0
+  if (mode === 'replace') {
+    removed = st.products.filter(p => !seen.has(p.id)).length
+    updated = incoming.filter(p => st.products.some(o => o.id === p.id)).length
+    added = incoming.length - updated
+    next = incoming.map(p => { const old = st.products.find(o => o.id === p.id); return old ? keepHistory(p, old) : p })
+  } else {
+    next = st.products.map(o => { const n = incoming.find(p => p.id === o.id); if (n) { updated++; return keepHistory(n, o) } return o })
+    incoming.forEach(p => { if (!st.products.some(o => o.id === p.id)) { next.push(p); added++ } })
+  }
+  if (next.length > LIMITS.products) return { ok: false, error: `would exceed ${LIMITS.products} products`, added: 0, updated: 0, removed: 0, total: st.products.length, skipped: incoming.length }
+  st.products = next
+  const ids = new Set(next.map(p => p.id))
+  st.listItems = st.listItems.filter(it => ids.has(it.productId))
+  if (mode === 'replace' && typeof name === 'string' && name.trim()) st.name = str(name.trim(), 40)
+  changed('catalog-import')
+  return { ok: true, added, updated, removed, total: next.length, skipped: (rawProducts?.length ?? 0) - incoming.length }
+}
+/** Sanitise the incoming list. matchBy 'id+name' (V178): a product whose id is new but whose NAME (case-insensitive) matches an existing product takes that product's id, so it updates it. */
+function resolveIncoming (rawProducts, matchBy) {
+  const st = getStore()
+  const byName = new Map()
+  st.products.forEach(o => { const k = o.name.trim().toLowerCase(); if (!byName.has(k)) byName.set(k, o.id) })
+  const have = new Set(st.products.map(o => o.id))
+  const incoming = [], seen = new Set()
+  ;(Array.isArray(rawProducts) ? rawProducts : []).forEach(r => {
+    const p = sanitizeProduct(r)
+    if (!p) return
+    if (matchBy === 'id+name' && !have.has(p.id)) { const hit = byName.get(p.name.trim().toLowerCase()); if (hit && !seen.has(hit)) p.id = hit }
+    if (seen.has(p.id)) return
+    seen.add(p.id); incoming.push(p)
+  })
+  return incoming
+}
+/** What importProducts WOULD do (no change): {add, update, remove, total}. */
+export function previewImport (rawProducts, { mode = 'merge', matchBy = 'id' } = {}) {
+  const st = getStore()
+  const incoming = resolveIncoming(rawProducts, matchBy)
+  const ids = new Set(incoming.map(p => p.id))
+  const update = incoming.filter(p => st.products.some(o => o.id === p.id)).length
+  const add = incoming.length - update
+  const remove = mode === 'replace' ? st.products.filter(p => !ids.has(p.id)).length : 0
+  return { add, update, remove, total: mode === 'replace' ? incoming.length : st.products.length + add }
+}
+function keepHistory (n, old) {
+  return { ...n, reviews: n.reviews.length ? n.reviews : old.reviews, stats: n.stats.purchases || n.stats.influence ? n.stats : old.stats, lifecycle: n.lifecycle.length ? n.lifecycle : old.lifecycle, accept: n.accept ?? old.accept }
+}
+
+// ── Manual product editing (V178) ───────────────────────────────────────────────
+
+const validationCtx = () => ({ types: Value.getTypes(), sectionIds: getStore().sections.filter(s => s.kind !== 'media').map(s => s.id) })
+const view = (p) => ({ id: p.id, name: p.name, emoji: p.media.emoji, category: p.category, sectionIds: [...p.sectionIds], shape: p.shape, media: { ...p.media }, price: p.price.map(f => ({ ...f })), stock: p.stock, lifecycle: p.lifecycle.map(l => ({ ...l })), ...(p.note ? { note: p.note } : {}) })
+function uniqueId (base) {
+  const st = getStore()
+  let id = base.slice(0, 60), k = 2
+  while (st.products.some(o => o.id === id)) id = `${base.slice(0, 56)}-${k++}`
+  return id
+}
+function imageBudgetError (media, exceptId) {
+  if (media?.image && media.image.startsWith('data:') && dataBudgetUsed(getStore(), exceptId) + dataUrlBytes(media.image) > IMAGE_BUDGET_BYTES) return 'Image link: this store already holds the maximum of embedded image data (1.5 MB); use an https link.'
+  return null
+}
+
+/**
+ * Add one product. `p` = {name, emoji, category, sectionIds, shape, media:{emoji,image,video,active}, price[], stock, note?, id?}.
+ * Same rules as a catalog row (utils/OmniStoreCatalogSchema.js validateProduct). A missing id is generated from the name; a given id must be free.
+ * @returns {{ok:true, id, product, warnings}|{ok:false, errors}}
+ */
+export function addProduct (p, { after = null } = {}) {
+  const st = getStore()
+  if (!p || typeof p !== 'object') return { ok: false, errors: ['Nothing to add.'] }
+  if (st.products.length >= LIMITS.products) return { ok: false, errors: [`The store already holds the maximum of ${LIMITS.products} products.`] }
+  const given = p.id !== undefined && p.id !== null && p.id !== ''
+  if (given && st.products.some(o => o.id === p.id)) return { ok: false, errors: [`Product id: "${String(p.id).slice(0, 40)}" is already used.`] }
+  const v = Schema.validateProduct(p, validationCtx())
+  if (!v.ok) return { ok: false, errors: v.errors, warnings: v.warnings }
+  const bErr = imageBudgetError(v.product.media, null)
+  if (bErr) return { ok: false, errors: [bErr], warnings: v.warnings }
+  const prod = sanitizeProduct({ ...v.product, id: given ? v.product.id : uniqueId(v.product.id) })
+  const i = after ? st.products.findIndex(o => o.id === after) : -1
+  if (i >= 0) st.products.splice(i + 1, 0, prod); else st.products.push(prod)
+  changed('product-add')
+  return { ok: true, id: prod.id, product: prod, warnings: v.warnings }
+}
+
+/** Change fields of a product ({name, emoji, category, sectionIds, shape, media (partial), price, stock, note, lifecycle}); reviews / stats / accept / id are kept. */
+export function updateProduct (id, patch) {
+  const p = getProduct(id)
+  if (!p) return { ok: false, errors: ['Unknown product.'] }
+  if (!patch || typeof patch !== 'object') return { ok: false, errors: ['Nothing to change.'] }
+  const raw = view(p)
+  ;['name', 'category', 'sectionIds', 'shape', 'price', 'stock', 'note', 'lifecycle'].forEach(k => { if (patch[k] !== undefined) raw[k] = patch[k] })
+  const mediaChanged = patch.media !== undefined || patch.emoji !== undefined
+  if (mediaChanged) {
+    raw.media = { ...p.media, ...(patch.media && typeof patch.media === 'object' ? patch.media : {}) }
+    if (patch.emoji !== undefined && !(patch.media && patch.media.emoji !== undefined)) raw.media.emoji = patch.emoji
+    raw.emoji = raw.media.emoji
+  } else raw.media = { emoji: p.media.emoji, image: null, video: null, active: 'emoji' }   // untouched media is kept as stored (it may predate the stricter schema rules)
+  const v = Schema.validateProduct(raw, validationCtx())
+  if (!v.ok) return { ok: false, errors: v.errors, warnings: v.warnings }
+  if (mediaChanged) { const bErr = imageBudgetError(v.product.media, p.id); if (bErr) return { ok: false, errors: [bErr], warnings: v.warnings } }
+  const merged = { ...p, ...v.product, id: p.id, media: mediaChanged ? v.product.media : p.media, ...(mediaChanged ? {} : { emoji: p.emoji }) }
+  if (!v.product.note) delete merged.note
+  const next = sanitizeProduct(merged)
+  if (!next.note) delete p.note
+  Object.assign(p, next)
+  changed('product-update')
+  return { ok: true, id: p.id, product: p, warnings: v.warnings }
+}
+
+/** Remove a product and every shopping-list item that points at it (window / wish / cart). */
+export function removeProduct (id) {
+  const st = getStore()
+  const n = st.products.length
+  st.products = st.products.filter(p => p.id !== id)
+  if (st.products.length === n) return false
+  st.listItems = st.listItems.filter(it => it.productId !== id)
+  changed('product-remove')
+  return true
+}
+
+/** Remove EVERY product (and the shopping list). The store stays empty across reloads; use import or resetStore to refill. */
+export function removeAllProducts () {
+  const st = getStore()
+  const n = st.products.length
+  st.products = []; st.listItems = []
+  changed('product-remove-all')
+  return n
+}
+
+/** Copy a product right after the original: fresh id, name "<name> (copy)", no reviews / stats / history; price, media, sections and the sell-forms are kept. */
+export function duplicateProduct (id) {
+  const p = getProduct(id)
+  if (!p) return { ok: false, errors: ['Unknown product.'] }
+  const raw = view(p)
+  delete raw.id
+  raw.name = (p.name.slice(0, LIMITS.name - 7) + ' (copy)')
+  raw.lifecycle = []
+  const res = addProduct({ ...raw, id: uniqueId(p.id + '-copy') }, { after: p.id })
+  if (res.ok && p.accept) res.product.accept = p.accept.map(f => ({ ...f }))
+  return res
+}
+
+// ── Undo of the last catalog import, persisted (V178) ──────────────────────────
+
+export const UNDO_KEY = 'omni:store-undo-v1'
+export const UNDO_MAX_CHARS = 1000000
+let undoMem = null          // { v, t, label, snap, persisted }
+let undoRead = false
+
+/**
+ * Keep `snap` (from snapshotCatalog(), taken BEFORE the change) as the one-step undo: in memory always, and in localStorage when it fits
+ * (<= UNDO_MAX_CHARS; embedded image data is dropped first if that helps; on a quota error the stored copy is removed so a reload can never
+ * undo to an OLDER import). @returns {{persisted:boolean, imagesDropped:boolean}}
+ */
+export function rememberUndo (snap, label = '') {
+  undoRead = true
+  undoMem = { v: 1, t: Date.now(), label: str(label, 120), snap, persisted: false }
+  let imagesDropped = false
+  const tryStore = (obj) => { const txt = JSON.stringify(obj); if (txt.length > UNDO_MAX_CHARS) return false; try { localStorage.setItem(UNDO_KEY, txt); return true } catch (_) { return false } }
+  let ok = tryStore(undoMem)
+  if (!ok) {
+    const lean = { ...undoMem, snap: { ...snap, products: (snap.products ?? []).map(p => ({ ...p, media: { ...p.media, image: p.media?.image && p.media.image.startsWith('data:') ? null : p.media?.image, active: p.media?.active === 'image' && p.media.image?.startsWith('data:') ? 'emoji' : p.media?.active } })) } }
+    ok = tryStore(lean)
+    imagesDropped = ok
+  }
+  if (!ok) { try { localStorage.removeItem(UNDO_KEY) } catch (_) { /* ignore */ } }
+  undoMem.persisted = ok
+  return { persisted: ok, imagesDropped }
+}
+function readUndo () {
+  if (undoMem || undoRead) return undoMem
+  undoRead = true
+  try {
+    const d = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null')
+    if (d && d.v === 1 && d.snap && typeof d.snap === 'object' && Array.isArray(d.snap.products)) undoMem = { v: 1, t: finite(d.t) ? d.t : 0, label: str(d.label, 120), snap: d.snap, persisted: true }
+  } catch (_) { /* unreadable: no undo */ }
+  return undoMem
+}
+/** {label, t, persisted, products} of the pending undo, or null. */
+export function getUndo () { const u = readUndo(); return u ? { label: u.label, t: u.t, persisted: u.persisted, products: u.snap.products.length } : null }
+export function clearUndo () { undoMem = null; undoRead = true; try { localStorage.removeItem(UNDO_KEY) } catch (_) { /* ignore */ } }
+/** Restore the catalog as it was before the last import, then forget the snapshot. */
+export function undoLast () {
+  const u = readUndo()
+  if (!u) return { ok: false, error: 'nothing to undo' }
+  const ok = restoreCatalog(u.snap)
+  clearUndo()
+  return ok ? { ok: true, label: u.label, products: u.snap.products.length } : { ok: false, error: 'snapshot unusable' }
 }
 
 // ── Derived views for the V177 D3 charts (data only) ────────────────────────────
