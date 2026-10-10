@@ -1,8 +1,8 @@
-# User Guide
+# OmniOS User Guide
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V185 · Status: verified against code on 2026-10-10 · Real devices: not verified.
 
-How to use the app, written for a first-time user. Each page takes under 5 minutes.
+How to use OmniOS (the product from OmniStar, the company), written for a first-time user. Each page takes under 5 minutes.
 
 ## Pages
 

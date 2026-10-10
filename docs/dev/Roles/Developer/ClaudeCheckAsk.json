@@ -1,9 +1,47 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V184",
+  "version": "V185",
   "date": "2026-10-10",
-  "summary": "V184: Claude Check panel. Test the V181-V183 store/node features via this panel",
+  "summary": "V185: OmniStar boot screen (rolling 4->5->12-point star, star field) and OmniOS branding",
   "asks": [
+    {
+      "id": "boot-smooth",
+      "question": "How smooth is the OmniStar boot animation on your phone and on your real GPU machine (roll, landing, spin, star field)?",
+      "why": "I only saw it in software-rendered Chromium; the roll and spin are meant to survive a busy main thread but I could not test a real device.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "ok",
+        "janky"
+      ],
+      "device": "phone"
+    },
+    {
+      "id": "boot-landing",
+      "question": "Does the star's landing position after the word 'OmniStar' look right (gap, vertical centre)?",
+      "why": "The slot is measured from the real text width, but only judged on one system font; your device font may shift the baseline.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "boot-balance",
+      "question": "Do the stars feel balanced between enterprise-grade and gaming-console?",
+      "why": "You wanted restrained but alive. Say in the message if it needs fewer / more stars, stronger pull, or no faint lines.",
+      "kind": "choice",
+      "choices": [
+        "too plain",
+        "balanced",
+        "too busy"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "boot-old-name",
+      "question": "Is there anything still saying OmniReality that should say OmniOS?",
+      "why": "I changed the tab title, boot screen, Global Bar logo tooltip, dump and user guide; I kept code names, OmniRealityGrid panels and the concept word Reality.",
+      "kind": "text",
+      "device": "any"
+    },
     {
       "id": "fps-emoji-store",
       "question": "Real-GPU frame rate (fps) with the all-emoji demo store loaded and open?",
@@ -12,18 +50,15 @@
       "device": "gpu"
     },
     {
-      "id": "fps-50-test-nodes",
-      "question": "Frame rate (fps) with 50 test nodes (DevOmniStoreSettings > node readout > Create 50 test nodes)?",
-      "why": "V183 shares geometries and textures between store/value nodes; I want a real number for 50 and, if you try it, for 250 (say so in the message).",
-      "kind": "number",
-      "device": "gpu"
-    },
-    {
       "id": "phone-store-feel",
       "question": "How does the store feel on your phone (opening, paging, the exchange sheet, pinning a node)?",
       "why": "The store and the Inspector block were only measured in a desktop browser with a narrow window. Add any detail in the message box.",
       "kind": "choice",
-      "choices": ["good", "ok", "bad"],
+      "choices": [
+        "good",
+        "ok",
+        "bad"
+      ],
       "device": "phone"
     },
     {
@@ -39,31 +74,17 @@
       "why": "V183 touched the shared node and Inspector code; the automated suites pass but only a hands-on session shows a changed feel. If yes, name the action in the message.",
       "kind": "yesno",
       "device": "any"
-    },
-    {
-      "id": "hands-opacity-feel",
-      "question": "Which of V174's bottom-hands summon or V175's opacity change (tunnels more solid, icosahedron nodes fainter) feels wrong, if any?",
-      "why": "V175 changed two constants by eye on a software renderer and was never judged on a white vs a black wallpaper; V174's second dock icon was never clicked on a phone.",
-      "kind": "text",
-      "device": "any"
-    },
-    {
-      "id": "top-middle-banner",
-      "question": "Where exactly is the top-middle banner you wanted removed (which screen, what does it say or show)?",
-      "why": "Carried from an old question (V172): a fresh boot has nothing hand-related in the top middle, so I could not find what you meant and changed nothing.",
-      "kind": "text",
-      "device": "any"
     }
   ],
   "knownIssues": [
-    "Real GPU, a real phone and touch are not verified for anything from V181 to V184 (all earlier runs were jsdom or software-GL Chromium at about 1 fps).",
+    "The boot animation was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+    "While main.js loads, the star's roll / spin keep running off the main thread, but the 4-to-5 and 5-to-12 point morphs and the star field need the main thread and can stall during long tasks.",
+    "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
     "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
     "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
     "Objects near [200, 50, 300] can intersect a store moved there; there is no collision or warning.",
     "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit).",
     "The arbitrage guard only blocks continuing a loop within 10 minutes of your own buy log; it ignores fees and a second account.",
-    "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI.",
-    "The Grant 10 (sandbox) button in the Value block duplicates the Wallet's; keep or remove is your decision.",
-    "Sunburst chart level 0 is taller than the panel on short desktop screens (it scrolls vertically)."
+    "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI."
   ]
 }

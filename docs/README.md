@@ -44,6 +44,7 @@ Plain-language instructions for using the app, verified against the code (V180).
   convention, and how it retroactively resolves the OmniVision/OmniVisor
   naming collision.
 - [`architecture/HAND_TOGGLE_CONTROL_DESIGN.md`](architecture/HAND_TOGGLE_CONTROL_DESIGN.md)
+- [`architecture/OMNISTAR_BOOT_DESIGN.md`](architecture/OMNISTAR_BOOT_DESIGN.md) (V185 boot screen, OmniStar / OmniOS branding)
   — the four hands as toggle control surfaces; Conscious Hand as
   "ToggleMaster," OmniHand mapped to the OmniProducts themselves. As of
   V158 the two top hands drive the Δ / ⟐ dimensional axes (confirmed

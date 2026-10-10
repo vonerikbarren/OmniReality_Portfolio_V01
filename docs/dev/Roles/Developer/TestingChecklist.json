@@ -2632,6 +2632,77 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStar boot (V185)",
+      "items": [
+        {
+          "feature": "Boot sequence plays on a normal load",
+          "howToReach": "Open the app in a fresh tab (desktop)",
+          "whatToCheck": "Black screen with the word OmniStar appearing from the left as a white 4-pointed star rolls in along its baseline; the star lands right after the word, snaps to a 5-pointed star, then morphs to a 12-pointed star while spinning up and keeps turning slowly (about 10 s per turn); a small OmniOS subtitle (letter-spaced, fainter) sits under the wordmark; the tab title reads OmniOS",
+          "tested": false
+        },
+        {
+          "feature": "Star lands in the right place",
+          "howToReach": "Boot screen, any window width",
+          "whatToCheck": "The star sits immediately after the final 'r' of OmniStar with a small gap, vertically centred on the letters; the wordmark + star group is centred; nothing jumps when the star lands or when you resize the window",
+          "tested": false
+        },
+        {
+          "feature": "Star field appears at landing",
+          "howToReach": "Boot screen after about 2 s",
+          "whatToCheck": "A faint field of small white stars fades in as the star starts spinning; they drift very slowly and twinkle a little; a few very faint thin lines occasionally link nearby stars and fade away; it feels restrained rather than busy",
+          "tested": false
+        },
+        {
+          "feature": "Stars lean toward the logo on mouse move / hover",
+          "howToReach": "Move the mouse anywhere, then over the Enter button",
+          "whatToCheck": "Any mouse movement makes the stars drift gently toward the logo star; hovering Enter pulls them more; moving away or stopping lets them relax back; the field never collapses into a dot",
+          "tested": false
+        },
+        {
+          "feature": "Enter click: converge and fade",
+          "howToReach": "Click Enter",
+          "whatToCheck": "Stars rush into the logo and fade in about half a second while the normal fade into the scene starts; the browser still goes fullscreen (the Enter click is still a genuine gesture) and the fall-in entry animation plays as before",
+          "tested": false
+        },
+        {
+          "feature": "Phone (390px wide)",
+          "howToReach": "Open on a phone or a 390px window",
+          "whatToCheck": "No sideways scroll; wordmark + star centred and fully visible; OmniOS subtitle readable; about half as many stars; touching the Enter button pulls the stars in; tapping Enter enters the app (still goes fullscreen where the browser allows)",
+          "tested": false
+        },
+        {
+          "feature": "Slow network / slow device",
+          "howToReach": "Throttle the network (DevTools Slow 3G) and reload, or use an old phone",
+          "whatToCheck": "The star still rolls in and spins while the page keeps loading (the roll and spin run off the main thread); the Enter button appears when loading ends; the star never freezes for long; report if the animation visibly stutters",
+          "tested": false
+        },
+        {
+          "feature": "Reduced motion",
+          "howToReach": "Set the OS or browser to reduce motion, reload",
+          "whatToCheck": "The final state shows at once: OmniStar + a static 12-pointed star + OmniOS, a few still stars, no rolling, no spin, no moving field; Enter still works",
+          "tested": false
+        },
+        {
+          "feature": "Repeated loads",
+          "howToReach": "Reload 5 times in a row (soft and hard reload)",
+          "whatToCheck": "The sequence plays every time from the start; no leftover canvas or stuck star; no console errors; after Enter the boot layer is removed",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard and screen reader",
+          "howToReach": "Tab key on the boot screen",
+          "whatToCheck": "Enter button is reachable with Tab and gets the star pull while focused; Space/Enter activates it; a screen reader announces 'OmniStar OmniOS' (the star is hidden from it)",
+          "tested": false
+        },
+        {
+          "feature": "Branding strings",
+          "howToReach": "Hover the ⟐ logo in the Global Bar; look at the browser tab; open ⟐Developer > OmniStoreSettings dump",
+          "whatToCheck": "Tooltip title is ⟐OmniOS; tab title is OmniOS; dump app string is 'OmniOS V185'. Spaces are still called Realities and the OmniRealityGrid panels keep their names",
+          "tested": false
+        }
+      ]
     }
   ]
 }

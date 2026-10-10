@@ -1253,3 +1253,12 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 9. The full Dump in the report can be tens of KB; the report is small only when "Include app state" is off.
 10. Old suites adjusted in the retargeted copies only: `g181_v177_ui_test` (the Dev store panel now registers 5 window listeners: it answers `omni:dev-dump-get`) and `v182_dev_test` (dump `app` string V183 -> V184).
 
+## 72. OmniStar boot (V185): what was not verified, follow-ups
+1. Verified in software-GL Chromium (1280x720, 390x844, reduced motion) only. A real GPU, a real phone, touch (touchstart pull on Enter) and the true feel of the animation are not verified.
+2. Roll / spin are compositor animations; the two shape morphs and the star field run in rAF and stall during long main-thread tasks (in the harness main.js load had about 15 s of long tasks). If it looks stuttery on a real phone, consider less main.js work before first paint or a lazy import graph.
+3. The wordmark uses the monospace system font stack (Courier New first); the star slot is measured from the real layout, but judge the gap on your devices (font fallbacks differ).
+4. OmniReality remains: the OmniBrowserSpace layer named `OmniReality` (+ its label in the space panel), `OmniRealityGrid*` classes and files, doc prose in older design docs and BuildLog history. Decide whether the layer should be renamed (it is a persisted name; a rename needs migration).
+5. The star is drawn as an SVG path updated from a 120-sample polar profile (the brief said 24 samples; 120 lands every tip / valley of the 4-, 5- and 12-point shapes exactly).
+6. The JSZip script is now `defer`: if any module ever needs `window.JSZip` at import time (none does today), it still works because deferred scripts run before modules.
+7. Old suites adjusted in the retargeted copies only: tests that hard-code the dump `app` string `OmniReality V184` -> `OmniOS V185`.
+

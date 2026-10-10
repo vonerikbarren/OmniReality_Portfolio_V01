@@ -635,7 +635,7 @@ export default class GlobalBar {
 
       <!-- Col00 — Identity -->
       <div class="ob-col" id="ob-col00">
-        <span class="ob-logo" data-omni-tip="⟐OmniReality" data-omni-tip-key="—" data-omni-tip-desc="The Global Bar: your profile, the current space and clock, live position / rotation / scale, and the menus.">⟐</span>
+        <span class="ob-logo" data-omni-tip="⟐OmniOS" data-omni-tip-key="—" data-omni-tip-desc="The Global Bar: your profile, the current space and clock, live position / rotation / scale, and the menus.">⟐</span>
       </div>
 
       <!-- Col01 — User avatar -->

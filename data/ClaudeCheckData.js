@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V184",
+ "version": "V185",
  "date": "2026-10-10",
- "summary": "V184: Claude Check panel. Test the V181-V183 store/node features via this panel",
+ "summary": "V185: OmniStar boot screen (rolling 4->5->12-point star, star field) and OmniOS branding",
  "checks": [
   {
    "id": "omnistore-omnivalue-sandbox-v1.open-the-store",
@@ -980,20 +980,150 @@ export default {
    "whatToCheck": "The first click asks for confirmation (the button changes), the second clears marks, notes, answers and the message of this version only; carried items from older versions stay",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.boot-sequence-plays-on-a-normal-load",
+   "category": "OmniStar boot (V185)",
+   "feature": "Boot sequence plays on a normal load",
+   "howToReach": "Open the app in a fresh tab (desktop)",
+   "whatToCheck": "Black screen with the word OmniStar appearing from the left as a white 4-pointed star rolls in along its baseline; the star lands right after the word, snaps to a 5-pointed star, then morphs to a 12-pointed star while spinning up and keeps turning slowly (about 10 s per turn); a small OmniOS subtitle (letter-spaced, fainter) sits under the wordmark; the tab title reads OmniOS",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.star-lands-in-the-right-place",
+   "category": "OmniStar boot (V185)",
+   "feature": "Star lands in the right place",
+   "howToReach": "Boot screen, any window width",
+   "whatToCheck": "The star sits immediately after the final 'r' of OmniStar with a small gap, vertically centred on the letters; the wordmark + star group is centred; nothing jumps when the star lands or when you resize the window",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.star-field-appears-at-landing",
+   "category": "OmniStar boot (V185)",
+   "feature": "Star field appears at landing",
+   "howToReach": "Boot screen after about 2 s",
+   "whatToCheck": "A faint field of small white stars fades in as the star starts spinning; they drift very slowly and twinkle a little; a few very faint thin lines occasionally link nearby stars and fade away; it feels restrained rather than busy",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.stars-lean-toward-the-logo-on-mouse-move-hover",
+   "category": "OmniStar boot (V185)",
+   "feature": "Stars lean toward the logo on mouse move / hover",
+   "howToReach": "Move the mouse anywhere, then over the Enter button",
+   "whatToCheck": "Any mouse movement makes the stars drift gently toward the logo star; hovering Enter pulls them more; moving away or stopping lets them relax back; the field never collapses into a dot",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.enter-click-converge-and-fade",
+   "category": "OmniStar boot (V185)",
+   "feature": "Enter click: converge and fade",
+   "howToReach": "Click Enter",
+   "whatToCheck": "Stars rush into the logo and fade in about half a second while the normal fade into the scene starts; the browser still goes fullscreen (the Enter click is still a genuine gesture) and the fall-in entry animation plays as before",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.phone-390px-wide",
+   "category": "OmniStar boot (V185)",
+   "feature": "Phone (390px wide)",
+   "howToReach": "Open on a phone or a 390px window",
+   "whatToCheck": "No sideways scroll; wordmark + star centred and fully visible; OmniOS subtitle readable; about half as many stars; touching the Enter button pulls the stars in; tapping Enter enters the app (still goes fullscreen where the browser allows)",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "omnistar-boot-v185.slow-network-slow-device",
+   "category": "OmniStar boot (V185)",
+   "feature": "Slow network / slow device",
+   "howToReach": "Throttle the network (DevTools Slow 3G) and reload, or use an old phone",
+   "whatToCheck": "The star still rolls in and spins while the page keeps loading (the roll and spin run off the main thread); the Enter button appears when loading ends; the star never freezes for long; report if the animation visibly stutters",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "omnistar-boot-v185.reduced-motion",
+   "category": "OmniStar boot (V185)",
+   "feature": "Reduced motion",
+   "howToReach": "Set the OS or browser to reduce motion, reload",
+   "whatToCheck": "The final state shows at once: OmniStar + a static 12-pointed star + OmniOS, a few still stars, no rolling, no spin, no moving field; Enter still works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.repeated-loads",
+   "category": "OmniStar boot (V185)",
+   "feature": "Repeated loads",
+   "howToReach": "Reload 5 times in a row (soft and hard reload)",
+   "whatToCheck": "The sequence plays every time from the start; no leftover canvas or stuck star; no console errors; after Enter the boot layer is removed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.keyboard-and-screen-reader",
+   "category": "OmniStar boot (V185)",
+   "feature": "Keyboard and screen reader",
+   "howToReach": "Tab key on the boot screen",
+   "whatToCheck": "Enter button is reachable with Tab and gets the star pull while focused; Space/Enter activates it; a screen reader announces 'OmniStar OmniOS' (the star is hidden from it)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-v185.branding-strings",
+   "category": "OmniStar boot (V185)",
+   "feature": "Branding strings",
+   "howToReach": "Hover the ⟐ logo in the Global Bar; look at the browser tab; open ⟐Developer > OmniStoreSettings dump",
+   "whatToCheck": "Tooltip title is ⟐OmniOS; tab title is OmniOS; dump app string is 'OmniOS V185'. Spaces are still called Realities and the OmniRealityGrid panels keep their names",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
   {
+   "id": "boot-smooth",
+   "question": "How smooth is the OmniStar boot animation on your phone and on your real GPU machine (roll, landing, spin, star field)?",
+   "why": "I only saw it in software-rendered Chromium; the roll and spin are meant to survive a busy main thread but I could not test a real device.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "ok",
+    "janky"
+   ],
+   "device": "phone"
+  },
+  {
+   "id": "boot-landing",
+   "question": "Does the star's landing position after the word 'OmniStar' look right (gap, vertical centre)?",
+   "why": "The slot is measured from the real text width, but only judged on one system font; your device font may shift the baseline.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "boot-balance",
+   "question": "Do the stars feel balanced between enterprise-grade and gaming-console?",
+   "why": "You wanted restrained but alive. Say in the message if it needs fewer / more stars, stronger pull, or no faint lines.",
+   "kind": "choice",
+   "choices": [
+    "too plain",
+    "balanced",
+    "too busy"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "boot-old-name",
+   "question": "Is there anything still saying OmniReality that should say OmniOS?",
+   "why": "I changed the tab title, boot screen, Global Bar logo tooltip, dump and user guide; I kept code names, OmniRealityGrid panels and the concept word Reality.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
    "id": "fps-emoji-store",
    "question": "Real-GPU frame rate (fps) with the all-emoji demo store loaded and open?",
    "why": "Every frame rate so far came from software rendering at about 1 fps; I cannot tell if the 1,914-emoji store or the shelf layouts are fast enough on a real GPU.",
-   "kind": "number",
-   "device": "gpu"
-  },
-  {
-   "id": "fps-50-test-nodes",
-   "question": "Frame rate (fps) with 50 test nodes (DevOmniStoreSettings > node readout > Create 50 test nodes)?",
-   "why": "V183 shares geometries and textures between store/value nodes; I want a real number for 50 and, if you try it, for 250 (say so in the message).",
    "kind": "number",
    "device": "gpu"
   },
@@ -1022,31 +1152,17 @@ export default {
    "why": "V183 touched the shared node and Inspector code; the automated suites pass but only a hands-on session shows a changed feel. If yes, name the action in the message.",
    "kind": "yesno",
    "device": "any"
-  },
-  {
-   "id": "hands-opacity-feel",
-   "question": "Which of V174's bottom-hands summon or V175's opacity change (tunnels more solid, icosahedron nodes fainter) feels wrong, if any?",
-   "why": "V175 changed two constants by eye on a software renderer and was never judged on a white vs a black wallpaper; V174's second dock icon was never clicked on a phone.",
-   "kind": "text",
-   "device": "any"
-  },
-  {
-   "id": "top-middle-banner",
-   "question": "Where exactly is the top-middle banner you wanted removed (which screen, what does it say or show)?",
-   "why": "Carried from an old question (V172): a fresh boot has nothing hand-related in the top middle, so I could not find what you meant and changed nothing.",
-   "kind": "text",
-   "device": "any"
   }
  ],
  "knownIssues": [
-  "Real GPU, a real phone and touch are not verified for anything from V181 to V184 (all earlier runs were jsdom or software-GL Chromium at about 1 fps).",
+  "The boot animation was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+  "While main.js loads, the star's roll / spin keep running off the main thread, but the 4-to-5 and 5-to-12 point morphs and the star field need the main thread and can stall during long tasks.",
+  "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
   "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
   "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
   "Objects near [200, 50, 300] can intersect a store moved there; there is no collision or warning.",
   "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit).",
   "The arbitrage guard only blocks continuing a loop within 10 minutes of your own buy log; it ignores fees and a second account.",
-  "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI.",
-  "The Grant 10 (sandbox) button in the Value block duplicates the Wallet's; keep or remove is your decision.",
-  "Sunburst chart level 0 is taller than the panel on short desktop screens (it scrolls vertically)."
+  "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI."
  ]
 }
