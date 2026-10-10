@@ -1,10 +1,11 @@
-/* OmniStarBoot.js — V185. Classic (non-module) script: runs as soon as the
+/* OmniStarBoot.js — V186 (final mark: urchin; V185: 12-point star). Classic (non-module) script: runs as soon as the
  * boot markup is parsed, with no dependency on main.js's ES import graph.
  * See docs/architecture/OMNISTAR_BOOT_DESIGN.md for the timeline and rules.
  *
  *  1. A 4-pointed star rolls in from the left and lands after "OmniStar".
- *  2. It snaps to 5 points, then morphs to 12 points while spinning up,
- *     then keeps a slow constant spin.
+ *  2. It snaps to 5 points, then morphs to the final mark (a 16-spike sea-urchin
+ *     orb; CONFIG.FINAL_MARK / ?bootmark=star12 selects the old 12-point star)
+ *     while spinning up, then keeps a slow constant spin; the urchin's spikes breathe.
  *  3. A small 2D-canvas star field fades in; stars lean toward the logo when
  *     the pointer moves / hovers the Enter button, and converge + fade on click.
  *
@@ -48,26 +49,125 @@
     }
     return best
   }
-  // Resample a star to M polar samples. M=120 (3 deg) so every tip and valley
-  // of the 4-, 5- and 12-point stars lands exactly on a sample; the morph is a
-  // per-sample radius lerp, and the pure shapes stay exact.
-  var M = 120, OUTER = 50
+  // ── Config: every tunable of the final mark lives here ────
+  var CONFIG = {
+    FINAL_MARK: 'urchin',    // 'urchin' | 'star12'. Override without a rebuild: ?bootmark=star12
+    SPIKES: 16,              // spikes, evenly spaced, spike 0 points straight up
+    CORE_R: 0.42,            // core disc radius as a fraction of the star box radius (design size)
+    TIP_LONG: 1.0,           // tip radius multiplier (x 2.0 core radius) of even spikes
+    TIP_SHORT: 0.82,         // same for odd spikes (-> 1.64 x core radius)
+    JITTER: [0, -0.05, 0.04, 0.06, -0.03, -0.07, 0.05, -0.04, 0.08], // tip +-%, spikes 0..8; 9..15 mirror 7..1 (fixed, no random)
+    BASE_W: 0.17,            // spike base width at the core edge, x core radius
+    MIN_BASE_UNITS: 4,       // base width floor in viewBox units (~1 px at the smallest 30 px star box)
+    FIT: 1.1,                // whole mark scaled so the nominal long-tip radius = FIT x the old star's outer radius (50)
+    BREATH_AMP: 0.06,        // spikes group scale 1 +- this
+    BREATH_MS: 3200,         // breathing period
+    SAMPLES_URCHIN: 400,     // polar samples: divisible by 80 so 4-, 5-star tips and all 16 spikes land exactly on a sample
+    SAMPLES_STAR12: 120      // V185 sampling for the 12-point fallback
+  }
+  var MARK = CONFIG.FINAL_MARK
+  try {
+    var qm = new URLSearchParams(window.location.search).get('bootmark')
+    if (qm === 'urchin' || qm === 'star12') MARK = qm
+  } catch (e) {}
+  if (MARK !== 'urchin' && MARK !== 'star12') MARK = 'urchin'
+
+  // Resample a star to M polar samples (a ray per sample, radius from the
+  // polygon). The morph is a per-sample radius lerp, and the pure shapes stay
+  // exact as long as M divides every tip and valley angle.
+  var M = MARK === 'urchin' ? CONFIG.SAMPLES_URCHIN : CONFIG.SAMPLES_STAR12
+  var OUTER = 50, BOX = 60
   function profile (n, ratio) {
     var pts = starPoints(n, OUTER, OUTER * ratio, 0), out = new Array(M)
     for (var k = 0; k < M; k++) out[k] = radiusAt(pts, -Math.PI / 2 + k * 2 * Math.PI / M)
     return out
   }
-  var P4 = profile(4, 0.38), P5 = profile(5, 0.45), P12 = profile(12, 0.72)
+
+  // The urchin: a round core plus N tapered triangular spikes. Built once as
+  // (a) a polar radius profile (for the morph, a single <path>) and (b) the
+  // layered form (core <circle> + spikes <g>, so the spikes can breathe on
+  // their own compositor animation). Both describe the SAME outline: every spike
+  // tip and base corner sits exactly on a polar sample, so the swap is seamless.
+  function buildUrchin () {
+    var n = CONFIG.SPIKES, per = M / n, step = 2 * Math.PI / M
+    var coreU = CONFIG.CORE_R * BOX
+    var sc = OUTER * CONFIG.FIT / (coreU * 2 * CONFIG.TIP_LONG)
+    var coreR = coreU * sc
+    var baseW = Math.max(CONFIG.BASE_W * coreR, CONFIG.MIN_BASE_UNITS)
+    var hs = Math.max(1, Math.round(Math.asin(Math.min(1, baseW / 2 / coreR)) / step))
+    hs = Math.min(hs, Math.floor(per / 2) - 1)
+    var phi = hs * step, cs = Math.cos(phi) * coreR, sn = Math.sin(phi) * coreR
+    var J = CONFIG.JITTER
+    var tips = []
+    for (var k = 0; k < n; k++) tips.push(coreR * 2 * ((k % 2 === 0) ? CONFIG.TIP_LONG : CONFIG.TIP_SHORT) * (1 + J[Math.min(k, n - k) % J.length]))
+    var prof = new Array(M)
+    for (var j = 0; j < M; j++) {
+      var k0 = Math.round(j / per), d = j - k0 * per, kk = ((k0 % n) + n) % n
+      var r = coreR
+      if (Math.abs(d) <= hs) {
+        r = radiusAt([[tips[kk], 0], [cs, sn], [cs, -sn]], d * step)
+        if (r < coreR) r = coreR
+      }
+      prof[j] = r
+    }
+    var LAM = 1.3, dd = ''
+    for (k = 0; k < n; k++) {      // spike polygon: tip, base corners, and the edges continued inside the core
+      var ang = -Math.PI / 2 + k * per * step, ca = Math.cos(ang), sa = Math.sin(ang), T = tips[k]
+      var loc = [[T, 0], [cs, sn], [T + LAM * (cs - T), LAM * sn], [T + LAM * (cs - T), -LAM * sn], [cs, -sn]]
+      for (var q = 0; q < 5; q++) {
+        dd += (q ? 'L' : 'M') + (loc[q][0] * ca - loc[q][1] * sa).toFixed(2) + ' ' + (loc[q][0] * sa + loc[q][1] * ca).toFixed(2)
+      }
+      dd += 'Z'
+    }
+    return { profile: prof, coreR: coreR, spikesD: dd, tips: tips, hs: hs }
+  }
+  var URCHIN = MARK === 'urchin' ? buildUrchin() : null
+
+  var P4 = profile(4, 0.38), P5 = profile(5, 0.45)
+  var PF = URCHIN ? URCHIN.profile : profile(12, 0.72)      // final shape profile
   var COS = new Array(M), SIN = new Array(M)
   for (var k = 0; k < M; k++) { var th = -Math.PI / 2 + k * 2 * Math.PI / M; COS[k] = Math.cos(th); SIN[k] = Math.sin(th) }
-  function pathFor (a, b) { // a: 4->5 amount, b: 5->12 amount (both 0..1)
-    var d = ''
+  function pathFor (a, b) { // a: 4->5 amount, b: 5->final amount (both 0..1)
+    var d = '', e1 = 0, e2 = 0
+    if (URCHIN) { e1 = easeInOut(clamp01(b / 0.6)); e2 = easeInOut(clamp01((b - 0.35) / 0.65)) }
     for (var k = 0; k < M; k++) {
       var r = P4[k] + (P5[k] - P4[k]) * a
-      r = r + (P12[k] - r) * b
+      if (URCHIN) r = r + (URCHIN.coreR - r) * e1 + (PF[k] - URCHIN.coreR) * e2   // star -> round core, then spikes sprout
+      else r = r + (PF[k] - r) * b
       d += (k ? 'L' : 'M') + (COS[k] * r).toFixed(2) + ' ' + (SIN[k] * r).toFixed(2)
     }
     return d + 'Z'
+  }
+
+  // Layered final form (urchin only): core circle + spikes group.
+  var coreEl = null, spikesEl = null, finalShown = false, breathAnim = null
+  if (URCHIN) {
+    var NS = 'http://www.w3.org/2000/svg', svgEl = pathEl.ownerSVGElement || pathEl.parentNode
+    coreEl = document.createElementNS(NS, 'circle')
+    coreEl.setAttribute('class', 'boot-core'); coreEl.setAttribute('r', URCHIN.coreR.toFixed(3)); coreEl.setAttribute('display', 'none')
+    spikesEl = document.createElementNS(NS, 'g')
+    spikesEl.setAttribute('class', 'boot-spikes'); spikesEl.setAttribute('display', 'none')
+    spikesEl.style.transformOrigin = '0px 0px'
+    var sp = document.createElementNS(NS, 'path')
+    sp.setAttribute('d', URCHIN.spikesD)
+    spikesEl.appendChild(sp)
+    svgEl.appendChild(coreEl); svgEl.appendChild(spikesEl)
+  }
+  function showFinal (breathe) {       // same frame: hide the morph path, show the layers
+    if (!URCHIN || finalShown) return
+    finalShown = true
+    pathEl.setAttribute('display', 'none')
+    coreEl.removeAttribute('display'); spikesEl.removeAttribute('display')
+    if (breathe) {                     // starts at scale 1 = the morph's final geometry, so no pop
+      var A = CONFIG.BREATH_AMP, outE = 'cubic-bezier(0.61, 1, 0.88, 1)', inE = 'cubic-bezier(0.12, 0, 0.39, 0)'
+      breathAnim = spikesEl.animate([
+        { transform: 'scale(1)', easing: outE, offset: 0 },
+        { transform: 'scale(' + (1 + A) + ')', easing: inE, offset: 0.25 },
+        { transform: 'scale(1)', easing: outE, offset: 0.5 },
+        { transform: 'scale(' + (1 - A) + ')', easing: inE, offset: 0.75 },
+        { transform: 'scale(1)', offset: 1 }
+      ], { duration: CONFIG.BREATH_MS, iterations: Infinity })
+    }
   }
 
   // ── Timeline (ms of virtual time) ─────────────────────────
@@ -295,6 +395,7 @@
     var ea = easeInOut(a), eb = easeInOut(b)
     var key = ea.toFixed(3) + '|' + eb.toFixed(3)
     if (key !== lastKey) { lastKey = key; pathEl.setAttribute('d', pathFor(ea, eb)) }
+    if (b >= 1 && URCHIN && !finalShown) showFinal(true)
 
     drawField(dt, 1)
     if (clickedAt >= 0 && T - clickedAt > CONVERGE_MS + 50) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height) }
@@ -329,11 +430,14 @@
 
   measure()
   window.__omniStarBoot = {
-    stats: stats, reduced: reduced,
+    stats: stats, reduced: reduced, mark: MARK, config: CONFIG, urchin: URCHIN && { coreR: URCHIN.coreR, tips: URCHIN.tips, hs: URCHIN.hs },
+    breathing: function () { return !!breathAnim }, pathFor: pathFor, easeInOut: easeInOut, // pathFor/easeInOut: test hooks
+
     state: function () { return { T: T, ended: ended, links: links.length, over: over, moveLevel: moveLevel, clickedAt: clickedAt, animsOn: animsOn, geo: geo } }
   }
   if (reduced) {
     pathEl.setAttribute('d', pathFor(1, 1))
+    showFinal(false)
     starEl.style.opacity = '1'
     stars.length = Math.min(stars.length, 40)
     drawStatic()

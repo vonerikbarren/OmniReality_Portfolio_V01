@@ -1262,3 +1262,12 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 6. The JSZip script is now `defer`: if any module ever needs `window.JSZip` at import time (none does today), it still works because deferred scripts run before modules.
 7. Old suites adjusted in the retargeted copies only: tests that hard-code the dump `app` string `OmniReality V184` -> `OmniOS V185`.
 
+## 73. OmniStar boot mark (V186): what was not verified, follow-ups
+1. Verified in software-GL Chromium (1280x720, 390x844, reduced motion, `?bootmark=star12`) only. The look is taste: answer the three Claude Check asks (looks right? spike count / length? smoothness on your device?). All numbers are in the `CONFIG` object at the top of the shape section of `boot/OmniStarBoot.js`.
+2. The 5->urchin morph runs in rAF on the main thread (like V185's morphs) and can stall during long main.js tasks; the spin and the breathing are compositor animations. The roll, pop and steady spin report `compositeFailed: 64` in the software-GL trace (V185 as well); check on a real GPU.
+3. The path -> layered swap at the end of the morph differs by anti-aliasing only (about 0.7% of pixels, max 35/255 at 4x); invisible at 1x in the screenshots, but not judged on a real display.
+4. The urchin is a generic spiked orb. If the spikes should look more organic, extend `JITTER` (a fixed table, no random) or add per-spike angle jitter; if the glow should be tighter, it is the `.boot-star svg` drop-shadow (unchanged from V185).
+5. `?bootmark=star12` is the quick way back to V185's star; the 12-point code path (M = 120) is kept. Remove it and `CONFIG.FINAL_MARK` once the urchin is accepted.
+6. Test hooks `__omniStarBoot.pathFor` / `easeInOut` / `mark` / `urchin` / `breathing()` are exposed for the harness.
+7. Old suites adjusted in the retargeted copies only: the dump `app` string `OmniOS V185` -> `OmniOS V186` and the V185 version constants in `v184_model_test` / `v184_ui_test`.
+

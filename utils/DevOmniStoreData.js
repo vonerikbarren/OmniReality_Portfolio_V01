@@ -217,7 +217,7 @@ export function setNotes (t) {
 export function buildDump ({ settings = null, presets = null, counts = null, scene = null, perf = null, layouts = null, arbitrage = null, stores = null, nodes = null } = {}) {
   ensureLoaded()
   return {
-    dump: 'omni-store-dev-dump/1', app: 'OmniOS V185', at: new Date().toISOString(),
+    dump: 'omni-store-dev-dump/1', app: 'OmniOS V186', at: new Date().toISOString(),
     storeSettings: settings, userPresets: presets,
     dev: { records: clone(S.records), customTypes: S.types.map(t => t.id), perf: { itemsPerPage: S.perf.itemsPerPage, ...(perf ?? {}) }, notesForClaude: S.notes },
     counts, scene, layouts, arbitrage, stores, nodes,

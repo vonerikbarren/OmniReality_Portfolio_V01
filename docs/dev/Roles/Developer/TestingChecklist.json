@@ -2703,6 +2703,53 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStar boot mark (V186)",
+      "items": [
+        {
+          "feature": "Final mark is a spiky sea-urchin orb",
+          "howToReach": "Open the app in a fresh tab (desktop), wait about 3 s on the boot screen",
+          "whatToCheck": "After the landing 5-star the shape rounds into a solid white disc and 16 thin tapered spikes sprout evenly around it (alternating long / short, slightly varied lengths, one spike straight up). It reads as a spiky orb / sea urchin, not a starburst or a gear; white, soft glow like before; about the visual size of the old 12-point star; nothing clipped (spike tips, glow) and a small gap remains between the 'r' of OmniStar and the nearest spike",
+          "tested": false
+        },
+        {
+          "feature": "Spin and breathing",
+          "howToReach": "Boot screen after about 3 s, watch for 15 s",
+          "whatToCheck": "The mark turns slowly (about 10 s per turn) and the spikes gently extend and retract by about 6% every 3.2 s while the core stays still; the transition from the morph into the breathing shows no pop or flicker",
+          "tested": false
+        },
+        {
+          "feature": "Morph from the 5-point star",
+          "howToReach": "Fresh load, watch 1.7 - 2.7 s",
+          "whatToCheck": "The 5-point star rounds into a disc and the spikes grow out of it (about 0.7 s, while the spin speeds up); smooth, no jumpy or torn frames",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "Boot screen at 390 px wide (real phone)",
+          "whatToCheck": "The mark is small but the spikes are still visible and crisp (no blur or blobs); the word + mark group is centred; no sideways scroll",
+          "tested": false
+        },
+        {
+          "feature": "Reduced motion",
+          "howToReach": "Turn on the OS reduce-motion setting, reload",
+          "whatToCheck": "The finished urchin is shown at once: no roll, no spin, no breathing; the stars are static; Enter works",
+          "tested": false
+        },
+        {
+          "feature": "Fallback to the 12-point star",
+          "howToReach": "Open the app with ?bootmark=star12 appended to the address (or set CONFIG.FINAL_MARK = 'star12' at the top of boot/OmniStarBoot.js)",
+          "whatToCheck": "The old 12-pointed star appears after the morph and spins as in V185; an unknown value (?bootmark=abc) shows the urchin",
+          "tested": false
+        },
+        {
+          "feature": "Enter still works",
+          "howToReach": "Click Enter on the boot screen",
+          "whatToCheck": "Stars converge on the mark and fade; fullscreen is requested; the app enters as before",
+          "tested": false
+        }
+      ]
     }
   ]
 }

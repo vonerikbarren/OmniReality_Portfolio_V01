@@ -1,13 +1,34 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V185",
+  "version": "V186",
   "date": "2026-10-10",
-  "summary": "V185: OmniStar boot screen (rolling 4->5->12-point star, star field) and OmniOS branding",
+  "summary": "V186: OmniStar boot final mark is now a drawn SVG sea-urchin orb (16 spikes, breathing) instead of the 12-point star; ?bootmark=star12 brings the old star back",
   "asks": [
     {
-      "id": "boot-smooth",
-      "question": "How smooth is the OmniStar boot animation on your phone and on your real GPU machine (roll, landing, spin, star field)?",
-      "why": "I only saw it in software-rendered Chromium; the roll and spin are meant to survive a busy main thread but I could not test a real device.",
+      "id": "boot-mark-look",
+      "question": "Does the new boot mark look like what you wanted (a round body with spikes all around, like the sea urchin)? If not, say what to change in the message.",
+      "why": "I could only judge it in screenshots; the look (core size, spike thinness, glow) is taste, and every number is in the CONFIG object at the top of boot/OmniStarBoot.js.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "boot-mark-spikes",
+      "question": "How do the spike count and length feel?",
+      "why": "Defaults: 16 spikes, long tips 2.0x the core radius, short 1.64x, breathing +-6%. Pick the closest change; details in the message.",
+      "kind": "choice",
+      "choices": [
+        "fine",
+        "more spikes",
+        "fewer spikes",
+        "longer",
+        "shorter"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "boot-mark-smooth",
+      "question": "How smooth is the boot animation (roll, landing, morph into the urchin, spin, breathing) on your real device?",
+      "why": "Only seen in software-rendered Chromium. The spin and breathing are compositor animations; the morph and star field need the main thread.",
       "kind": "choice",
       "choices": [
         "good",
@@ -77,8 +98,8 @@
     }
   ],
   "knownIssues": [
-    "The boot animation was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
-    "While main.js loads, the star's roll / spin keep running off the main thread, but the 4-to-5 and 5-to-12 point morphs and the star field need the main thread and can stall during long tasks.",
+    "The boot animation (and the urchin mark) was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+    "While main.js loads, the roll, spin and the urchin's breathing keep running off the main thread, but the 4-to-5 and 5-to-urchin morphs and the star field need the main thread and can stall during long tasks.",
     "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
     "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
     "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",

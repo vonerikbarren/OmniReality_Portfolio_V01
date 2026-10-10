@@ -1,6 +1,6 @@
 # 1. Getting Started
 
-Applies to: V185 · Status: verified against code on 2026-10-10 · Real devices: not verified.
+Applies to: V186 · Status: verified against code on 2026-10-10 · Real devices: not verified.
 
 [Guide index](README.md) · Next: [The Four Hands](02_The_Four_Hands.md)
 
@@ -8,8 +8,8 @@ A **Reality** is a 3D space you can fly through. OmniOS (this app) is made of Re
 
 ## Enter
 
-1. Open the app. The boot screen is black. The word **OmniStar** appears as a small white star rolls in from the left and lands after the word; it turns into a five-pointed star, then a twelve-pointed star that keeps turning slowly. A small **OmniOS** sits under the word, and a faint field of stars fades in around it. A thin progress bar fills while the app loads, then an **Enter** button appears. Move the mouse (or touch the button) and the stars drift gently toward the logo.
-2. Click **Enter**. The stars rush into the logo and fade, the app asks the browser for fullscreen, then plays an entry animation: the camera falls from high above and lands at the middle of the space. It takes about 7 seconds. (If your device is set to reduce motion, the boot screen shows the finished logo and still stars at once, with no movement; Enter works the same.)
+1. Open the app. The boot screen is black. The word **OmniStar** appears as a small white star rolls in from the left and lands after the word; it turns into a five-pointed star, then rounds into a white spiky orb (a round body with sixteen thin spikes, like a sea urchin) that keeps turning slowly while its spikes gently breathe in and out. A small **OmniOS** sits under the word, and a faint field of stars fades in around it. A thin progress bar fills while the app loads, then an **Enter** button appears. Move the mouse (or touch the button) and the stars drift gently toward the logo.
+2. Click **Enter**. The stars rush into the logo and fade, the app asks the browser for fullscreen, then plays an entry animation: the camera falls from high above and lands at the middle of the space. It takes about 7 seconds. (If your device is set to reduce motion, the boot screen shows the finished spiky logo and still stars at once, with no movement; Enter works the same.)
 3. When you land, a browser window (OmniBrowser window 1) and its Properties panel open by themselves. Close them with their ✕ if you do not want them. (They do not open when the app is shown inside another page.)
 
 ## Move the camera

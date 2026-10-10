@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V185",
+ "version": "V186",
  "date": "2026-10-10",
- "summary": "V185: OmniStar boot screen (rolling 4->5->12-point star, star field) and OmniOS branding",
+ "summary": "V186: OmniStar boot final mark is now a drawn SVG sea-urchin orb (16 spikes, breathing) instead of the 12-point star; ?bootmark=star12 brings the old star back",
  "checks": [
   {
    "id": "omnistore-omnivalue-sandbox-v1.open-the-store",
@@ -1079,13 +1079,97 @@ export default {
    "whatToCheck": "Tooltip title is ⟐OmniOS; tab title is OmniOS; dump app string is 'OmniOS V185'. Spaces are still called Realities and the OmniRealityGrid panels keep their names",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.final-mark-is-a-spiky-sea-urchin-orb",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Final mark is a spiky sea-urchin orb",
+   "howToReach": "Open the app in a fresh tab (desktop), wait about 3 s on the boot screen",
+   "whatToCheck": "After the landing 5-star the shape rounds into a solid white disc and 16 thin tapered spikes sprout evenly around it (alternating long / short, slightly varied lengths, one spike straight up). It reads as a spiky orb / sea urchin, not a starburst or a gear; white, soft glow like before; about the visual size of the old 12-point star; nothing clipped (spike tips, glow) and a small gap remains between the 'r' of OmniStar and the nearest spike",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.spin-and-breathing",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Spin and breathing",
+   "howToReach": "Boot screen after about 3 s, watch for 15 s",
+   "whatToCheck": "The mark turns slowly (about 10 s per turn) and the spikes gently extend and retract by about 6% every 3.2 s while the core stays still; the transition from the morph into the breathing shows no pop or flicker",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.morph-from-the-5-point-star",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Morph from the 5-point star",
+   "howToReach": "Fresh load, watch 1.7 - 2.7 s",
+   "whatToCheck": "The 5-point star rounds into a disc and the spikes grow out of it (about 0.7 s, while the spin speeds up); smooth, no jumpy or torn frames",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.phone",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Phone",
+   "howToReach": "Boot screen at 390 px wide (real phone)",
+   "whatToCheck": "The mark is small but the spikes are still visible and crisp (no blur or blobs); the word + mark group is centred; no sideways scroll",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.reduced-motion",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Reduced motion",
+   "howToReach": "Turn on the OS reduce-motion setting, reload",
+   "whatToCheck": "The finished urchin is shown at once: no roll, no spin, no breathing; the stars are static; Enter works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.fallback-to-the-12-point-star",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Fallback to the 12-point star",
+   "howToReach": "Open the app with ?bootmark=star12 appended to the address (or set CONFIG.FINAL_MARK = 'star12' at the top of boot/OmniStarBoot.js)",
+   "whatToCheck": "The old 12-pointed star appears after the morph and spins as in V185; an unknown value (?bootmark=abc) shows the urchin",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-mark-v186.enter-still-works",
+   "category": "OmniStar boot mark (V186)",
+   "feature": "Enter still works",
+   "howToReach": "Click Enter on the boot screen",
+   "whatToCheck": "Stars converge on the mark and fade; fullscreen is requested; the app enters as before",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
   {
-   "id": "boot-smooth",
-   "question": "How smooth is the OmniStar boot animation on your phone and on your real GPU machine (roll, landing, spin, star field)?",
-   "why": "I only saw it in software-rendered Chromium; the roll and spin are meant to survive a busy main thread but I could not test a real device.",
+   "id": "boot-mark-look",
+   "question": "Does the new boot mark look like what you wanted (a round body with spikes all around, like the sea urchin)? If not, say what to change in the message.",
+   "why": "I could only judge it in screenshots; the look (core size, spike thinness, glow) is taste, and every number is in the CONFIG object at the top of boot/OmniStarBoot.js.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "boot-mark-spikes",
+   "question": "How do the spike count and length feel?",
+   "why": "Defaults: 16 spikes, long tips 2.0x the core radius, short 1.64x, breathing +-6%. Pick the closest change; details in the message.",
+   "kind": "choice",
+   "choices": [
+    "fine",
+    "more spikes",
+    "fewer spikes",
+    "longer",
+    "shorter"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "boot-mark-smooth",
+   "question": "How smooth is the boot animation (roll, landing, morph into the urchin, spin, breathing) on your real device?",
+   "why": "Only seen in software-rendered Chromium. The spin and breathing are compositor animations; the morph and star field need the main thread.",
    "kind": "choice",
    "choices": [
     "good",
@@ -1155,8 +1239,8 @@ export default {
   }
  ],
  "knownIssues": [
-  "The boot animation was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
-  "While main.js loads, the star's roll / spin keep running off the main thread, but the 4-to-5 and 5-to-12 point morphs and the star field need the main thread and can stall during long tasks.",
+  "The boot animation (and the urchin mark) was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+  "While main.js loads, the roll, spin and the urchin's breathing keep running off the main thread, but the 4-to-5 and 5-to-urchin morphs and the star field need the main thread and can stall during long tasks.",
   "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
   "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
   "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
