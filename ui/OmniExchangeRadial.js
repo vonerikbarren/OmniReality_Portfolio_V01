@@ -14,8 +14,13 @@
  *         Breadcrumb up / down. Everything shown comes from OmniValueModel.quote() / quoteSell().
  *   LIST  window / wish / cart: ONE list model (utils/OmniStoreModel.js); compare view window vs cart; checkout.
  *
- * V177 will replace level 1 / 2 with D3 views: `#exchange-chart-slot` is the placeholder, and the model already provides
- * toHierarchy(quote) / toFlows(quote).
+ * V181 D3 VIEWS (BuildOrder item 5). A view switcher (Wheel | Sunburst | Treemap | Sankey, remembered at localStorage 'omni:exchange-view-v1'):
+ *   level 0   Wheel = the spokes above; the other three draw the SAME exchange forms as a sunburst / treemap / sankey (ui/OmniValueCharts.js, data from
+ *             utils/OmniValueViews.js). Clicking a slice / box / node selects that form exactly like clicking its spoke (a second click goes down a level).
+ *   level 1-2 `#exchange-chart-slot` shows the chosen quote (Value.toHierarchy / toFlows: what you pay, the route, the fees, the stated remainder) in the
+ *             chosen view (Wheel falls back to Sunburst). Clicking a part reads it into the caption and highlights it.
+ *   d3 / d3-sankey load on first use (dynamic import, import map); if that fails the chart area says so and everything else keeps working.
+ *   The same quote also reports the ARBITRAGE guard: a plain-language warning when its rates belong to a loop that makes value from nothing.
  *
  * SANDBOX banner always visible. Draggable window (WindowManager id 'omniexchange'); <= 700 px it is a full-width bottom
  * sheet with 44 px targets.
@@ -31,12 +36,16 @@ import * as WindowManager from './WindowManager.js'
 import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import { handsSafe, DOCK_H } from '../utils/OmniStoreLayout.js'
+import ValueChart from './OmniValueCharts.js'
+import * as Views from '../utils/OmniValueViews.js'
 
 export const PANEL_ID = 'omniexchange'
 const PHONE_MAX = 700
 const TIER_COLOR = { primary: '#f5c04a', secondary: '#4cc9b0', tertiary: '#9b8cff', quaternary: '#ff8fa3', quinary: '#7fb4ff' }
 const C = 200, R_NODE = 140, NODE_R = 40, CENTRE_R = 70, ARC_R = 45
 const LEVEL_NAMES = ['Wheel', 'Form', 'Channels', 'Line detail']
+export const VIEW_KEY = 'omni:exchange-view-v1'
+const loadView = () => { try { const v = localStorage.getItem(VIEW_KEY); return Views.isView(v) ? v : 'wheel' } catch (_) { return 'wheel' } }
 
 const STYLES = `
 .omni-xr-panel { pointer-events: auto; position: fixed; z-index: 61; display: flex; flex-direction: column; overflow: hidden; opacity: 0; visibility: hidden;
@@ -97,7 +106,11 @@ table.xr-t { width: 100%; border-collapse: collapse; margin: 4px 0; }
 .xr-t th { color: var(--xr-dim); font-weight: normal; width: 36%; }
 .xr-t tr.is-sel td, .xr-t tr.is-sel th { background: rgba(255,255,255,.1); }
 .xr-ok { color: #6ee7a8; } .xr-bad { color: #ff7b7b; } .xr-dim { color: var(--xr-dim); }
-.xr-slot { margin: 6px 0; padding: 8px; text-align: center; border: 1px dashed var(--xr-border); border-radius: 8px; color: var(--xr-dim); font-size: 10px; }
+.xr-slot { margin: 6px 0; padding: 6px; border: 1px solid var(--xr-border); border-radius: 8px; color: var(--xr-dim); font-size: 10px; min-width: 0; }
+.xr-views { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; align-items: center; }
+.xr-views .xr-chip[aria-pressed="true"] { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.75); }
+.xr-chart { width: 100%; min-width: 0; min-height: 60px; }
+.xr-arb { margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: rgba(255,90,90,.14); border: 1px solid rgba(255,120,120,.6); line-height: 1.45; color: var(--xr-text); }
 .xr-line { padding: 3px 0; border-bottom: 1px dotted rgba(255,255,255,.1); line-height: 1.45; }
 .xr-rem { margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: rgba(255,176,46,.14); border: 1px solid rgba(255,176,46,.5); line-height: 1.45; }
 .xr-receipt { margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: rgba(110,231,168,.12); border: 1px solid rgba(110,231,168,.5); line-height: 1.45; }
@@ -147,6 +160,9 @@ export default class OmniExchangeRadial {
     this.msg = { text: '', kind: '' }
     this._q = null
     this._renderQueued = false
+    this.view = loadView()      // V181: 'wheel' | 'sunburst' | 'treemap' | 'sankey'
+    this.chartSel = null        // the part last picked in the level 1-2 chart (key)
+    this._charts = []
   }
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -158,7 +174,7 @@ export default class OmniExchangeRadial {
     this._on = {
       open: (e) => this.open(e.detail ?? {}),
       nav: (e) => { if (e.detail?.item === '⟐OmniExchange') this.open({}) },
-      changed: () => this._queueRender(),
+      changed: (e) => { if (e?.detail?.kind === 'active-store') this._storeSwitched(); this._queueRender() },
       restore: (e) => { if (e.detail?.id === PANEL_ID) this.open({}) },
       resize: () => { if (this._isOpen) this._place(false) },
     }
@@ -184,6 +200,7 @@ export default class OmniExchangeRadial {
     window.removeEventListener('resize', this._on.resize)
     window.removeEventListener('omni:layout-changed', this._on.resize)
     this._unbindHeader?.()
+    this._charts.forEach(c => c.destroy()); this._charts = []
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister(PANEL_ID)
     this._inited = 0
@@ -271,6 +288,12 @@ export default class OmniExchangeRadial {
     this._el.style.setProperty('--xr-wheel', px + 'px')
   }
 
+  /** V182: another store became active: the product, the wheel selection and any receipt belonged to the old one. */
+  _storeSwitched () {
+    this._resetSelection()
+    this.productId = Store.getProducts()[0]?.id ?? null
+  }
+
   _resetSelection () {
     this.sel = null; this.level = 0; this.payType = null; this.payQuality = null; this.payQtyOverride = null; this.splitAmt = null; this.qty = 1
     this.receipt = null; this.msg = { text: '', kind: '' }
@@ -279,7 +302,7 @@ export default class OmniExchangeRadial {
   // ── Derived state ───────────────────────────────────────────────────────────
 
   get product () { return this.productId ? Store.getProduct(this.productId) : null }
-  get forms () { const p = this.product; return !p ? [] : (this.tab === 'sell' ? Store.acceptForms(p.id) : p.price) }
+  get forms () { const p = this.product; return !p ? [] : (this.tab === 'sell' ? Store.acceptForms(p.id) : Store.buyForms(p.id)) }   // V182: only the forms this store's type takes
   get form () { return this.sel != null ? (this.forms[this.sel] ?? null) : null }
 
   /** Everything level 1-3 needs for the selected form, computed by the value model. */
@@ -337,6 +360,7 @@ export default class OmniExchangeRadial {
     r.actions.innerHTML = this._actionsHtml()
     this._fitWheel()
     this._setMsg(this.msg.text, this.msg.kind)
+    this._mountCharts()
     this._bindBody()
   }
 
@@ -357,18 +381,99 @@ export default class OmniExchangeRadial {
       <button type="button" class="xr-crumb" data-act="down" ${this.sel == null || this.level >= 3 ? 'disabled' : ''} aria-label="Down one level" title="Down one level (or tap the selected spoke again)">▼</button></div>`
   }
 
+  /** V182: which store this trade is in (shown with 2+ stores) and, when the store's type takes only some value types, which ones (plain words). */
+  _storeTagHtml () {
+    const list = Store.listStores()
+    const act = list.find(x => x.active)
+    const acc = Store.storeAccepts()
+    if (!act || (list.length < 2 && !acc.length)) return ''
+    const names = acc.map(id => Value.getType(id)?.name ?? id)
+    return `<div class="xr-dim" data-testid="store-tag" style="margin-bottom:4px">${list.length >= 2 ? `Store: ${esc(act.emoji)} ${esc(act.name)}` : ''}${list.length >= 2 && acc.length ? ' · ' : ''}${acc.length ? `this store takes ${esc(names.join(', '))} only` : ''}</div>`
+  }
+
   _tradeHtml () {
     const p = this.product
     const prods = Store.getProducts()
     const select = `<select class="xr-select xr-prod" data-bind="product" aria-label="Product">${prods.map(x => `<option value="${esc(x.id)}"${x.id === this.productId ? ' selected' : ''}>${esc(x.emoji)} ${esc(x.name)}</option>`).join('')}</select>`
-    if (!p) return select + '<p class="xr-dim">Click a product on the shelf, or pick one above.</p>'
-    let html = select + this._crumbsHtml()
+    if (!p) return this._storeTagHtml() + select + '<p class="xr-dim">Click a product on the shelf, or pick one above.</p>'
+    let html = this._storeTagHtml() + select + this._crumbsHtml()
     if (this.receipt) html += this._receiptHtml(this.receipt)
-    if (this.level === 0) html += this._wheelHtml(p) + this._prodBoxHtml(p)
+    if (this.level === 0) html += this._viewsHtml(false) + (this.view === 'wheel' ? this._wheelHtml(p) : this._formsChartHtml(p)) + this._prodBoxHtml(p)
     else if (this.level === 1) html += this._level1Html()
     else if (this.level === 2) html += this._level2Html()
     else html += this._level3Html()
     return html
+  }
+
+  // V181: D3 views ---------------------------------------------------------------
+
+  /** The view switcher. In the level 1-2 slot (`slot` true) Wheel is not offered (the wheel has nothing to show there): it falls back to Sunburst. */
+  _viewsHtml (slot) {
+    const eff = slot && this.view === 'wheel' ? 'sunburst' : this.view
+    const list = slot ? Views.VIEWS.filter(v => v !== 'wheel') : Views.VIEWS
+    return `<div class="xr-views" role="group" aria-label="Chart view" data-testid="views">${list.map(v => `<button type="button" class="xr-chip" data-act="view:${v}" aria-pressed="${v === eff}" title="${esc(Views.VIEW_HELP[v])}" data-omni-tip="${esc(Views.VIEW_LABELS[v])} view" data-omni-tip-key="—" data-omni-tip-desc="${esc(Views.VIEW_HELP[v])}">${esc(Views.VIEW_LABELS[v])}</button>`).join('')}</div>`
+  }
+
+  _formsChartHtml (p) {
+    const N = this.forms.length
+    const modeLabel = this.tab === 'sell' ? 'You offer' : 'You buy'
+    return `<div class="xr-chart" data-chart="forms" data-testid="formschart" aria-label="${esc(modeLabel)} ${esc(p.name)}: accepted exchange forms"></div>
+      <div class="xr-row" style="justify-content:center;margin:4px 0"><span class="xr-dim">Quantity</span><span class="xr-qty"><button type="button" data-act="qty:-1" aria-label="Less">−</button><b>${this.qty}</b><button type="button" data-act="qty:1" aria-label="More">+</button></span></div>
+      <div class="xr-dim" style="text-align:center;margin-bottom:4px">${N} exchange form${N === 1 ? '' : 's'}. ${esc(Views.VIEW_HELP[this.view])} Size = how much of that form is needed (log scale). ${this.sel == null ? 'Pick a part to choose it.' : 'Pick the chosen part again to go down.'}</div>`
+  }
+
+  /** The level 1-2 chart slot (the id is kept from V176). Needs a chosen spoke (this._q). */
+  _slotHtml (level) {
+    return `<div id="exchange-chart-slot" class="xr-slot" data-level="${level}">${this._viewsHtml(true)}<div class="xr-chart" data-chart="quote" data-testid="quotechart"></div></div>`
+  }
+
+  _arbHtml (qt) {
+    const a = qt?.arbitrage
+    if (!a || !a.loops?.length) return ''
+    return `<div class="xr-arb" role="alert" data-testid="arbitrage"><b>${esc(Value.ARBITRAGE.line)}.</b> The conversion rates this route uses are part of a loop that returns more than it starts with. ${a.chain ? 'Because you already used part of that loop in your recent exchanges, this exchange is blocked.' : 'This single exchange is allowed, but using the rest of the loop right after it would be blocked.'}<br>${a.loops.slice(0, 3).map(l => `<span class="xr-dim">${esc(l.line)}</span>`).join('<br>')}</div>`
+  }
+
+  setView (v) {
+    if (!Views.isView(v) || v === this.view) return false
+    this.view = v
+    try { localStorage.setItem(VIEW_KEY, v) } catch (_) { /* per-viewer convenience only */ }
+    this.chartSel = null
+    this._render()
+    return true
+  }
+
+  /** Draw the chart hosts the last _render() put in the body. d3 loads on the first draw; if it cannot, the host says so. */
+  _mountCharts () {
+    this._charts.forEach(c => c.destroy()); this._charts = []
+    const body = this._refs?.body
+    if (!body) return
+    body.querySelectorAll('.xr-chart[data-chart]').forEach(host => {
+      const kind = host.dataset.chart
+      const v = this.view === 'wheel' ? 'sunburst' : this.view
+      const chart = new ValueChart(host, { onSelect: (key, node) => this._onChartSelect(kind, key, node) })
+      this._charts.push(chart)
+      const data = this._chartData(kind, v)
+      const selectedKey = kind === 'forms' ? (this.sel != null ? 'form:' + this.sel : null) : this.chartSel
+      chart.show(v, data, { selectedKey })
+      host._chart = chart
+    })
+  }
+
+  _chartData (kind, v) {
+    const p = this.product
+    if (kind === 'forms') return v === 'sankey' ? Views.formsGraph(p, this.forms, this.qty) : Views.formsTree(p, this.forms, this.qty)
+    const c = this._q
+    if (!c) return null
+    if (c.mode === 'sell') return v === 'sankey' ? Views.sellGraph(c.qs) : Views.sellTree(c.qs)
+    return v === 'sankey' ? Views.exchangeGraph(c.qt) : Views.exchangeTree(c.qt)
+  }
+
+  _onChartSelect (kind, key, node) {
+    if (kind === 'forms') {
+      if (node && Number.isInteger(node.index)) this.selectSpoke(node.index)   // the same call a spoke click makes (selecting again goes down a level)
+      return
+    }
+    this.chartSel = key
   }
 
   // level 0 ---------------------------------------------------------------------
@@ -446,7 +551,7 @@ export default class OmniExchangeRadial {
     if (c.mode === 'sell') return this._sellForms()
     const { f, t, payT, qt } = c
     const scale = t.qualityScale.map(s => `<span${s.id === (f.quality ?? t.refQuality) ? ' style="color:#fff;font-weight:bold"' : ''}>${esc(s.label)} ${s.weight}</span>`).join(' · ')
-    const typeOpts = Value.getTypes().filter(x => x.payable).map(x => `<option value="${esc(x.id)}"${x.id === c.payType ? ' selected' : ''}>${esc(x.emoji)} ${esc(x.name)}</option>`).join('')
+    const typeOpts = Value.getTypes().filter(x => x.payable && Store.acceptsForm(x.id)).map(x => `<option value="${esc(x.id)}"${x.id === c.payType ? ' selected' : ''}>${esc(x.emoji)} ${esc(x.name)}</option>`).join('')
     const qOpts = payT.qualityScale.map(s => `<option value="${esc(s.id)}"${s.id === c.payQuality ? ' selected' : ''}>${esc(s.label)} (×${s.weight})</option>`).join('')
     const remAvail = Value.getRemainderTotal(f.type)
     return `<table class="xr-t" data-testid="level1"><tbody>
@@ -460,7 +565,7 @@ export default class OmniExchangeRadial {
       <tr><th>Covers?</th><td class="${qt.covers ? 'xr-ok' : 'xr-bad'}">${qt.covers ? 'yes' + (qt.surplus > 1e-9 ? ' — surplus ' + fmt(qt.surplus) + ' ' + esc(t.name) + ' (stated as remainder)' : ' — exactly') : 'no — ' + esc(qt.reasons[0] ?? qt.block ?? '')}</td></tr>
       ${remAvail > 0 ? `<tr><th>Remainder</th><td><label><input type="checkbox" data-bind="applyRem" ${this.applyRem ? 'checked' : ''}> use my stated ${fmt(remAvail)} ${esc(t.name)} remainder</label></td></tr>` : ''}
     </tbody></table>
-    <div id="exchange-chart-slot" class="xr-slot" data-level="1">Chart slot — D3 views arrive in V177 (the model already derives toHierarchy / toFlows for this quote).</div>`
+    ${this._arbHtml(qt)}${this._slotHtml(1)}`
   }
 
   _sellForms () {
@@ -474,11 +579,11 @@ export default class OmniExchangeRadial {
         <td><select class="xr-select" data-accept="${i}" data-key="quality" aria-label="Grade of ${esc(t.name)}">${qOpts}</select></td>
         <td><button type="button" class="xr-chip" data-act="acceptdel:${i}" ${forms.length < 2 ? 'disabled' : ''} aria-label="Remove form">✕</button></td></tr>`
     }).join('')
-    const opts = Value.getTypes().map(x => `<option value="${esc(x.id)}">${esc(x.emoji)} ${esc(x.name)}</option>`).join('')
+    const opts = Value.getTypes().filter(x => Store.acceptsForm(x.id)).map(x => `<option value="${esc(x.id)}">${esc(x.emoji)} ${esc(x.name)}</option>`).join('')
     return `<div class="xr-dim">Forms you are willing to accept for ${esc(p.name)} (saved on the product):</div>
       <table class="xr-t" data-testid="level1"><thead><tr><th style="width:auto">Form</th><th style="width:auto">Qty</th><th style="width:auto">Grade</th><th style="width:auto"></th></tr></thead><tbody>${rows}</tbody></table>
       <div class="xr-row"><select class="xr-select" data-bind="acceptAddType" aria-label="Add accepted form">${opts}</select><button type="button" class="xr-chip" data-act="acceptadd" ${forms.length >= Store.LIMITS.forms ? 'disabled' : ''}>＋ accept this form</button></div>
-      <div id="exchange-chart-slot" class="xr-slot" data-level="1">Chart slot — D3 views arrive in V177.</div>`
+      ${this._slotHtml(1)}`
   }
 
   // level 2 ---------------------------------------------------------------------
@@ -502,7 +607,7 @@ export default class OmniExchangeRadial {
       <table class="xr-t" data-testid="level2"><tbody>${rows}</tbody></table>
       <div class="xr-row"><span data-sumout class="${okSum ? 'xr-ok' : 'xr-bad'}">split totals ${fmt(sum)} of ${fmt(total)} ${okSum ? '✓' : '✗ must equal ' + fmt(total)}</span>
         <button type="button" class="xr-chip" data-act="split:cheapest">cheapest</button><button type="button" class="xr-chip" data-act="split:even">even</button><button type="button" class="xr-chip" data-act="split:reset">reset</button></div>
-      <div id="exchange-chart-slot" class="xr-slot" data-level="2">Chart slot — D3 views arrive in V177.</div>`
+      ${this._slotHtml(2)}`
   }
 
   // level 3 ---------------------------------------------------------------------
@@ -535,6 +640,7 @@ export default class OmniExchangeRadial {
       ${qt.fees.length ? `<table class="xr-t"><thead><tr><th style="width:auto">channel</th><th style="width:auto">amount</th><th style="width:auto">fee %</th><th style="width:auto">fee</th></tr></thead><tbody>${feeRows}</tbody></table>` : '<div class="xr-dim">none</div>'}
       <div class="xr-line">Total debit <b>${fmt(qt.debit)} ${esc(c.payT.name)}</b> · balance ${fmt(qt.balance)} → <span class="${after >= 0 ? 'xr-ok' : 'xr-bad'}">${fmt(after)}</span></div>
       <div class="xr-rem" data-testid="remainder">${esc(qt.remainder.statedLine)}</div>
+      ${this._arbHtml(qt)}
       ${qt.canExecute ? '<div class="xr-ok">Ready: this trade can execute (sandbox).</div>' : `<div class="xr-bad">Blocked: ${esc(qt.reasons.join('; ') || qt.block)}</div>`}
       ${intent}</div>`
   }
@@ -590,7 +696,7 @@ export default class OmniExchangeRadial {
     const p = this.product
     if (this.tab === 'list' || !p) return '<div class="xr-msg" role="status" aria-live="polite"></div>'
     if (this.tab === 'sell') {
-      return `<div class="xr-row"><button type="button" class="xr-btn is-primary xr-state${this._q?.qs?.canExecute ? '' : ' is-blocked'}" data-act="sell" ${this.sel == null ? 'disabled' : ''}>Sell now</button></div><div class="xr-msg" role="status" aria-live="polite"></div>`
+      return `<div class="xr-row"><button type="button" class="xr-btn is-primary xr-state${this._q?.qs?.canExecute ? '' : ' is-blocked'}" data-act="sell" ${this.sel == null ? 'disabled' : ''}>Sell now</button></div><div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">📌 Pin to my space</button></div><div class="xr-msg" role="status" aria-live="polite"></div>`
     }
     const mk = (state, label) => {
       const it = Store.getItemFor(p.id, state)
@@ -599,6 +705,7 @@ export default class OmniExchangeRadial {
     const ok = this._q?.qt?.canExecute
     return `<div class="xr-row" style="flex-wrap:nowrap">${mk('window', '◌ Window')}${mk('wish', '♡ Wish')}${mk('cart', '🛒 Cart')}
       <button type="button" class="xr-btn is-primary xr-state${ok ? '' : ' is-blocked'}" data-act="buy" ${this.sel == null ? 'disabled' : ''} data-omni-tip="Buy now" data-omni-tip-desc="Executes this trade through the sandbox ledger. Fake value only.">Buy now</button></div>
+      <div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">📌 Pin to my space</button></div>
       <div class="xr-msg" role="status" aria-live="polite"></div>`
   }
 
@@ -625,6 +732,7 @@ export default class OmniExchangeRadial {
     const arg = rest.join(':')
     switch (k) {
       case 'tab': this.setTab(arg); break
+      case 'view': this.setView(arg); break
       case 'level': this.setLevel(+arg); break
       case 'up': this.ascend(); break
       case 'down': this.descend(); break
@@ -635,6 +743,7 @@ export default class OmniExchangeRadial {
       case 'set': this._setMedia(arg); break
       case 'clear': Store.clearMedia(this.productId, arg); this._render(); break
       case 'list': this.addToList(arg); break
+      case 'pin': this.pinProduct(); break
       case 'buy': this.buyNow(); break
       case 'sell': this.sellNow(); break
       case 'move': { const [id, st] = [rest[0], rest[1]]; Store.moveItem(id, st); this.receipt = null; this._render(); break }
@@ -730,6 +839,18 @@ export default class OmniExchangeRadial {
     if (fo && ch) fo.textContent = 'fee ' + fmt(ch.feePct > 0 ? Math.ceil(v * ch.feePct / 100 / T.step - 1e-9) * T.step : 0)
     const twin = this._el.querySelector(t.dataset.ch != null ? `[data-chnum="${id}"]` : `[data-ch="${id}"]`)
     if (twin) twin.value = v
+  }
+
+  /** V183: "Pin to my space": drop a StoreItemNode for this product in front of the camera (systems/OmniStoreNodes.js answers omni:node-pin-request). */
+  pinProduct () {
+    const p = this.product
+    if (!p) return null
+    const d = { kind: 'storeItem', storeId: Store.activeStoreId(), productId: p.id }
+    window.dispatchEvent(new CustomEvent('omni:node-pin-request', { detail: d }))
+    const out = d.out
+    this._setMsg(out?.ok ? `Pinned ${p.name} to your space. Click the node to inspect it (sandbox).` : (out?.error ?? 'Pinning is not available right now.'), out?.ok ? 'ok' : 'err')
+    if (out?.ok) window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: '⟐OmniStore', desc: `${p.name} pinned to your space.`, holdMs: 2000 } }))
+    return out ?? null
   }
 
   addToList (state) {
@@ -897,6 +1018,6 @@ export default class OmniExchangeRadial {
   }
 
   getState () {
-    return { open: this._isOpen, tab: this.tab, productId: this.productId, qty: this.qty, sel: this.sel, level: this.level, payType: this.payType, applyRem: this.applyRem }
+    return { open: this._isOpen, view: this.view, tab: this.tab, productId: this.productId, qty: this.qty, sel: this.sel, level: this.level, payType: this.payType, applyRem: this.applyRem }
   }
 }

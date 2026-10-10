@@ -1,0 +1,69 @@
+{
+  "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
+  "version": "V184",
+  "date": "2026-10-10",
+  "summary": "V184: Claude Check panel. Test the V181-V183 store/node features via this panel",
+  "asks": [
+    {
+      "id": "fps-emoji-store",
+      "question": "Real-GPU frame rate (fps) with the all-emoji demo store loaded and open?",
+      "why": "Every frame rate so far came from software rendering at about 1 fps; I cannot tell if the 1,914-emoji store or the shelf layouts are fast enough on a real GPU.",
+      "kind": "number",
+      "device": "gpu"
+    },
+    {
+      "id": "fps-50-test-nodes",
+      "question": "Frame rate (fps) with 50 test nodes (DevOmniStoreSettings > node readout > Create 50 test nodes)?",
+      "why": "V183 shares geometries and textures between store/value nodes; I want a real number for 50 and, if you try it, for 250 (say so in the message).",
+      "kind": "number",
+      "device": "gpu"
+    },
+    {
+      "id": "phone-store-feel",
+      "question": "How does the store feel on your phone (opening, paging, the exchange sheet, pinning a node)?",
+      "why": "The store and the Inspector block were only measured in a desktop browser with a narrow window. Add any detail in the message box.",
+      "kind": "choice",
+      "choices": ["good", "ok", "bad"],
+      "device": "phone"
+    },
+    {
+      "id": "phone-panel-fit",
+      "question": "Is this Claude Check panel comfortable to use on your phone (no sideways scroll, buttons easy to hit)?",
+      "why": "It is new in V184 and was only checked at 390px in a desktop browser; the whole feedback loop depends on it being usable where you test.",
+      "kind": "yesno",
+      "device": "phone"
+    },
+    {
+      "id": "regress-ordinary-nodes",
+      "question": "Did any ordinary node behaviour regress after V183 changed OmniNode / OmniInspector (create, select, edit, group, duplicate, delete, save and reload)?",
+      "why": "V183 touched the shared node and Inspector code; the automated suites pass but only a hands-on session shows a changed feel. If yes, name the action in the message.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "hands-opacity-feel",
+      "question": "Which of V174's bottom-hands summon or V175's opacity change (tunnels more solid, icosahedron nodes fainter) feels wrong, if any?",
+      "why": "V175 changed two constants by eye on a software renderer and was never judged on a white vs a black wallpaper; V174's second dock icon was never clicked on a phone.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "top-middle-banner",
+      "question": "Where exactly is the top-middle banner you wanted removed (which screen, what does it say or show)?",
+      "why": "Carried from an old question (V172): a fresh boot has nothing hand-related in the top middle, so I could not find what you meant and changed nothing.",
+      "kind": "text",
+      "device": "any"
+    }
+  ],
+  "knownIssues": [
+    "Real GPU, a real phone and touch are not verified for anything from V181 to V184 (all earlier runs were jsdom or software-GL Chromium at about 1 fps).",
+    "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
+    "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
+    "Objects near [200, 50, 300] can intersect a store moved there; there is no collision or warning.",
+    "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit).",
+    "The arbitrage guard only blocks continuing a loop within 10 minutes of your own buy log; it ignores fees and a second account.",
+    "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI.",
+    "The Grant 10 (sandbox) button in the Value block duplicates the Wallet's; keep or remove is your decision.",
+    "Sunburst chart level 0 is taller than the panel on short desktop screens (it scrolls vertically)."
+  ]
+}

@@ -99,6 +99,9 @@ import { createTimeData } from '../utils/TimeData.js'
 import { lockToRuler, unlockFromRuler } from '../utils/TimeDataRegistry.js'
 import { getCurrentSeconds } from '../utils/PrimaryTime.js'
 import * as WindowManager from '../ui/WindowManager.js'
+import * as Store from '../utils/OmniStoreModel.js'
+import * as Value from '../utils/OmniValueModel.js'
+import * as Kinds from '../utils/OmniNodeKinds.js'   // V183: StoreItemNode / OmniValueNode (data.nodeKind) — see docs/omniproducts/OMNISTORE_NODES_DESIGN.md
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -248,6 +251,8 @@ const GEO_LABELS = {
   EdgesGeometry        : 'Edges',
   WireframeGeometry    : 'Wireframe',
   EssenceData          : 'Essence Data',
+  StoreItemNode        : 'Store item',
+  OmniValueNode        : 'Value type',
 }
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -814,6 +819,35 @@ const STYLES = /* css */`
   text-align        : center;
 }
 
+/* ── V183: Store item / Value type entries in the picker (sandbox) ─────────── */
+
+.on-kind-row {
+  flex              : 0 0 auto;
+  display           : flex;
+  flex-direction    : column;
+  gap               : 6px;
+  padding           : 6px 10px 10px;
+  border-top        : 1px solid rgba(255,255,255,0.05);
+}
+.on-kind-title { font-size: 8px; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+.on-kind-cells { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.on-kind-cell { flex-direction: row; gap: 8px; padding: 8px 6px; }
+.on-kind-cell.is-active { border-color: rgba(255,179,71,0.7); background: rgba(255,179,71,0.12); }
+.on-kind-cell .on-geo-name { font-size: 9px; }
+.on-kind-choose { display: none; flex-direction: column; gap: 4px; }
+.on-kind-choose.is-open { display: flex; }
+.on-kind-filter {
+  width: 100%; box-sizing: border-box; height: 28px; padding: 0 8px; font: inherit; font-size: 10.5px; color: #fff;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;
+}
+.on-kind-list { display: flex; flex-direction: column; gap: 2px; max-height: 132px; overflow-y: auto; }
+.on-kind-item {
+  text-align: left; min-height: 28px; padding: 3px 8px; font: inherit; font-size: 10.5px; color: rgba(255,255,255,0.88); cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.on-kind-item:hover, .on-kind-item:focus-visible { background: rgba(255,255,255,0.12); outline: none; }
+.on-kind-note { font-size: 9px; color: rgba(255,255,255,0.5); line-height: 1.4; }
+
 /* ── Canvas cursor in place mode ──────────────────────────────────────────── */
 
 .on-place-cursor canvas,
@@ -865,6 +899,8 @@ const GEO_ICONS = {
   EdgesGeometry        : '⬕',
   WireframeGeometry    : '⊹',
   EssenceData          : '◈',
+  StoreItemNode        : '🛍',
+  OmniValueNode        : '🪙',
 }
 
 // ── ID generator ──────────────────────────────────────────────────────────────
@@ -993,6 +1029,7 @@ export default class OmniNode {
 
     // ── Pending node creation ──────────────────────────────────────
     this._pendingGeo       = null   // geometry type chosen in picker
+    this._pendingKind      = null   // V183: { nodeKind, storeId, productId } | { nodeKind, valueTypeId } chosen in the picker's Store / Value row
     this._pendingPrimitive = 'objective'   // selected primitive type
 
     // ── Raycast system ─────────────────────────────────────────────
@@ -1140,6 +1177,7 @@ export default class OmniNode {
 
     // Remove Three.js objects
     this._nodes.forEach(({ mesh }) => {
+      Kinds.releaseKindMesh(mesh)
       this.ctx.scene.remove(mesh)
       mesh.geometry?.dispose()
       mesh.material?.dispose()
@@ -1398,6 +1436,18 @@ export default class OmniNode {
       </div>
       <div class="on-geo-primitive-row" id="on-primitive-row">${primBtns}</div>
       <div class="on-geo-grid" id="on-geo-grid">${gridCells}</div>
+      <div class="on-kind-row" id="on-kind-row">
+        <div class="on-kind-title">Store &amp; value (sandbox)</div>
+        <div class="on-kind-cells">
+          <div class="on-geo-cell on-kind-cell" data-kind="${Kinds.KIND_STORE_ITEM}" role="button" tabindex="0" title="A node that represents one product of your active store"><span class="on-geo-icon">${GEO_ICONS.StoreItemNode}</span><span class="on-geo-name">${GEO_LABELS.StoreItemNode}</span></div>
+          <div class="on-geo-cell on-kind-cell" data-kind="${Kinds.KIND_VALUE}" role="button" tabindex="0" title="A node that represents one value type, with your live balance"><span class="on-geo-icon">${GEO_ICONS.OmniValueNode}</span><span class="on-geo-name">${GEO_LABELS.OmniValueNode}</span></div>
+        </div>
+        <div class="on-kind-choose" id="on-kind-choose">
+          <input class="on-kind-filter" id="on-kind-filter" type="search" placeholder="filter by name" aria-label="Filter by name" autocomplete="off">
+          <div class="on-kind-list" id="on-kind-list" role="listbox"></div>
+          <div class="on-kind-note" id="on-kind-note"></div>
+        </div>
+      </div>
     `
 
     this._geoPick = el
@@ -1422,11 +1472,67 @@ export default class OmniNode {
       this._playSound('click')
     })
 
+    // V183: Store item / Value type — pick which product / type the node represents, then the normal place flow
+    const kindRow = el.querySelector('#on-kind-row')
+    const activate = (cell) => { this._openKindChooser(cell.dataset.kind); this._playSound('click') }
+    kindRow.querySelector('.on-kind-cells').addEventListener('click', (e) => { const c = e.target.closest('.on-kind-cell'); if (c) activate(c) })
+    kindRow.querySelector('.on-kind-cells').addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const c = e.target.closest('.on-kind-cell'); if (c) { e.preventDefault(); activate(c) } })
+    kindRow.querySelector('#on-kind-filter').addEventListener('input', () => this._fillKindList())
+    kindRow.querySelector('#on-kind-list').addEventListener('click', (e) => {
+      const b = e.target.closest('.on-kind-item')
+      if (!b) return
+      this._confirmKind({ nodeKind: this._kindChoosing, ...(this._kindChoosing === Kinds.KIND_STORE_ITEM ? { storeId: b.dataset.store, productId: b.dataset.id } : { valueTypeId: b.dataset.id }) })
+      this._playSound('click')
+    })
+
     // Cancel
     el.querySelector('#on-geo-cancel').addEventListener('click', () => {
       this._closeGeoPicker()
       this._playSound('close')
     })
+  }
+
+  /** V183: open the small chooser under the picker's Store / Value row (up to 24 matches at a time; the filter narrows the list). */
+  _openKindChooser (kind) {
+    this._kindChoosing = kind
+    const el = this._geoPick
+    el.querySelectorAll('.on-kind-cell').forEach(c => c.classList.toggle('is-active', c.dataset.kind === kind))
+    el.querySelector('#on-kind-choose').classList.add('is-open')
+    const f = el.querySelector('#on-kind-filter'); f.value = ''
+    this._fillKindList()
+    try { f.focus({ preventScroll: true }) } catch (_) { /* ignore */ }
+  }
+
+  _fillKindList () {
+    const el = this._geoPick
+    const list = el.querySelector('#on-kind-list'), note = el.querySelector('#on-kind-note')
+    const q = (el.querySelector('#on-kind-filter').value || '').trim().toLowerCase()
+    const MAX = 24
+    let rows = [], total = 0
+    if (this._kindChoosing === Kinds.KIND_STORE_ITEM) {
+      const st = Store.getStore()
+      const all = st.products.filter(p => !q || p.name.toLowerCase().includes(q))
+      total = all.length
+      rows = all.slice(0, MAX).map(p => ({ id: p.id, store: st.id, text: `${p.media?.emoji || p.emoji} ${p.name}` }))
+      note.textContent = `Products of your active store "${st.name}" (${st.products.length}). ${total > MAX ? `Showing ${MAX} of ${total}: type to narrow. ` : ''}The node only points at the product: change the product in the store, the node follows. ${Kinds.SANDBOX_NOTE}`
+    } else {
+      const all = Value.getTypes().filter(t => !q || t.name.toLowerCase().includes(q) || t.id.includes(q))
+      total = all.length
+      rows = all.slice(0, MAX).map(t => ({ id: t.id, store: '', text: `${t.emoji} ${t.name} · ${t.tier}` }))
+      note.textContent = `The node shows this value type and your live balance. ${Kinds.SANDBOX_NOTE}`
+    }
+    const esc = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    list.innerHTML = rows.length ? rows.map(r => `<button type="button" class="on-kind-item" role="option" data-id="${esc(r.id)}" data-store="${esc(r.store)}">${esc(r.text)}</button>`).join('') : '<div class="on-kind-note">Nothing matches.</div>'
+  }
+
+  /** V183: a product / value type was chosen: the normal PLACE mode follows (click the floor, same as every other node). */
+  _confirmKind (spec) {
+    const kf = Kinds.kindCreateFields(spec)
+    if (!kf) return
+    this._pendingKind = spec
+    this._pendingGeo = kf.geometry
+    this._closeGeoPicker()
+    this._enterPlaceMode()
   }
 
   // ── Geometry picker open / close ─────────────────────────────────────────
@@ -1448,6 +1554,7 @@ export default class OmniNode {
    * @param {string} geoType
    */
   _confirmGeometry (geoType) {
+    this._pendingKind = null
     this._pendingGeo = geoType
     this._closeGeoPicker()
     this._enterPlaceMode()
@@ -1500,6 +1607,7 @@ export default class OmniNode {
   _cancelPlace () {
     if (this._mode !== 'place') return
     this._pendingGeo = null
+    this._pendingKind = null
     this._mode       = 'select'
     this._el.classList.remove('is-place-mode')
     document.body.classList.remove('on-place-mode')
@@ -1693,7 +1801,7 @@ export default class OmniNode {
         const fromLabel = this._nodes.get(edge.from)?.data?.label ?? edge.from
         const toLabel   = this._nodes.get(edge.to)?.data?.label ?? edge.to
         window.dispatchEvent(new CustomEvent('omni:edge-inspect-request', {
-          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style } }
+          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style }, valuePair: Kinds.valuePairOf(this._nodes.get(edge.from)?.data, this._nodes.get(edge.to)?.data) }
         }))
         return
       }
@@ -1762,6 +1870,7 @@ export default class OmniNode {
     const geoType  = this._pendingGeo
     const prim     = this._pendingPrimitive
     const isEssence = geoType === 'EssenceData'
+    const kf = this._pendingKind ? Kinds.kindCreateFields(this._pendingKind) : null   // V183: a store item / value node
 
     this._createNode({
       id        : generateId(),
@@ -1782,6 +1891,7 @@ export default class OmniNode {
         evidence         : new Array(ESSENCE_DEFAULT_QUESTIONS.length).fill(null),
         essenceState     : 'undefined',
       } : {}),
+      ...(kf ? { ...kf, scale: [1, 1, 1] } : {}),
     })
 
     this._cancelPlace()
@@ -1836,10 +1946,12 @@ export default class OmniNode {
     // until a page reload routed it through the correct restore path
     // instead.
     const color  = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
-    const mesh   = this._buildMesh(data.geometry, color, data.text, {
-      metalness: data.metalness, roughness: data.roughness,
-      emissive: data.emissive, emissiveIntensity: data.emissiveIntensity,
-    })
+    const mesh   = Kinds.isKindData(data)
+      ? Kinds.buildKindMesh(data, color)   // V183: a reference node (store product / value type): shared geometry + shared glyph / label textures
+      : this._buildMesh(data.geometry, color, data.text, {
+        metalness: data.metalness, roughness: data.roughness,
+        emissive: data.emissive, emissiveIntensity: data.emissiveIntensity,
+      })
 
     mesh.position.set(...data.position)
     if (data.rotation) mesh.rotation.set(...data.rotation)
@@ -1921,7 +2033,7 @@ export default class OmniNode {
     this._updateNodeList()
     if (!data.skipAutoSelect) this._selectNode(data.id)
 
-    window.dispatchEvent(new CustomEvent('omni:node-created',  { detail: { node: data, mesh } }))
+    window.dispatchEvent(new CustomEvent('omni:node-created',  { detail: { node: data, mesh, ...(this._quietCreate ? { quiet: true } : {}) } }))   // V183: quiet = a pin / test node: the Inspector must not load it
     window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
 
     // GSAP entry — materialise from nothing, up to the node's own
@@ -1998,6 +2110,7 @@ export default class OmniNode {
     gsap.to(mesh.scale, {
       x: 0, y: 0, z: 0, duration: 0.22, ease: 'power2.in',
       onComplete: () => {
+        Kinds.releaseKindMesh(mesh)   // V183: give back the shared textures first (a no-op for every other node)
         this.ctx.scene.remove(mesh)
         mesh.geometry?.dispose()
         mesh.material?.dispose()
@@ -2233,6 +2346,7 @@ export default class OmniNode {
     this._updateEdgeList()
 
     if (edge.isSequenceEdge) this._dispatchSequenceUpdate()
+    window.dispatchEvent(new CustomEvent('omni:edge-removed', { detail: { from: edge.from, to: edge.to } }))   // V183: conversion labels (systems/OmniStoreNodes.js) follow
   }
 
   _highlightPathStart (id) {
@@ -3045,7 +3159,7 @@ export default class OmniNode {
         const fromLabel = this._nodes.get(edge.from)?.data?.label ?? edge.from
         const toLabel   = this._nodes.get(edge.to)?.data?.label ?? edge.to
         window.dispatchEvent(new CustomEvent('omni:edge-inspect-request', {
-          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style } }
+          detail: { from: edge.from, to: edge.to, fromLabel, toLabel, style: { ...EDGE_STYLE_DEFAULTS, ...edge.style }, valuePair: Kinds.valuePairOf(this._nodes.get(edge.from)?.data, this._nodes.get(edge.to)?.data) }
         }))
       })
     })
@@ -3171,6 +3285,7 @@ export default class OmniNode {
       const { id, geometry } = e.detail ?? {}
       const entry = this._nodes.get(id)
       if (!entry) return
+      if (Kinds.isKindData(entry.data)) return   // V183: a store item / value node's shape follows its product / type; it is not swappable
 
       // Swap geometry in-place
       const color = PRIMITIVE_COLORS[entry.data.primitive] ?? 0xffffff
@@ -3259,6 +3374,7 @@ export default class OmniNode {
         }
       })
 
+      Kinds.releaseKindMesh(entry.mesh)   // V183: shared textures go back to the cache BEFORE the generic map.dispose() below
       this.ctx.scene.remove(entry.mesh)
       entry.mesh.geometry?.dispose()
       entry.mesh.material?.map?.dispose()   // canvas texture, for Dimensional Text sprites
@@ -3288,10 +3404,11 @@ export default class OmniNode {
     // needing a direct reference to this OmniNode instance.
     this._onCreateRequest = (e) => {
       const d = e.detail ?? {}
-      this._createNode({
+      const kf = Kinds.kindCreateFields(d)   // V183: null for every ordinary node
+      const data = {
         id        : d.id ?? generateId(),
-        label     : d.label ?? 'Object_' + Date.now().toString(36).slice(-4),
-        geometry  : d.geometry ?? 'BoxGeometry',
+        label     : d.label ?? kf?.label ?? 'Object_' + Date.now().toString(36).slice(-4),
+        geometry  : kf?.geometry ?? d.geometry ?? 'BoxGeometry',
         primitive : d.primitive ?? 'objective',
         color     : d.color ?? '#ffffff',
         position  : d.position ?? [0, 1, 0],
@@ -3300,7 +3417,7 @@ export default class OmniNode {
         // V168: a fired flow element (systems/OmniFlowFire.js) is only linked to the node it
         // was fired AT when the caller says so (its chain edge); the selection-as-parent
         // default is for every other creator.
-        parentId  : d.parentId ?? (d.flowElement ? null : (this._selected ?? null)),
+        parentId  : d.parentId ?? ((d.flowElement || d.noParent) ? null : (this._selected ?? null)),   // V183: noParent = a pin never hangs off the selection
         createdAt : new Date().toISOString(),
         autoRotation      : d.autoRotation ?? false,
         autoRotationAxisX : d.autoRotationAxisX ?? false,
@@ -3347,7 +3464,16 @@ export default class OmniNode {
         // V168 — a fired flow element / display anchor: { kind, hand, payloadId, chainId, payload
         // snapshot, style, ... } (systems/OmniFlowFire.js). Same reason as above: dropped unless listed.
         flowElement: d.flowElement ?? null,
-      })
+        // V183 — a reference node (systems/OmniStoreNodes.js): only the validated reference is kept (no product / type copy).
+        ...(kf ? { nodeKind: kf.nodeKind, ...(kf.storeId ? { storeId: kf.storeId, productId: kf.productId } : { valueTypeId: kf.valueTypeId }) } : {}),
+      }
+      // V183: noSelect = create without selecting (a pin must not pop the Inspector over the store). skipAutoSelect cannot be used for that:
+      // it also takes the node out of hover / click picking (_selectableMeshes), so it is only set while the node is being created.
+      const quiet = !!d.noSelect && !data.skipAutoSelect
+      if (quiet) data.skipAutoSelect = true
+      this._quietCreate = !!d.noSelect
+      try { this._createNode(data) } finally { this._quietCreate = false }
+      if (quiet) { data.skipAutoSelect = false; this._save() }
     }
 
     // omni:node-position-set { id, position } — a real, direct
@@ -3747,6 +3873,7 @@ export default class OmniNode {
     // references to meshes that no longer exist.
     this._onSceneClear = () => {
       this._nodes.forEach(entry => {
+        Kinds.releaseKindMesh(entry.mesh)
         this.ctx.scene.remove(entry.mesh)
         entry.mesh.geometry?.dispose()
         if (Array.isArray(entry.mesh.material)) entry.mesh.material.forEach(m => m.dispose())
@@ -3823,7 +3950,7 @@ export default class OmniNode {
           // doesn't stick after reload" bug: it always used the
           // primitive default here, discarding whatever the user set.
           const color = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
-          const mesh  = this._buildMesh(data.geometry, color, data.text)
+          const mesh  = Kinds.isKindData(data) ? Kinds.buildKindMesh(data, color) : this._buildMesh(data.geometry, color, data.text)
           mesh.position.set(...(data.position ?? [0, PLACE_Y_OFFSET, 0]))
           // Same bug for rotation/scale — previously never reapplied on
           // restore, so a saved node always came back at default

@@ -80,6 +80,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniPocket'      },
   { label: '⟐OmniStore'       },
   { label: '⟐OmniValue'       },
+  { label: '⟐OmniTalent'      },
   { label: '⟐OmniNavi'        },
   { label: '⟐OmniHands',     children: ['⟐LogicalHand', '⟐CreativeHand', '⟐ConsciousHand', '⟐OmniHand'] },
   { divider: true },

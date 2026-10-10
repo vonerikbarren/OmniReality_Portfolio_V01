@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V181 · Status: verified against code on 2026-10-09 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 

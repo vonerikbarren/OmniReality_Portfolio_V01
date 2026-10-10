@@ -32,6 +32,11 @@
  * Camera: flyToLayout() (flyToShelf is kept as an alias); ring: setView('inside'|'outside'); aisle: stepStop(+1|-1). Arrow keys are NOT
  * bound (ui/MovementPad.js / OmniKeys.js own them globally): the HUD buttons are the way.
  *
+ * V182 — SEVERAL STORES (BuildOrder item 6). The scene shows ONE store, the identity's ACTIVE store (OmniStoreModel.activeStoreId); the others are not loaded
+ * at all (the mall-hub rule). A switch (omni:store-changed {kind:'active-store'}, or a new identity) runs _storeSwitched(): re-point the anchor / group, apply the
+ * store's look, rebuild the SAME pooled slots and furniture in place (no new meshes, textures or videos pile up) and fly to the new layout's default view.
+ * HUD: a store chip (emoji + name, hidden while you own one store) with a small menu; it calls Store.setActiveStore like the Stores tab does.
+ *
  * Module contract: constructor(ctx, opts) / init / update / destroy / onResize.
  */
 
@@ -49,7 +54,7 @@ export const BACKDROP_RADIUS = 120
 export const BACKDROP_ORDER = -1.5   // after the wallpaper sphere (-2, modules/WallpaperSphere.js: depthWrite false) so it is not painted over, before the domain grid (-1)
 export const MAX_VIDEOS = 4
 export const TEX_SIZE = 256
-export const DEFAULT_ANCHOR = [0, 3, -40]
+export const DEFAULT_ANCHOR = Look.DEFAULT_ANCHOR   // V181: defined in OmniStoreSettings (the location is now a user setting); re-exported for old imports
 const SPACING = Layouts.SPACING
 export const STOP_GLIDE_S = 0.9
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif'
@@ -79,6 +84,13 @@ const STYLES = `
 .osh-chip.is-active { background: rgba(255,255,255,.24); border-color: var(--osh-select, rgba(255,255,255,.75)); box-shadow: 0 0 0 1px var(--osh-select, transparent); }
 .osh-layoutrow { flex-wrap: wrap; }
 .osh-stop { white-space: nowrap; min-width: 64px; text-align: center; }
+.osh-storebtn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.osh-menu { display: none; position: absolute; left: 6px; top: calc(100% + 4px); z-index: 47; flex-direction: column; gap: 2px; min-width: 200px; max-width: calc(100vw - 32px); max-height: 50vh; overflow-y: auto; padding: 4px;
+  background: var(--omni-theme-bg, rgba(8,8,12,.96)); border: 1px solid var(--omni-theme-border, rgba(255,255,255,.22)); border-radius: 8px; }
+.osh-menu.is-open { display: flex; }
+.osh-menu button { display: block; width: 100%; min-height: 32px; text-align: left; padding: 3px 8px; font: inherit; color: inherit; cursor: pointer; border-radius: 6px; background: transparent; border: 1px solid transparent; white-space: normal; overflow-wrap: anywhere; }
+.osh-menu button:hover { background: rgba(255,255,255,.12); }
+.osh-menu button[aria-checked="true"] { background: rgba(255,255,255,.2); border-color: var(--osh-select, rgba(255,255,255,.6)); }
 .osh [hidden] { display: none !important; }
 .osh-pager { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .osh-tip { position: fixed; z-index: 46; pointer-events: none; display: none; max-width: 240px; padding: 4px 8px; border-radius: 6px;
@@ -105,7 +117,7 @@ export default class OmniStoreScene {
    */
   constructor (ctx, opts = {}) {
     this.ctx = ctx
-    this.anchor = opts.anchor ?? DEFAULT_ANCHOR
+    this.anchor = [...(opts.anchor ?? Look.getSettings().anchor)]   // V181: the user's saved location (setting `anchor`); opts.anchor is a test hook
     this._loadImage = opts.loadImage ?? null
     this.maxVideos = opts.maxVideos ?? MAX_VIDEOS
     this._open = false
@@ -161,14 +173,18 @@ export default class OmniStoreScene {
       open: (e) => this.open(e.detail ?? {}),
       close: () => this.close(),
       nav: (e) => { if (e.detail?.item === '⟐OmniStore') this.open({}) },
-      changed: () => { this._dirty = true },
-      identity: () => { this._dirty = true; this._applyLook() },
+      changed: (e) => { this._dirty = true; const k = e.detail?.kind; if (k === 'active-store') this._storeSwitched(); else if (typeof k === 'string' && k.startsWith('store-')) this._syncStoreChip() },
+      identity: () => { this._dirty = true; this._storeSwitched() },   // another identity has its own stores: show ITS active store
+      key: (e) => { if (e.key === 'Escape' && this._menuOpen) this._toggleMenu(false) },
+      outside: (e) => { if (this._menuOpen && !this._hud?.contains(e.target)) this._toggleMenu(false) },
       look: (e) => {
         const id = e.detail?.storeId
         if (id && id !== Look.currentStoreId()) return
         if (this._previewLayout && (e.detail?.key === 'layout' || e.detail?.keys?.includes('layout'))) this._previewLayout = null   // the user picked a layout: a dev preview ends
         this._applyLook()
+        if (e.detail?.key === 'anchor' || e.detail?.keys?.includes('anchor')) this._syncAnchor()   // V181: the store location changed
       },
+      placeAtCamera: () => this.placeAtCamera(),
       dev: (e) => { if (!e.detail?.key || e.detail.key === 'perf') this._setPerPage(DevData.getItemsPerPage()) },
       stats: (e) => { if (e.detail && typeof e.detail === 'object') e.detail.out = this.getStats() },
       select: (e) => { this._selectedId = e.detail?.productId ?? null; this._placeRings() },
@@ -192,7 +208,9 @@ export default class OmniStoreScene {
     window.addEventListener('omni:layout-changed', this._on.layout)
     window.addEventListener('omni:store-panel-changed', this._on.panel)
     window.addEventListener('omni:store-layout-set', this._on.layoutSet)
+    window.addEventListener('omni:store-place-at-camera', this._on.placeAtCamera)
     window.addEventListener('resize', this._on.layout)
+    window.addEventListener('keydown', this._on.key)
 
     const el = this.ctx.renderer?.domElement
     this._canvas = el ?? null
@@ -228,7 +246,10 @@ export default class OmniStoreScene {
     window.removeEventListener('omni:layout-changed', this._on.layout)
     window.removeEventListener('omni:store-panel-changed', this._on.panel)
     window.removeEventListener('omni:store-layout-set', this._on.layoutSet)
+    window.removeEventListener('omni:store-place-at-camera', this._on.placeAtCamera)
     window.removeEventListener('resize', this._on.layout)
+    window.removeEventListener('keydown', this._on.key)
+    window.removeEventListener('pointerdown', this._on.outside)
     if (this._canvas && this._ptr) {
       this._canvas.removeEventListener('pointermove', this._ptr.move)
       this._canvas.removeEventListener('pointerdown', this._ptr.down)
@@ -419,6 +440,86 @@ export default class OmniStoreScene {
     }
   }
 
+  // ── Store location (V181) ────────────────────────────────────────────────────
+
+  /**
+   * Move the whole store to x, y, z (clamped like the setting; a bad axis is ignored) and SAVE it (OmniStoreSettings `anchor`).
+   * The change comes back through omni:store-settings-changed -> _syncAnchor(), which does the live move. Returns the saved [x,y,z]
+   * or null when nothing valid was given.
+   */
+  setAnchor (x, y, z) {
+    const next = Look.normalizeAnchor([x, y, z], this.anchor)
+    Look.setSettings({ anchor: next })
+    this._syncAnchor()   // idempotent; also covers a settings write that failed to emit
+    return [...this.anchor]
+  }
+
+  /** Make the group follow the saved anchor. If the camera is near the store (viewing it), camera and orbit target move by the same delta, so the view is unchanged. */
+  _syncAnchor () {
+    const want = Look.getSettings().anchor
+    const old = this.anchor
+    if (want[0] === old[0] && want[1] === old[1] && want[2] === old[2]) return false
+    const d = [want[0] - old[0], want[1] - old[1], want[2] - old[2]]
+    const cam = this.ctx.camera
+    const viewing = this._open && !!this.group && cam.position.distanceTo(this.group.position) < BACKDROP_RADIUS * 0.92   // the same "inside the dome" test the backdrop uses
+    this.anchor = [...want]
+    this.group?.position.set(want[0], want[1], want[2])
+    if (viewing) {
+      const flying = this._flyTween?.isActive?.() === true
+      cam.position.x += d[0]; cam.position.y += d[1]; cam.position.z += d[2]
+      if (this._lastFly) {
+        this._lastFly.pos = this._lastFly.pos.map((v, i) => v + d[i]); this._lastFly.target = this._lastFly.target.map((v, i) => v + d[i])
+        const [tx, ty, tz] = this._lastFly.target
+        window.dispatchEvent(new CustomEvent('omni:orbit-target-set', { detail: { x: tx, y: ty, z: tz } }))   // the orbit pivot moves with the store
+        if (!flying) cam.lookAt(tx, ty, tz)
+      }
+      if (flying) this.flyToLayout(0.5)   // a glide in progress was aimed at the old place: re-aim it from where the camera is now
+    }
+    if (this._open) this._emitState()
+    return true
+  }
+
+  // ── Switching stores (V182) ──────────────────────────────────────────────────
+
+  /**
+   * The active store (or the identity) changed. One rebuild, in place: the group moves to the new store's anchor, its look and layout are applied,
+   * the view / page / selection reset and (store open) the camera flies to the new layout's default view. Closed: only the hidden group and the look follow.
+   */
+  _storeSwitched () {
+    if (!this._inited || !this.group) return
+    this._toggleMenu(false)
+    const want = Look.getSettings().anchor
+    this.anchor = [...want]
+    this.group.position.set(want[0], want[1], want[2])
+    this._previewLayout = null
+    this._selectedId = null
+    this._view = 'outside'; this._stop = 0; this._page = 0; this._snapRot = true
+    this._setHover(-1); this._hideTip()
+    this._opening = true       // _applyLook must not start its own rebuild + fly: this method does it once
+    try { this._applyLook() } finally { this._opening = false }
+    if (this._open) {
+      this._rebuild(); this._emitState()
+      const cam = this.ctx.camera.position, a = this.anchor
+      const far = Math.hypot(cam.x - a[0], cam.y - a[1], cam.z - a[2])
+      this.flyToLayout(Math.min(2.4, 1.2 + far / 600))   // a far store gets a slightly longer glide; the camera always ends in front of the new store
+    } else this._dirty = true
+    this._placeRings()
+  }
+
+  /** Make another of your stores the active one (the HUD chip and the Stores tab use the same model call). */
+  switchStore (id) { return Store.setActiveStore(id) }
+
+  /** Put the store about 30 units in front of the camera's look direction, at the camera's height (the layout is not turned). */
+  placeAtCamera (dist = 30) {
+    const cam = this.ctx.camera
+    const dir = new THREE.Vector3()
+    cam.getWorldDirection(dir)
+    dir.y = 0
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, -1)   // looking straight up / down: use the default facing
+    dir.normalize()
+    return this.setAnchor(cam.position.x + dir.x * dist, cam.position.y, cam.position.z + dir.z * dist)
+  }
+
   // ── Layout switching (V179) ──────────────────────────────────────────────────
 
   get layoutId () { return this._layoutId }
@@ -549,6 +650,8 @@ export default class OmniStoreScene {
       drawCalls: info?.render?.calls ?? null, triangles: info?.render?.triangles ?? null, gpuGeometries: info?.memory?.geometries ?? null, gpuTextures: info?.memory?.textures ?? null,
       fps: this._open && this._fps > 0 ? Math.round(this._fps) : null,
       furnitureMeshes: this._furnitureVisible(), furnitureBuilt: this._furnitureCount(),
+      anchor: [...this.anchor],
+      storeId: Store.activeStoreId(), stores: Store.listStores().length, groupChildren: this.group.children.length,
       layout: this._layoutStats(),
     }
   }
@@ -1032,11 +1135,15 @@ export default class OmniStoreScene {
     const stopLabel = mkEl('span', 'osh-stop', 'Entrance'); stopLabel.setAttribute('aria-live', 'polite')
     const stopNext = btn('▶', 'stop-next', 'Next stop', 'Glide to the next stop along the aisle.')
     const enter = btn('Enter', 'view', 'Enter the ring', 'Moves the camera to the middle of the ring so you look out at the products. Recentre (⌖) returns to the overview.')
-    r3.append(layoutBtn, stopPrev, stopLabel, stopNext, enter)
-    hud.append(r1, r2, r3)
+    // V182 store chip (first in row 3): hidden while the identity owns one store; opens a small menu of the stores
+    const storeBtn = btn('', 'store', 'Stores', 'Switch to another of your stores.')
+    storeBtn.classList.add('osh-storebtn'); storeBtn.hidden = true; storeBtn.setAttribute('aria-haspopup', 'menu'); storeBtn.setAttribute('aria-expanded', 'false')
+    const menu = mkEl('div', 'osh-menu'); menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Your stores')
+    r3.append(storeBtn, layoutBtn, stopPrev, stopLabel, stopNext, enter)
+    hud.append(r1, r2, r3, menu)
     ;(document.getElementById('omni-ui') ?? document.body).appendChild(hud)
     this._hud = hud
-    this._hudRefs = { chips, prev, next, label, title, layoutBtn, stopPrev, stopLabel, stopNext, enter }
+    this._hudRefs = { chips, prev, next, label, title, layoutBtn, stopPrev, stopLabel, stopNext, enter, storeBtn, menu }
     this._applyLook()
   }
 
@@ -1070,6 +1177,7 @@ export default class OmniStoreScene {
     if (a === 'close') window.dispatchEvent(new CustomEvent('omni:store-close'))
     else if (a === 'recenter') { this._view = 'outside'; this._stop = 0; this.flyToLayout(); this._syncHud() }   // the default pose of the layout
     else if (a === 'layout') this.setLayout(Layouts.nextLayoutId(this._layoutId))
+    else if (a === 'store') this._toggleMenu()
     else if (a === 'stop-prev') this.stepStop(-1)
     else if (a === 'stop-next') this.stepStop(1)
     else if (a === 'view') this.toggleView()
@@ -1102,6 +1210,43 @@ export default class OmniStoreScene {
     prev.disabled = this._page <= 0
     next.disabled = this._page >= this.pages - 1
     this._syncLayoutRow()
+    this._syncStoreChip()
+  }
+
+  /** The store chip (emoji + name of the active store; hidden with one store) and its menu. */
+  _syncStoreChip () {
+    const r = this._hudRefs
+    if (!r?.storeBtn) return
+    const list = Store.listStores()
+    r.storeBtn.hidden = list.length < 2
+    if (list.length < 2) { this._toggleMenu(false); return }
+    const act = list.find(x => x.active) ?? list[0]
+    r.storeBtn.textContent = `${act.emoji} ${act.name} ▾`
+    r.storeBtn.dataset.omniTip = `Store: ${act.name}`
+    r.storeBtn.dataset.omniTipDesc = `${list.length} stores. Click to switch; the camera flies to the one you pick.`
+    r.storeBtn.setAttribute('aria-label', `Store: ${act.name}. ${list.length} stores. Open the store menu.`)
+    if (this._menuOpen) this._fillMenu(list)
+  }
+  _fillMenu (list = Store.listStores()) {
+    const menu = this._hudRefs.menu
+    menu.textContent = ''
+    list.forEach(x => {
+      const b = mkEl('button', '', `${x.emoji} ${x.name} · ${Layouts.getLayout(x.layout).name}`)
+      b.type = 'button'; b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(x.active)); b.dataset.storeId = x.id
+      b.addEventListener('click', () => { this._toggleMenu(false); this.switchStore(x.id) })
+      menu.appendChild(b)
+    })
+  }
+  _toggleMenu (force) {
+    const r = this._hudRefs
+    if (!r?.menu) return
+    const open = force === undefined ? !this._menuOpen : !!force
+    if (open === !!this._menuOpen) return
+    this._menuOpen = open
+    if (open) this._fillMenu()
+    r.menu.classList.toggle('is-open', open)
+    r.storeBtn.setAttribute('aria-expanded', String(open))
+    if (open) window.addEventListener('pointerdown', this._on.outside); else window.removeEventListener('pointerdown', this._on.outside)
   }
 
   /** The layout chip (always) + the controls only some layouts have (aisle stops, ring enter / exit). */

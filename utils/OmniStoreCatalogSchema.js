@@ -22,14 +22,16 @@
  *   value types / quality grades must exist in ctx.types (unknown = ERROR, never invented, never mapped to something else)
  *   media   image: http(s) URL or data:image/(png|jpeg|gif|webp);base64 <= 512 KB each and <= 1.5 MB per catalog; video:
  *           http(s) URL only. javascript:, file:, ftp:, relative paths, data: videos etc. = ERROR.
- *   count   <= 500 products, <= 8 price forms, <= 12 lifecycle entries; raw text <= 4 MB
+ *   count   <= 3000 products (V181; was 500), <= 8 price forms, <= 12 lifecycle entries; raw text <= 4 MB
  */
 
 export const SCHEMA_ID = 'omni-store-catalog/1'
 export const LIMITS = {
-  products: 500, name: 80, note: 300, emoji: 16, id: 64, storeName: 40, storeType: 40, forms: 8, lifecycle: 12, sectionIds: 12,
+  products: 3000, name: 80, note: 300, emoji: 32,   // V181: products 500 -> 3000 (all 1,914 Unicode emoji fit with room to spare), emoji 16 -> 32 (a pasted skin-tone family / kiss sequence is up to ~26 units)
+  id: 64, storeName: 40, storeType: 40, forms: 8, lifecycle: 12, sectionIds: 12,
   stage: 16, title: 60, category: 24, description: 2000, url: 2000, imageBytes: 512 * 1024, imageBudget: 1.5 * 1024 * 1024, rawChars: 4 * 1024 * 1024, stock: 1e6, qty: 1e6,
 }
+export const AI_PRODUCTS_MAX = 500   // what the AI prompt asks for; an AI reply cannot realistically hold more (the import cap is LIMITS.products)
 export const SHAPES = ['cube', 'disc']
 export const CATEGORIES = ['fruit', 'vegetable']   // the two the app knows by name; any other short word is accepted (V178)
 export const DEFAULT_CATEGORY = 'other'
@@ -466,11 +468,19 @@ export function buildTemplate (opts = {}) {
  * Options (all optional): description (the user's words, <= 2000 chars), count (about N products), categoryHint (<= 24 chars),
  * acceptedTypes (value type ids the customers pay with), blank:true (no business section at all).
  */
-export function buildAiPrompt ({ types = [], sections = [], description = '', count = 0, categoryHint = '', acceptedTypes = [], blank = false } = {}) {
-  const example = { schema: SCHEMA_ID, store: { name: 'My store', type: 'general' }, products: [buildExample({ types, sections, acceptedTypes })] }
+export function buildAiPrompt ({ types = [], sections = [], description = '', count = 0, categoryHint = '', acceptedTypes = [], blank = false, storeName = '', storeType = '', typeHint = null } = {}) {
+  // V182: the active store's name / type / type hint (utils/OmniStoreTypes.js describeForPrompt) pre-fill the example and add a STORE TYPE block; without them the prompt is as before
+  const plain = (v, n) => String(v ?? '').replace(/[<>"\\\u0000-\u001f]/g, '').trim().slice(0, n)
+  const sName = plain(storeName, LIMITS.storeName) || 'My store'
+  const sType = /^[A-Za-z0-9_.:-]{1,40}$/.test(String(storeType ?? '')) ? String(storeType) : 'general'
+  const example = { schema: SCHEMA_ID, store: { name: sName, type: sType }, products: [buildExample({ types, sections, acceptedTypes })] }
+  const th = typeHint && typeof typeHint === 'object' ? typeHint : null
+  const typeBlock = th ? `STORE TYPE: ${plain(th.label, 40) || sType}${th.productClass ? ` (product class "${plain(th.productClass, 24)}")` : ''}
+${(th.categories ?? []).length ? `Typical categories: ${th.categories.map(c => plain(c, 24)).filter(Boolean).join(', ')}\n` : ''}${(th.sections ?? []).length ? `Sections of this type (use these ids in sectionIds): ${th.sections.map(x => `${plain(x.id, 64)} (${plain(x.name, 28)})`).join(', ')}\n` : ''}${(th.accepts ?? []).length ? `This type of store takes payment in: ${th.accepts.map(c => plain(c, 24)).join(', ')}\n` : ''}
+` : ''
   const accepted = acceptedTypes.filter(id => types.some(t => t.id === id))
   const desc = String(description ?? '').replace(/\s+$/g, '').slice(0, LIMITS.description)
-  const n = Math.max(0, Math.min(LIMITS.products, Math.round(+count || 0)))
+  const n = Math.max(0, Math.min(AI_PRODUCTS_MAX, Math.round(+count || 0)))
   const hint = String(categoryHint ?? '').replace(/[<>]/g, '').trim().slice(0, LIMITS.category)
   const wants = []
   if (n) wants.push(`- Create about ${n} products.`)
@@ -480,7 +490,7 @@ export function buildAiPrompt ({ types = [], sections = [], description = '', co
 
 RULES
 - Reply with ONLY the JSON object: no explanation, no markdown fence, no comments, no trailing commas, straight " quotes only.
-- Top level: {"schema": "${SCHEMA_ID}", "store": {"name": text <= ${LIMITS.storeName}, "type": text}, "products": [ ... ]} (at most ${LIMITS.products} products).
+- Top level: {"schema": "${SCHEMA_ID}", "store": {"name": text <= ${LIMITS.storeName}, "type": text}, "products": [ ... ]} (at most ${AI_PRODUCTS_MAX} products).
 - Each product: id (optional; letters, digits, _ . : - ; unique), name (text <= ${LIMITS.name}), emoji (ONE fitting emoji; repeat it in media.emoji), category (one short lowercase word <= ${LIMITS.category}, e.g. "bread", "drink", "fruit"), sectionIds (ids from SECTIONS below), shape ("cube" or "disc"), media {"emoji": the same emoji, "image": https URL or null, "video": https URL or null, "active": "emoji"}, price (1 to ${LIMITS.forms} forms: {"type": a VALUE TYPE id below, "qty": number > 0, "quality": optional, one of that type's qualities}), stock (whole number >= 0), lifecycle (optional list of {"stage","title","note","t":0}), note (optional text <= ${LIMITS.note}).
 - Several price forms mean the customer may pay with ANY ONE of them. The EXAMPLE at the end is valid, but do not copy its content.
 - No HTML anywhere (no < or > characters). Use image / video URLs only if I give real https:// ones; otherwise null. Do not invent value types or qualities: use only the ones listed.
@@ -491,7 +501,7 @@ ${typeLines(types)}
 SECTIONS AVAILABLE (sectionIds)
 ${sectionLines(sections)}
 
-EXAMPLE
+${typeBlock}EXAMPLE
 ${JSON.stringify(example, null, 2)}
 ${blank ? '' : `
 ${wants.length ? `WHAT I NEED\n${wants.join('\n')}\n\n` : ''}MY BUSINESS:

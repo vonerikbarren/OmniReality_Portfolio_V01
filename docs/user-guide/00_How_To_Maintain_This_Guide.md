@@ -1,6 +1,6 @@
 # 0. How to Maintain This Guide
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V184 · Status: verified against code on 2026-10-10 · Real devices: not verified.
 
 [Guide index](README.md)
 
@@ -17,6 +17,7 @@ This guide is for people who use the app. Keep it true.
 7. **Under five minutes per page.** Split if longer. Cross-link neighbours.
 8. **Say what was not checked.** Anything not tried on a real device goes in the "Unverified" appendix.
 9. **Developer Queue.** Item 61 tracks this guide's follow-ups.
+10. **Regenerate Claude Check every iteration.** The developer-only checklist panel (⟐Developer slot 7) is built from `TestingChecklist.json` and `docs/dev/Roles/Developer/ClaudeCheckAsk.json` by `node tools/build-claude-check.mjs`. After you add the version's checklist category, update the Ask file and re-run the tool (steps in `docs/dev/Roles/Developer/ITERATION_PROTOCOL.md`). Do not describe the panel in user steps; the guide only points to it from page 9.
 
 ## Page template
 

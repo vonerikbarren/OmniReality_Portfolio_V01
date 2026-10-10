@@ -48,6 +48,25 @@ function injectStyles () {
   if (typeof document === 'undefined' || document.getElementById('omni-wallet-styles')) return
   const s = document.createElement('style'); s.id = 'omni-wallet-styles'; s.textContent = STYLES; document.head.appendChild(s)
 }
+/** V181: the standalone OmniValue panel (ui/OmniValuePanel.js) reuses the wallet's table rows and styles instead of copying them. */
+export const ensureWalletStyles = injectStyles
+
+/** One balance row: the value type, its own balance (never merged with another type) and its stated remainder with a claim button when a whole step is available. */
+export function balanceRowHtml (t, balance, remainderTotal, { claim = true, pin = false } = {}) {
+  const canClaim = claim && remainderTotal >= t.step - 1e-9
+  const pinBtn = pin ? ` <button type="button" class="wl-btn" data-act="pin:${esc(t.id)}" style="min-height:24px;padding:0 6px" aria-label="Pin ${esc(t.name)} to my space" title="Pin ${esc(t.name)} to my space" data-omni-tip="Pin this value type" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that shows this value type and your live balance in front of the camera.">📌</button>` : ''
+  return `<tr data-type="${esc(t.id)}"><td>${esc(t.emoji)} ${esc(t.name)}${pinBtn}<div class="wl-dim">${esc(t.tier)}${t.payable ? '' : ' · not payable'}</div></td>
+        <td class="num"><b data-bal="${esc(t.id)}">${fmt(balance ?? 0)}</b> <span class="wl-dim">${esc(t.unit)}</span></td>
+        <td class="num">${remainderTotal > 0 ? `<span class="wl-dim">rem</span> ${fmt(remainderTotal)} ${canClaim ? `<button type="button" class="wl-btn" data-act="claim:${esc(t.id)}" style="min-height:24px">claim</button>` : ''}` : ''}</td></tr>`
+}
+
+/** V183: "Pin this value type": a node showing the type and the live balance, dropped in front of the camera (systems/OmniStoreNodes.js). Returns the message to show. */
+export function pinValueType (typeId) {
+  const d = { kind: 'omniValue', valueTypeId: typeId }
+  window.dispatchEvent(new CustomEvent('omni:node-pin-request', { detail: d }))
+  const t = Value.getType(typeId)
+  return d.out?.ok ? `Pinned ${t?.name ?? typeId} to your space (sandbox). Click the node to inspect it.` : (d.out?.error ?? 'Pinning is not available right now.')
+}
 
 export default class OmniWalletPanel {
   constructor () {
@@ -139,16 +158,10 @@ export default class OmniWalletPanel {
     const bal = Value.getBalances()
     const rem = Value.getRemainders()
     const types = Value.getTypes()
-    const rows = types.map(t => {
-      const r = rem[t.id]?.total ?? 0
-      const canClaim = r >= t.step - 1e-9
-      return `<tr data-type="${esc(t.id)}"><td>${esc(t.emoji)} ${esc(t.name)}<div class="wl-dim">${esc(t.tier)}${t.payable ? '' : ' · not payable'}</div></td>
-        <td class="num"><b data-bal="${esc(t.id)}">${fmt(bal[t.id] ?? 0)}</b> <span class="wl-dim">${esc(t.unit)}</span></td>
-        <td class="num">${r > 0 ? `<span class="wl-dim">rem</span> ${fmt(r)} ${canClaim ? `<button type="button" class="wl-btn" data-act="claim:${esc(t.id)}" style="min-height:24px">claim</button>` : ''}` : ''}</td></tr>`
-    }).join('')
+    const rows = types.map(t => balanceRowHtml(t, bal[t.id] ?? 0, rem[t.id]?.total ?? 0, { pin: true })).join('')
     const remLines = types.filter(t => rem[t.id]?.entries?.length).map(t => `<div class="wl-line"><b>${esc(t.name)}</b> (${fmt(rem[t.id].total)} stated)<br><span class="wl-dim">${esc(rem[t.id].entries[0].line)}</span></div>`).join('')
     const inv = Value.getInventory()
-    const invHtml = Object.keys(inv).map(k => { const p = Store.getProduct(k); return `${esc(p ? p.emoji + ' ' + p.name : k)} ×${fmt(inv[k])}` }).join(' · ')
+    const invHtml = Object.keys(inv).map(k => { const p = Store.findProductAnywhere(k); return `${esc(p ? p.emoji + ' ' + p.name : k)} ×${fmt(inv[k])}` }).join(' · ')
     const log = Value.getLog().slice(0, 20)
     const logHtml = log.map(tx => `<div class="wl-line" data-tx="${esc(tx.id)}"><b>${tx.kind === 'buy' ? 'BUY' : 'SELL'}</b> ${fmt(tx.itemQty)} × ${esc(tx.itemName)} <span class="wl-dim">${new Date(tx.t).toLocaleTimeString()}</span><br>${tx.legs.map(l => `${l.dir === 'out' ? '−' : '+'}${fmt(l.qty)} ${esc(Value.getType(l.type)?.name ?? l.type)} via ${esc(l.channel)}${l.fee ? ` (fee ${fmt(l.fee)})` : ''}`).join(' · ')}<br><span class="wl-dim">${esc(tx.remainder.line)}</span>${tx.declaredIntent ? `<br><span class="wl-dim">intent: ${esc(tx.declaredIntent.note)}</span>` : ''}</div>`).join('')
     const opts = types.map(t => `<option value="${esc(t.id)}">${esc(t.emoji)} ${esc(t.name)}</option>`).join('')
@@ -174,6 +187,7 @@ export default class OmniWalletPanel {
       const type = this._el.querySelector('[data-field="grantType"]').value
       const qty = +this._el.querySelector('[data-field="grantQty"]').value
       this.msg = Value.grant(type, qty) ? `Granted ${fmt(qty)} ${Value.getType(type).name} (sandbox).` : 'Enter a positive quantity.'
+    } else if (k === 'pin') { this.msg = pinValueType(arg)
     } else if (k === 'starter') { Value.grantStarterPack(); this.msg = 'Starter pack granted (sandbox).' }
     else if (k === 'claim') { const r = Value.claimRemainder(arg); this.msg = r.ok ? `Claimed ${fmt(r.claimed)} into the balance; ${fmt(r.left)} stays stated.` : 'Nothing to claim yet.' }
     else if (k === 'reset') {

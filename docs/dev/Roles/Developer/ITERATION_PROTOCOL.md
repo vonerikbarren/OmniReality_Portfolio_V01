@@ -1,0 +1,19 @@
+# Iteration protocol (standing instructions for every build)
+
+Applies from V184. Do these in order for every new version. Never extract or write over an existing version directory: build in a FRESH empty directory, verify, then move it to `OmniReality_Portfolio_V<n+1>`.
+
+1. **Copy** the previous version into a fresh empty directory with tar (exclude `node_modules`; rsync is not installed), compare with `diff -rq`, then move it to `/home/claude/work2/OmniReality_Portfolio_V<n+1>`. Work only there.
+2. **Investigate the real code** before changing it. Smallest correct change; match conventions: module contract `{init, update, destroy, onResize?}`; `addModule` calls `init()` itself, never call it twice; OmniNotify attributes `data-omni-tip`, `data-omni-tip-key`, `data-omni-tip-desc` on every control; Dev-only modules are named `Dev*`, marked DEV ONLY, and user-facing modules must never import them (a test enforces it).
+3. **Build and fix** the feature. Update the app version string wherever the current-version label appears (`grep V<n>`; for example the dump `app:` in `utils/DevOmniStoreData.js`).
+4. **Sweep**: `node --check` every `.js` / `.mjs` (exclude `node_modules`), zero failures.
+5. **Tests**: write the new `v<n+1>_*` jsdom suites; retarget the previous suites with the run script pattern (`sed` the version path into `x<n+1>_*` copies; nodev suites with `register_nodev.mjs`); compare with the previous version's results. Known baseline failures (v165, v166, v169, v170, hands, integ, axinator, behavior_integ) are not yours. Report any test edited in the retargeted copy only.
+6. **Real browser**: Chromium via Playwright at 1280x720 and 390x844; read the screenshots; list console errors. State plainly what was NOT verified (real GPU, phone, touch).
+7. **Docs**: `BuildLog.md` entry (date, version, what changed, tests, not built / not verified); `TestingChecklist.json` category for the version (items with feature / howToReach / whatToCheck / `tested:false`; do not rewrite older items); `DeveloperQueue.md` follow-ups (new numbered item); the user guide page of any user-facing change plus its header date (see `docs/user-guide/00_How_To_Maintain_This_Guide.md`); a design doc under `docs/omniproducts/` for anything new.
+8. **Claude Check (new in V184, do not skip)**:
+   a. Edit `docs/dev/Roles/Developer/ClaudeCheckAsk.json`: set `version`, `date`, `summary` (one line: what changed), the `asks` (only what the developer alone can answer: real GPU frame rate, phone feel, "does X look right"; each tagged with a `device`; keep still-open questions from earlier versions) and `knownIssues` (the 6-10 most relevant open items from DeveloperQueue.md).
+   b. Make sure the version's TestingChecklist category exists (step 7).
+   c. Run `node tools/build-claude-check.mjs --version V<n+1> --categories "<the version names still worth testing, comma separated>"` and read its output: fix duplicates and MISSING categories that matter.
+   d. `node --check data/ClaudeCheckData.js`; run `node --import <harness>/register.mjs v184_model_test.mjs`-style checks if the schema changed; open the panel in the browser run (Developer drawer slot 7) and confirm it loads with the new version.
+   e. In the reply to the developer, say: **"Open Developer > Claude Check"** (and what you most want answered).
+   f. When the developer pastes a report (`omni-claude-report/1`), read it first: failed and skipped ids carry into the next version automatically; fix the failures before new work.
+9. **Zip and deliver**: `cd /home/claude/work2 && zip -rq OmniReality_Portfolio_V<n+1>.zip OmniReality_Portfolio_V<n+1> -x "*/node_modules/*"` then `unzip -tq` it. The final reply is concise: what was built, test counts, real-browser results with numbers, console errors, what was not verified, file list, zip path and size.

@@ -59,6 +59,17 @@ node's own data (checked directly in `systems/OmniNode.js` /
 | `isLocationNode` | `SphereGeometry` | **New in this build (2026-10-04).** OmniPointing's "Highlight and Edit" action (`systems/OmniPointing.js`) — a small yellow orb (scale `0.22`) dropped at a snapped grid coordinate, carrying its own small sonar-ping ring effect (not persisted geometry — a runtime child effect re-attached on both creation and page-reload restore) and a real `pointingCoordinate: {x,y,z}` field. Inspector shows a dedicated "Location (OmniPointing)" section (`systems/OmniInspector.js`'s `_locationHTML`/`_wireLocation`) summarizing its title/color/coordinate. |
 | `isBehaviorNode` | `OctahedronGeometry` | **New in V164 (2026-10-05).** OmniDraw(BehaviorNode) (`ui/OmniDrawBehavior.js`) — a node carrying `behavior: {type, params, enabled, targets, role}` that `systems/OmniNodeBehavior.js` animates (34 NodeBehaviors, two tiers; see `docs/omniproducts/OMNI_NODE_BEHAVIOR_DESIGN.md`). Colour = behaviour class; the engine draws a class-coloured ring marker. Any node, in either registry, can also carry `behavior` via the Inspector's Behavior section. |
 
+### Kind nodes (V183)
+
+Two more node kinds are distinguished by `data.nodeKind` (not by a boolean flag), with `data.geometry` set to the marker string `'StoreItemNode'` / `'OmniValueNode'` (both appear in `GEO_LABELS` for the picker; they are not in the 21 real geometries, and the Inspector geometry swap is refused for them):
+
+| `nodeKind` | geometry marker | Reference fields | Notes |
+|---|---|---|---|
+| `storeItem` | `StoreItemNode` | `storeId`, `productId` | Shared cube / disc geometry, shared emoji and label textures. Created by `omni:node-pin-request`, the picker, or `_onCreateRequest` fields from `Kinds.kindCreateFields`. |
+| `omniValue` | `OmniValueNode` | `valueTypeId` | Live balance label; conversion = an ordinary edge between two of them. |
+
+Why an OmniNode kind and not NodeLoader or the store scene: see `docs/omniproducts/OMNISTORE_NODES_DESIGN.md`.
+
 ## Honest note on this entry
 
 No node type named "sonar" or anything resembling a persistent "0,0,0

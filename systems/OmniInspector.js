@@ -110,6 +110,10 @@ import * as GridWidgets   from '../ui/GridWidgets.js'
 import { goToObject } from '../utils/CameraTravel.js'
 import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
+import { isKindData } from '../utils/OmniNodeKinds.js'                       // V183: StoreItemNode / OmniValueNode keep their block in Appearance, like Sequence / Group / Essence
+import { kindOptionsHTML, wireKindOptions } from '../ui/OmniNodeKindInspector.js'
+import { CHANGED_EVENT as STORE_CHANGED } from '../utils/OmniStoreModel.js'
+import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
 import { createBehaviorForm } from '../ui/OmniNodeBehaviorForm.js'
 import * as TL from '../utils/OmniTimeline.js'
@@ -1720,6 +1724,7 @@ export default class OmniInspector {
     this._gridWidgets = null
     this._drag   = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
     this._allNodes = []   // cached from omni:nodes-updated — feeds the parent picker
+    this._allEdges = []   // V183: cached from omni:nodes-updated — feeds the conversion routes of a value node
     this._currentSpaceId = null   // cached from omni:space-entered/exited
     this._createPreview = null   // the Create section's own tiny renderer/scene/mesh
     this._createTransform = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1 }
@@ -1871,6 +1876,8 @@ export default class OmniInspector {
     window.removeEventListener('omni:node-created',  this._onCreated)
     window.removeEventListener('omni:node-deleted',  this._onDeleted)
     window.removeEventListener('omni:nodes-updated', this._onNodesUpdated)
+    window.removeEventListener(STORE_CHANGED, this._onKindModelChanged)
+    window.removeEventListener(VALUE_CHANGED, this._onKindModelChanged)
     window.removeEventListener('omni:space-entered', this._onSpaceEntered)
     window.removeEventListener('omni:space-exited', this._onSpaceExited)
   }
@@ -2557,6 +2564,12 @@ export default class OmniInspector {
     const badge = this._el.querySelector('#oi-node-badge')
     const data  = this._currentData
     const ext   = this._ext
+    // V183: on a phone only one section is open; a store item / value node keeps its block in Appearance, so open that
+    // when such a node is first shown (once per node, the user can close it again).
+    if (data && isKindData(data) && this._isPhone() && this._kindOpenedFor !== data.id) {
+      this._kindOpenedFor = data.id
+      this._sectionOpen = { appearance: true }; this._lastOpened = 'appearance'
+    }
 
     // Update node badge
     if (badge) {
@@ -3419,6 +3432,7 @@ export default class OmniInspector {
    * common case of just wanting to check/change them.
    */
   _customOptionsHTML (data) {
+    if (isKindData(data)) return kindOptionsHTML(data, { edges: this._allEdges, nodes: this._allNodes }) + this._sequenceOptionsHTML(data)
     if (data?.isGroupNode) return this._groupOptionsHTML(data)
     if (data?.isEssenceNode) return this._essenceOptionsHTML(data) + this._sequenceOptionsHTML(data)
     if (data?.label !== 'MasterClock') return this._sequenceOptionsHTML(data)
@@ -3725,6 +3739,7 @@ export default class OmniInspector {
    *  this is a second surface for the same settings, not a second
    *  source of truth. */
   _wireCustomOptions (body, data) {
+    if (isKindData(data)) { wireKindOptions(body, data); this._wireSequenceOptions(body, data); return }
     if (data?.isGroupNode) return this._wireGroupOptions(body, data)
     if (data?.isEssenceNode) { this._wireEssenceOptions(body, data); this._wireSequenceOptions(body, data); return }
     if (data?.label !== 'MasterClock') return this._wireSequenceOptions(body, data)
@@ -3857,7 +3872,7 @@ export default class OmniInspector {
       <!-- Geometry selector -->
       <div class="oi-row">
         <span class="oi-label">Geometry</span>
-        <select class="oi-select" id="oi-geometry">${geoOptions}</select>
+        <select class="oi-select" id="oi-geometry" ${isKindData(data) ? 'disabled title="A store item / value node takes its shape from the product / type"' : ''}>${geoOptions}</select>
       </div>
 
       <!-- Wireframe toggle -->
@@ -4645,6 +4660,25 @@ export default class OmniInspector {
     })
   }
 
+  /** V183: rebuild the Store item / Value block in place (store or value model changed, or an edge was drawn). Coalesced to one rebuild per frame. */
+  _refreshKindBlock () {
+    if (!this._currentData || !isKindData(this._currentData) || !this._isOpen) return
+    if (this._kindRefreshQ) return
+    this._kindRefreshQ = true
+    const run = () => {
+      this._kindRefreshQ = false
+      const d = this._currentData
+      const body = this._el?.querySelector('#oi-body')
+      const sec = body?.querySelector('#oi-custom-kind')
+      if (!d || !isKindData(d) || !sec) return
+      const tmp = document.createElement('div')
+      tmp.innerHTML = kindOptionsHTML(d, { edges: this._allEdges, nodes: this._allNodes })
+      sec.replaceWith(tmp.firstElementChild)
+      wireKindOptions(body, d)
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else setTimeout(run, 0)
+  }
+
   /** Re-render just the Domain section's HTML — used after entering/
    *  exiting a space, or toggling Is Domain, so button enabled-state and
    *  the status line stay accurate without a full panel re-render. */
@@ -5084,6 +5118,7 @@ export default class OmniInspector {
     this._createPreview.mesh.geometry?.dispose()
     this._createPreview.mesh.material?.dispose()
     this._createPreview.renderer.dispose()
+    try { this._createPreview.renderer.forceContextLoss() } catch (_) {}   // V183: free the GL context now; many quick node loads otherwise exhaust the browser's context limit and lose the MAIN canvas
     this._createPreview = null
   }
 
@@ -5866,7 +5901,8 @@ export default class OmniInspector {
 
     // Node created → same as selected (auto-open inspector for new nodes)
     this._onCreated = (e) => {
-      const { node, mesh } = e.detail ?? {}
+      const { node, mesh, quiet } = e.detail ?? {}
+      if (quiet) return   // V183: a pinned / test node is created without selecting it; loading it would also open the panel over the store
       if (node && mesh) this.loadNode(node, mesh)
     }
 
@@ -5883,10 +5919,12 @@ export default class OmniInspector {
     // under it, shifting its own depth).
     this._onNodesUpdated = (e) => {
       this._allNodes = e.detail?.nodes ?? []
+      this._allEdges = e.detail?.edges ?? []
       if (!this._currentId || !this._isOpen) return
       const updated = this._allNodes.find(n => n.id === this._currentId)
       if (!updated) return
       this._currentData = updated
+      if (isKindData(updated)) this._refreshKindBlock()
       const body = this._el?.querySelector('#oi-body')
       const section = body?.querySelector('#oisec-hierarchy .oi-section-inner')
       if (section) section.innerHTML = this._hierarchyHTML(updated)
@@ -6098,6 +6136,11 @@ export default class OmniInspector {
 
     this._onTimelineChanged = () => this._refreshTimeSection()
     window.addEventListener('omni:timeline-changed', this._onTimelineChanged)
+
+    // V183: the Store item / Value block reads the models; rebuild it when they change (one rebuild per frame)
+    this._onKindModelChanged = () => this._refreshKindBlock()
+    window.addEventListener(STORE_CHANGED, this._onKindModelChanged)
+    window.addEventListener(VALUE_CHANGED, this._onKindModelChanged)
 
     window.addEventListener('omni:node-deselected', this._onDeselect)
     window.addEventListener('omni:node-created',  this._onCreated)

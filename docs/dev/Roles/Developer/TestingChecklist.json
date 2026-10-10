@@ -2366,6 +2366,272 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "OmniStore V181 (location, emoji, D3 views, guard)",
+      "items": [
+        {
+          "feature": "Store location X/Y/Z",
+          "howToReach": "Ribbon Realities > Value > Store Settings > Look > Location",
+          "whatToCheck": "Typing X, Y, Z moves the open store at once; the camera follows; over-range values clamp; Reset location returns to 0, 3, -40; Place at my camera puts it about 30 ahead",
+          "tested": false
+        },
+        {
+          "feature": "Location with each layout",
+          "howToReach": "Store Settings > Look > Layout cards, with a moved store",
+          "whatToCheck": "Shelf, ring, aisle and island all sit at the moved position and the camera frames them; the dome still hides when you are outside",
+          "tested": false
+        },
+        {
+          "feature": "Emoji picker",
+          "howToReach": "Store Settings > Catalog > + Add product > All emojis…",
+          "whatToCheck": "Search 'apple' finds the apple emoji; group tabs work; picking fills the Emoji field; recents tab shows your last picks",
+          "tested": false
+        },
+        {
+          "feature": "All-emoji demo store",
+          "howToReach": "Store Settings > Catalog > Demo stores > Load all-emoji demo store",
+          "whatToCheck": "1,914 products in 9 section chips; the shelf stays smooth; Undo last import restores your store; the newest emoji render (needs a current emoji font)",
+          "tested": false
+        },
+        {
+          "feature": "Exchange chart views",
+          "howToReach": "Click a product, then the chips Radial wheel / Sunburst / Treemap / Sankey",
+          "whatToCheck": "Each view shows the accepted forms; clicking a slice selects the same form as the wheel; at level 1-2 the chart slot shows the quote; no sideways scroll on a phone",
+          "tested": false
+        },
+        {
+          "feature": "Chart library failure",
+          "howToReach": "Block cdn.jsdelivr.net, open the exchange, pick Sunburst",
+          "whatToCheck": "A plain message appears and the wheel still works",
+          "tested": false
+        },
+        {
+          "feature": "OmniTalent panel",
+          "howToReach": "Ribbon Realities > Value > Talent, or drawer ⟐OmniTalent",
+          "whatToCheck": "Sunburst / Treemap / Sankey of balances; picking a type shows its balance and conversions; Open exchange / Open wallet work; SANDBOX shown",
+          "tested": false
+        },
+        {
+          "feature": "Arbitrage guard",
+          "howToReach": "DevOmniStoreSettings > e) Rate loops, and the exchange panel",
+          "whatToCheck": "Seeded rates: no loop. Rate loops scan in the Dev panel; to see a loop, add a gaining edge in code (no rate editor exists): 'These rates form a loop that makes value from nothing' shows; closing the loop right after the first leg is refused",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniStore V182 (store types, second store)",
+      "items": [
+        {
+          "feature": "Create stores from types",
+          "howToReach": "Store Settings > Stores > + New store",
+          "whatToCheck": "Bakery and Electronics cards make a store with their look, layout and products; each sits at its own place (150 apart); the list shows 3 stores",
+          "tested": false
+        },
+        {
+          "feature": "Switch with the HUD chip",
+          "howToReach": "Store open with 2+ stores; HUD row 3 chip",
+          "whatToCheck": "Chip lists the stores; picking one flies the camera in front of that store; only one store is drawn; chip hides with one store",
+          "tested": false
+        },
+        {
+          "feature": "Switch 20 times",
+          "howToReach": "Chip A,B,A,B...",
+          "whatToCheck": "No slowdown or growth; shelf looks the same each time on return",
+          "tested": false
+        },
+        {
+          "feature": "Phone width",
+          "howToReach": "390px wide, store open, Stores tab and chip menu",
+          "whatToCheck": "No horizontal scroll; the chip and menu do not cover the hands; list buttons are tappable",
+          "tested": false
+        },
+        {
+          "feature": "Rename and delete",
+          "howToReach": "Stores tab",
+          "whatToCheck": "Rename shows in list, HUD and panel title; Delete asks inline; deleting the active store opens another; the last store cannot be deleted",
+          "tested": false
+        },
+        {
+          "feature": "Reload keeps the active store",
+          "howToReach": "Reload the page with 3 stores",
+          "whatToCheck": "Same store active and the stores still listed",
+          "tested": false
+        },
+        {
+          "feature": "Look/Layout/Location/Catalog follow the active store",
+          "howToReach": "Switch store, open each tab",
+          "whatToCheck": "Edits change only the active store; the panel header names it",
+          "tested": false
+        },
+        {
+          "feature": "Catalog import/export per store",
+          "howToReach": "Catalog tab in the bakery",
+          "whatToCheck": "Export then Replace round-trips the bakery; the produce store is untouched; AI prompt names the active store",
+          "tested": false
+        },
+        {
+          "feature": "Undo is per store",
+          "howToReach": "Import in store A, switch to B, Undo",
+          "whatToCheck": "Refused with the store name; switching back allows Undo",
+          "tested": false
+        },
+        {
+          "feature": "Shopping list per store, wallet global",
+          "howToReach": "Add to cart in the bakery, switch",
+          "whatToCheck": "Cart differs per store; wallet balance and inventory are the same",
+          "tested": false
+        },
+        {
+          "feature": "Accepted forms",
+          "howToReach": "Electronics Exchange, try paying in Bells",
+          "whatToCheck": "Bells spoke is absent; the panel says what the store takes; a forced attempt is refused with a message",
+          "tested": false
+        },
+        {
+          "feature": "Arbitrage guard",
+          "howToReach": "Exchange loop attempt (V181)",
+          "whatToCheck": "Still warns and refuses a continued loop",
+          "tested": false
+        },
+        {
+          "feature": "Dev: types and stores",
+          "howToReach": "DevOmniStoreSettings > Store types and stores",
+          "whatToCheck": "Validate / Save / Delete / Load file; Create store from this type; stores table marks the active one; Dump state lists stores, active, anchors",
+          "tested": false
+        },
+        {
+          "feature": "Dev: invalid type JSON",
+          "howToReach": "Paste broken or hostile JSON into the type editor",
+          "whatToCheck": "Plain errors, nothing saved, no script runs",
+          "tested": false
+        },
+        {
+          "feature": "Real GPU / phone / touch",
+          "howToReach": "A real phone",
+          "whatToCheck": "Switching, chip menu and Stores tab with touch; frame rate in the bakery and electronics stores",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
+      "items": [
+        {
+          "feature": "Pin a store item",
+          "howToReach": "Open the store, click a product, in the Exchange press Pin to my space",
+          "whatToCheck": "A node with the product emoji appears about 6 units in front of you (also at 390px: the chip is fully visible); the message says Pinned <name>; it is not selected; click it to inspect",
+          "tested": false
+        },
+        {
+          "feature": "Store item Inspector block",
+          "howToReach": "Select a pinned store item node, open Inspector > Appearance",
+          "whatToCheck": "Product, price forms, stock, store name, SANDBOX badge; Window / Wish / Cart add to the lists; Open in store opens the store on the product; Buy... opens the Exchange; strip still 12 icons; geometry select disabled",
+          "tested": false
+        },
+        {
+          "feature": "Store item follows the catalog",
+          "howToReach": "Edit the product's price / stock / name / emoji in OmniStoreSettings > Catalog",
+          "whatToCheck": "The node label (and the open Inspector block) change within a moment; delete the product and the node turns grey with Missing product, restore it and it recovers",
+          "tested": false
+        },
+        {
+          "feature": "Pin a value type",
+          "howToReach": "Wallet: the pin button on a type row; OmniTalent: Pin this value type",
+          "whatToCheck": "A value node with the emoji and live balance; grant in the Wallet and the label changes",
+          "tested": false
+        },
+        {
+          "feature": "Value node Inspector block",
+          "howToReach": "Select a value node",
+          "whatToCheck": "Type, tier, balance, remainder; Grant 10 (sandbox), Open in OmniTalent, Open exchange; Missing value type if the type is removed",
+          "tested": false
+        },
+        {
+          "feature": "Conversion edge",
+          "howToReach": "Join two value nodes with PATH mode in ⟐N",
+          "whatToCheck": "The edge shows both rates (3 Bells -> 1 Credits / 1 Credits -> 3 Bells); two types with no conversion show 'no direct rate'; the Edge Inspector lists the rate both ways and an arbitrage warning if you add a gaining loop in the dev panel",
+          "tested": false
+        },
+        {
+          "feature": "Picker entries",
+          "howToReach": "⟐N geometry picker > Store item / Value type > choose > click in the space",
+          "whatToCheck": "The node is created where you clicked; the OmniDraw mode picker still has 8 modes",
+          "tested": false
+        },
+        {
+          "feature": "Reload and delete",
+          "howToReach": "Reload the page; delete the nodes",
+          "whatToCheck": "Nodes and edge labels come back; deleting a node leaves the product and value type untouched; duplicating makes another pointer",
+          "tested": false
+        },
+        {
+          "feature": "Time, Behaviors, group on kinds",
+          "howToReach": "Select a store item node: Time > add clip; Behaviors > Oscillate; group two kind nodes",
+          "whatToCheck": "Clip hides / shows it; Oscillate moves it; grouping and duplicating work",
+          "tested": false
+        },
+        {
+          "feature": "Dev nodes readout",
+          "howToReach": "DevOmniStoreSettings > node readout > Create 50 test nodes / Remove test nodes",
+          "whatToCheck": "Counts and texture numbers change; removing returns textures to the starting number",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Claude Check (V184)",
+      "items": [
+        {
+          "feature": "Open the Claude Check panel",
+          "howToReach": "Left drawer > ⟐Developer > slot 7 (DevClaudeCheck)",
+          "whatToCheck": "A panel opens with a red DEV ONLY badge, the version V184, the date and the one-line summary, progress 'N of M checked', five device chips and a Hide done toggle; there is NO new ribbon or dock button",
+          "tested": false
+        },
+        {
+          "feature": "Mark checks and add notes",
+          "howToReach": "Claude Check panel > Check these, open a category",
+          "whatToCheck": "Pass / Fail / Skip highlight the chosen button and clicking it again clears it; Fail always shows a one-line note box (optional for the others); the progress line and the count in the panel title change at once; marks survive closing the panel and reloading the page",
+          "tested": false
+        },
+        {
+          "feature": "Answer what Claude is looking for",
+          "howToReach": "Claude Check panel > What I'm looking for",
+          "whatToCheck": "Each question shows its reason in small text and the right input (number, yes / no, choice, text); answers persist after a reload; the frame-rate questions are tagged GPU and the phone questions Phone",
+          "tested": false
+        },
+        {
+          "feature": "Device chips and Hide done",
+          "howToReach": "Claude Check panel header",
+          "whatToCheck": "Desktop / Phone / Touch / GPU hide items tagged for another device (items tagged any always show); All shows everything; Hide done hides checked items at the next redraw; the chosen chip and toggle persist after a reload",
+          "tested": false
+        },
+        {
+          "feature": "Carry-over to the next version",
+          "howToReach": "Mark one Fail and one Skip; then, in the browser console, edit localStorage 'omni:claude-check-v1' so the stored version is V183 instead of V184 (or wait for the next build) and reopen the panel",
+          "whatToCheck": "A 'Carried over' section appears ABOVE the checks with those two items and a 'from V183' tag; items marked Pass are not carried",
+          "tested": false
+        },
+        {
+          "feature": "Copy report and fallback",
+          "howToReach": "Claude Check panel > Message to Claude > Copy report (then Download report)",
+          "whatToCheck": "One compact JSON block lands on the clipboard (schema omni-claude-report/1: version, device, summary, failed, skipped, passed ids, answers, message); paste it into the chat; if the browser refuses the clipboard a read-only box shows the text to copy by hand; Download saves a .json file; with 'Include app state (Dump)' ticked the report also carries a state block",
+          "tested": false
+        },
+        {
+          "feature": "Phone layout and no leak into normal use",
+          "howToReach": "Open the panel in a 390px-wide window or on a phone; also load the app and look through the user panels",
+          "whatToCheck": "No sideways scroll, buttons at least 40 px high, the list scrolls inside the sheet; nothing in the normal user menus, ribbon or dock mentions Claude Check (it is developer-only)",
+          "tested": false
+        },
+        {
+          "feature": "Reset this version's answers",
+          "howToReach": "Claude Check panel > Reset this version's answers",
+          "whatToCheck": "The first click asks for confirmation (the button changes), the second clears marks, notes, answers and the message of this version only; carried items from older versions stay",
+          "tested": false
+        }
+      ]
     }
   ]
 }

@@ -28,6 +28,15 @@
  *                    utils/DesirePrimaryForce.js declareDesire(). The backward PrimaryForce() pattern and the affidavit
  *                    are NOT built (hooks only); the system renders no verdict.
  *
+ * V181 ARBITRAGE GUARD. The conversion edges are pairwise, so a loop A -> B -> C -> A can multiply to MORE than 1 (value from nothing).
+ *   findArbitrageLoops() lists every such loop (cycles of up to 5 edges over the edge registry, each type once) with its multiplier and a
+ *   worked example that rounds each step DOWN to the destination type's step and states the leftover as a remainder.
+ *   quote() reports `arbitrage` ({loops, chain}) for the route it picked. RULE: a loop is only WARNED about while it is a single exchange
+ *   (quote.arbitrage.loops, plain-language lines in every panel); an exchange is REJECTED (canExecute false, block 'arbitrage-loop') when it
+ *   would add a NEW edge of a gaining loop to edges of that same loop already used by this account's recent exchanges (a transaction
+ *   chain: the last ARBITRAGE.chainMs, default 10 minutes). Nothing throws on load: a bad edge set just means no loops are found.
+ *   toBalanceHierarchy() is the standalone OmniValue panel's tree (user -> tier -> value type).
+ *
  * Events (window): omni:value-changed {kind}, omni:value-trade {tx}.
  */
 
@@ -489,7 +498,7 @@ function edgeLabel (e) {
  */
 export function quote (offerSpec, wantSpec, opts = {}) {
   ensureLoaded()
-  const fail = (error) => ({ ok: false, error, covers: false, surplus: 0, shortfall: 0, remainder: { type: wantSpec?.type ?? '', qty: 0, statedLine: '' }, path: [], pathLabels: [], alternatives: [], fees: [], feeTotal: 0, debit: 0, balance: 0, balanceOk: false, splitOk: false, offerNeeded: null, effIn: 0, wantEff: 0, yield: 0, usedRemainder: 0, reasons: [error], canExecute: false, block: error, statement: [error] })
+  const fail = (error) => ({ ok: false, error, covers: false, surplus: 0, shortfall: 0, remainder: { type: wantSpec?.type ?? '', qty: 0, statedLine: '' }, path: [], pathLabels: [], alternatives: [], fees: [], feeTotal: 0, debit: 0, balance: 0, balanceOk: false, splitOk: false, offerNeeded: null, effIn: 0, wantEff: 0, yield: 0, usedRemainder: 0, reasons: [error], canExecute: false, block: error, statement: [error], arbitrage: { loops: [], chain: false, chainLine: '' } })
   const A = getType(offerSpec?.type), B = getType(wantSpec?.type)
   if (!A) return fail('unknown-offer-type')
   if (!B) return fail('unknown-want-type')
@@ -553,7 +562,10 @@ export function quote (offerSpec, wantSpec, opts = {}) {
   if (!covers && !noRoute && chosen.valid) reasons.push(`short by ${fmtQty(shortfall)} ${B.name} (reference units)`)
   if (!balanceOk) reasons.push(`insufficient balance: need ${fmtQty(debit)} ${A.name}, have ${fmtQty(balance)}`)
 
-  const block = !covers ? (noRoute ? 'no-route' : (chosen.valid ? 'not-covered' : 'route-rule')) : (!splitOk ? 'split-invalid' : (!balanceOk ? 'insufficient-balance' : null))
+  // V181: arbitrage guard — warn about the loops this route belongs to; reject when it extends a loop already used in this account's recent chain
+  const arbitrage = arbitrageForPath(chosen ? chosen.path.map(e => e.id) : [], accountId)
+  if (arbitrage.chain) reasons.push(arbitrage.chainLine)
+  const block = !covers ? (noRoute ? 'no-route' : (chosen.valid ? 'not-covered' : 'route-rule')) : (!splitOk ? 'split-invalid' : (!balanceOk ? 'insufficient-balance' : (arbitrage.chain ? 'arbitrage-loop' : null)))
   const statedLine = covers
     ? (surplus > EPS
       ? `Remainder: ${fmtQty(surplus)} ${B.name} (reference grade). ${fmtQty(oq)} ${A.name} cover ${fmtQty(total)} ${B.name} against a want of ${fmtQty(wantEff)}; the ${fmtQty(surplus)} is stated, not rounded away, and stays on your ${B.name} remainder ledger for you to use.`
@@ -575,8 +587,9 @@ export function quote (offerSpec, wantSpec, opts = {}) {
     alternatives: ranked.filter(c => c !== chosen).slice(0, 6).map(c => ({ path: c.path.map(e => e.id), labels: c.path.map(edgeLabel), out: c.out, valid: c.valid, reasons: c.reasons })),
     fees, feeTotal, debit, balance, balanceOk, splitOk,
     offerNeeded, effIn, wantEff, yield: chosen ? chosen.yield : 0, usedRemainder, reasons,
-    canExecute: covers && splitOk && balanceOk, block, statement,
+    canExecute: covers && splitOk && balanceOk && !arbitrage.chain, block, statement,
     offer: { type: A.id, qty: oq, quality: offerQ, split }, want: { type: B.id, qty: wq, quality: wantQ },
+    arbitrage,
   }
 }
 
@@ -621,6 +634,131 @@ export function quoteSell ({ itemId, itemQty = 1, receive, split } = {}, opts = 
       'Remainder: none — a direct sale pays exactly the stated form.',
     ],
   }
+}
+
+// ── Arbitrage guard (V181) ──────────────────────────────────────────────────────
+
+export const ARBITRAGE = { maxLen: 5, maxLoops: 40, maxSteps: 200000, chainMs: 10 * 60 * 1000, eps: 1e-9, line: 'These rates form a loop that makes value from nothing' }
+let arbCache = null   // { sig, key, loops, truncated }
+
+const edgeSig = () => S.edges.map(e => `${e.id}:${e.fromType}>${e.toType}:${e.rateNum}/${e.rateDen}:${e.minQty}:${e.qualityRule?.minWeight ?? ''}:${e.owner ?? ''}`).join('|')
+
+/** One worked pass round a loop with `start` of the first type: every step rounds DOWN to the destination's step, the crumbs are stated remainders. */
+function simulateLoop (edges, start) {
+  let qty = start
+  const remainders = []
+  for (const e of edges) {
+    const to = getType(e.toType)
+    const exact = clean(qty * e.rateNum / e.rateDen)
+    const got = floorStep(exact, to?.step ?? 1)
+    const crumb = clean(exact - got)
+    if (crumb > EPS) remainders.push({ type: e.toType, qty: crumb })
+    qty = got
+  }
+  return { start, end: qty, net: clean(qty - start), remainders }
+}
+
+/** The smallest start (in the first type) that satisfies every edge's minQty along the loop, rounded up to that type's step. */
+function loopMinStart (edges) {
+  const first = getType(edges[0].fromType)
+  return ceilStep(Math.max(first?.step ?? 1, requiredInput(edges, 0)), first?.step ?? 1)
+}
+
+function describeLoop (types, multiplier, probe) {
+  const names = types.concat(types[0]).map(id => getType(id)?.name ?? id)
+  const pct = clean((multiplier - 1) * 100)
+  const eg = probe && probe.net > 0 ? ` For example ${fmtQty(probe.start)} ${names[0]} come back as ${fmtQty(probe.end)} (+${fmtQty(probe.net)}).` : ''
+  return `${ARBITRAGE.line}: ${names.join(' → ')} returns ${fmtQty(clean(multiplier * 100))}% of what you put in (+${fmtQty(pct)}%).${eg}`
+}
+
+/**
+ * Every conversion loop that returns MORE than it started with, over the edge registry. A loop visits each value type once and
+ * is at most `maxLen` (default 5) edges long; parallel edges between the same two types are separate loops. Edges owned by another
+ * account are ignored (`owners` defaults to the current account). Capped (maxLoops, maxSteps): `result.truncated` says so.
+ * Never throws; a broken registry gives [].
+ * @returns {Array<{id:string, types:string[], edges:string[], multiplier:number, gain:number, gainPct:number, needsGrade:boolean, minStart:number, probe:object, line:string}> & {truncated:boolean, checked:number}}
+ */
+export function findArbitrageLoops ({ maxLen = ARBITRAGE.maxLen, owners = null } = {}) {
+  const out = []
+  out.truncated = false; out.checked = 0
+  try {
+    ensureLoaded()
+    const own = owners ?? [currentAccountId()]
+    const L = Math.max(2, Math.min(ARBITRAGE.maxLen, Math.round(maxLen) || ARBITRAGE.maxLen))
+    const sig = edgeSig() + '#' + own.join(',') + '#' + L
+    if (arbCache && arbCache.sig === sig) { arbCache.loops.forEach(l => out.push(l)); out.truncated = arbCache.truncated; out.checked = arbCache.checked; return out }
+    const usable = S.edges.filter(e => !e.owner || own.includes(e.owner))
+    const order = [...new Set(usable.flatMap(e => [e.fromType, e.toType]))].sort()
+    const idx = new Map(order.map((t, i) => [t, i]))
+    const from = new Map()
+    usable.forEach(e => { if (!from.has(e.fromType)) from.set(e.fromType, []); from.get(e.fromType).push(e) })
+    let steps = 0
+    const found = []
+    const dfs = (startIdx, cur, path, seen) => {
+      if (out.truncated) return
+      for (const e of from.get(cur) ?? []) {
+        if (++steps > ARBITRAGE.maxSteps) { out.truncated = true; return }
+        const ti = idx.get(e.toType)
+        if (ti === startIdx) {   // closes the loop
+          const edges = path.concat(e)
+          if (edges.length >= 2) {
+            out.checked++
+            const mult = edges.reduce((m, x) => m * x.rateNum / x.rateDen, 1)
+            if (mult > 1 + ARBITRAGE.eps) found.push({ edges, mult })
+          }
+          continue
+        }
+        if (ti < startIdx || seen.has(e.toType) || path.length + 1 >= L) continue   // each cycle is found once, from its smallest type
+        seen.add(e.toType); path.push(e)
+        dfs(startIdx, e.toType, path, seen)
+        path.pop(); seen.delete(e.toType)
+      }
+    }
+    order.forEach((t, i) => { if (!out.truncated) dfs(i, t, [], new Set([t])) })
+    found.sort((a, b) => b.mult - a.mult || a.edges.length - b.edges.length)
+    if (found.length > ARBITRAGE.maxLoops) { found.length = ARBITRAGE.maxLoops; out.truncated = true }
+    found.forEach(({ edges, mult }) => {
+      const types = edges.map(e => e.fromType)
+      const minStart = loopMinStart(edges)
+      // try a few sizes: rounding to steps can eat a small loop's gain, a bigger one may survive
+      let probe = simulateLoop(edges, minStart)
+      for (const k of [10, 100, 1000]) { if (probe.net > 0) break; const p = simulateLoop(edges, clean(minStart * k)); if (p.net > probe.net) probe = p }
+      const loop = {
+        id: edges.map(e => e.id).join('>'), types, edges: edges.map(e => e.id), multiplier: clean(mult), gain: clean(mult - 1), gainPct: clean((mult - 1) * 100),
+        needsGrade: edges.some(e => !!e.qualityRule), minStart, probe, line: describeLoop(types, mult, probe),
+      }
+      out.push(loop)
+    })
+    arbCache = { sig, loops: out.slice(), truncated: out.truncated, checked: out.checked }
+  } catch (_) { out.length = 0 }
+  return out
+}
+
+/**
+ * The guard for ONE route (edge ids) for `accountId`: which gaining loops does it belong to (`loops`, warn) and does it continue a loop this
+ * account already used in its recent chain (`chain`, reject). Pure read; never throws.
+ */
+export function arbitrageForPath (pathIds, accountId) {
+  const res = { loops: [], chain: false, chainLine: '' }
+  try {
+    if (!pathIds || !pathIds.length) return res
+    const loops = findArbitrageLoops({ owners: [accountId ?? currentAccountId()] }).filter(l => l.edges.some(id => pathIds.includes(id)))
+    if (!loops.length) return res
+    res.loops = loops.map(l => ({ id: l.id, line: l.line, gainPct: l.gainPct, edges: l.edges, types: l.types }))
+    const a = getAccount(accountId)
+    const now = Date.now()
+    const used = new Set()
+    a.log.forEach(tx => { if (tx.kind === 'buy' && now - tx.t <= ARBITRAGE.chainMs) (tx.path ?? []).forEach(id => used.add(id)) })
+    const hit = loops.find(l => l.edges.some(id => pathIds.includes(id) && !used.has(id)) && l.edges.some(id => used.has(id)))
+    if (hit) { res.chain = true; res.chainLine = `Blocked: ${ARBITRAGE.line}. ${hit.line} This exchange would continue that loop after your recent exchanges.` }
+  } catch (_) { /* a guard that cannot decide stays quiet */ }
+  return res
+}
+
+/** Plain-language lines for the panels: [] when the current rates have no gaining loop. */
+export function arbitrageWarnings (opts) {
+  const loops = findArbitrageLoops(opts)
+  return loops.map(l => l.line)
 }
 
 // ── Intent (Desire() forward declaration only) ──────────────────────────────────
@@ -738,4 +876,28 @@ export function toFlows (qt) {
   links.push({ source: `type:${prev}`, target: 'item', value: qt.wantEff, refValue: qt.wantEff, kind: 'purchase' })
   if (qt.surplus > EPS) { add('remainder', 'Remainder (stated)', 'remainder', B.id); links.push({ source: `type:${prev}`, target: 'remainder', value: qt.surplus, refValue: qt.surplus, kind: 'remainder' }) }
   return { nodes, links }
+}
+
+/**
+ * V181: the user's value as a tree for the standalone OmniValue panel: user -> tier (Primary..Quinary) -> value type.
+ * A type node carries its OWN quantity (`qty`), unit and stated remainder; different types are never added together, so tier / root nodes have
+ * no total. `value` = qty (leaf only). Tiers with no value type are left out.
+ */
+export function toBalanceHierarchy (accountId) {
+  ensureLoaded()
+  const id = accountId ?? currentAccountId()
+  const bal = getBalances(id)
+  const rem = getRemainders(id)
+  const types = getTypes()
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1)
+  return {
+    name: id, kind: 'root',
+    children: TIERS.map(tier => ({
+      name: cap(tier), kind: 'tier', tier,
+      children: types.filter(t => t.tier === tier).map(t => ({
+        name: t.name, kind: 'type', typeId: t.id, tier, emoji: t.emoji, unit: t.unit, payable: t.payable,
+        qty: bal[t.id] ?? 0, remainder: rem[t.id]?.total ?? 0, value: bal[t.id] ?? 0,
+      })),
+    })).filter(t => t.children.length),
+  }
 }

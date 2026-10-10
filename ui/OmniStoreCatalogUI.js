@@ -12,6 +12,11 @@
  *                              (Schema.buildFixPrompt) when something is wrong. NOTHING is applied yet.
  *   4 Import                -> Merge (add new, update same id / name) | Replace (inline confirm with counts) -> Store.importProducts;
  *                              one-step Undo (Store.rememberUndo, kept in memory AND in localStorage 'omni:store-undo-v1')
+ * V181: the product form has a full emoji picker (ui/OmniEmojiPicker.js: all Unicode emoji, search, group tabs, recent) next to the quick row, and a
+ *   "Demo stores" group loads the All-emoji catalog (utils/OmniEmojiCatalog.js) through the SAME validator + Store.importProducts + rememberUndo as any import.
+ * V182: everything here acts on the ACTIVE store (OmniStoreModel.activeStoreId). A "Store type" select (built-in types) pre-fills the AI prompt (name, type, categories,
+ *   the type's sections); when the pasted catalog names a known store.type and the active store is empty or blank an UNTICKED checkbox offers to give the store that
+ *   type's look and layout. Undo belongs to the store it was taken in: it is offered only there, and the panel says which store it belongs to. storeSwitched() resets the tab.
  * MANUAL: product list (search, 20 per page) with Edit / Duplicate / Delete (confirm), Add product, Delete all, Export catalog.
  *   The edit form validates live with Schema.validateProduct (the same rules as an import) and saves through
  *   Store.addProduct / updateProduct, so the open shelf updates through omni:store-changed.
@@ -20,7 +25,11 @@
 import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import * as Schema from '../utils/OmniStoreCatalogSchema.js'
+import * as Types from '../utils/OmniStoreTypes.js'
+import * as Layouts from '../utils/OmniStoreLayouts.js'
 import { esc, debounce } from './OmniSettingsPanelBase.js'
+import OmniEmojiPicker from './OmniEmojiPicker.js'                       // V181: the full searchable emoji picker
+import * as EmojiCat from '../utils/OmniEmojiCatalog.js'                // V181: the "All emojis" demo catalog (pure)
 
 export const PAGE_SIZE = 20
 export const COUNT_CHIPS = [10, 25, 50, 100]
@@ -93,7 +102,7 @@ export default class OmniStoreCatalogUI {
     this.opts = opts
     this.root = null
     this.s = {
-      open: 1, desc: '', count: 0, hint: '', accepted: new Set(),
+      open: 1, desc: '', count: 0, hint: '', typeId: '', accepted: new Set(), applyType: false,
       copied: false, extract: null, result: null, text: '', mode: 'merge', confirmReplace: false, last: null,
       search: '', page: 0, edit: null, confirm: null,
     }
@@ -108,6 +117,7 @@ export default class OmniStoreCatalogUI {
     this.root = document.createElement('div')
     this.root.className = 'osc'
     const types = this.payTypes()
+    this.s.typeId = Store.getStore().typeId
     this.root.innerHTML = `
       <div class="oss-dim">Fill your store at scale: ask any AI assistant to write the product list, paste its answer here, check it, import it. Everything stays on this device; this app never sends your text anywhere.</div>
       ${STEPS.map(([n, title]) => `
@@ -115,6 +125,13 @@ export default class OmniStoreCatalogUI {
         <button type="button" class="osc-head" data-act="c-step" data-n="${n}" aria-expanded="false" aria-controls="osc-body-${n}"><span class="osc-num">${n}</span><span class="osc-title">${esc(title)}</span><span class="osc-state" data-ref="state-${n}"></span></button>
         <div class="osc-body" id="osc-body-${n}" data-body="${n}" hidden>${this._stepHtml(n, types)}</div>
       </section>`).join('')}
+      <div class="oss-sec">Demo stores</div>
+      <div class="osc-demo" data-ref="demo">
+        <div class="oss-dim">All emojis: one product per Unicode emoji (${EmojiCat.DEMO_EMOJI_COUNT.toLocaleString('en-US')}), 9 sections (one per Unicode group), sandbox prices in the fake value types. Goes through the same check and import as any catalog, so Undo last import works.</div>
+        <div class="oss-row" role="radiogroup" aria-label="Demo import mode"><label><input type="radio" name="osc-demo-mode" value="merge" data-field="demo-mode" checked> Add to my store</label><label><input type="radio" name="osc-demo-mode" value="replace" data-field="demo-mode"> Replace my store</label></div>
+        <div class="oss-row"><button type="button" class="oss-btn" data-act="c-demo-emoji" data-omni-tip="Load all-emoji demo store" data-omni-tip-key="—" data-omni-tip-desc="Fills the store with every Unicode emoji as a sandbox product. Fake value only. You can undo it once.">Load all-emoji demo store</button><button type="button" class="oss-btn" data-act="c-undo" data-ref="demo-undo" disabled>Undo last import</button></div>
+        <div class="oss-msg" role="status" aria-live="polite" data-ref="msg-demo"></div>
+      </div>
       <div class="oss-sec">Your products <span data-ref="pcount"></span></div>
       <div data-ref="plist-area">
         <div class="oss-row"><input class="oss-input" type="search" style="flex:1 1 120px" data-field="search" placeholder="Search products" aria-label="Search products"><button type="button" class="oss-btn" data-act="c-add">+ Add product</button></div>
@@ -140,6 +157,7 @@ export default class OmniStoreCatalogUI {
 
   destroy () {
     this._check.flush()
+    this._picker?.destroy(); this._picker = null
     this._timers.forEach(t => clearTimeout(t)); this._timers.clear()
     if (this._inited) window.removeEventListener(Store.CHANGED_EVENT, this._onChanged)
     this._inited = false
@@ -147,7 +165,7 @@ export default class OmniStoreCatalogUI {
   }
 
   /** Called when the tab becomes visible. */
-  refresh () { if (this.root) { this.renderProducts(); this.renderApply() } }
+  refresh () { if (this.root) { this.renderProducts(); this.renderApply(); this._syncDemoUndo() } }
 
   // ── helpers ──────────────────────────────────────────────────────────────────
   q (sel) { return this.root.querySelector(sel) }
@@ -157,16 +175,19 @@ export default class OmniStoreCatalogUI {
 
   promptOpts (blank = false) {
     const s = this.s
-    return { types: this.payTypes(), sections: Store.getSections(), description: s.desc, count: s.count, categoryHint: s.hint, acceptedTypes: [...s.accepted], blank }
+    const type = s.typeId ? Types.getType(s.typeId) : null
+    return { types: this.payTypes(), sections: Store.getSections(), description: s.desc, count: s.count, categoryHint: s.hint, acceptedTypes: [...s.accepted], blank, storeName: Store.getStore().name, storeType: s.typeId || 'general', typeHint: type ? Types.describeForPrompt(type) : null }
   }
   promptText () { return Schema.buildAiPrompt(this.promptOpts()) }
   templateText () { return JSON.stringify(Schema.buildTemplate({ types: this.payTypes(), sections: Store.getSections(), acceptedTypes: [...this.s.accepted] }), null, 2) }
   fixPromptText () { const s = this.s; return Schema.buildFixPrompt({ result: s.result, extract: s.extract, text: s.text, types: this.payTypes() }) }
-  exportText () { return JSON.stringify(Schema.exportCatalog(Store.getStore(), { type: 'general' }), null, 2) }
+  exportText () { const st = Store.getStore(); return JSON.stringify(Schema.exportCatalog(st, { type: st.typeId || 'general' }), null, 2) }
 
   _stepHtml (n, types) {
     if (n === 1) {
+      const typeOptions = `<option value="">General (no type)</option>${Types.listTypes().map(t => `<option value="${esc(t.id)}"${t.id === this.s.typeId ? ' selected' : ''}>${esc(t.emoji)} ${esc(t.label)}</option>`).join('')}`
       return `
+        <div class="oss-row"><label for="osc-type">Store type</label><select id="osc-type" class="oss-select" data-field="type" aria-label="Store type for the AI prompt" data-omni-tip="Store type" data-omni-tip-key="—" data-omni-tip-desc="Tells the AI what kind of store this is (bakery, electronics...): it then uses that type's categories and sections. Presets the category hint and description when they are empty.">${typeOptions}</select></div>
         <textarea class="oss-text osc-ta" data-field="desc" maxlength="${Schema.LIMITS.description}" aria-label="Describe your store" placeholder="What do you sell? e.g. a bakery with breads, pastries and drinks; prices in credits and flowers"></textarea>
         <div class="oss-row"><span class="oss-dim">How many products?</span>${COUNT_CHIPS.map(c => `<button type="button" class="oss-btn osc-chip" data-act="c-count" data-n="${c}" aria-pressed="false">${c}</button>`).join('')}</div>
         <div class="oss-row"><label for="osc-hint">Category hint (optional)</label><input id="osc-hint" class="oss-input" type="text" maxlength="${Schema.LIMITS.category}" data-field="hint" placeholder="e.g. bread"></div>
@@ -227,7 +248,7 @@ export default class OmniStoreCatalogUI {
   check () {
     const s = this.s
     const text = this.q('[data-field="paste"]').value
-    s.text = text; s.confirmReplace = false; s.last = null
+    s.text = text; s.confirmReplace = false; s.last = null; s.applyType = false
     if (!text.trim()) { s.extract = null; s.result = null; this.msg('msg-2', ''); this.renderCheck(); this.renderApply(); this._marks(); return null }
     const ex = Schema.extractJson(text)
     s.extract = ex
@@ -287,14 +308,19 @@ export default class OmniStoreCatalogUI {
       if (s.confirmReplace && s.mode === 'replace') {
         html += `<div class="osc-box" role="alertdialog" aria-label="Confirm replace"><b>Replace the whole catalog?</b><div>This removes <b>${pv.remove}</b> current product(s) and adds <b>${pv.add}</b> (updates ${pv.update}). You can undo once.</div>
           <div class="oss-row"><button type="button" class="oss-btn is-danger" data-act="c-import-go">Replace now</button><button type="button" class="oss-btn" data-act="c-import-cancel">Cancel</button></div></div>`
-      } else html += `<div class="oss-row"><button type="button" class="oss-btn" data-act="c-import" data-testid="import">Import ${n} product${n === 1 ? '' : 's'}</button></div>`
+      } else {
+        const offer = this._typeOffer(r)
+        if (offer) html += `<div class="oss-row"><label><input type="checkbox" data-field="apply-type"${s.applyType ? ' checked' : ''}> Also give this store the look and layout of a ${esc(offer.label)} (${esc(Layouts.getLayout(offer.layout).name)}, its colours)</label></div>`
+        html += `<div class="oss-row"><button type="button" class="oss-btn" data-act="c-import" data-testid="import">Import ${n} product${n === 1 ? '' : 's'}</button></div>`
+      }
     } else if (!s.last) html += '<div class="oss-dim">Nothing to import yet. Check your products in step 3 first.</div>'
     if (s.last) {
       const l = s.last
-      html += `<div class="osc-ok" role="status" data-ref="done">Imported (${esc(l.mode)}): ${l.res.added} added, ${l.res.updated} updated, ${l.res.removed} removed. The store now has ${l.res.total} products.${l.skipped ? ` ${l.skipped} problem row(s) skipped.` : ''}
+      html += `<div class="osc-ok" role="status" data-ref="done">Imported (${esc(l.mode)}): ${l.res.added} added, ${l.res.updated} updated, ${l.res.removed} removed. The store now has ${l.res.total} products.${l.look ? ' Its look and layout now follow the chosen store type.' : ''}${l.skipped ? ` ${l.skipped} problem row(s) skipped.` : ''}
         <div class="oss-dim">Products go in the section(s) the answer named (default Physical). <button type="button" class="oss-btn osc-mini" data-act="c-open-store">Show in store</button></div></div>`
     }
-    html += `<div class="oss-row"><button type="button" class="oss-btn" data-act="c-undo"${undo ? '' : ' disabled'}>Undo last import</button><span class="oss-dim">${undo ? `${esc(undo.label || 'last import')} · restores ${undo.products} product(s)${undo.persisted ? ' · kept after a reload' : ' · this session only (browser storage is full)'}. Edits made since are lost.` : 'Nothing to undo.'}</span></div>
+    const canUndo = !!undo && undo.active
+    html += `<div class="oss-row"><button type="button" class="oss-btn" data-act="c-undo"${canUndo ? '' : ' disabled'}>Undo last import</button><span class="oss-dim">${undo ? (undo.active ? `${esc(undo.label || 'last import')} · restores ${undo.products} product(s)${undo.persisted ? ' · kept after a reload' : ' · this session only (browser storage is full)'}. Edits made since are lost.` : `The last import was made in “${esc(undo.storeName)}”. Open that store (Stores tab) to undo it; it cannot be applied to this one.`) : 'Nothing to undo.'}</span></div>
       <div class="oss-msg" role="status" aria-live="polite" data-ref="msg-4"></div>`
     el.innerHTML = html
   }
@@ -344,6 +370,7 @@ export default class OmniStoreCatalogUI {
     ed.querySelector('[data-edit="name"]')?.focus?.()
   }
   closeEditor () {
+    this._picker?.destroy(); this._picker = null
     this.s.edit = null
     const ed = this.q('[data-ref="editor"]'); ed.hidden = true; ed.innerHTML = ''
     this.q('[data-ref="plist-area"]').hidden = false
@@ -356,7 +383,8 @@ export default class OmniStoreCatalogUI {
       <div class="oss-row"><b>${d.id ? 'Edit product' : 'Add product'}</b><span style="flex:1"></span><button type="button" class="oss-btn osc-mini" data-act="c-ed-cancel">Cancel</button></div>
       <label class="osc-lbl" for="osc-e-name">Name</label><input id="osc-e-name" class="oss-input is-wide" type="text" maxlength="${Schema.LIMITS.name}" data-edit="name" value="${esc(d.name)}">
       <label class="osc-lbl" for="osc-e-emoji">Emoji</label><input id="osc-e-emoji" class="oss-input" type="text" maxlength="${Schema.LIMITS.emoji}" data-edit="emoji" value="${esc(d.emoji)}" style="width:80px">
-      <div class="osc-emojis" role="group" aria-label="Emoji quick pick">${EMOJI_PICK.map(e => `<button type="button" data-act="c-ed-emoji" data-e="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div>
+      <div class="osc-emojis" role="group" aria-label="Emoji quick pick">${EMOJI_PICK.map(e => `<button type="button" data-act="c-ed-emoji" data-e="${e}" aria-label="Use ${e}">${e}</button>`).join('')}<button type="button" class="oss-btn osc-mini" style="width:auto;font-size:11px;padding:0 8px" data-act="c-ed-emojis" aria-expanded="false" data-omni-tip="All emojis" data-omni-tip-key="—" data-omni-tip-desc="Opens the full emoji picker: every Unicode emoji, searchable, with group tabs and your recent picks.">All emojis…</button></div>
+      <div data-ref="epicker" hidden></div>
       <label class="osc-lbl" for="osc-e-cat">Category</label><input id="osc-e-cat" class="oss-input is-wide" type="text" list="osc-cats" maxlength="${Schema.LIMITS.category}" data-edit="category" value="${esc(d.category)}" placeholder="e.g. bread"><datalist id="osc-cats">${[...new Set(['fruit', 'vegetable', ...Store.getProducts().map(p => p.category)])].slice(0, 30).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
       <label class="osc-lbl">Sections</label><div class="osc-checks">${secs.map(s => `<label><input type="checkbox" data-edit-sec="${esc(s.id)}"> ${esc(s.name)}</label>`).join('')}</div>
       <label class="osc-lbl" for="osc-e-shape">Shape</label><select id="osc-e-shape" class="oss-select" data-edit="shape"><option value="cube">cube</option><option value="disc">disc</option></select>
@@ -448,7 +476,9 @@ export default class OmniStoreCatalogUI {
   _onChange (e) {
     const t = e.target
     const s = this.s
-    if (t.matches('[data-pay]')) { t.checked ? s.accepted.add(t.dataset.pay) : s.accepted.delete(t.dataset.pay); s.copied = false; this._marks() }
+    if (t.matches('[data-field="type"]')) this.setType(t.value)
+    else if (t.matches('[data-field="apply-type"]')) s.applyType = !!t.checked
+    else if (t.matches('[data-pay]')) { t.checked ? s.accepted.add(t.dataset.pay) : s.accepted.delete(t.dataset.pay); s.copied = false; this._marks() }
     else if (t.matches('[data-field="mode"]')) { s.mode = t.value; s.confirmReplace = false; this.renderApply() }
     else if (t.matches('[data-edit-sec]') && s.edit) { const id = t.dataset.editSec; s.edit.sectionIds = t.checked ? [...new Set([...s.edit.sectionIds, id])] : s.edit.sectionIds.filter(x => x !== id); this._live() }
     else if (t.matches('[data-edit="shape"]') && s.edit) { s.edit.shape = t.value; this._live() }
@@ -519,9 +549,52 @@ export default class OmniStoreCatalogUI {
     } else if (act === 'c-ed-cancel') this.closeEditor()
     else if (act === 'c-ed-save') this.saveEditor()
     else if (act === 'c-ed-emoji') { s.edit.emoji = b.dataset.e; this.q('[data-edit="emoji"]').value = b.dataset.e; this._live() }
+    else if (act === 'c-ed-emojis') this.toggleEmojiPicker()
+    else if (act === 'c-demo-emoji') this.loadEmojiDemo()
     else if (act === 'c-ed-addform') { if (s.edit.price.length < Schema.LIMITS.forms) { const t = this.payTypes()[0]; s.edit.price.push({ type: t?.id ?? 'credits', qty: '1', quality: '' }); this.q('[data-ref="frows"]').innerHTML = this._formRows(); this._live() } }
     else if (act === 'c-ed-delform') { s.edit.price.splice(+b.dataset.i, 1); this.q('[data-ref="frows"]').innerHTML = this._formRows(); this._live() }
   }
+
+  /** Show / hide the full emoji picker under the quick row of the product form. Picking sets the emoji field (and the recent list). */
+  toggleEmojiPicker () {
+    const host = this.q('[data-ref="epicker"]')
+    const btn = this.q('[data-act="c-ed-emojis"]')
+    if (!host) return
+    if (this._picker) { this._picker.destroy(); this._picker = null; host.hidden = true; btn?.setAttribute('aria-expanded', 'false'); return }
+    host.hidden = false
+    btn?.setAttribute('aria-expanded', 'true')
+    this._picker = new OmniEmojiPicker({ onPick: (e) => { if (!this.s.edit) return; this.s.edit.emoji = e; const f = this.q('[data-edit="emoji"]'); if (f) f.value = e; this._live() } }).mount(host)
+  }
+
+  /**
+   * "Load all-emoji demo store": build the catalog (utils/OmniEmojiCatalog.js), run it through Schema.validateCatalog with the demo's sections
+   * added to the section list, then Store.importProducts (+ the demo sections) and Store.rememberUndo, exactly like doImport(). mode merge | replace.
+   * Replace needs a second press (inline confirm) because it removes the products that are not in the demo.
+   */
+  loadEmojiDemo (confirmed = false) {
+    const s = this.s
+    const mode = this.q('[name="osc-demo-mode"]:checked')?.value === 'replace' ? 'replace' : 'merge'
+    if (mode === 'replace' && !confirmed && !this._demoArmed) {
+      this._demoArmed = true; clearTimeout(this._demoT); this._demoT = setTimeout(() => { this._demoArmed = false; this.msg('msg-demo', '') }, 4000); this._timers.add(this._demoT)
+      this.msg('msg-demo', `Replace removes your ${Store.getProducts().length} current product(s) and adds ${EmojiCat.DEMO_EMOJI_COUNT}. Press "Load all-emoji demo store" again to confirm (you can undo once).`, 'is-err')
+      return null
+    }
+    this._demoArmed = false
+    const cat = EmojiCat.buildEmojiCatalog({ types: Value.getTypes() })
+    const ctx = this.ctx(); ctx.sectionIds = [...ctx.sectionIds, ...EmojiCat.EMOJI_SECTIONS.map(x => x.id)]
+    const v = Schema.validateCatalog(cat, ctx)
+    if (!v.ok || v.counts.error) { this.msg('msg-demo', `The demo catalog did not pass the check (${v.counts.error} problem row(s)). Nothing was changed.`, 'is-err'); return v }
+    const snap = Store.snapshotCatalog()
+    const before = Store.getProducts().length
+    const res = Store.importProducts(v.accepted, { mode, name: v.store.name, matchBy: 'id', extraSections: EmojiCat.EMOJI_SECTIONS })
+    if (!res.ok) { this.msg('msg-demo', 'Import failed: ' + res.error, 'is-err'); return res }
+    Store.rememberUndo(snap, `${mode} import of the all-emoji demo (${v.accepted.length} products, store had ${before})`)
+    s.last = { res, mode, skipped: 0 }
+    this.msg('msg-demo', `Loaded ${v.accepted.length} emoji products in ${EmojiCat.EMOJI_SECTIONS.length} sections (${mode === 'replace' ? 'replaced' : 'added to'} your store; it now has ${res.total}). Open the store and use the section chips. Undo last import puts everything back.`, 'is-ok')
+    this.renderApply(); this._marks(); this.renderProducts(); this._syncDemoUndo()
+    return res
+  }
+  _syncDemoUndo () { const b = this.q('[data-ref="demo-undo"]'); if (b) b.disabled = !Store.getUndo()?.active }
 
   /** Apply the checked catalog. Replace needs the inline confirm first (pass confirmed=true from it). */
   doImport (confirmed = false) {
@@ -531,19 +604,59 @@ export default class OmniStoreCatalogUI {
     if (s.mode === 'replace' && !confirmed) { s.confirmReplace = true; this.renderApply(); return null }
     const snap = Store.snapshotCatalog()
     const before = Store.getProducts().length
+    const offer = s.applyType ? this._typeOffer(r) : null   // decided BEFORE the import fills the store
     const res = Store.importProducts(r.accepted, { mode: s.mode, name: r.store.name, matchBy: 'id+name' })
     s.confirmReplace = false
     if (!res.ok) { this.renderApply(); this.msg('msg-4', 'Import failed: ' + res.error, 'is-err'); return res }
     Store.rememberUndo(snap, `${s.mode} import of ${r.accepted.length} product(s) (store had ${before})`)
-    s.last = { res, mode: s.mode, skipped: r.counts.error }
+    let look = null
+    if (offer) look = Store.applyTypeLook(Store.activeStoreId(), offer.id)   // only what the user ticked
+    s.last = { res, mode: s.mode, skipped: r.counts.error, look: look?.ok ? true : false }
     this.renderApply(); this._marks(); this.renderProducts()
     return res
   }
+  /** The store type the pasted catalog names, when giving the active store that type's look makes sense: a known type, the store is empty or blank, and it is not that type already. Else null. */
+  _typeOffer (r) {
+    const id = r?.store?.type
+    const type = typeof id === 'string' ? Types.getType(id) : null
+    const st = Store.getStore()
+    if (!type || type.id === st.typeId || !(st.products.length === 0 || st.typeId === 'blank')) return null
+    return type
+  }
+
+  /** The active store changed (or was renamed): forget everything tied to the old one and redraw. */
+  storeSwitched () {
+    if (!this.root) return
+    const s = this.s
+    this._check.flush?.()
+    s.extract = null; s.result = null; s.text = ''; s.last = null; s.confirmReplace = false; s.applyType = false; s.confirm = null; s.search = ''; s.page = 0
+    s.typeId = Store.getStore().typeId
+    const paste = this.q('[data-field="paste"]'); if (paste) paste.value = ''
+    const sel = this.q('[data-field="type"]'); if (sel) sel.value = Types.getType(s.typeId) ? s.typeId : ''
+    const srch = this.q('[data-field="search"]'); if (srch) srch.value = ''
+    if (s.edit) this.closeEditor()
+    this.msg('msg-2', ''); this.msg('msg-p', ''); this.msg('msg-demo', ''); this.msg('msg-4', '')
+    this.renderCheck(); this.renderApply(); this.renderProducts(); this._marks(); this._syncDemoUndo()
+  }
+
+  /** The "Store type" select: remembers the type for the AI prompt and presets an EMPTY category hint / description from it. */
+  setType (id) {
+    const s = this.s
+    const type = id ? Types.getType(id) : null
+    s.typeId = type ? type.id : ''
+    if (type) {
+      if (!s.hint.trim() && type.categories[0]) { s.hint = type.categories[0]; const h = this.q('[data-field="hint"]'); if (h) h.value = s.hint }
+      if (!s.desc.trim()) { s.desc = `A ${type.label.toLowerCase()}.${type.categories.length ? ` Typical products: ${type.categories.join(', ')}.` : ''} Prices in sandbox value.`; const d = this.q('[data-field="desc"]'); if (d) d.value = s.desc }
+    }
+    s.copied = false; this._marks()
+  }
+
   doUndo () {
     const res = Store.undoLast()
     this.s.last = null
-    this.renderApply(); this._marks(); this.renderProducts()
-    this.msg('msg-4', res.ok ? `Undone: the catalog is back to ${res.products} product(s).` : 'Nothing to undo.', res.ok ? 'is-ok' : 'is-err')
+    this.renderApply(); this._marks(); this.renderProducts(); this._syncDemoUndo()
+    this.msg('msg-demo', res.ok ? `Undone: the catalog is back to ${res.products} product(s).` : '', res.ok ? 'is-ok' : '')
+    this.msg('msg-4', res.ok ? `Undone: the catalog is back to ${res.products} product(s).` : (res.error === 'other-store' ? `That import was made in “${res.storeName}”. Open that store to undo it.` : 'Nothing to undo.'), res.ok ? 'is-ok' : 'is-err')
     return res
   }
 }

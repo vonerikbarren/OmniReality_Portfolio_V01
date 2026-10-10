@@ -16,7 +16,7 @@ How to use the app, written for a first-time user. Each page takes under 5 minut
 | 05 | [Tunnels and axes](05_Tunnels_and_Axes.md) | Hand tunnels, stepping, axes panels |
 | 06 | [Chronos, Player and Timeline](06_Chronos_Player_and_Timeline.md) | Clock, clips, keyframes |
 | 07 | [Ribbon, Notify and Dock](07_Ribbon_Notify_and_Dock.md) | Toolbar, info box, bottom dock |
-| 08 | [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md) | Sandbox store and wallet |
+| 08 | [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md) | Sandbox stores (several, by type), wallet, and pinning products / values as nodes |
 | 09 | [Settings and Admin](09_Settings_and_Admin.md) | Admin vs Developer, resets |
 | 10 | [Keyboard and touch cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) | Every key in one table |
 | 11 | [Troubleshooting](11_Troubleshooting.md) | Fixes, clearing data, bug reports |
@@ -40,6 +40,7 @@ How to use the app, written for a first-time user. Each page takes under 5 minut
 | Put things on a timeline | Inspector Time section, or ribbon Realities > Chronos; [Chronos](06_Chronos_Player_and_Timeline.md) |
 | Open a panel | Left drawer (⟐OmniHand ☰), right drawer (⟐ConsciousHand ☰), the ribbon, or the top-bar menus |
 | Change settings | ⟐Admin in the left drawer; a hand's ⚙; [Settings](09_Settings_and_Admin.md) |
+| Pin a product or value as a node | Exchange > Pin to my space; ⟐N picker > Store item; [Pin](08_OmniStore_and_OmniValue.md) |
 | Shop in the sandbox | Ribbon Realities > Value > Store; [Store](08_OmniStore_and_OmniValue.md) |
 | Find a key | [Cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) |
 | Fix a problem | [Troubleshooting](11_Troubleshooting.md) |
@@ -63,6 +64,8 @@ The break is **700 pixels wide**. At 700px or narrower:
 |---|---|
 | Reality | A 3D space you can move through; this app is one |
 | Node | A small object in the space; edges join nodes |
+| Store item / Value type node | A node that points at a product or a value type and shows it live (sandbox) |
+| Pin | Drop a node that points at a product or value type in front of you |
 | Hand | A 2x2 group of buttons in a screen corner |
 | Cell | One button of a hand (☰ ⚇ ⬢ ⦿) |
 | Pad | A floating direction control a hand opens |
@@ -74,6 +77,8 @@ The break is **700 pixels wide**. At 700px or narrower:
 | Payload / ammo | The data or behaviour a hand fires |
 | Primary Time | The app's clock |
 | Sandbox | Fake value; nothing real is spent |
+| Store type | A recipe for a store (Produce, Bakery, Electronics, Blank): look, layout, sections, accepted payment forms, starting products |
+| Active store | The one of your stores the 3D scene shows and the settings edit |
 
 ## Appendix: Doc/code mismatches found
 
@@ -86,7 +91,7 @@ Where older text and the code disagree, this guide follows the code.
 5. The Inspector file header says "Four accordion sections"; there are twelve.
 6. The LH ⚇ cell toggles the LH and RH pads together, not "all corners".
 7. Radial page ⟐2 tools are placeholders and do nothing.
-8. The Exchange shows the text "Chart slot — D3 views arrive in V177" though no chart is there.
+8. (Fixed in V181) The Exchange showed "Chart slot — D3 views arrive in V177"; the slot now holds a real chart. The V180 guide text about this placeholder is removed.
 9. The OmniHands panel note for RH keys says arrows yaw; they also rise and fall.
 10. R and F are bound in both main.js and MovementPad (possible double move; developer note).
 11. The ribbon Dashboard tooltip calls it the "only dashboard panel".

@@ -1,9 +1,12 @@
 /**
- * utils/OmniStoreModel.js — ⟐OmniStore sandbox: one store per identity, products, ONE shopping-list model (V176)
+ * utils/OmniStoreModel.js — ⟐OmniStore sandbox: stores (V182: several per identity, one ACTIVE), products, ONE shopping-list model per store (V176)
  *
  * SANDBOX ONLY (see utils/OmniValueModel.js). No DOM; persisted at localStorage 'omni:store-v1'.
  *
- * STORE     per identity id (the same id the value ledger uses). `sections` = identity sections derived from the real
+ * STORE     V182: {id, ownerId, name, typeId, emoji, baseSections, typeSections?, accepts?, sections, extraSections, products, listItems}; an identity (the id the value
+ *           ledger uses) owns up to STORE_LIMITS.perOwner stores and works on ONE active store (activeStoreId / setActiveStore); everything below (products, sections,
+ *           the window / wish / cart lists, undo) belongs to the STORE, while the wallet (utils/OmniValueModel.js) stays one global ledger. A store is made from a
+ *           TYPE (utils/OmniStoreTypes.js) by createStore(). `sections` = identity sections derived from the real
  *           14 Wellness Dimensions (data/OmniUserWellness.js; there is no "Nutritional" dimension, so produce lives under
  *           Physical, with Life / Social / Emotional as the other food-flavoured lenses) + media-kind lenses
  *           Emoji / Images / Videos (a product shows in a media lens when it carries media of that kind).
@@ -23,13 +26,15 @@
  * V178: addProduct / updateProduct / removeProduct / duplicateProduct (manual editing; validated by the catalog schema's validateProduct, the
  * SAME rules as an import), importProducts matchBy 'id+name', previewImport(), and a bounded persisted undo snapshot ('omni:store-undo-v1').
  *
- * Events (window): omni:store-changed {kind}.
+ * Events (window): omni:store-changed {kind, storeId?} (kinds incl. V182 active-store, store-create, store-rename, store-delete, store-type); omni:store-active-set {storeId}.
  */
 
 import * as Value from './OmniValueModel.js'
 import * as Schema from './OmniStoreCatalogSchema.js'
 import { getActiveIdentity } from './OmniIdentity.js'
 import { WELLNESS_DIMENSIONS } from '../data/OmniUserWellness.js'
+import * as Types from './OmniStoreTypes.js'   // V182: store types as data (pure, user-safe)
+import * as Look from './OmniStoreSettings.js'   // V182: per-store look / layout / anchor (a cycle: Settings asks this module for the active store id; both only call each other at run time)
 
 export const STORAGE_KEY = 'omni:store-v1'
 export const VERSION = 1
@@ -40,20 +45,27 @@ export const LIST_STATES = ['window', 'wish', 'cart']
 export const IMAGE_MAX_BYTES = 512 * 1024
 export const IMAGE_BUDGET_BYTES = 1.5 * 1024 * 1024
 // V177: products 200 -> 500 and name 60 -> 80 so the catalog schema's caps (utils/OmniStoreCatalogSchema.js) are never silently cut here
-export const LIMITS = { products: 500, listItems: 200, forms: 8, reviews: 20, lifecycle: 12, qty: 9999, name: 80, note: 300 }
+// V181: products 500 -> 3000 (Schema.LIMITS.products; the all-emoji demo is 1,914 products), extraSections 16 (catalog-defined sections, e.g. the 9 Unicode emoji groups)
+export const LIMITS = { products: Schema.LIMITS.products, extraSections: 16, listItems: 200, forms: 8, reviews: 20, lifecycle: 12, qty: 9999, name: 80, note: 300 }
 
-let S = null           // { stores:{ownerId:store}, section:{ownerId:sectionId} }
+let S = null           // { stores:{storeId:store}, section:{storeId:sectionId}, active:{ownerId:storeId} }   (V182: several stores per identity)
 let loaded = false
 let seq = 0
 let degraded = false
 
-const emit = (kind) => { try { window.dispatchEvent(new CustomEvent(CHANGED_EVENT, { detail: { kind } })) } catch (_) { /* no window */ } }
+/** V182 limits. perOwner / total are checked on createStore (the implicit default store of a new identity is never refused); chars = the serialised state. */
+export const STORE_LIMITS = { perOwner: 12, total: 16, loadMax: 64, name: 40, chars: 3000000, warnChars: 2000000 }
+export const ACTIVE_EVENT = 'omni:store-active-set'   // window event {storeId}: fired after the active store changed (HUD chip, Stores tab, API)
+
+const emit = (kind, extra = {}) => { try { window.dispatchEvent(new CustomEvent(CHANGED_EVENT, { detail: { kind, ...extra } })) } catch (_) { /* no window */ } }
 const finite = (x) => typeof x === 'number' && Number.isFinite(x)
 const str = (v, max) => String(v ?? '').slice(0, max)
 const idOk = (v) => typeof v === 'string' && /^[A-Za-z0-9_.:-]{1,64}$/.test(v)
+const cleanName = (v) => (typeof v === 'string' ? v.replace(/<[^>]*>/g, '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, STORE_LIMITS.name) : '')
+const mb = (n) => (n / 1e6).toFixed(2)
 const ensureLoaded = () => { if (!loaded) load() }
 
-// ── Seed: fruit and veg ─────────────────────────────────────────────────────────
+// ── Sections and seed (the seed data lives in utils/OmniStoreTypes.js) ──────────
 
 const DIM = (name) => `dim-${name.toLowerCase()}`
 const IDENTITY_SECTIONS = [
@@ -63,45 +75,28 @@ const IDENTITY_SECTIONS = [
   ['Emotional', 'Comfort picks.'],
 ]
 
-// [slug, emoji, name, category, shape, extra dimensions, price forms "type:qty[:quality]", stock]
-const SEED = [
-  ['apple', '🍎', 'Apple', 'fruit', 'cube', ['Emotional'], 'bells:3 credits:1 gold:0.5 flowers:2:fresh', 14],
-  ['banana', '🍌', 'Banana', 'fruit', 'disc', ['Emotional'], 'bells:2 credits:1 hours:1:skilled', 12],
-  ['grapes', '🍇', 'Grapes', 'fruit', 'cube', ['Social'], 'bells:6 credits:2 usd:1 nook:1', 9],
-  ['strawberry', '🍓', 'Strawberry', 'fruit', 'disc', ['Social'], 'bells:5 credits:2 flowers:3:fresh usd:1', 11],
-  ['watermelon', '🍉', 'Watermelon', 'fruit', 'cube', ['Social'], 'bells:12 credits:4 gold:2 hours:4:skilled', 6],
-  ['peach', '🍑', 'Peach', 'fruit', 'disc', ['Emotional'], 'bells:4 credits:1.5 usd:0.75 flowers:3', 10],
-  ['cherry', '🍒', 'Cherries', 'fruit', 'disc', ['Social'], 'bells:7 credits:2.5 nook:1 gold:1.5', 8],
-  ['pineapple', '🍍', 'Pineapple', 'fruit', 'cube', ['Social'], 'bells:15 credits:5 gold:2.5 usd:2.5 hours:5:skilled', 5],
-  ['carrot', '🥕', 'Carrot', 'vegetable', 'disc', ['Life'], 'nook:1 hours:2:skilled bells:6 credits:2', 20],
-  ['broccoli', '🥦', 'Broccoli', 'vegetable', 'cube', ['Life'], 'bells:5 credits:2 flowers:4 hours:2:skilled', 13],
-  ['corn', '🌽', 'Corn', 'vegetable', 'disc', ['Life', 'Social'], 'bells:4 credits:1.5 usd:0.75', 16],
-  ['tomato', '🍅', 'Tomato', 'vegetable', 'cube', ['Life', 'Emotional'], 'bells:3 credits:1 flowers:2 hours:1:skilled', 18],
-  ['potato', '🥔', 'Potato', 'vegetable', 'cube', ['Life'], 'bells:2 credits:1 hours:1:skilled', 25],
-  ['onion', '🧅', 'Onion', 'vegetable', 'disc', ['Life'], 'bells:2 credits:0.5 usd:0.25 flowers:1', 22],
-  ['lettuce', '🥬', 'Leafy greens', 'vegetable', 'cube', ['Life'], 'bells:3 credits:1 flowers:2:fresh usd:0.5', 15],
-  ['eggplant', '🍆', 'Eggplant', 'vegetable', 'disc', ['Emotional'], 'bells:5 credits:2 gold:1 nook:1', 7],
-]
-
-const LIFECYCLE_STAGES = [
-  ['idea', 'The idea', (n) => `${n}: a grower asks what a plain, honest ${n.toLowerCase()} would look like in a world with no default currency.`],
-  ['materials', 'Materials', (n) => `Seed stock, soil, water and a season of light for the ${n.toLowerCase()}.`],
-  ['init', 'Planted', (n) => `First ${n.toLowerCase()} seedlings planted in the sandbox plot.`],
-  ['build', 'Grown', (n) => `Weeks of growth; the ${n.toLowerCase()} lot is graded by its grower (self-reported).`],
-  ['final', 'Harvest', (n) => `Harvest day: the ${n.toLowerCase()} lot is listed with its accepted exchange forms.`],
-  ['update', 'Update', (n) => `Prices re-balanced across Bells, Credits and friends after the first week of trades.`],
-]
-const T0 = Date.UTC(2026, 2, 1)
-
-function parseForms (spec) {
-  return spec.split(/\s+/).filter(Boolean).map(s => {
-    const [type, qty, quality] = s.split(':')
-    return quality ? { type, qty: Number(qty), quality } : { type, qty: Number(qty) }
+/** V181: extra sections a catalog brings (e.g. the emoji groups): [{id, name, desc}]. Untrusted -> clean list (unique ids, never a built-in id, max LIMITS.extraSections). */
+export function sanitizeExtraSections (raw) {
+  const taken = new Set([...IDENTITY_SECTIONS.map(([d]) => DIM(d)), 'media-emoji', 'media-image', 'media-video'])
+  const out = []
+  ;(Array.isArray(raw) ? raw : []).forEach(x => {
+    if (out.length >= LIMITS.extraSections || !x || typeof x !== 'object' || !idOk(x.id) || taken.has(x.id)) return
+    const name = str(typeof x.name === 'string' ? x.name.replace(/[<>\u0000-\u001f]/g, '').trim() : '', 28)
+    if (!name) return
+    taken.add(x.id)
+    out.push({ id: x.id, name, desc: str(typeof x.desc === 'string' ? x.desc.replace(/[<>\u0000-\u001f]/g, '').trim() : '', 160) })
   })
+  return out
 }
 
-function buildSections () {
-  const sections = IDENTITY_SECTIONS.map(([dim, desc]) => ({ id: DIM(dim), name: dim, kind: 'identity', filter: { dimension: dim }, desc }))
+/**
+ * Sections of a store: the 4 identity (Wellness) sections when base is 'wellness', the type's own sections, catalog-defined extra sections
+ * (V181), then the 3 media lenses. The default produce store is exactly the V181 list.
+ */
+function buildSections (extra = [], typeSections = [], base = 'wellness') {
+  const sections = base === 'none' ? [] : IDENTITY_SECTIONS.map(([dim, desc]) => ({ id: DIM(dim), name: dim, kind: 'identity', filter: { dimension: dim }, desc }))
+  typeSections.forEach(x => sections.push({ id: x.id, name: x.name, kind: 'identity', filter: { dimension: x.name }, desc: x.desc ?? '' }))
+  extra.forEach(x => sections.push({ id: x.id, name: x.name, kind: 'identity', filter: { dimension: x.name }, desc: x.desc, extra: true }))   // before the media lenses
   sections.push(
     { id: 'media-emoji', name: 'Emoji', kind: 'media', filter: { mediaKind: 'emoji' }, desc: 'Products shown as an emoji.' },
     { id: 'media-image', name: 'Images', kind: 'media', filter: { mediaKind: 'image' }, desc: 'Products that carry an image.' },
@@ -109,25 +104,23 @@ function buildSections () {
   )
   return sections
 }
+const rebuildSections = (st) => { st.sections = buildSections(st.extraSections ?? [], st.typeSections ?? [], st.baseSections) }
 
-export function buildSeedProducts () {
-  return SEED.map(([slug, emoji, name, category, shape, dims, forms, stock], i) => ({
-    id: `p-${slug}`, name, emoji, category,
-    sectionIds: [DIM('Physical'), ...dims.map(DIM)],
-    media: { emoji, image: null, video: null, active: 'emoji' },
-    shape, price: parseForms(forms), accept: null, stock,
-    valueType: 'produce', qualityScale: 'ripeness', quality: 'ripe',
-    lifecycle: LIFECYCLE_STAGES.map(([stage, title, note], k) => ({ stage, title, note: note(name), t: T0 + (i * 3 + k * 9) * 86400000 })),
-    reviews: [
-      { id: `r-${slug}-1`, user: 'sandbox-shopper', rating: 4 + (i % 2), text: `Good ${name.toLowerCase()}, paid in ${parseForms(forms)[0].type}.`, t: T0 + 40 * 86400000 },
-      { id: `r-${slug}-2`, user: 'sandbox-grower', rating: 5, text: 'Grown and graded in the sandbox.', t: T0 + 45 * 86400000 },
-    ],
-    stats: { purchases: 10 + ((i * 7) % 23), influence: 1 + (i % 5), customerTypes: { regulars: 4 + (i % 6), visitors: 2 + (i % 4), growers: i % 3 } },
-  }))
-}
+/** The seed products of a built-in or registered type (default 'produce' = the V176-V181 fruit and veg). */
+export function buildSeedProducts (typeId = 'produce') { return Types.buildSeedProducts(Types.getType(typeId)) }
 
-function buildStore (ownerId, name) {
-  return { ownerId, name, sections: buildSections(), products: buildSeedProducts(), listItems: [] }
+function typeAccepts (type) { return (type?.accepts ?? []).filter(a => Value.getType(a)).slice(0, Types.LIMITS.accepts) }
+
+/** A new store from a (validated) type record. Key order matters: after id / typeId / emoji / baseSections the default produce store equals the V181 one. */
+function makeStore (id, ownerId, name, type) {
+  const ts = (type?.sections ?? []).map(s => ({ id: s.id, name: s.name, desc: s.desc ?? '' }))
+  const acc = typeAccepts(type)
+  const base = type?.baseSections ?? 'wellness'
+  return {
+    id, ownerId, name, typeId: type?.id ?? 'produce', emoji: type?.emoji ?? '🥬', baseSections: base,
+    ...(ts.length ? { typeSections: ts } : {}), ...(acc.length ? { accepts: acc } : {}),
+    sections: buildSections([], ts, base), extraSections: [], products: Types.buildSeedProducts(type), listItems: [],
+  }
 }
 
 // ── Sanitise ────────────────────────────────────────────────────────────────────
@@ -162,7 +155,7 @@ function sanitizeIntent (i) {
 
 function sanitizeProduct (p) {
   if (!p || typeof p !== 'object' || !idOk(p.id)) return null
-  const emoji = str(p.media?.emoji ?? p.emoji ?? '❓', 16) || '❓'
+  const emoji = str(p.media?.emoji ?? p.emoji ?? '❓', Schema.LIMITS.emoji) || '❓'
   const img = typeof p.media?.image === 'string' && checkImage(p.media.image).ok ? p.media.image : null
   const vid = typeof p.media?.video === 'string' && checkVideo(p.media.video).ok ? p.media.video : null
   const active = MEDIA_KINDS.includes(p.media?.active) && (p.media.active === 'emoji' || (p.media.active === 'image' && img) || (p.media.active === 'video' && vid)) ? p.media.active : 'emoji'
@@ -189,42 +182,58 @@ function sanitizeProduct (p) {
   }
 }
 
-function sanitizeStore (ownerId, raw) {
-  const seed = buildStore(ownerId, str(raw?.name || 'Sandbox store', 40))
-  if (!raw || typeof raw !== 'object') return seed
-  const products = (Array.isArray(raw.products) ? raw.products : []).slice(0, LIMITS.products).map(sanitizeProduct).filter(Boolean)
+function sanitizeStore (id, raw) {
+  const r = raw && typeof raw === 'object' ? raw : {}
+  const typeId = idOk(r.typeId) ? r.typeId : 'produce'        // V176-V181 data has no typeId: it was the produce store
+  const type = Types.getType(typeId)
+  const base = Types.BASE_SECTIONS.includes(r.baseSections) ? r.baseSections : (type?.baseSections ?? 'wellness')
+  const ts = Array.isArray(r.typeSections) ? sanitizeExtraSections(r.typeSections) : sanitizeExtraSections(type?.sections)
+  const acc = Array.isArray(r.accepts) ? r.accepts.filter(a => idOk(a) && Value.getType(a)).filter((a, i, l) => l.indexOf(a) === i).slice(0, Types.LIMITS.accepts) : typeAccepts(type)
+  const emoji = typeof r.emoji === 'string' && r.emoji.trim() && !/[<>]/.test(r.emoji) ? str(r.emoji.replace(/[\u0000-\u001f]/g, '').trim(), Types.LIMITS.emoji) : (type?.emoji ?? '🏬')
+  const extra = sanitizeExtraSections(r.extraSections)   // V181
+  const out = {
+    id, ownerId: idOk(r.ownerId) ? r.ownerId : id, name: cleanName(r.name) || 'Sandbox store', typeId, emoji, baseSections: base,
+    ...(ts.length ? { typeSections: ts } : {}), ...(acc.length ? { accepts: acc } : {}),
+    sections: buildSections(extra, ts, base), extraSections: extra, products: [], listItems: [],
+  }
+  const products = (Array.isArray(r.products) ? r.products : []).slice(0, LIMITS.products).map(sanitizeProduct).filter(Boolean)
   const ids = new Set()
-  seed.products = products.filter(p => (ids.has(p.id) ? false : (ids.add(p.id), true)))
-  // V178: a store the user emptied on purpose stays empty; only a missing / unusable product list is re-seeded
-  if (!seed.products.length && !(Array.isArray(raw.products) && raw.products.length === 0)) seed.products = buildSeedProducts()
-  const pid = new Set(seed.products.map(p => p.id))
+  out.products = products.filter(p => (ids.has(p.id) ? false : (ids.add(p.id), true)))
+  // V178: a store the user emptied on purpose stays empty; only a missing / unusable product list is re-seeded (V182: from the store's OWN type; an unknown type has no seed)
+  if (!out.products.length && !(Array.isArray(r.products) && r.products.length === 0)) out.products = type ? Types.buildSeedProducts(type) : []
+  const pid = new Set(out.products.map(p => p.id))
   const seen = new Set()
-  seed.listItems = (Array.isArray(raw.listItems) ? raw.listItems : []).slice(0, LIMITS.listItems).filter(it => it && idOk(it.id) && pid.has(it.productId) && LIST_STATES.includes(it.state) && finite(it.qty) && it.qty > 0)
+  out.listItems = (Array.isArray(r.listItems) ? r.listItems : []).slice(0, LIMITS.listItems).filter(it => it && idOk(it.id) && pid.has(it.productId) && LIST_STATES.includes(it.state) && finite(it.qty) && it.qty > 0)
     .filter(it => { const k = it.productId + '|' + it.state; return seen.has(k) ? false : (seen.add(k), true) })
     .map(it => ({ id: it.id, productId: it.productId, qty: Math.min(it.qty, LIMITS.qty), state: it.state, chosenForm: sanitizeChosen(it.chosenForm), declaredIntent: sanitizeIntent(it.declaredIntent) }))
-  return seed
+  return out
 }
 
 // ── Load / persist ──────────────────────────────────────────────────────────────
 
+/**
+ * V182: `omni:store-v1` stays version 1; the new fields are additive. {stores:{storeId:store}, section:{storeId:sectionId}, active:{ownerId:storeId}}.
+ * V176-V181 data (no `active`, stores without typeId) loads as ONE produce store per identity whose id is the identity id. Nothing is rewritten until the next save.
+ */
 export function load () {
   loaded = true
-  S = { stores: {}, section: {} }
+  S = { stores: {}, section: {}, active: {} }
   let raw = null
   try { raw = localStorage.getItem(STORAGE_KEY) } catch (_) { return S }
   if (!raw) return S
   let data = null
   try { data = JSON.parse(raw) } catch (_) { return S }
   if (!data || data.version !== VERSION || typeof data.stores !== 'object' || !data.stores) return S
-  Object.keys(data.stores).slice(0, 16).forEach(id => { if (idOk(id)) S.stores[id] = sanitizeStore(id, data.stores[id]) })
+  Object.keys(data.stores).slice(0, STORE_LIMITS.loadMax).forEach(id => { if (idOk(id)) S.stores[id] = sanitizeStore(id, data.stores[id]) })
   if (data.section && typeof data.section === 'object') Object.keys(data.section).forEach(k => { if (idOk(k) && typeof data.section[k] === 'string') S.section[k] = data.section[k] })
+  if (data.active && typeof data.active === 'object') Object.keys(data.active).forEach(o => { const sid = data.active[o]; if (idOk(o) && idOk(sid) && S.stores[sid]?.ownerId === o) S.active[o] = sid })   // a pointer to somebody else's store is ignored
   return S
 }
 
 function persist () {
   if (!S) return
   const body = (strip) => JSON.stringify({
-    version: VERSION, section: S.section,
+    version: VERSION, section: S.section, active: S.active,
     stores: strip ? Object.fromEntries(Object.entries(S.stores).map(([k, st]) => [k, { ...st, products: st.products.map(p => ({ ...p, media: { ...p.media, image: null, active: p.media.active === 'image' ? 'emoji' : p.media.active } })) }])) : S.stores,
   })
   try { localStorage.setItem(STORAGE_KEY, body(false)); degraded = false } catch (_) {
@@ -234,27 +243,54 @@ function persist () {
 /** True when the last save had to drop image data URLs because the browser quota was full. */
 export const isDegraded = () => degraded
 export const flush = () => { ensureLoaded(); persist() }
-function changed (kind) { persist(); emit(kind) }
+function changed (kind, extra) { persist(); emit(kind, extra) }
 export function _reset (clear = false) {
   if (clear) { try { localStorage.removeItem(STORAGE_KEY) } catch (_) { /* ignore */ } }
-  S = { stores: {}, section: {} }; loaded = true; seq = 0; degraded = false
+  S = { stores: {}, section: {}, active: {} }; loaded = true; seq = 0; degraded = false
   undoMem = null; undoRead = false   // the memory copy is forgotten; the stored copy is cleared with `clear`
   if (clear) { try { localStorage.removeItem('omni:store-undo-v1') } catch (_) { /* ignore */ } }
 }
 
-// ── Store access ────────────────────────────────────────────────────────────────
+// ── Store access (V182: the ACTIVE store of the current identity) ────────────────
 
 export function currentOwnerId () { return Value.currentAccountId() }
-export function getStore (ownerId) {
+const ownerStores = (owner) => Object.values(S.stores).filter(s => s.ownerId === owner)
+const newStoreId = () => { let id; do { id = `st-${Date.now().toString(36)}${(seq++).toString(36)}` } while (S.stores[id]); return id }
+
+/** An identity always has at least one store: the first keeps the identity id as its store id (so V176-V181 data, store settings and section maps still match). */
+function ensureOwner (owner) {
+  if (ownerStores(owner).length) return
+  let nm = 'Sandbox store'
+  try { const ident = getActiveIdentity(); if (ident && ident.id === owner) nm = cleanName(`${ident.name}'s store`) || nm } catch (_) { /* ignore */ }
+  const id = S.stores[owner] ? newStoreId() : owner
+  S.stores[id] = makeStore(id, owner, nm, Types.getType('produce'))
+  persist()
+}
+
+/** Id of the store the scene and every panel work on (persisted per identity in `active`; falls back to the identity's first store). */
+export function activeStoreId () {
   ensureLoaded()
-  const id = ownerId ?? currentOwnerId()
-  if (!S.stores[id]) {
-    let nm = 'Sandbox store'
-    try { const ident = getActiveIdentity(); if (ident && ident.id === id) nm = `${ident.name}'s store` } catch (_) { /* ignore */ }
-    S.stores[id] = buildStore(id, nm)
-    persist()
-  }
-  return S.stores[id]
+  const owner = currentOwnerId()
+  ensureOwner(owner)
+  const a = S.active[owner]
+  if (a && S.stores[a]?.ownerId === owner) return a
+  return S.stores[owner]?.ownerId === owner ? owner : ownerStores(owner)[0].id
+}
+
+/** The active store (no argument), or the store with that id (null when there is none). A bare identity id with no store yet still creates its default store, like V176-V181. */
+export function getStore (id) {
+  ensureLoaded()
+  if (id === undefined || id === null) return S.stores[activeStoreId()]
+  if (S.stores[id]) return S.stores[id]
+  if (idOk(id) && !id.startsWith('st-') && !ownerStores(id).length) { ensureOwner(id); return S.stores[id] ?? null }
+  return null
+}
+/** V183: read-only lookup of a store of the CURRENT identity by id; null when there is none. Never creates a store (getStore(id) can, for a bare id). Used by the StoreItemNode reference. */
+export function peekStore (id) {
+  ensureLoaded()
+  if (!idOk(id)) return null
+  const st = S.stores[id]
+  return st && st.ownerId === currentOwnerId() ? st : null
 }
 export const getSections = () => getStore().sections
 export const getSection = (id) => getStore().sections.find(s => s.id === id) ?? null
@@ -264,16 +300,221 @@ export const WELLNESS = WELLNESS_DIMENSIONS
 
 export function getCurrentSectionId () {
   const st = getStore()
-  const want = S.section[st.ownerId]
+  const want = S.section[st.id]
   return st.sections.some(s => s.id === want) ? want : st.sections[0].id
 }
 export function setCurrentSection (id) {
   const st = getStore()
   if (!st.sections.some(s => s.id === id)) return false
-  S.section[st.ownerId] = id
+  S.section[st.id] = id
   changed('section')
   return true
 }
+
+/** The product with this id in ANY store of the current identity (the wallet's inventory is global; the shelf is not). Null if none. */
+export function findProductAnywhere (productId) {
+  ensureLoaded()
+  const act = getStore()
+  const hit = act.products.find(p => p.id === productId)
+  if (hit) return hit
+  for (const st of ownerStores(currentOwnerId())) { const p = st.products.find(x => x.id === productId); if (p) return p }
+  return null
+}
+
+export function displayName (storeId) { ensureLoaded(); return S.stores[storeId]?.name ?? '' }
+
+// ── Several stores (V182, BuildOrder item 6) ────────────────────────────────────
+
+/** Stores of the current identity: [{id, name, typeId, typeLabel, emoji, layout, anchor, products, lists, active, chars?}] (creation order). */
+export function listStores ({ sizes = false } = {}) {
+  ensureLoaded()
+  const owner = currentOwnerId()
+  const act = activeStoreId()
+  return ownerStores(owner).map(st => {
+    const set = Look.getSettings(st.id)
+    const row = { id: st.id, ownerId: st.ownerId, name: st.name, typeId: st.typeId, typeLabel: Types.getType(st.typeId)?.label ?? st.typeId, emoji: st.emoji, layout: set.layout, anchor: [...set.anchor], products: st.products.length, lists: st.listItems.length, active: st.id === act }
+    if (sizes) row.chars = JSON.stringify(st).length
+    return row
+  })
+}
+
+/** Serialised size of the stored state: {total, max, warnAt, count, byStore:{id:chars}}. */
+export function storageStats () {
+  ensureLoaded()
+  const byStore = {}
+  let total = 80 + JSON.stringify(S.section).length + JSON.stringify(S.active).length
+  Object.entries(S.stores).forEach(([k, st]) => { const n = JSON.stringify(st).length; byStore[k] = n; total += n + k.length + 4 })
+  return { total, max: STORE_LIMITS.chars, warnAt: STORE_LIMITS.warnChars, count: Object.keys(S.stores).length, byStore }
+}
+
+/** Write a type's layout, theme colours and backdrop (and optionally name / anchor) into a store's settings. Pushes plain-language problems into `warnings`. */
+function writeLook (storeId, type, { name = undefined, anchor = undefined } = {}, warnings = []) {
+  const th = type.theme ?? {}
+  const preset = th.preset ? Look.getPreset(th.preset) : null
+  if (th.preset && !preset) warnings.push(`Look preset "${String(th.preset).replace(/[<>]/g, '').slice(0, 30)}" not found; the default look was used.`)
+  const colors = { ...(preset?.colors ?? {}), ...(th.colors ?? {}) }
+  const bd = { ...(preset?.backdrop ?? {}) }
+  const tb = type.backdrop
+  if (tb) {
+    if (tb.preset) { const bp = Look.getPreset(tb.preset); if (bp) Object.assign(bd, bp.backdrop); else warnings.push(`Backdrop preset "${String(tb.preset).replace(/[<>]/g, '').slice(0, 30)}" not found.`) }
+    ;['mode', 'color', 'color2', 'opacity'].forEach(k => { if (tb[k] !== undefined) bd[k] = tb[k] })
+  }
+  const patch = { colors, backdrop: bd, layout: type.layout }
+  if (name !== undefined) patch.name = name
+  if (anchor !== undefined) patch.anchor = anchor
+  Look.setSettings(patch, storeId)
+}
+
+/**
+ * Create a store from a type: sections, seed products (validated by the type validator, the same rules as a catalog import), accepted forms; writes the type's
+ * layout, colours, backdrop and the store name into THIS store's settings and gives it its OWN anchor (the next free place on the grid, never within
+ * Look.STORE_SPACING of another store; `opts.anchor` overrides, clamped, with a warning when it overlaps). Each call makes a NEW store;
+ * createStoreFromType() adds the "same id returns the existing store" rule.
+ * @param {{typeId?:string, type?:object, name?:string, anchor?:number[], activate?:boolean, id?:string}} opts  typeId = a built-in / registered type; type = a record (validated here); id = a fixed store id
+ * @returns {{ok:true, id, storeId, store, warnings:string[], errors:[]}|{ok:false, error, errors:string[], warnings:string[]}}
+ */
+export function createStore (opts = {}) {
+  ensureLoaded()
+  const warnings = []
+  const fail = (m) => ({ ok: false, error: m, errors: [m], warnings })
+  let type = null
+  if (opts.type !== undefined && opts.type !== null) {
+    const v = Types.validateType(opts.type, { valueTypes: Value.getTypes() })
+    if (!v.ok) return fail('That store type is not valid: ' + (v.errors[0] ?? 'unknown problem'))
+    type = v.type; v.warnings.forEach(w => warnings.push(w))
+  } else {
+    const tid = typeof opts.typeId === 'string' ? opts.typeId : 'blank'
+    type = Types.getType(tid)
+    if (!type) return fail(`Unknown store type "${tid.replace(/[<>]/g, '').slice(0, 40)}".`)
+  }
+  const owner = currentOwnerId()
+  ensureOwner(owner)
+  if (ownerStores(owner).length >= STORE_LIMITS.perOwner) return fail(`You already have the maximum of ${STORE_LIMITS.perOwner} stores. Delete one first.`)
+  if (Object.keys(S.stores).length >= STORE_LIMITS.total) return fail(`This device already holds the maximum of ${STORE_LIMITS.total} stores in all. Delete one first.`)
+  if (opts.id !== undefined && opts.id !== null && (!idOk(opts.id) || S.stores[opts.id])) return fail('That store id is not valid or is already used.')
+  const id = opts.id ?? newStoreId()
+  const name = cleanName(opts.name) || cleanName(type.label) || 'New store'
+  const st = makeStore(id, owner, name, type)
+  const used = storageStats().total, add = JSON.stringify(st).length + 200
+  if (used + add > STORE_LIMITS.chars) return fail(`Not enough room on this device for another store (${mb(used)} MB of ${mb(STORE_LIMITS.chars)} MB used). Delete a store or some products first.`)
+  if (used + add > STORE_LIMITS.warnChars) warnings.push(`${mb(used + add)} MB of the ${(STORE_LIMITS.chars / 1e6).toFixed(0)} MB limit is used by your stores now.`)
+  // where it stands: its own place, never on top of another store
+  const others = ownerStores(owner).map(s => ({ name: s.name, a: Look.getSettings(s.id).anchor }))
+  let anchor
+  if (Array.isArray(opts.anchor)) {
+    anchor = Look.normalizeAnchor(opts.anchor)
+    const near = others.find(o => Math.hypot(o.a[0] - anchor[0], o.a[1] - anchor[1], o.a[2] - anchor[2]) < Look.STORE_SPACING)
+    if (near) warnings.push(`This store is closer than ${Look.STORE_SPACING} units to "${near.name}" and may overlap it.`)
+  } else {
+    anchor = Look.nextFreeAnchor(others.map(o => o.a))
+    if (!anchor) { anchor = [...Look.DEFAULT_ANCHOR]; warnings.push('No free place is left on the grid; the store was put at the default place and may overlap another.') }
+  }
+  S.stores[id] = st
+  try { writeLook(id, type, { name, anchor }, warnings) } catch (e) { warnings.push('The look could not be written: ' + String(e?.message ?? e).slice(0, 80)) }
+  if (opts.activate) S.active[owner] = id
+  persist()
+  emit('store-create', { storeId: id })
+  if (opts.activate) { emit('active-store', { storeId: id }); fireActive(id) }
+  return { ok: true, id, storeId: id, store: st, warnings, errors: [] }
+}
+
+/**
+ * The BuildOrder item 6 entry point: create a store from a type id. With `ownerId` that id becomes the new store's id, so calling again with the same
+ * ownerId returns the existing store ({existing:true}) and never a duplicate; without it every call creates a new store.
+ * @returns {{ok:boolean, storeId:string|null, existing?:boolean, warnings?:string[], error?:string}}
+ */
+export function createStoreFromType (typeId, { ownerId = null, name = undefined, anchor = undefined, activate = false } = {}) {
+  ensureLoaded()
+  const fixed = ownerId !== null && ownerId !== undefined
+  if (fixed) {
+    if (!idOk(ownerId)) return { ok: false, storeId: null, error: 'The store id is not valid (1-64 letters, digits and _ . : -).' }
+    const have = S.stores[ownerId]
+    if (have) return have.ownerId === currentOwnerId() ? { ok: true, storeId: have.id, existing: true } : { ok: false, storeId: null, error: 'That id belongs to another identity.' }
+  }
+  const r = createStore({ typeId, name, anchor, activate, ...(fixed ? { id: ownerId } : {}) })
+  return r.ok ? { ok: true, storeId: r.id, existing: false, warnings: r.warnings } : { ok: false, storeId: null, error: r.error }
+}
+
+function fireActive (storeId) { try { window.dispatchEvent(new CustomEvent(ACTIVE_EVENT, { detail: { storeId } })) } catch (_) { /* no window */ } }
+
+/** Make a store of the current identity the active one. Returns false for an unknown id or somebody else's store; true (and no event) when it already is active. */
+export function setActiveStore (id) {
+  ensureLoaded()
+  if (!idOk(id)) return false
+  const owner = currentOwnerId()
+  const st = S.stores[id]
+  if (!st || st.ownerId !== owner) return false
+  if (activeStoreId() === id) return true
+  S.active[owner] = id
+  persist()
+  emit('active-store', { storeId: id })
+  fireActive(id)
+  return true
+}
+
+/** Rename a store (and its HUD title). Markup is stripped; empty / unknown -> false. */
+export function renameStore (id, name) {
+  ensureLoaded()
+  const st = idOk(id) ? S.stores[id] : null
+  const nm = cleanName(name)
+  if (!st || st.ownerId !== currentOwnerId() || !nm) return false
+  st.name = nm
+  Look.setSettings({ name: nm }, id)
+  changed('store-rename', { storeId: id })
+  return true
+}
+
+/** Delete a store, its settings and its undo. The LAST store of an identity cannot be deleted. Deleting the active store switches to another one. */
+export function deleteStore (id) {
+  ensureLoaded()
+  const owner = currentOwnerId()
+  const st = idOk(id) ? S.stores[id] : null
+  if (!st || st.ownerId !== owner) return { ok: false, error: 'That store does not exist.' }
+  ensureOwner(owner)
+  const own = ownerStores(owner)
+  if (own.length <= 1) return { ok: false, error: 'You cannot delete your last store.' }
+  const wasActive = activeStoreId() === id
+  delete S.stores[id]; delete S.section[id]
+  Look.removeStoreSettings(id)
+  const u = readUndo(); if (u?.snap?.storeId === id) clearUndo()
+  let switchedTo = null
+  if (wasActive) { switchedTo = own.find(s => s.id !== id).id; S.active[owner] = switchedTo } else if (S.active[owner] === id) delete S.active[owner]
+  persist()
+  emit('store-delete', { storeId: id })
+  if (switchedTo) { emit('active-store', { storeId: switchedTo }); fireActive(switchedTo) }
+  return { ok: true, switchedTo }
+}
+
+/** Give a store the look and the accepted forms of another type (layout, colours, backdrop, type id, emoji). Products and sections stay. */
+export function applyTypeLook (storeId, typeId) {
+  ensureLoaded()
+  const st = idOk(storeId) ? S.stores[storeId] : null
+  const type = typeof typeId === 'string' ? Types.getType(typeId) : null
+  if (!st || st.ownerId !== currentOwnerId()) return { ok: false, error: 'That store does not exist.' }
+  if (!type) return { ok: false, error: 'Unknown store type.' }
+  const warnings = []
+  writeLook(storeId, type, {}, warnings)
+  st.typeId = type.id; st.emoji = type.emoji
+  const acc = typeAccepts(type)
+  if (acc.length) st.accepts = acc; else delete st.accepts
+  changed('store-type', { storeId })
+  return { ok: true, warnings }
+}
+
+// ── Accepted forms (V182) ───────────────────────────────────────────────────────
+
+/** The value types a store takes as payment; [] = all. */
+export function storeAccepts (storeId) { ensureLoaded(); const st = storeId ? S.stores[storeId] : getStore(); return st?.accepts?.length ? [...st.accepts] : [] }
+export function acceptsForm (valueTypeId, storeId) { const a = storeAccepts(storeId); return !a.length || a.includes(valueTypeId) }
+/** Plain-language reason a form is refused, or '' when it is fine. */
+export function formRefusal (valueTypeId, storeId) {
+  if (acceptsForm(valueTypeId, storeId)) return ''
+  const st = storeId ? S.stores[storeId] : getStore()
+  const nm = (id) => Value.getType(id)?.name ?? id
+  return `${st?.name ?? 'This store'} does not take ${nm(valueTypeId)}. It takes: ${storeAccepts(storeId).map(nm).join(', ')}.`
+}
+/** The price forms of a product that this store takes (the buy spokes). */
+export function buyForms (productId) { const p = getProduct(productId); if (!p) return []; return storeAccepts().length ? p.price.filter(f => acceptsForm(f.type)) : p.price }
 
 export function hasMedia (p, kind) {
   if (kind === 'emoji') return !!p.media.emoji
@@ -289,7 +530,8 @@ export function productsFor (sectionId) {
   if (sec.kind === 'media') return st.products.filter(p => hasMedia(p, sec.filter.mediaKind))
   return st.products.filter(p => p.sectionIds.includes(sec.id))
 }
-export function acceptForms (productId) { const p = getProduct(productId); return p ? (p.accept ?? p.price) : [] }
+/** The forms you are willing to take when SELLING this product (saved on the product, else its price), limited to what this store's type takes (V182). */
+export function acceptForms (productId) { const p = getProduct(productId); if (!p) return []; const src = p.accept ?? p.price; return storeAccepts().length ? src.filter(f => acceptsForm(f.type)) : src }
 
 // ── Media ───────────────────────────────────────────────────────────────────────
 
@@ -377,7 +619,8 @@ export function setAcceptForms (productId, forms) {
 /** The form an item pays: its chosen form, else the product's first accepted price form. */
 export function formFor (item) {
   const p = getProduct(item.productId)
-  return item.chosenForm ?? (p?.price[0] ? { ...p.price[0] } : null)
+  const f = p ? (p.price.find(x => acceptsForm(x.type)) ?? p.price[0]) : null   // V182: the first form this store's type takes
+  return item.chosenForm ?? (f ? { ...f } : null)
 }
 /** Totals PER VALUE TYPE for a set of list items (qty x form qty). Types are never summed together. */
 export function totalsFor (items) {
@@ -482,8 +725,11 @@ export function compare () {
 export function planPurchase ({ productId, qty = 1, chosenForm = null, payQty: payQtyOverride = null }, opts = {}) {
   const p = getProduct(productId)
   if (!p) return { ok: false, error: 'unknown-product' }
-  const form = sanitizeChosen(chosenForm) ?? (p.price[0] ? { ...p.price[0] } : null)
-  if (!form) return { ok: false, error: 'no-price-form' }
+  const first = p.price.find(f => acceptsForm(f.type))   // V182: the default form is the first one this store's type takes
+  const form = sanitizeChosen(chosenForm) ?? (first ? { ...first } : null)
+  if (!form) return { ok: false, error: p.price[0] ? 'form-not-accepted' : 'no-price-form', message: p.price[0] ? formRefusal(p.price[0].type) : 'This product has no price.', product: p }
+  const refusal = formRefusal(form.payType ?? form.type)   // the store takes payment only in the forms of its type (V182)
+  if (refusal) return { ok: false, error: 'form-not-accepted', message: refusal, product: p }
   const n = Math.max(1, Math.round(Number(qty)) || 1)
   if (p.stock < n) return { ok: false, error: 'out-of-stock', product: p }
   const want = { type: form.type, qty: Value.clean(form.qty * n), quality: form.quality }
@@ -555,6 +801,8 @@ export function sellNow (productId, { qty = 1, form = null, split = null, declar
   const p = getProduct(productId)
   if (!p) return { ok: false, error: 'unknown-product' }
   const f = sanitizeForm(form) ?? acceptForms(productId)[0]
+  const refusal = f ? formRefusal(f.type) : ''
+  if (refusal) return { ok: false, error: 'form-not-accepted', message: refusal }
   const res = Value.sell({ itemId: p.id, itemName: p.name, itemQty: qty, receive: f, split: split ?? undefined, declaredIntent: sanitizeIntent(declaredIntent) })
   if (res.ok) { p.stock += Math.max(1, Math.round(qty)); changed('sale') }
   return res
@@ -562,27 +810,36 @@ export function sellNow (productId, { qty = 1, form = null, split = null, declar
 
 // ── Catalog import (V177; the validation lives in utils/OmniStoreCatalogSchema.js, this only APPLIES products) ──
 
-/** Dev: throw away THIS owner's store (products, list, section choice) and rebuild the seed. Other owners and the value ledger are untouched. */
-export function resetStore (ownerId) {
+/** Dev: throw away the ACTIVE store's products, list and section choice and rebuild its seed from its OWN type (id, name, type stay). Other stores and the value ledger are untouched. */
+export function resetStore (storeId) {
   ensureLoaded()
-  const id = ownerId ?? currentOwnerId()
-  delete S.stores[id]; delete S.section[id]
-  getStore(id)
-  changed('reset')
+  const id = storeId ?? activeStoreId()
+  const old = S.stores[id]
+  if (!old || old.ownerId !== currentOwnerId()) return false
+  const type = Types.getType(old.typeId)
+  const fresh = type ? makeStore(id, old.ownerId, old.name, type) : { ...old, products: [], listItems: [], extraSections: [] }
+  if (!type) rebuildSections(fresh)
+  S.stores[id] = fresh; delete S.section[id]
+  changed('reset', { storeId: id })
   return true
 }
 
 /** A deep copy of what an import can change, for one-step undo (kept by the caller). */
 export function snapshotCatalog () {
   const st = getStore()
-  return JSON.parse(JSON.stringify({ ownerId: st.ownerId, name: st.name, products: st.products, listItems: st.listItems }))
+  return JSON.parse(JSON.stringify({ storeId: st.id, ownerId: st.ownerId, name: st.name, extraSections: st.extraSections ?? [], products: st.products, listItems: st.listItems }))   // V182: remembers WHICH store
 }
 export function restoreCatalog (snap) {
   if (!snap || typeof snap !== 'object') return false
-  const st = getStore(snap.ownerId)
-  const cleaned = sanitizeStore(st.ownerId, { name: snap.name, products: snap.products, listItems: snap.listItems })
+  // V182: a snapshot belongs to the store it was taken in; an old one (no storeId) acts on the active store. Never another identity's, never a deleted store's.
+  if (idOk(snap.ownerId) && snap.ownerId !== currentOwnerId()) return false   // taken by another identity
+  const sid = idOk(snap.storeId) ? snap.storeId : activeStoreId()
+  const st = S.stores[sid]
+  if (!st || st.ownerId !== currentOwnerId()) return false
+  const cleaned = sanitizeStore(st.id, { ...st, name: snap.name, extraSections: snap.extraSections, products: snap.products, listItems: snap.listItems })
   st.name = cleaned.name; st.products = cleaned.products; st.listItems = cleaned.listItems
-  changed('catalog-restore')
+  st.extraSections = cleaned.extraSections; st.sections = cleaned.sections   // V181: the sections the catalog had come back too
+  changed('catalog-restore', { storeId: st.id })
   return true
 }
 /**
@@ -592,7 +849,7 @@ export function restoreCatalog (snap) {
  * sanitizeProduct, so even a caller that skipped the validator cannot store an invalid product.
  * Returns {ok, added, updated, removed, total, skipped} (ok:false when nothing valid or the store would exceed LIMITS.products).
  */
-export function importProducts (rawProducts, { mode = 'merge', name = null, matchBy = 'id' } = {}) {
+export function importProducts (rawProducts, { mode = 'merge', name = null, matchBy = 'id', extraSections = null } = {}) {
   const st = getStore()
   const incoming = resolveIncoming(rawProducts, matchBy)
   const seen = new Set(incoming.map(p => p.id))
@@ -609,6 +866,10 @@ export function importProducts (rawProducts, { mode = 'merge', name = null, matc
   }
   if (next.length > LIMITS.products) return { ok: false, error: `would exceed ${LIMITS.products} products`, added: 0, updated: 0, removed: 0, total: st.products.length, skipped: incoming.length }
   st.products = next
+  if (Array.isArray(extraSections)) {   // V181: a catalog may bring sections; merge adds them to the store's, replace makes them exactly the store's
+    st.extraSections = sanitizeExtraSections(mode === 'replace' ? extraSections : [...(st.extraSections ?? []), ...extraSections.filter(x => !(st.extraSections ?? []).some(o => o.id === x?.id))])
+    rebuildSections(st)
+  } else if (mode === 'replace' && st.extraSections?.length) { st.extraSections = []; rebuildSections(st) }   // replacing with a catalog that has none: the old extra sections go
   const ids = new Set(next.map(p => p.id))
   st.listItems = st.listItems.filter(it => ids.has(it.productId))
   if (mode === 'replace' && typeof name === 'string' && name.trim()) st.name = str(name.trim(), 40)
@@ -772,17 +1033,30 @@ function readUndo () {
   undoRead = true
   try {
     const d = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null')
-    if (d && d.v === 1 && d.snap && typeof d.snap === 'object' && Array.isArray(d.snap.products)) undoMem = { v: 1, t: finite(d.t) ? d.t : 0, label: str(d.label, 120), snap: d.snap, persisted: true }
+    if (d && d.v === 1 && d.snap && typeof d.snap === 'object' && Array.isArray(d.snap.products) && (d.snap.storeId === undefined || idOk(d.snap.storeId))) undoMem = { v: 1, t: finite(d.t) ? d.t : 0, label: str(d.label, 120), snap: d.snap, persisted: true }
   } catch (_) { /* unreadable: no undo */ }
   return undoMem
 }
-/** {label, t, persisted, products} of the pending undo, or null. */
-export function getUndo () { const u = readUndo(); return u ? { label: u.label, t: u.t, persisted: u.persisted, products: u.snap.products.length } : null }
+/**
+ * {label, t, persisted, products, storeId, storeName, active} of the pending undo, or null. V182: the undo belongs to the store it was taken in; `active`
+ * is false while another store is active (undoLast then refuses). An old snapshot without a storeId counts as the active store's.
+ */
+export function getUndo () {
+  ensureLoaded()
+  const u = readUndo()
+  if (!u) return null
+  const sid = u.snap.storeId ?? null
+  const st = sid ? S?.stores[sid] : null
+  if (sid && (!st || st.ownerId !== currentOwnerId())) return null
+  return { label: u.label, t: u.t, persisted: u.persisted, products: u.snap.products.length, storeId: sid ?? activeStoreId(), storeName: st?.name ?? getStore().name, active: !sid || sid === activeStoreId() }
+}
 export function clearUndo () { undoMem = null; undoRead = true; try { localStorage.removeItem(UNDO_KEY) } catch (_) { /* ignore */ } }
 /** Restore the catalog as it was before the last import, then forget the snapshot. */
 export function undoLast () {
   const u = readUndo()
   if (!u) return { ok: false, error: 'nothing to undo' }
+  const sid = u.snap.storeId ?? null
+  if (sid && sid !== activeStoreId()) return { ok: false, error: 'other-store', storeName: S.stores[sid]?.name ?? '' }   // never restore store A's catalog into store B
   const ok = restoreCatalog(u.snap)
   clearUndo()
   return ok ? { ok: true, label: u.label, products: u.snap.products.length } : { ok: false, error: 'snapshot unusable' }

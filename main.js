@@ -152,10 +152,13 @@ import CameraMovementOptionsPanel from './ui/CameraMovementOptionsPanel.js'
 import OmniSystemCreatorPanel from './ui/OmniSystemCreatorPanel.js'
 import ComingSoonPanel from './ui/ComingSoonPanel.js'
 import OmniStoreScene from './systems/OmniStoreScene.js'
+import OmniStoreNodes from './systems/OmniStoreNodes.js'                    // V183: StoreItemNode / OmniValueNode runtime (live refresh, pin, conversion labels)
 import OmniExchangeRadial from './ui/OmniExchangeRadial.js'
 import OmniWalletPanel from './ui/OmniWalletPanel.js'
+import OmniValuePanel from './ui/OmniValuePanel.js'                      // V181: standalone OmniValue panel (component of OmniTalent)
 import OmniStoreSettingsPanel from './ui/OmniStoreSettingsPanel.js'          // V177 user settings (Admin slot 19)
 import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // V177 DEV ONLY (Developer slot 6)
+import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // V184 DEV ONLY (Developer slot 7): what Claude wants checked + a way to answer back
 
 
 
@@ -531,12 +534,15 @@ import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // 
   // Each is added exactly once (BaseScene.addModule calls init(); the modules also ignore a second init()).
   // Data lives in utils/OmniValueModel.js + utils/OmniStoreModel.js (no init; lazy-loaded from localStorage).
   base.addModule(new OmniStoreScene(base.context))
+  base.addModule(new OmniStoreNodes(base.context, omniNode))   // V183: nodes that REPRESENT a store product / value type (ordinary OmniNode nodes with data.nodeKind)
   base.addModule(new OmniExchangeRadial())
   base.addModule(new OmniWalletPanel())
+  base.addModule(new OmniValuePanel())
   // V177: the convention is <System>Settings (user, Admin) vs Dev<System>Settings (developer + Claude, ⟐Developer group). The user
   // panel does not import the dev panel; each is added once (BaseScene.addModule calls init()).
   base.addModule(new OmniStoreSettingsPanel())
   base.addModule(new DevOmniStoreSettingsPanel())
+  base.addModule(new DevClaudeCheckPanel())   // V184: DEV ONLY; added once (addModule calls init()); no ribbon / dock button
 
   // ── Spaces: real save-a-coordinate / teleport-there system ──
   // An empty slot saves the current camera position there; a saved
@@ -597,6 +603,8 @@ import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // 
         5: { label: 'TestCallStack', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐TestCallStack' } })) },
         // V177: DEV ONLY (store type records, catalog JSON import/export, perf knobs, notes for Claude, dump state).
         6: { label: 'DevOmniStoreSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevOmniStoreSettings' } })) },
+        // V184: DEV ONLY (the checklist for this version, what Claude is looking for, a message box and a copyable report).
+        7: { label: 'DevClaudeCheck', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevClaudeCheck' } })) },
       },
     },
     {

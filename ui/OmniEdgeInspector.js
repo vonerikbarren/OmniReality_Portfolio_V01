@@ -23,6 +23,10 @@
  */
 
 import * as WindowManager from './WindowManager.js'
+import { pairInfo } from '../utils/OmniNodeKinds.js'
+import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
+
+const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 const STYLES = /* css */`
 
@@ -169,14 +173,17 @@ export default class OmniEdgeInspector {
     this._fromLabel = ''
     this._toLabel = ''
     this._style = null
+    this._valuePair = null   // V183: [typeA, typeB] when both ends are OmniValueNodes — the rate is READ from the model, never stored
     this._onInspectRequest = null
+    this._onValueChanged = null
   }
 
   init () {
     injectStyles()
     this._onInspectRequest = (e) => {
-      const { from, to, fromLabel, toLabel, style } = e.detail ?? {}
+      const { from, to, fromLabel, toLabel, style, valuePair } = e.detail ?? {}
       if (!from || !to) return
+      this._valuePair = Array.isArray(valuePair) && valuePair.length === 2 ? valuePair : null
       this._from = from
       this._to = to
       this._fromLabel = fromLabel ?? from
@@ -186,6 +193,9 @@ export default class OmniEdgeInspector {
       this._render()
     }
     window.addEventListener('omni:edge-inspect-request', this._onInspectRequest)
+    // V183: a conversion edge between two value nodes shows the model's rate; keep it live while the panel is open
+    this._onValueChanged = () => { if (this._isOpen && this._valuePair) this._render() }
+    window.addEventListener(VALUE_CHANGED, this._onValueChanged)
   }
 
   update () {}
@@ -193,6 +203,7 @@ export default class OmniEdgeInspector {
 
   destroy () {
     window.removeEventListener('omni:edge-inspect-request', this._onInspectRequest)
+    window.removeEventListener(VALUE_CHANGED, this._onValueChanged)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('omniedgeinspector')
   }
@@ -266,8 +277,18 @@ export default class OmniEdgeInspector {
     const s = this._style
     const thicknessPct = Math.round((s.thickness ?? 1) * 100)
 
+    let rateBlock = ''
+    if (this._valuePair) {
+      const info = pairInfo(this._valuePair[0], this._valuePair[1])
+      rateBlock = `<div class="oei-group-title">Conversion route (OmniValue, sandbox)</div>
+      <div class="oei-note" data-testid="edge-rate" style="margin:0 0 6px;line-height:1.5">${info.lines.map(l => `<div>${escHtml(l)}</div>`).join('')}
+        <div style="opacity:.7;margin-top:4px">Read from the OmniValue model: the edge stores no rate. A pair with no conversion edge there shows "no direct rate". Indirect routes are found by the exchange.</div></div>
+      ${info.warnings.length ? `<div class="oei-note" data-testid="edge-arb" role="alert" style="margin:0 0 6px;color:#ff9c9c;line-height:1.5">${info.warnings.map(l => `<div>${escHtml(l)}</div>`).join('')}</div>` : ''}`
+    }
+
     body.innerHTML = /* html */`
       <div class="oei-relation">${this._fromLabel}<span class="oei-relation-arrow">→</span>${this._toLabel}</div>
+      ${rateBlock}
 
       <div class="oei-group-title">Kind</div>
       <div class="oei-row">

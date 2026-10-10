@@ -14,6 +14,8 @@
  *     backdrop: { mode:'none'|'solid'|'gradient', color, color2, opacity },
  *     layout:   'shelf'|'ring'|'aisle'|'island' }      // V179: how the store is arranged (utils/OmniStoreLayouts.js); default 'shelf',
  *                                                      // unknown / missing (data saved before V179) -> 'shelf'. NOT part of presets.
+ *     anchor:   [x, y, z] }                            // V181: where the whole store stands in the world; default [0, 3, -40]; x / z clamped
+ *                                                      // to +-500, y to -200..300; NaN / wrong shape -> default. NOT part of presets or the colour reset.
  *   colors.backdrop is an optional OVERRIDE of backdrop.color (null = use backdrop.color); the panel only edits
  *   backdrop.color; the override is reserved for store-type themes (BuildOrder item 6).
  * PRESETS  4 built-in (Market Wood = the V176 look, Fresh Green, Night Market, Clean White; not stored, cannot be
@@ -27,7 +29,7 @@
  *                                                      panel both attach, ref-counted)
  */
 
-import { currentOwnerId } from './OmniStoreModel.js'
+import { activeStoreId } from './OmniStoreModel.js'   // V182: the ACTIVE store of the current identity (the first store keeps the identity id, so V181 data still matches)
 import { LAYOUT_IDS, DEFAULT_LAYOUT, isLayoutId } from './OmniStoreLayouts.js'   // V179: the one list of layout ids (pure module)
 
 export const STORAGE_KEY = 'omni:store-settings-v1'
@@ -38,7 +40,43 @@ export const COLOR_KEYS = ['hover', 'selected', 'shelfRim', 'shelfBack', 'shelfP
 export const COLOR_LABELS = { hover: 'Hover selector', selected: 'Selected selector', shelfRim: 'Shelf rim (disc edge)', shelfBack: 'Shelf back panel', shelfPlank: 'Shelf planks', backdrop: 'Backdrop colour override' }
 export const BACKDROP_MODES = ['none', 'solid', 'gradient']
 export { LAYOUT_IDS, DEFAULT_LAYOUT }
-export const LIMITS = { name: 40, presets: 20, presetName: 32, stores: 16 }
+export const LIMITS = { name: 40, presets: 20, presetName: 32, stores: 40 }   // V182: stores 16 -> 40 (the model allows 16 stores in all; leftover ids of deleted stores are dropped on delete)
+// V182: where the next store goes. A grid of spacing STORE_SPACING (2 x the 60-unit layout bounds + 30) around the default place, nearest first
+// (ties: +x, +z, -x, -z), skipping spots within ORIGIN_CLEAR of the origin objects near [200, 50, 300] and anything closer than the spacing to a taken anchor.
+export const STORE_SPACING = 150
+export const ORIGIN_OBJECTS = Object.freeze([200, 50, 300])
+export const ORIGIN_CLEAR = 80
+export function nextFreeAnchor (taken = []) {
+  const d = DEFAULT_ANCHOR, cand = []
+  for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+    const a = [d[0] + i * STORE_SPACING, d[1], d[2] + j * STORE_SPACING]
+    if (Math.hypot(a[0] - ORIGIN_OBJECTS[0], a[1] - ORIGIN_OBJECTS[1], a[2] - ORIGIN_OBJECTS[2]) < ORIGIN_CLEAR) continue
+    const ang = (Math.atan2(a[2] - d[2], a[0] - d[0]) + 2 * Math.PI) % (2 * Math.PI)
+    cand.push({ a, dist: Math.hypot(i, j), ang })
+  }
+  cand.sort((p, q) => (Math.abs(p.dist - q.dist) > 1e-9 ? p.dist - q.dist : p.ang - q.ang))
+  const t = (Array.isArray(taken) ? taken : []).filter(p => Array.isArray(p) && p.length === 3 && p.every(finite))
+  const hit = cand.find(c => t.every(p => Math.hypot(c.a[0] - p[0], c.a[1] - p[1], c.a[2] - p[2]) >= STORE_SPACING - 1e-9))
+  return hit ? [...hit.a] : null
+}
+
+// V181: store location. The scene re-exports DEFAULT_ANCHOR from here (this module is pure; the scene is not).
+export const DEFAULT_ANCHOR = Object.freeze([0, 3, -40])
+export const ANCHOR_RANGE = Object.freeze({ x: [-500, 500], y: [-200, 300], z: [-500, 500] })
+export const ANCHOR_AXES = ['x', 'y', 'z']
+/** Clamp one axis (0|1|2) into its range; NaN / non-number -> null. Rounded to 2 decimals. */
+export function clampAxis (i, v) {
+  if (typeof v === 'string' && v.trim() !== '') v = Number(v)
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null
+  const [lo, hi] = ANCHOR_RANGE[ANCHOR_AXES[i]]
+  return Math.round(Math.min(hi, Math.max(lo, v)) * 100) / 100
+}
+/** Untrusted -> [x,y,z] (each axis clamped); an axis that is not a finite number takes `fallback`'s value (default: the default anchor). */
+export function normalizeAnchor (a, fallback = DEFAULT_ANCHOR) {
+  const out = [0, 1, 2].map(i => fallback[i])
+  if (!Array.isArray(a) || a.length !== 3) return out
+  return [0, 1, 2].map(i => clampAxis(i, a[i]) ?? out[i])
+}
 
 export const DEFAULT_COLORS = Object.freeze({ hover: '#ffb02e', selected: '#2e9bff', shelfRim: '#5b4a36', shelfBack: '#d8cdb9', shelfPlank: '#a57d52', backdrop: null })
 export const DEFAULT_BACKDROP = Object.freeze({ mode: 'none', color: '#1d2a1f', color2: '#0b1410', opacity: 1 })
@@ -73,7 +111,7 @@ export function normalizeHex (v) {
 }
 export const hexToInt = (hex) => parseInt((normalizeHex(hex) ?? '#000000').slice(1), 16)
 
-export function defaultSettings () { return { name: '', colors: { ...DEFAULT_COLORS }, backdrop: { ...DEFAULT_BACKDROP }, layout: DEFAULT_LAYOUT } }
+export function defaultSettings () { return { name: '', colors: { ...DEFAULT_COLORS }, backdrop: { ...DEFAULT_BACKDROP }, layout: DEFAULT_LAYOUT, anchor: [...DEFAULT_ANCHOR] } }
 
 /** Untrusted -> a complete, valid settings object (always `{...DEFAULTS, ...saved}` per field, never throws). */
 export function sanitize (raw) {
@@ -89,6 +127,7 @@ export function sanitize (raw) {
   const c2 = normalizeHex(b.color2); if (c2) out.backdrop.color2 = c2
   if (finite(b.opacity)) out.backdrop.opacity = Math.min(1, Math.max(0, b.opacity))
   out.layout = isLayoutId(raw.layout) ? raw.layout : DEFAULT_LAYOUT
+  out.anchor = normalizeAnchor(raw.anchor)   // V181: data saved before V181 has no anchor -> the default
   return out
 }
 
@@ -127,7 +166,7 @@ export function _reset (clear = false) {
 
 // ── Access ──────────────────────────────────────────────────────────────────────
 
-export const currentStoreId = () => currentOwnerId()
+export const currentStoreId = () => activeStoreId()
 
 /** A COPY of the store's settings (defaults filled in). Mutating it changes nothing. */
 export function getSettings (storeId) {
@@ -140,13 +179,14 @@ function diffKeys (a, b) {
   const keys = []
   if (a.name !== b.name) keys.push('name')
   if (a.layout !== b.layout) keys.push('layout')
+  if (ANCHOR_AXES.some((_, i) => a.anchor[i] !== b.anchor[i])) keys.push('anchor')
   ;[...COLOR_KEYS, 'backdrop'].forEach(k => { if (a.colors[k] !== b.colors[k]) keys.push('colors.' + k) })
   Object.keys(DEFAULT_BACKDROP).forEach(k => { if (a.backdrop[k] !== b.backdrop[k]) keys.push('backdrop.' + k) })
   return keys
 }
 
 /**
- * Apply a PARTIAL patch ({name?, colors?:{...}, backdrop?:{...}, layout?}) to a store. Invalid values are ignored (the old value
+ * Apply a PARTIAL patch ({name?, colors?:{...}, backdrop?:{...}, layout?, anchor?:[x,y,z]}) to a store. Invalid values are ignored (the old value
  * stays), valid ones are normalised. Returns the list of changed keys ([] = nothing changed, no event).
  */
 export function setSettings (patch, storeId) {
@@ -159,6 +199,7 @@ export function setSettings (patch, storeId) {
     colors: { ...cur.colors, ...(patch.colors && typeof patch.colors === 'object' ? onlyValid(patch.colors, cur.colors) : {}) },
     backdrop: { ...cur.backdrop, ...(patch.backdrop && typeof patch.backdrop === 'object' ? patch.backdrop : {}) },
     layout: isLayoutId(patch.layout) ? patch.layout : cur.layout,   // an unknown layout id in a patch is ignored (the old one stays)
+    anchor: normalizeAnchor(patch.anchor, cur.anchor),               // V181: a bad axis (NaN, text) keeps the old value; the others still apply
   }
   const next = sanitize(merged)
   // sanitize() resets an invalid field to its DEFAULT; keep the previous value instead
@@ -190,6 +231,7 @@ export function resetSettings (storeId) {
   const next = defaultSettings()
   next.name = cur.name   // "Reset to default" resets the LOOK; the name the user chose stays
   next.layout = cur.layout   // V179: the layout is not part of the colour look either; it stays
+  next.anchor = [...cur.anchor]   // V181: nor is the location (use resetAnchor())
   const keys = diffKeys(cur, next)
   if (!keys.length) return []
   S.stores[id] = next
@@ -197,6 +239,20 @@ export function resetSettings (storeId) {
   emit({ storeId: id, key: 'all', keys })
   return keys
 }
+
+/** V182: ids that have saved settings (a store that was deleted must not leave its settings behind). */
+export function savedStoreIds () { ensureLoaded(); return Object.keys(S.stores) }
+/** V182: forget a deleted store's settings. */
+export function removeStoreSettings (storeId) {
+  ensureLoaded()
+  if (!idOk(storeId) || !S.stores[storeId]) return false
+  delete S.stores[storeId]
+  persist()
+  return true
+}
+
+/** V181: put the store back at the default location ([0, 3, -40]). Returns the changed keys ([] when already there). */
+export function resetAnchor (storeId) { return setSettings({ anchor: [...DEFAULT_ANCHOR] }, storeId) }
 
 // ── Presets ─────────────────────────────────────────────────────────────────────
 

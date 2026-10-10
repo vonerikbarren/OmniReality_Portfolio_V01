@@ -1187,3 +1187,69 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 1. Fix or decide the doc/code mismatches listed in `docs/user-guide/README.md` (shortcuts panel omissions, six-vs-eight picker modes in the Create tooltip, empty LH GRID tab, RH placeholder panel, stale header comments, "D3 views arrive in V177" text, possible R/F double move). Then update the guide.
 2. Unverified items (touch, phone layout, GPU, fullscreen, audio, file pickers) need a human on a real device; then drop them from the guide's Unverified appendix.
 3. When DeeperSettings D5 (Undo Options, undo/redo, clipboard) ships, add an undo/redo and clipboard chapter and update the keyboard cheatsheet's "keys that do NOT exist yet" table.
+
+## 62. OmniStore V181 — location, emoji, charts: what was not verified
+1. Real GPU and real phone: everything ran in software-GL Chromium (about 1 fps) and jsdom. Touch (tapping chart slices, the emoji picker, X/Y/Z inputs) is untested on a device.
+2. Emoji font: the newest (Unicode 16 / 17) emoji measured a different width than older ones in the test browser, so they are not confirmed to render; check on a device with a current emoji font. The demo draws all 1,914 into canvas textures on demand only (pooled, per page).
+3. d3 is loaded from jsDelivr (`+esm`) in the real app; the test sandbox cannot reach it, so the real-browser run served local npm bundles of the same versions. First load on a real network is untested.
+
+## 63. Store location follow-ups
+1. Objects near the origin at about [200, 50, 300] can intersect a store moved there; no collision or warning exists. 
+2. Anchor is one per store id; the mall hub (item 10) needs one anchor per store; a 3D gizmo or drag-to-place is not built.
+3. "Place at my camera" ignores camera pitch (30 units along the horizontal look direction at camera height).
+
+## 64. Emoji catalog follow-ups
+1. The Unicode group sections are stored as `extraSections` on the store; editing or importing sections is still not built.
+2. The all-emoji store (about 837 KB) uses a large share of the ~5 MB localStorage; the undo snapshot is skipped above 1,000,000 characters. An IndexedDB store would remove the limit.
+3. Regenerate the data with `tools/build-emoji-data.mjs` when Unicode adds emoji. Skin tones are intentionally left out.
+4. No search inside the 3D store by name; the HUD only has section chips and paging.
+
+## 65. Charts / OmniTalent follow-ups
+1. Quality ticks on balance slices are not built (a balance has no grade).
+2. No OmniTalent object exists in code; `OmniValuePanel` should become one component of it when it is built.
+3. Chart sizes are display shares or log scales; a value-weighted chart would need a decided reference unit (an equivalence the model deliberately avoids).
+4. Sunburst at level 0 is taller than the panel body on short desktop screens (it scrolls vertically; no horizontal scroll).
+
+## 66. Arbitrage guard follow-ups
+1. The guard only blocks continuing a loop within 10 minutes of the account's own buy log; it does not reason about two accounts or about fees. A stricter rule (reject any edge set with a loop at edit time) is a decision for the owner.
+2. The seeded rates have no gaining loop; several multiply to exactly 1 and are not flagged.
+3. Search is capped (cycles up to 5 edges, a cycle budget): a very dense registry reports `truncated` and may miss loops.
+4. Old test suites: the retargeted V177 and V178 data / UI suites were edited for the new caps (3000 products, 32 emoji, 5 dev sections, All emojis button); the V176 UI suite's "chart slot placeholder" check now expects a chart host.
+
+## 67. OmniStore V182 — store types and several stores: what was not verified
+1. Verified on software GL (Chromium via Playwright) only. Real GPU frame rate, a phone and touch (chip menu, Stores tab, long-press) are not verified.
+2. Only the current identity's stores can be listed or entered. Entering another identity's store is undecided.
+3. Store types are built in plus dev-registered; there is no user-made type editor.
+
+## 68. Store types and stores: follow-ups
+1. Accepted forms: a hand-edited price in a form the store does not take is kept but hidden; the wallet may still hold any type. A stricter rule (reject at edit time) is an owner decision.
+2. Catalog import has no total-size guard of its own; only the 3 MB state guard (12 stores per identity, 16 in all) applies.
+3. The first store keeps the identity id as its store id; a rename of the identity does not rename stores.
+4. Mall hub (item 10): `listStores()` gives id, layout and anchor, `setActiveStore` is the load / unload edge; doors, a hub scene and a device perf budget are still needed.
+5. Old suites adjusted for legitimate changes: V176 model `acceptForms` identity kept, V178 data hostile-snapshot test now uses the active store's ownerId (restoreCatalog refuses a foreign ownerId); the V182 cap is 16 in all.
+
+## 69. OmniStore V183 - StoreItemNode and OmniValueNode: what was not verified
+1. Verified in jsdom and in Chromium on software GL (about 1 fps) only. Real GPU frame rate with 250 nodes, a phone and touch (the picker chooser, the pin chip, the Inspector block, tapping a node) are not verified.
+2. Real-browser Inspector actions were exercised by script for most buttons (Wish, Open in store, Buy are covered in jsdom).
+
+## 70. Store and value nodes: follow-ups
+1. The Grant 10 (sandbox) button is in the Value block because the Wallet already offers the same Value.grant. Owner decision: keep or remove.
+2. A list action on an item of another store makes that store active first (the store scene rebuilds). Alternative: act on the other store without switching.
+3. The node's own name is saved and editable; the face shows the live name. A rename in the Inspector does not rename the product.
+4. Exchange from a value node is not preset to a pair (the exchange has no pair-preset API yet).
+5. No Inspector / ribbon Create button for the kinds: the picker entries and the pin buttons cover creation. Add one if users do not find the picker.
+6. A pin from an inactive store's product is not reachable from the UI (the store scene shows only the active store); the pin event accepts a storeId.
+7. Old suites adjusted: only `v182_dev_test` (its expectation of the dump `app` string, V182 -> V183). All other V176-V182 suites match their baselines; known failures are unchanged.
+
+## 71. Claude Check (V184): what was not verified, follow-ups
+1. Verified in jsdom and in Chromium on software GL (1280x720 and 390x844) only. A real phone, touch (tapping Pass / Fail / Skip, the note field, the keyboard covering the sheet) and a real clipboard permission prompt are not verified.
+2. Agents must regenerate `data/ClaudeCheckData.js` every version: edit `ClaudeCheckAsk.json`, run `node tools/build-claude-check.mjs --version <Vn> --categories "..."` (see `ITERATION_PROTOCOL.md`). Nothing runs it automatically; a stale data file shows the previous version's list.
+3. Optional: a node form of Claude Check (the developer chose a panel).
+4. Optional: a paste-back importer so Claude (or the app) can read an `omni-claude-report/1` block, and export / import of the stored answers as a file.
+5. V174 and V175 have no TestingChecklist category (their BuildLog entries list unchecked items only); the generator reports them as MISSING. Add categories if they should be tested through the panel.
+6. Id stability: ids are slugs of category + feature. Rewording either makes a carried failure look like a new item. Consider an explicit `id` field in TestingChecklist.json items if the checklist text is edited often.
+7. Device tags are derived from words in the text, so an item that only mentions "also at 390px" is tagged phone and is hidden by the Desktop chip. Add an explicit `device` field to checklist items if that proves wrong.
+8. The panel is a 68vh bottom sheet on phones and covers the bottom hands like the other settings panels; the on-screen keyboard may cover the note field.
+9. The full Dump in the report can be tens of KB; the report is small only when "Include app state" is off.
+10. Old suites adjusted in the retargeted copies only: `g181_v177_ui_test` (the Dev store panel now registers 5 window listeners: it answers `omni:dev-dump-get`) and `v182_dev_test` (dump `app` string V183 -> V184).
+

@@ -1,6 +1,6 @@
 # 3. Nodes and the Inspector
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V183 · Status: verified against code on 2026-10-09 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [The Four Hands](02_The_Four_Hands.md) · Next: [Firing and Payloads](04_Firing_and_Payloads.md)
 
@@ -22,6 +22,17 @@ A **node** is a small object in the space. Nodes can be joined by **edges** (lin
 | Log | A blog post split into pages in the scene |
 | OmniNode | Opens the ⟐N panel (below) |
 | BehaviorNode | A node that animates other nodes |
+
+### Store item and Value type nodes (V183, sandbox)
+
+The geometry picker has two extra entries under the shapes: **Store item** and **Value type**. Choose one, pick a product or a value type from the short list (there is a search box), then click in the space as with any other node. You can also use **Pin to my space** in the Exchange, the pin button on each wallet row, or **Pin this value type** in OmniTalent: the node drops about 6 units in front of you.
+
+- A **Store item** node shows the product's emoji on a cube or disc and a label with its name, price and stock. It only points at the product: change the product in the store catalog and the node follows. If the product is deleted the node turns grey with "Missing product"; it is not deleted.
+- A **Value type** node shows the type's emoji and your live balance.
+- Deleting or duplicating a node never changes the product or the value type. A duplicate is another pointer.
+- Join two Value type nodes with an edge (PATH mode in ⟐N) and the edge shows the rate between the two types, both ways, or "no direct rate". The edge stores no rate; it is read from the OmniValue model every time. Conversion itself is not done here; use the Exchange.
+- Select one and the Inspector shows a Store item or Value block in Appearance (still 12 sections). Store item: Window, Wish, Cart, Open in store, Buy... Value: Grant 10 (sandbox), Open in OmniTalent, Open exchange. All sandbox, all value fake. See [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md).
+- Time, Behaviors, grouping and duplicate work on them like on any node.
 
 ## The ⟐N panel (OmniNode)
 
