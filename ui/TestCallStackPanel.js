@@ -26,6 +26,8 @@
  *   (wired from main.js, Developer specialSlots[5])
  */
 
+import * as WindowManager from './WindowManager.js'
+
 const STORAGE_KEY = 'omni:dev:testcallstack:items'
 const SEEDED_KEY = 'omni:dev:testcallstack:seeded'
 
@@ -178,6 +180,7 @@ export default class TestCallStackPanel {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'testcallstack' })   // V187: resize handles + maximize button
     this._bindStaticEvents()
     this._render()
 

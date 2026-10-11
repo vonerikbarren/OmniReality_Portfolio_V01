@@ -94,14 +94,17 @@
       pointer-events: none;
     }
 
-    /* V185 — OmniStar lockup: wordmark + star slot + OmniOS subtitle.
-       Font size is the old .boot-glyph clamp; the star is sized in em so
-       it scales with it (390px phones included). */
+    /* V187 — Omni⟐Star lockup: the wordmark is "Omni" + ⟐ + "Star" (real text, one
+       font). The animated star is NOT part of the line any more: it sits centred
+       BEHIND the ⟐ (absolute, z-index -1 inside the h1's stacking context, so all
+       text paints over it) and arrives as a shooting star from the top right.
+       Sizes are in em so everything scales with the clamp() below (390px phones). */
     #omni-boot > * { position: relative; z-index: 1; }
     #omni-boot > #boot-starfield {
       position: absolute; inset: 0; z-index: 0; pointer-events: none;
     }
     .boot-brand {
+      --boot-star: 3.1em;                /* star box (tip radius ~ 0.46 x this, ~1.6-2 x the glyph height) */
       font-size: clamp(2rem, 6vw, 4rem);
       font-weight: normal;
       color: #fff;
@@ -116,36 +119,41 @@
     }
     .boot-glyph {
       letter-spacing: 0.15em;
-      opacity: 0.96;
-      text-shadow: 0 0 14px rgba(255, 255, 255, 0.28);
+      margin-right: -0.15em;             /* trailing letter-spacing would shift the visible text left */
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 5px rgba(0, 0, 0, 0.55), 0 0 14px rgba(255, 255, 255, 0.28);   /* dark rim keeps the letters readable when the (white) star passes behind them */
       white-space: nowrap;
     }
-    .boot-cover {                        /* JS-created; slides right with the star, then removed */
+    .boot-glyph .bw { opacity: 0.96; animation: bootWordIn 0.6s ease both; }
+    .boot-glyph .bw-g { animation-delay: 0.7s; animation-duration: 0.7s; }   /* the glyph appears as the star approaches */
+    @keyframes bootWordIn { from { opacity: 0; } to { opacity: 0.96; } }
+    .boot-mark {                         /* the ⟐ plus the star/comet that sit behind it */
+      position: relative;
+      display: inline-block;
+    }
+    .bw-g {                              /* stays white in front of the star; the dark halo keeps it readable on the glow */
+      text-shadow: 0 0 2px #000, 0 0 5px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.6);
+    }
+    .boot-star, .boot-comet {
       position: absolute;
-      top: -20%; bottom: -20%; left: 0;
-      width: 100vw;
-      background: #000;
-      z-index: 1;
-      will-change: transform;
+      left: 50%; top: 50%;
+      z-index: -1;
       pointer-events: none;
     }
     .boot-star {
-      z-index: 2;
       display: block;
-      flex: none;
-      position: relative;
-      width: 0.94em;
-      height: 0.94em;
-      margin-left: -0.06em;
+      width: var(--boot-star);
+      height: var(--boot-star);
+      margin: calc(var(--boot-star) / -2 + var(--my, 0px)) 0 0 calc(var(--boot-star) / -2 + var(--mx, 0px));
+      letter-spacing: 0;
       opacity: 0;
       will-change: transform;
     }
     .boot-star::before {                 /* soft round halo, does not rotate */
       content: '';
       position: absolute;
-      inset: -45%;
+      inset: -30%;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0) 68%);
+      background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.07) 38%, rgba(255,255,255,0) 68%);
       pointer-events: none;
     }
     .boot-star svg {
@@ -154,9 +162,18 @@
       width: 100%;
       height: 100%;
       overflow: visible;
+      opacity: var(--boot-star-alpha, 0.7);   /* whole-group opacity: core + spikes overlap without double-blending */
       filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.85));
     }
     .boot-star path, .boot-star circle { fill: #fff; }
+    .boot-comet {                        /* JS-made: tapered gradient tail, head at the star centre, rotated/scaled by animations */
+      height: calc(var(--boot-star) * 0.42);
+      opacity: 0;
+      transform-origin: 100% 50%;
+      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(190,215,255,0.55) 50%, rgba(255,255,255,0.95) 100%);
+      clip-path: polygon(0 50%, 100% 0, 100% 100%);
+      will-change: transform, opacity;
+    }
     .boot-sub {
       display: block;
       margin-top: 0.22em;
@@ -164,11 +181,13 @@
       font-size: max(0.3em, 11px);
       letter-spacing: 0.6em;
       text-transform: none;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 0 5px rgba(0, 0, 0, 0.6);
       opacity: 0;
       animation: bootSubIn 0.9s ease 0.9s forwards;
     }
     @keyframes bootSubIn { from { opacity: 0; } to { opacity: 0.65; } }
     @media (prefers-reduced-motion: reduce) {
+      .boot-glyph .bw { animation: none; opacity: 0.96; }
       .boot-sub { animation: none; opacity: 0.65; }
       .boot-enter-btn { transition: none; }
     }
@@ -227,10 +246,9 @@
 
   <!-- Boot screen — fades once scene is ready -->
   <div id="omni-boot">
-    <h1 class="boot-brand" aria-label="OmniStar OmniOS">
+    <h1 class="boot-brand" aria-label="Omni Star OmniOS">
       <span class="boot-row">
-        <span class="boot-glyph" id="boot-wordmark">OmniStar</span>
-        <span class="boot-star" id="boot-star" aria-hidden="true"><svg viewBox="-60 -60 120 120" focusable="false"><path id="boot-star-path" d=""/></svg></span>
+        <span class="boot-glyph" id="boot-wordmark" aria-hidden="true"><span class="bw">Omni</span><span class="boot-mark" id="boot-mark"><span class="bw bw-g" id="boot-glyph-char">&#x27D0;</span><span class="boot-star" id="boot-star"><svg viewBox="-60 -60 120 120" focusable="false"><path id="boot-star-path" d=""/></svg></span></span><span class="bw">Star</span></span>
       </span>
       <span class="boot-sub" aria-hidden="true">OmniOS</span>
     </h1>
@@ -240,7 +258,7 @@
     <button class="boot-enter-btn" id="boot-enter-btn">Enter</button>
   </div>
 
-  <!-- V185 OmniStar boot animation — classic script, no dependency on main.js. -->
+  <!-- V185 OmniStar boot animation (V187: shooting-star entrance behind the ⟐) — classic script, no dependency on main.js. -->
   <script src="./boot/OmniStarBoot.js"></script>
 
   <!-- Plain (non-module) script — runs immediately as the HTML parses,

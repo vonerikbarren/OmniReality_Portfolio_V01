@@ -68,6 +68,10 @@ function buildTabs () {
   const padBtn = (hand, label, name) => b(`pad-${hand}`, '⚇', label, '—',
     `Show or hide ${name}'s movement pad (the same as its ⚇ cell). Pad on/off is reported back by the pad itself.`,
     (s) => ev('omni:pad-toggle', { hand, visible: !s.pads[hand] }), { name: `${name} pad`, pressed: (s) => !!s.pads[hand] })
+  // V187: one hand on its own (the pair buttons above switch two at once). Hiding a hand never closes its pad.
+  const handShow = (hand, label, name, icon) => b(`show-${hand}`, icon, label, '—',
+    `Shows or hides ${name} on its own (the pair buttons switch two hands at once). Hiding a hand never closes its pad or tunnel; keys 1-4 / Shift and the menus on this tab keep working.`,
+    (s) => ev('omni:hand-visible-set', { hand, visible: !s.handShown[hand] }), { name: `${name} shown`, pressed: (s) => !!s.handShown[hand] })
   const handSettings = (item, label, hand, extraDesc) => b(`set-${hand}`, '⚙', label, '—',
     `Opens ⟐OmniHands on the ${label} view: speed, pad-on-start, pad dock${extraDesc}.`, nav(item), { name: `${label} settings` })
 
@@ -178,9 +182,11 @@ function buildTabs () {
           padBtn('omnihand', 'OmniHand', '⟐OmniHand'), padBtn('conscious', 'Conscious', '⟐ConsciousHand'),
           b('pads-all', '⚇', 'LH + RH', '—', 'Shows or hides the two lower pads together (omni:pads-global moves LH and RH only).', (s) => ev('omni:pads-global', { visible: !(s.pads.lh && s.pads.rh), source: 'ribbon' }), { name: 'Lower pads together', pressed: (s) => !!(s.pads.lh && s.pads.rh) }),
         ] },
-        { caption: 'Banner', btns: [
-          b('banner', '⚇', '⟐Hands', '—', 'Shows or hides the top hands banner (⟐OmniHand + ⟐ConsciousHand). Hiding it never closes a pad or tunnel.', () => ev('omni:hands-banner-set', { visible: !HandBanner.isVisible() }), { name: '⟐Hands banner', pressed: (s) => s.banner }),
-          b('banner-bottom', '⚉', '⟐Hands LH/RH', '—', 'Shows or hides the bottom hands (⟐LogicalHand + ⟐CreativeHand). Hiding them never closes a pad.', () => ev('omni:hands-bottom-set', { visible: !HandBanner.isBottomVisible() }), { name: '⟐Hands (LH / RH)', pressed: (s) => s.bannerBottom }),
+        { caption: 'Summon', btns: [
+          b('banner', '⚇', '⟐Hands', '—', 'Shows or hides the top hands banner (⟐OmniHand + ⟐ConsciousHand). Pressed = both shown, half = one shown (click shows both). Hiding it never closes a pad or tunnel.', () => ev('omni:hands-banner-set', { visible: !HandBanner.isVisible() }), { name: '⟐Hands banner', pressed: (s) => s.banner, mixed: (s) => s.bannerMixed }),
+          b('banner-bottom', '⚉', '⟐Hands LH/RH', '—', 'Shows or hides the bottom hands (⟐LogicalHand + ⟐CreativeHand). Pressed = both shown, half = one shown (click shows both). Hiding them never closes a pad.', () => ev('omni:hands-bottom-set', { visible: !HandBanner.isBottomVisible() }), { name: '⟐Hands (LH / RH)', pressed: (s) => s.bannerBottom, mixed: (s) => s.bannerBottomMixed }),
+          handShow('lh', 'LH', '⟐LogicalHand', '⚉'), handShow('rh', 'RH', '⟐CreativeHand', '⚉'),
+          handShow('omnihand', 'OH', '⟐OmniHand', '⚇'), handShow('conscious', 'CH', '⟐ConsciousHand', '⚇'),
         ] },
         { caption: 'Menus', btns: [
           b('menu-omnimenu', '☰', '⟐mniMenu', '1', "Opens the ⟐mniMenu drawer (the ⟐OmniHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tl .hand-cell--hamburger', '⟐mniMenu')),
@@ -283,6 +289,7 @@ const STYLES = /* css */`
 .orb-btn:focus-visible { outline: 1px solid var(--orb-accent); outline-offset: 1px; }
 .orb-btn.is-pressed { background: rgba(255,255,255,0.16); border-color: var(--orb-accent); }
 .orb-btn.is-dim { opacity: 0.4; }
+.orb-btn.is-mixed { background: linear-gradient(90deg, rgba(255,255,255,0.16) 50%, transparent 50%); border-color: var(--orb-accent); }   /* V187: one hand of a pair shown */
 .orb-ico { font-size: 20px; line-height: 22px; height: 22px; pointer-events: none; }
 .orb-lbl { font-size: 9.5px; line-height: 1.1; white-space: nowrap; pointer-events: none; }
 
@@ -327,7 +334,7 @@ export default class OmniRibbon {
     this._s = { tab: 'home', collapsed: false }
     this._open = false         // overlay open (phone / collapsed)
     this.state = {
-      minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), follow: true,
+      minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), bannerMixed: HandBanner.getPairState('top').mixed, bannerBottomMixed: HandBanner.getPairState('bottom').mixed, handShown: HandBanner.getHandStates(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
       timeline: { playing: PrimaryTime.isPlaying() },
       inspector: { open: false, loaded: false, sections: [], openSections: {} },
@@ -472,8 +479,9 @@ export default class OmniRibbon {
     const on = (name, fn) => this._on(window, name, (e) => { fn(e.detail ?? {}); this._refresh() })
     on('omni:minimap-toggle', d => { st.minimap = !!d.visible })
     on('omni:paneltray-state', d => { st.tray = !!d.open })
-    on('omni:hands-banner-state', d => { st.banner = !!d.visible })
-    on('omni:hands-bottom-state', d => { st.bannerBottom = !!d.visible })
+    on('omni:hands-banner-state', d => { st.banner = !!d.visible; st.bannerMixed = !!d.mixed })
+    on('omni:hands-bottom-state', d => { st.bannerBottom = !!d.visible; st.bannerBottomMixed = !!d.mixed })
+    on('omni:hand-visible-state', d => { if (d.hand) st.handShown = { ...st.handShown, [d.hand]: !!d.visible } })
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
     on('omni:primarytime-state', d => { st.timeline = { playing: !!d.playing } })
@@ -545,9 +553,11 @@ export default class OmniRibbon {
       if (!el) return
       const pressed = def.pressed ? !!def.pressed(this.state) : false
       const dim = def.dim ? !!def.dim(this.state) : false
+      const mixed = def.mixed ? !!def.mixed(this.state) && !pressed : false
       el.classList.toggle('is-pressed', pressed)
+      el.classList.toggle('is-mixed', mixed)
       el.classList.toggle('is-dim', dim)
-      if (def.pressed) el.setAttribute('aria-pressed', String(pressed))
+      if (def.pressed) el.setAttribute('aria-pressed', mixed ? 'mixed' : String(pressed))
       if (def.dim) el.setAttribute('aria-disabled', String(dim))
     })
   }

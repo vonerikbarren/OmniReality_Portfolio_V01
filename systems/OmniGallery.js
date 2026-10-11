@@ -61,6 +61,7 @@
  */
 
 import gsap from 'gsap'
+import * as WindowManager from '../ui/WindowManager.js'
 import { GEOMETRY_DEFS, GEO_LABELS } from './OmniNode.js'
 
 // ── Layout constants (mirrors OmniPresenter's own slot, flipped to the left) ──
@@ -560,6 +561,7 @@ export default class OmniGallery {
 
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(el)
+    WindowManager.enhanceWindow(el, { id: 'omnigallery' })   // V187: resize handles + maximize button
 
     el.querySelector('.og-controls').addEventListener('click', (e) => {
       const btn = e.target.closest('.og-ctrl')

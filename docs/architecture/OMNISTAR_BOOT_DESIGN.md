@@ -1,8 +1,19 @@
-# OmniStar boot screen (V185, final mark changed in V186)
+# OmniStar boot screen (V185; urchin mark V186; Omni⟐Star + shooting star V187)
 
-Applies to: V186 · Status: verified in software-GL Chromium on 2026-10-10 · Real devices: not verified.
+Applies to: V187 · Status: verified in software-GL Chromium on 2026-10-11 · Real devices: not verified.
 
 Files: `index.html` (markup + CSS), `boot/OmniStarBoot.js` (classic script, no module graph). `main.js` is unchanged.
+
+## V187: Omni⟐Star title and shooting-star entrance
+
+- **Wordmark** is real text `Omni` + `⟐` + `Star` (same monospace stack and size as before); `aria-label="Omni Star OmniOS"` on the h1 (the visual parts are `aria-hidden`); the tab `<title>` stays `OmniOS`. The subtitle `OmniOS` is unchanged.
+- **Star behind the glyph.** The star box (`.boot-star`, `z-index:-1` inside the h1 stacking context) is centred on the ink centre of the `⟐`: `measure()` takes the glyph's box from `getBoundingClientRect` and corrects the horizontal centre for the trailing letter-spacing (box minus half the letter-spacing) and the vertical centre from canvas `measureText` ink metrics. Final tip radius is about 1.6 - 2.2x the glyph height (`--boot-star: 3.1em`). Legibility: the star is dimmed to opacity 0.7 after the flight (flight itself is full white) and the glyph and subtitle carry a dark text-shadow rim.
+- **Flight.** Starts at 150 ms, lasts 1500 ms (`FLY_START`, `FLY_DUR`), from the top right outside the viewport to the glyph centre along a quadratic Bezier (bowed curve) sampled as 48 keyframes with an ease-out-cubic parameter, spinning -720 degrees (`FLY_SPIN`). Individual transform properties (`translate`, `rotate`, `scale`) as compositor Web Animations. Tail: one `.boot-comet` element, `transform-origin:100% 50%`, orientation = atan2 of the velocity, length scaled with speed (200 - 900 px, `0.38 x` the larger viewport side), clip-path taper, opacity fade at the end. The star is a 4-point shape in flight; at landing it runs the unchanged sequence (pop to 5 points, urchin morph, spin, breathing); later timeline offsets are not changed.
+- **Words** fade in over 600 ms (the glyph 0.7 s later); the black cover of V186 is removed (the title is visible from the first frame).
+- **Re-measure** on window resize and `document.fonts.ready`; an in-flight animation is re-aimed with `setKeyframes`.
+- **Unchanged:** star field, attract, converge (now toward the glyph), reduced motion (finished title at once, no flight), `?bootmark=star12`, Enter + `requestFullscreen` in the click, no overflow at 390 px.
+- **Cost:** boot script per frame p95 0.5 - 1.0 ms in the noisy harness (V186 target 0.5 ms; not tuned further).
+- **Not verified:** real GPU, a real phone, touch, the true feel of the flight.
 
 ## Branding decision
 

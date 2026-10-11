@@ -1,66 +1,52 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V186",
-  "date": "2026-10-10",
-  "summary": "V186: OmniStar boot final mark is now a drawn SVG sea-urchin orb (16 spikes, breathing) instead of the 12-point star; ?bootmark=star12 brings the old star back",
+  "version": "V187",
+  "date": "2026-10-11",
+  "summary": "V187: boot title is Omni⟐Star with a shooting star that lands behind the ⟐; every panel window can be resized (8 handles) and maximized (button + title double-click); LH and RH now have summon buttons (plus per-hand summons for all four hands)",
   "asks": [
     {
-      "id": "boot-mark-look",
-      "question": "Does the new boot mark look like what you wanted (a round body with spikes all around, like the sea urchin)? If not, say what to change in the message.",
-      "why": "I could only judge it in screenshots; the look (core size, spike thinness, glow) is taste, and every number is in the CONFIG object at the top of boot/OmniStarBoot.js.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "boot-mark-spikes",
-      "question": "How do the spike count and length feel?",
-      "why": "Defaults: 16 spikes, long tips 2.0x the core radius, short 1.64x, breathing +-6%. Pick the closest change; details in the message.",
-      "kind": "choice",
-      "choices": [
-        "fine",
-        "more spikes",
-        "fewer spikes",
-        "longer",
-        "shorter"
-      ],
-      "device": "any"
-    },
-    {
-      "id": "boot-mark-smooth",
-      "question": "How smooth is the boot animation (roll, landing, morph into the urchin, spin, breathing) on your real device?",
-      "why": "Only seen in software-rendered Chromium. The spin and breathing are compositor animations; the morph and star field need the main thread.",
+      "id": "boot-shooting-star",
+      "question": "How does the shooting-star entrance look (flight from the top right, tail, landing behind the ⟐)? If it needs a change, say what in the message.",
+      "why": "Only judged in screenshots from software-rendered Chromium; speed, tail length and star size are in the top of boot/OmniStarBoot.js.",
       "kind": "choice",
       "choices": [
         "good",
         "ok",
-        "janky"
+        "needs change"
       ],
-      "device": "phone"
+      "device": "any"
     },
     {
-      "id": "boot-landing",
-      "question": "Does the star's landing position after the word 'OmniStar' look right (gap, vertical centre)?",
-      "why": "The slot is measured from the real text width, but only judged on one system font; your device font may shift the baseline.",
+      "id": "boot-glyph-readable",
+      "question": "Is the ⟐ readable over the star?",
+      "why": "The star is dimmed and the glyph has a dark rim, but legibility depends on your display and font.",
       "kind": "yesno",
       "device": "any"
     },
     {
-      "id": "boot-balance",
-      "question": "Do the stars feel balanced between enterprise-grade and gaming-console?",
-      "why": "You wanted restrained but alive. Say in the message if it needs fewer / more stars, stronger pull, or no faint lines.",
-      "kind": "choice",
-      "choices": [
-        "too plain",
-        "balanced",
-        "too busy"
-      ],
+      "id": "window-cannot-resize",
+      "question": "Is there any panel that still cannot be resized or maximized? Name it.",
+      "why": "About every panel is covered by an automated check, but a panel I could not open (needs a special state) may be missed.",
+      "kind": "text",
       "device": "any"
     },
     {
-      "id": "boot-old-name",
-      "question": "Is there anything still saying OmniReality that should say OmniOS?",
-      "why": "I changed the tab title, boot screen, Global Bar logo tooltip, dump and user guide; I kept code names, OmniRealityGrid panels and the concept word Reality.",
-      "kind": "text",
+      "id": "window-maximize-phone",
+      "question": "Does maximize feel right on your phone (button size, sheet height, restore)?",
+      "why": "Only checked in a desktop browser at 390 px width, never with touch.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "ok",
+        "bad"
+      ],
+      "device": "phone"
+    },
+    {
+      "id": "hands-summon-found",
+      "question": "Where is the summon button for LH / RH (dock ⚉ or ribbon Hands > Summon) and was it easy to find?",
+      "why": "You asked for it; I put the pair on dock icon ⚉ and each hand in the ribbon and the OmniHands panel.",
+      "kind": "yesno",
       "device": "any"
     },
     {
@@ -98,14 +84,13 @@
     }
   ],
   "knownIssues": [
-    "The boot animation (and the urchin mark) was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
-    "While main.js loads, the roll, spin and the urchin's breathing keep running off the main thread, but the 4-to-5 and 5-to-urchin morphs and the star field need the main thread and can stall during long tasks.",
+    "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+    "Window positions are still not saved; only sizes are. Maximized state is never saved.",
+    "Panels that only exist in a special state (for example Cell or Account panels) were checked through a forced-visible test, not by a person.",
+    "Pointer resize of a window with a heavy canvas redraws through its own ResizeObserver; very large charts may lag on a weak device.",
     "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
     "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
     "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
-    "Objects near [200, 50, 300] can intersect a store moved there; there is no collision or warning.",
-    "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit).",
-    "The arbitrage guard only blocks continuing a loop within 10 minutes of your own buy log; it ignores fees and a second account.",
-    "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI."
+    "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit)."
   ]
 }

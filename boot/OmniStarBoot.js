@@ -1,16 +1,17 @@
-/* OmniStarBoot.js — V186 (final mark: urchin; V185: 12-point star). Classic (non-module) script: runs as soon as the
- * boot markup is parsed, with no dependency on main.js's ES import graph.
+/* OmniStarBoot.js — V187 (wordmark Omni⟐Star; shooting-star entrance). Classic (non-module) script: runs as soon as
+ * the boot markup is parsed, with no dependency on main.js's ES import graph.
  * See docs/architecture/OMNISTAR_BOOT_DESIGN.md for the timeline and rules.
  *
- *  1. A 4-pointed star rolls in from the left and lands after "OmniStar".
+ *  1. The wordmark "Omni⟐Star" fades in. A 4-pointed star arrives as a SHOOTING STAR from the top right
+ *     (curved path, ease-out, tapered comet tail) and lands centred BEHIND the ⟐ glyph.
  *  2. It snaps to 5 points, then morphs to the final mark (a 16-spike sea-urchin
  *     orb; CONFIG.FINAL_MARK / ?bootmark=star12 selects the old 12-point star)
  *     while spinning up, then keeps a slow constant spin; the urchin's spikes breathe.
  *  3. A small 2D-canvas star field fades in; stars lean toward the logo when
  *     the pointer moves / hovers the Enter button, and converge + fade on click.
  *
- * Roll, landing pop and spin are Web Animations on transform-type properties
- * (translate / rotate / scale), so they run on the compositor and keep playing
+ * Flight (translate + rotate + the comet tail's translate / rotate / scale / opacity), landing pop and spin
+ * are Web Animations on transform-type properties, so they run on the compositor and keep playing
  * even while main.js's module graph blocks the main thread. Only the two short
  * morphs (<path d>) and the star field use the main thread (rAF).
  * The rAF loop bails out as soon as #omni-boot is gone from the document.
@@ -21,8 +22,10 @@
   var starEl = document.getElementById('boot-star')
   var pathEl = document.getElementById('boot-star-path')
   var wordEl = document.getElementById('boot-wordmark')
+  var markEl = document.getElementById('boot-mark')          // inline-block around the ⟐ (star + comet live inside it)
+  var glyphEl = document.getElementById('boot-glyph-char')
   var enterBtn = document.getElementById('boot-enter-btn')
-  if (!boot || !starEl || !pathEl || !wordEl) return
+  if (!boot || !starEl || !pathEl || !wordEl || !markEl || !glyphEl) return
 
   // ── Shape math ────────────────────────────────────────────
   // ONE star function: 2n vertices, alternating outer / inner radius.
@@ -171,13 +174,16 @@
   }
 
   // ── Timeline (ms of virtual time) ─────────────────────────
-  var ROLL_START = 150, ROLL_DUR = 1500, ROLL_END = ROLL_START + ROLL_DUR
+  var FLY_START = 150, FLY_DUR = 1500, FLY_END = FLY_START + FLY_DUR   // shooting-star flight (same window as the V185 roll)
   var M5_START = 1500, M5_DUR = 250
   var SPIN_START = 1900, M12_DUR = 700
   var FIELD_START = SPIN_START, FIELD_FADE = 1400
   var OMEGA = 2 * Math.PI / 10000          // rad/ms: one revolution per 10 s
   var BURST = 6                            // spin-up overshoot during the 12-morph
   var CONVERGE_MS = 500
+  var FLY_SPIN = -720                      // degrees the 4-star spins during the flight (ends tip-up = 0)
+  var STAR_ALPHA = 0.7                     // final star opacity behind the glyph (keep equal to CSS --boot-star-alpha default)
+  var FLY_STEPS = 48                       // keyframes sampled along the curve (linear between; time is the eased parameter)
 
   var reduced = false
   try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch (e) {}
@@ -186,23 +192,35 @@
   function easeOutCubic (u) { return 1 - Math.pow(1 - u, 3) }
   function easeInOut (u) { return u * u * (3 - 2 * u) }
 
-  // ── Layout measurement (re-run on resize; never per frame) ─
-  var geo = { slotX: 0, slotY: 0, R: 20, D: 0, k: 1, wLeft: 0, wRight: 0, wW: 0 }
+  // ── Layout measurement (re-run on resize / font load; never per frame) ─
+  // slotX/slotY: the centre of the rendered ⟐ ink in viewport px. The inline box of the ⟐ span is measured
+  // (transform-free), then corrected to the ink centre with canvas text metrics for the font actually used
+  // (the ⟐ may come from a fallback font). The star's CSS centres it on the span box; --mx / --my carry the correction.
+  var geo = { slotX: 0, slotY: 0, R: 20, half: 30, mx: 0, my: 0, tail: 200, ink: 0 }
+  var mctx = document.createElement('canvas').getContext('2d')
   function measure () {
-    // offset* ignores transforms (the roll animation), so this is the star's landing slot.
-    var row = starEl.offsetParent || wordEl.parentNode
-    var rr = row.getBoundingClientRect()
-    var w = wordEl.getBoundingClientRect()
-    var r = { width: starEl.offsetWidth }
-    geo.slotX = rr.left + starEl.offsetLeft + starEl.offsetWidth / 2
-    geo.slotY = rr.top + starEl.offsetTop + starEl.offsetHeight / 2
-    geo.R = r.width * (OUTER / 120)          // svg viewBox is 120 wide, star radius 50
-    geo.D = geo.slotX + geo.R * 2            // start fully off-screen to the left
-    // distance / radius = rolled angle; nudge to a whole number of turns so
-    // the star lands tip-up (reads as a clean 5-point star when it snaps).
-    var turns = geo.D / geo.R / (2 * Math.PI)
-    geo.k = Math.max(1, Math.round(turns)) / turns
-    geo.wLeft = w.left; geo.wRight = w.right; geo.wW = w.width
+    var r = markEl.getBoundingClientRect()
+    var cs = getComputedStyle(glyphEl)
+    var mx = -(parseFloat(cs.letterSpacing) || 0) / 2, my = 0, ink = r.height   // fallback: box centre minus half the trailing letter-spacing
+    try {
+      mctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily
+      var m = mctx.measureText(glyphEl.textContent)
+      if (m.actualBoundingBoxAscent != null && m.fontBoundingBoxAscent != null && isFinite(m.actualBoundingBoxAscent)) {
+        // inline box content area = [baseline - fontAscent, baseline + fontDescent]; ink = [baseline - actAsc, baseline + actDesc]
+        var boxMid = (m.fontBoundingBoxDescent - m.fontBoundingBoxAscent) / 2        // box centre relative to baseline (down +)
+        var inkMid = (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2
+        my = inkMid - boxMid
+        mx = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2 - r.width / 2   // r.width includes the trailing letter-spacing, the ink does not
+        ink = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent
+        if (Math.abs(my) > r.height || Math.abs(mx) > r.width) { mx = -(parseFloat(cs.letterSpacing) || 0) / 2; my = 0 }    // implausible metrics: keep the box centre
+      }
+    } catch (e) {}
+    markEl.style.setProperty('--mx', mx.toFixed(2) + 'px'); markEl.style.setProperty('--my', my.toFixed(2) + 'px')
+    geo.mx = mx; geo.my = my; geo.ink = ink
+    geo.slotX = r.left + r.width / 2 + mx
+    geo.slotY = r.top + r.height / 2 + my
+    geo.half = starEl.offsetWidth / 2
+    geo.R = starEl.offsetWidth * (OUTER / 120)    // svg viewBox is 120 wide, nominal star radius 50
   }
 
   // ── Star field ────────────────────────────────────────────
@@ -270,7 +288,7 @@
   }
 
   // ── Frame loop ────────────────────────────────────────────
-  var T = 0, lastTs = 0, lastKey = '', st = null, rollAnim = null, cover = null, animsOn = false
+  var T = 0, lastTs = 0, lastKey = '', st = null, flyAnim = null, cometAnim = null, animsOn = false
   var stats = { script: [], interval: [] }
   var raf = 0, ended = false
 
@@ -338,30 +356,59 @@
 
   // Compositor animations (created on the first frame so they start with the first paint).
   var EASE_OUT_CUBIC = 'cubic-bezier(0.215, 0.61, 0.355, 1)'
-  function rollKeyframes () {
-    return [
-      { translate: (-geo.D).toFixed(1) + 'px 0px', rotate: (-(geo.D / geo.R) * geo.k * 180 / Math.PI).toFixed(2) + 'deg' },
-      { translate: '0px 0px', rotate: '0deg' }
-    ]
+  var comet = null
+  // Flight path in px relative to the landing slot: a quadratic Bezier from off-screen top right to (0,0). The parameter
+  // is eased (ease-out cubic), so the star decelerates into the glyph; keyframes sample it at equal times (linear between).
+  function flightSamples () {
+    var pad = geo.half * 2.2
+    var p0x = (window.innerWidth - geo.slotX) + pad, p0y = -geo.slotY - pad       // fully off-screen, top right
+    var cx = p0x * 0.42, cy = p0y * 0.62                                           // control point: bows the path (starts steeper, sweeps in leftwards)
+    var out = [], prev = null
+    for (var i = 0; i <= FLY_STEPS; i++) {
+      var u = i / FLY_STEPS, e = easeOutCubic(u), q = 1 - e
+      var x = q * q * p0x + 2 * q * e * cx, y = q * q * p0y + 2 * q * e * cy
+      out.push({ u: u, x: x, y: y })
+    }
+    var vmax = 0
+    for (i = 0; i <= FLY_STEPS; i++) {            // velocity (px per ms) by central differences, angle of travel
+      var a0 = out[Math.max(0, i - 1)], a1 = out[Math.min(FLY_STEPS, i + 1)]
+      var dtm = (a1.u - a0.u) * FLY_DUR
+      out[i].sp = Math.hypot(a1.x - a0.x, a1.y - a0.y) / dtm
+      out[i].ang = Math.atan2(a1.y - a0.y, a1.x - a0.x) * 180 / Math.PI
+      if (out[i].sp > vmax) vmax = out[i].sp
+    }
+    for (i = 0; i <= FLY_STEPS; i++) out[i].k = vmax > 0 ? out[i].sp / vmax : 0
+    geo.tail = Math.max(200, Math.min(900, vmax * 1000 * 0.38))     // tail length at full speed (px), ~380 ms of travel
+    return out
   }
-  function coverKeyframes () {          // black cover over the word, pulled right by the star's trailing edge
-    var rowLeft = coverRowLeft, trail0 = geo.slotX - geo.R - geo.D, trail1 = geo.slotX - geo.R
-    return [
-      { transform: 'translateX(' + (trail0 - rowLeft).toFixed(1) + 'px)', opacity: 1, offset: 0 },
-      { transform: 'translateX(' + (trail1 - rowLeft).toFixed(1) + 'px)', opacity: 1, offset: 0.999 },
-      { transform: 'translateX(' + (trail1 - rowLeft).toFixed(1) + 'px)', opacity: 0, offset: 1 }
-    ]
+  function flyKeyframes (smp) {
+    return smp.map(function (p) {
+      return { translate: p.x.toFixed(1) + 'px ' + p.y.toFixed(1) + 'px', rotate: (FLY_SPIN * (1 - easeOutCubic(p.u))).toFixed(2) + 'deg', offset: p.u }
+    })
   }
-  var coverRowLeft = 0
+  function tailKeyframes (smp) {         // head at the star centre; scale-x = speed (tail length), opacity fades as it slows
+    return smp.map(function (p) {
+      var o = clamp01(p.k * 1.6) * 0.95
+      return { translate: p.x.toFixed(1) + 'px ' + p.y.toFixed(1) + 'px', rotate: p.ang.toFixed(2) + 'deg', scale: (p.k).toFixed(3) + ' 1', opacity: o.toFixed(3), offset: p.u }
+    })
+  }
+  function sizeComet () {
+    comet.style.width = geo.tail.toFixed(0) + 'px'
+    comet.style.marginLeft = (-geo.tail + geo.mx).toFixed(1) + 'px'
+    comet.style.marginTop = 'calc(var(--boot-star) * -0.21 + ' + geo.my.toFixed(1) + 'px)'
+  }
   function startAnimations (now) {
     st = now
-    var row = wordEl.parentNode
-    coverRowLeft = row.getBoundingClientRect().left
     starEl.style.opacity = '1'
+    var smp = flightSamples()
+    sizeComet()
     var opts = function (o) { o.fill = o.fill || 'both'; return o }
-    rollAnim = starEl.animate(rollKeyframes(), opts({ delay: ROLL_START, duration: ROLL_DUR, easing: EASE_OUT_CUBIC }))
-    var coverAnim = cover.animate(coverKeyframes(), opts({ delay: ROLL_START, duration: ROLL_DUR, easing: EASE_OUT_CUBIC }))
-    coverAnim.onfinish = function () { if (cover.parentNode) cover.parentNode.removeChild(cover) }
+    flyAnim = starEl.animate(flyKeyframes(smp), opts({ delay: FLY_START, duration: FLY_DUR, easing: 'linear' }))
+    cometAnim = comet.animate(tailKeyframes(smp), opts({ delay: FLY_START, duration: FLY_DUR, easing: 'linear' }))
+    cometAnim.onfinish = function () { if (comet.parentNode) comet.parentNode.removeChild(comet) }
+    // the star is full white in flight and settles to its dimmer final alpha (CSS --boot-star-alpha) so the ⟐ stays readable
+    var dimAnim = starEl.firstElementChild.animate([{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.78 }, { opacity: STAR_ALPHA, offset: 1 }],
+      { delay: FLY_START, duration: FLY_DUR + 450, easing: 'ease-in-out', fill: 'both' })
     var popAnim = starEl.animate([{ scale: '1' }, { scale: '1.16' }, { scale: '1' }], { delay: M5_START, duration: M5_DUR, easing: 'ease-in-out', fill: 'none' })
     // spin-up: angle = integral of omega(u) over the 12-morph, sampled into keyframes
     var kf = [], ang = 0, N = 24, i
@@ -375,8 +422,7 @@
     var endDeg = ang * 180 / Math.PI
     var steady = starEl.animate([{ rotate: endDeg.toFixed(3) + 'deg' }, { rotate: (endDeg + 360).toFixed(3) + 'deg' }],
       { delay: SPIN_START + M12_DUR, duration: 10000, iterations: Infinity, easing: 'linear', fill: 'none' })
-    ;[coverAnim, popAnim, spinUp, steady].forEach(function (an) { an.startTime = now })
-    rollAnim.startTime = now
+    ;[cometAnim, dimAnim, popAnim, spinUp, steady, flyAnim].forEach(function (an) { an.startTime = now })
     animsOn = true
   }
 
@@ -411,12 +457,14 @@
   function onResize () {
     resizeField(); measure()
     if (reduced) { drawStatic(); return }
-    if (animsOn && T < ROLL_END) {       // still rolling: re-aim at the new slot
-      rollAnim.effect.setKeyframes(rollKeyframes())
-      if (cover && cover.parentNode) { coverRowLeft = wordEl.parentNode.getBoundingClientRect().left; cover.getAnimations()[0].effect.setKeyframes(coverKeyframes()) }
+    if (animsOn && T < FLY_END && flyAnim) {       // still flying: re-aim at the new slot
+      var smp = flightSamples()
+      flyAnim.effect.setKeyframes(flyKeyframes(smp))
+      if (comet && comet.parentNode) { sizeComet(); cometAnim.effect.setKeyframes(tailKeyframes(smp)) }
     }
   }
-  window.addEventListener('resize', onResize)
+  window.addEventListener('resize', onResize)       // also covers orientation changes
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (document.getElementById('omni-boot')) onResize() })
 
   function drawStatic () {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vw, vh)
@@ -443,10 +491,10 @@
     drawStatic()
   } else {
     pathEl.setAttribute('d', pathFor(0, 0))
-    cover = document.createElement('span')       // hides the word until the star's trailing edge passes it
-    cover.className = 'boot-cover'
-    cover.setAttribute('aria-hidden', 'true')
-    wordEl.parentNode.insertBefore(cover, starEl)
+    comet = document.createElement('span')      // tapered tail behind the flying star (compositor-animated)
+    comet.className = 'boot-comet'
+    comet.setAttribute('aria-hidden', 'true')
+    markEl.insertBefore(comet, starEl)
     raf = requestAnimationFrame(frame)
   }
 })()

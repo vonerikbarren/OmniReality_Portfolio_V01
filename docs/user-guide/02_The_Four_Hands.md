@@ -1,6 +1,6 @@
 # 2. The Four Hands
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Getting Started](01_Getting_Started.md) · Next: [Nodes and Inspector](03_Nodes_and_Inspector.md)
 
@@ -32,7 +32,7 @@ Real vs design-only:
 - Real: the drawers from ☰ on OmniHand and ConsciousHand, the pads, the ⬢ radial page ⟐1 on LH and RH.
 - Not finished: the LH panel GRID tab is empty (TREE works). The RH ☰ panel is a placeholder ("panel content — phase 4"). Radial page ⟐2 buttons only light up; they do nothing. Page ⟐3 is locked.
 
-Show or hide the hands: dock icon ⚇ toggles the top two hands, dock icon ⚉ the bottom two (also ribbon Hands tab > Banner). Hiding hands does not close pads or disable their keys.
+Show or hide the hands (**summon**): dock icon ⚇ toggles the top two hands, dock icon ⚉ the bottom two (LH and RH). To summon one hand alone use the ribbon Hands tab > Summon (buttons LH, RH, OH, CH) or the rows in the ⟐OmniHands panel. The dock icon is half-filled (mixed) when only one hand of its pair is shown. Each hand's choice is remembered. Hiding hands does not close pads or disable their keys.
 
 ## Pads
 

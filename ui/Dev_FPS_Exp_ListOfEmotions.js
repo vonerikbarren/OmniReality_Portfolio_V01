@@ -8,6 +8,7 @@
  */
 
 import { EMOTION_STATES } from '../data/OmniEmotionStates.js'
+import * as WindowManager from './WindowManager.js'
 
 const STYLES = `
 
@@ -71,6 +72,7 @@ export default class Dev_FPS_Exp_ListOfEmotions {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'devfpsexp' })   // V187: resize handles + maximize button
     this._bindEvents()
 
     this._onNavSelect = (e) => {

@@ -88,6 +88,7 @@ export default class OmniRealityGridSelectorPanel {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnigridselector' })   // V187: resize handles + maximize button
     this._bindEvents()
 
     this._onNavSelect = (e) => {

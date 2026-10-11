@@ -128,6 +128,7 @@ const STYLES = /* css */`
 .dock-icon.dock-icon--pinned .dock-icon-label { font-size: 15px; }
 .dock-icon.dock-icon--pinned::after { display: none; }   /* ⟐OmniNotify shows the name / description instead */
 .dock-icon.dock-icon--pinned.is-pressed { background: var(--dock-icon-active); border-color: rgba(255,255,255,0.45); box-shadow: var(--dock-glow); }
+.dock-icon.dock-icon--pinned.is-mixed { border-color: rgba(255,255,255,0.45); background: linear-gradient(90deg, var(--dock-icon-active) 50%, transparent 50%); }   /* V187: one hand of the pair shown = half-filled */
 .dock-icon.dock-icon--pinned:active { transform: scale(0.94) !important; }
 
 /* Wing label — ⟐ glyph, very muted */
@@ -354,22 +355,24 @@ export default class Dock {
     this.addPinned({
       id: 'hands', label: '⚇', tip: '⟐Hands',
       key: '—',
-      desc: 'Shows or hides the top hands banner (⟐OmniHand and ⟐ConsciousHand). Hiding it never closes a pad or tunnel; their menus stay on the ribbon\'s Hands tab.',
+      desc: 'Shows or hides the top hands banner (⟐OmniHand and ⟐ConsciousHand). Pressed = both shown, half = one shown (click shows both). Hiding never closes a pad or tunnel; each hand can also be switched on its own on the ribbon\'s Hands tab.',
       pressed: HandBanner.isVisible(),
       onClick: () => window.dispatchEvent(new CustomEvent('omni:hands-banner-set', { detail: { visible: !HandBanner.isVisible() } })),
     })
-    this._onBannerState = (e) => this.setPinnedPressed('hands', !!e.detail?.visible)
+    this.setPinnedPressed('hands', HandBanner.isVisible(), HandBanner.getPairState('top').mixed)   // V187: a reload with one hand hidden starts mixed
+    this._onBannerState = (e) => this.setPinnedPressed('hands', !!e.detail?.visible, !!e.detail?.mixed)
     window.addEventListener('omni:hands-banner-state', this._onBannerState)
 
     // V174: the same summon for the bottom pair (⟐LogicalHand + ⟐CreativeHand).
     this.addPinned({
       id: 'hands-bottom', label: '⚉', tip: '⟐Hands (LH / RH)',
       key: '—',
-      desc: 'Shows or hides the bottom hands (⟐LogicalHand and ⟐CreativeHand). Hiding them never closes a pad; their tools stay on the ribbon\'s Hands tab and Shift keys.',
+      desc: 'Shows or hides the bottom hands (⟐LogicalHand = LH and ⟐CreativeHand = RH). Pressed = both shown, half = one shown (click shows both). Hiding never closes a pad; LH and RH can also be switched on their own on the ribbon\'s Hands tab (Summon group).',
       pressed: HandBanner.isBottomVisible(),
       onClick: () => window.dispatchEvent(new CustomEvent('omni:hands-bottom-set', { detail: { visible: !HandBanner.isBottomVisible() } })),
     })
-    this._onBottomState = (e) => this.setPinnedPressed('hands-bottom', !!e.detail?.visible)
+    this.setPinnedPressed('hands-bottom', HandBanner.isBottomVisible(), HandBanner.getPairState('bottom').mixed)
+    this._onBottomState = (e) => this.setPinnedPressed('hands-bottom', !!e.detail?.visible, !!e.detail?.mixed)
     window.addEventListener('omni:hands-bottom-state', this._onBottomState)
   }
 
@@ -479,11 +482,13 @@ export default class Dock {
     return el
   }
 
-  setPinnedPressed (id, pressed) {
+  /** @param {boolean} [mixed]  V187: a pair icon with only one of its two hands shown — half-filled, aria-pressed="mixed". */
+  setPinnedPressed (id, pressed, mixed = false) {
     const el = this._pinned.get(id)
     if (!el) return
     el.classList.toggle('is-pressed', !!pressed)
-    el.setAttribute('aria-pressed', String(!!pressed))
+    el.classList.toggle('is-mixed', !!mixed && !pressed)
+    el.setAttribute('aria-pressed', mixed && !pressed ? 'mixed' : String(!!pressed))
   }
 
   /** @returns {boolean} */

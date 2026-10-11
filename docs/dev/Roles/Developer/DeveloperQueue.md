@@ -1271,3 +1271,28 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 6. Test hooks `__omniStarBoot.pathFor` / `easeInOut` / `mark` / `urchin` / `breathing()` are exposed for the harness.
 7. Old suites adjusted in the retargeted copies only: the dump `app` string `OmniOS V185` -> `OmniOS V186` and the V185 version constants in `v184_model_test` / `v184_ui_test`.
 
+
+## 74. Window chrome: resize + maximize (V187): what was not verified, follow-ups
+1. Verified in software-GL Chromium (1280x720, 390x844) with synthetic mouse events and jsdom only; never on a real GPU, a real phone or with touch. The 3D draw calls were turned off and `backdrop-filter` was off during the 79-panel run, so the feel of dragging a heavy panel (OmniChronos, the exchange charts) at real frame rates is unknown. Answer the Claude Check ask "any panel that still cannot be resized or maximized" and "does maximize feel right on phone".
+2. Sizes are remembered, positions are not (as before). If you want positions remembered too, the saved record `{w,h,t}` in `omni:window-rects-v1` can take `l,t` positions; the risk is a window restored off-screen after a resolution change (the clamp code already exists: `clampRect`).
+3. No keyboard shortcut for maximize (Esc and Alt+Enter were not audited for conflicts). Header double-click and the button are the only ways.
+4. A maximized window covers the two bottom hands (z-order) and stays below the top hands banner. If the bottom hands should stay visible, `getMaximizeArea()` in `utils/OmniWindowChrome.js` is the one place to change.
+5. Four panels size themselves in their own code on open and needed an explicit `WindowManager.reapplySavedSize(el)` call: OmniChronos (desktop and phone branches) and OmniExchange (phone). Any new panel that writes `style.width / height / maxHeight` in its open code will lose the remembered size the same way; call `reapplySavedSize`.
+6. The old per-panel SE grips (about 40 files, class `*-resize-handle`) are only hidden by CSS (`.omni-win-legacy-rz`), their code still runs. Remove them panel by panel when convenient.
+7. `MAX_WINDOWS` in `ui/WindowManager.js` went from 50 to 200 (67 distinct registered ids were found; the old cap silently left windows unregistered).
+8. Panels that only open in a state (OmniNode, OmniPocket, the inspectors, Account panels) were checked through a forced-visible registry test, not through a real click path.
+9. Old suites adjusted in the retargeted copies only: the dump `app` string `OmniOS V186` -> `OmniOS V187`, the V186 version constants in `v184_model_test` / `v184_ui_test`, and one assertion in `g181_v178_ui_test` that encoded the opacity-watcher listener leak (`after === c0 + 3` became `after === c0`: the leak is fixed).
+10. `r181_v168_test` has two timing assertions (word stagger) that fail when the machine is busy; they pass on an idle run (same behaviour on V186 under load).
+
+## 75. OmniStar boot: Omni⟐Star + shooting star (V187): what was not verified, follow-ups
+1. Judged in screenshots from software-GL Chromium only (landing frames, 4x zoom, reduced motion, 390 px). The look, the speed (1.5 s flight), the tail length and the star size behind the glyph are taste: answer the Claude Check asks.
+2. Boot script cost per frame p95 is 0.5 - 1.0 ms in the noisy harness (the V186 target was 0.5 ms); no extra tuning was done.
+3. The flight and tail are compositor Web Animations; the 4-to-5 pop and the urchin morph still run in rAF on the main thread and can stall during long `main.js` tasks (unchanged from V186).
+4. The glyph ⟐ (U+27D0) is drawn by whatever font the device falls back to; its ink centre is measured from the rendered glyph (canvas metrics), so the star centring should follow, but only one system font was seen.
+5. `?bootmark=star12` still works; the star silhouette is the same as V186's.
+
+## 76. Bottom hands summons (V187): what was not verified, follow-ups
+1. The ⚉ dock icon (V174) was verified in real Chromium at 1280x720 and 390x844: visible next to ⚇, not covered by `#dock-tray`, hides and shows LH and RH, persists. On the phone the dock icons are 28 px (smaller than the 36 px used for window buttons); not changed.
+2. New: each hand has its own summon (ribbon Hands tab > Summon: LH, RH, OH, CH; OmniHands panel rows; events `omni:hand-visible-set` / `omni:hand-visible-state`; keys `omni:hand-<id>-v1`). The pair icons show a half-filled "mixed" state with `aria-pressed="mixed"` when one of the pair is hidden.
+3. The gesture summon was not built (as agreed).
+4. Hiding a hand never closes its pad or tunnel and never disables keys 1-4 / Shift (checked: no new console errors with hidden hands).

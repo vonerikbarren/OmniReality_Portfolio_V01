@@ -281,6 +281,7 @@ export default class OmniHandsPanel {
     window.addEventListener('omni:hands-panel-close', this._onClose)
     window.addEventListener('omni:hands-banner-state', this._onBanner)
     window.addEventListener('omni:hands-bottom-state', this._onBanner)
+    window.addEventListener('omni:hand-visible-state', this._onBanner)
     window.addEventListener('omni:panel-restore', this._onRestore)
     window.addEventListener('omni:axinator-list', this._onList)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -304,6 +305,7 @@ export default class OmniHandsPanel {
     window.removeEventListener('omni:hands-panel-close', this._onClose)
     window.removeEventListener('omni:hands-banner-state', this._onBanner)
     window.removeEventListener('omni:hands-bottom-state', this._onBanner)
+    window.removeEventListener('omni:hand-visible-state', this._onBanner)
     window.removeEventListener('omni:panel-restore', this._onRestore)
     window.removeEventListener('omni:axinator-list', this._onList)
     window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -726,7 +728,15 @@ export default class OmniHandsPanel {
     this._toggleRow(g, 'Show bottom hands (LH / RH)', 'handsBottom',
       () => HandBanner.isBottomVisible(),
       (on) => window.dispatchEvent(new CustomEvent('omni:hands-bottom-set', { detail: { visible: on } })))
-    g.appendChild(el('div', 'omh-note', 'Shows or hides the ⟐OmniHand (top-left) and ⟐ConsciousHand (top-right) matrices. Hiding it does not close their pads or tunnels; their ☰ menus and ⬢ tools stay on the ribbon\'s Hands tab and on keys 1-4. Default: shown on desktop, hidden on phones (<= 700px); your choice is remembered.'))
+    // V187: each hand on its own (the two rows above switch a pair; with one shown the pair reads as "mixed" and the pair switch shows both)
+    for (const hand of ['omnihand', 'conscious', 'lh', 'rh']) {
+      const lbl = HandBanner.HANDS[hand].label
+      const short = { omnihand: '', conscious: '', lh: ' (LH)', rh: ' (RH)' }[hand]
+      this._toggleRow(g, `Show ${lbl}${short}`, `hand-${hand}`,
+        () => HandBanner.isHandVisible(hand),
+        (on) => window.dispatchEvent(new CustomEvent('omni:hand-visible-set', { detail: { hand, visible: on } })))
+    }
+    g.appendChild(el('div', 'omh-note', 'The first two rows show or hide a PAIR: the ⟐OmniHand (top-left) + ⟐ConsciousHand (top-right), and the ⟐LogicalHand (bottom-left, LH) + ⟐CreativeHand (bottom-right, RH). The four rows under them switch each hand on its own. Hiding a hand never closes its pad or tunnel; their ☰ menus and ⬢ tools stay on the ribbon\'s Hands tab and on keys 1-4 / Shift. Default: all shown; each choice is remembered.'))
   }
 
   _viewPad (body, hand) {

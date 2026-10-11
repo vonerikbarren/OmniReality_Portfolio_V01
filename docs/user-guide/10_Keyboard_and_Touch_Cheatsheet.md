@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V181 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 
@@ -46,6 +46,15 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | → ↓ / ← ↑, Space, Esc, Home, End | OmniPresenter open | Next / previous, play, stop, first / last |
 
 Note: R and F are bound both to the camera and the RH pad. Whether they move you twice has not been checked on a device.
+
+## Panel windows (V187)
+
+| Action | Mouse | Touch |
+|---|---|---|
+| Resize | Drag an edge or corner | Drag an edge or corner (larger grab area) |
+| Maximize / restore | ⛶ button or double-click the title bar | ⛶ button (36 px) |
+
+No key was added for maximize (Esc and Alt+Enter already have other uses).
 
 ## Touch
 

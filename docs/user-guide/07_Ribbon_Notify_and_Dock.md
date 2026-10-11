@@ -1,6 +1,6 @@
 # 7. Ribbon, OmniNotify and Dock
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Chronos](06_Chronos_Player_and_Timeline.md) · Next: [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md)
 
@@ -46,3 +46,15 @@ The dock is the bar at the bottom (52px).
 | ▲ (right) | "Panel Tray": opens the panel tray |
 
 A panel's _ button minimizes it to the dock.
+
+The ⚇ and ⚉ icons are half-filled when only one hand of the pair is shown. Ribbon Hands tab > **Summon** has the pair buttons plus one button per hand (LH, RH, OH, CH); the same four toggles are rows in the ⟐OmniHands panel.
+
+## Resizing and maximizing panels (V187)
+
+Every panel window can be resized and maximized.
+
+- **Resize**: drag any edge or corner (eight zones; a larger grab area on a touch screen). Smallest size about 220 x 120; a panel never goes under the ribbon or the dock. Content scrolls, the title bar stays.
+- **Maximize**: the square ⛶ button in the title bar, left of minimize / close, or double-click the title bar. The panel fills the free area (full width, below the ribbon and the top hands, above the dock). The button becomes ❐; press it or double-click again to restore the exact earlier size and place. A maximized panel cannot be dragged.
+- **Remembered**: sizes are saved per panel (not positions, and never the maximized state). Reset them in Admin > UI Settings > Window sizes.
+- **Phone**: panels are bottom sheets; drag the top edge to change the height; the maximize button fills the screen between ribbon and dock.
+- Not windows, so no handles: the ribbon, dock, hands and pads, toasts, tooltips, small pickers and context menus.

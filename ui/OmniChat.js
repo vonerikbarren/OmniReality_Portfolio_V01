@@ -33,6 +33,7 @@
 import gsap from 'gsap'
 import * as THREE from 'three'
 import { getSettings as getJsonOptions, setSettings as setJsonOptions } from '../utils/JsonChatMessageOptions.js'
+import * as WindowManager from './WindowManager.js'
 
 const STYLES = /* css */`
 
@@ -372,6 +373,7 @@ export default class OmniChat {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnichat' })   // V187: resize handles + maximize button
 
     this._setupPreview()
     this._bindEvents()

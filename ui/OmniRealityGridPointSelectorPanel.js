@@ -7,6 +7,8 @@
  * from a chosen edge of that same cell.
  */
 
+import * as WindowManager from './WindowManager.js'
+
 const STYLES = `
 
 .omni-grid-point-selector-panel {
@@ -76,6 +78,7 @@ export default class OmniRealityGridPointSelectorPanel {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnigridpointselector' })   // V187: resize handles + maximize button
     this._bindEvents()
 
     this._onNavSelect = (e) => {

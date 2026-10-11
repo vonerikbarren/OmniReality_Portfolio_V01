@@ -262,7 +262,7 @@ export default class OmniExchangeRadial {
   _place (initial) {
     const el = this._el
     if (!el) return
-    if (this.isPhone) { el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.maxHeight = ''; this._fitWheel(); this._emitState(); return }
+    if (this.isPhone) { el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.maxHeight = ''; WindowManager.reapplySavedSize?.(el); this._fitWheel(); this._emitState(); return }   // V187: keep the remembered sheet height
     if (!initial && el.dataset.moved === '1') { this._fitWheel(); this._emitState(); return }
     const W = window.innerWidth, H = window.innerHeight
     const w = Math.min(440, W - 16)

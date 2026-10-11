@@ -56,6 +56,7 @@
  */
 
 import gsap from 'gsap'
+import * as WindowManager from './WindowManager.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -693,6 +694,7 @@ export default class Panel {
     const shell = document.getElementById('omni-ui')
     const mount = shell ?? document.body
     mount.appendChild(el)
+    WindowManager.enhanceWindow(el, { id: `panel-${this.cfg.id}` })   // V187: resize handles + maximize button (docked and attached)
   }
 
   // ── Control button clicks ─────────────────────────────────────────────────

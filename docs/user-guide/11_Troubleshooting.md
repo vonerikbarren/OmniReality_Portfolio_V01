@@ -1,13 +1,13 @@
 # 11. Troubleshooting
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
 ## The hands are missing
 
 1. Look at the dock at the bottom: click ⚇ (top hands) and ⚉ (bottom hands).
-2. Or open the ribbon Hands tab > Banner and press ⟐Hands or ⟐Hands LH/RH.
+2. Or open the ribbon Hands tab > Summon and press the pair buttons or a single hand (LH, RH, OH, CH).
 3. Or open a hand's settings > "⟐Hands banner" and tick "Show hands banner" and "Show bottom hands (LH / RH)".
 4. Still gone: reload (F2).
 
@@ -23,7 +23,9 @@ Hiding hands does not turn off their keys.
 
 Close sections: on a phone only one section stays open and the panel is capped at 45% of the screen. Tap the open section's icon to close it, or use ✕ to close the panel. Minimize it with _.
 
-## A panel is off-screen
+## A panel is off-screen or too small
+
+Too small or too large: drag its edge or corner, or press the ⛶ button (or double-click the title bar) to maximize; Admin > UI Settings > Window sizes > Reset returns every panel to its original size. Panel sizes are saved, panel positions are not.
 
 Panel positions are not saved (the code only saves a last-saved time per panel), so a reload puts panels back in a staggered stack. Close the panel and open it again, or reload (F2). Detached pads and the quick launcher do remember a position. For a detached pad open the hand's settings and use "Re-dock pad". Zoom the browser out (Ctrl and -) to see more.
 

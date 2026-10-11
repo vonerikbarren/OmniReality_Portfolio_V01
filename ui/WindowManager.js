@@ -7,14 +7,17 @@
  * panel. Currently used by ui/OmniDraw.js and systems/OmniInspector.js.
  *
  * Provides:
- *   register(id, el)      — bring-to-front on click, enforces a 10-window
- *                            cap (forward-looking; nowhere near it today)
+ *   register(id, el, label, opts) — bring-to-front on click, enforces a window
+ *                            cap, and (V187) gives the window resize handles + a
+ *                            maximize button via utils/OmniWindowChrome.js
+ *                            (opts: { onWindowResize(rect), min:{w,h}, header, noButton })
  *   unregister(id)        — call from a panel's destroy()
- *   makeMaximizable(el, btn) — wires a maximize/restore toggle: grows to
- *                            fill the viewport, goes slightly transparent,
- *                            and the button's glyph swaps to a restore
- *                            icon while maximized. Remembers the exact
- *                            pre-maximize rect to restore back to.
+ *   makeMaximizable(el, btn) — (V187) adopts the panel's own header button as
+ *                            the window's maximize control; the work is done by
+ *                            utils/OmniWindowChrome.js (fills the free area below
+ *                            the ribbon / above the dock, restores the exact
+ *                            previous inline styles).
+ *   toggleMaximize(id) / isMaximized(id) / resetWindowSizes() — window chrome API
  *   wireSaveButton(btn, panelId, onSave) — flashes a ✓, timestamps the
  *                            save, persists "last saved" to localStorage
  *                            under omni:panel-lastsaved:{panelId}, and
@@ -30,8 +33,9 @@
 
 import gsap from 'gsap'
 import { getRibbonHeight, estimateRibbonHeight } from '../utils/OmniLayout.js'
+import * as Chrome from '../utils/OmniWindowChrome.js'
 
-const MAX_WINDOWS  = 50   // was 10 — far too low now that 24+ distinct panels exist and register here; raised with real headroom for continued growth (more OmniSystem formations, more OmniHUDs, multiple OmniBrowser windows at once)
+const MAX_WINDOWS  = 200  // V187: was 50, which the real panel count (~85 distinct panels, most of them registering on first open) can reach in one session; windows over the cap used to lose bring-to-front and now still get resize + maximize
 const BASE_Z       = 200
 const STORE_PREFIX = 'omni:panel-lastsaved:'
 
@@ -59,7 +63,7 @@ function injectStyles () {
  *  Global Context Menu's Windows category and app-title display; falls
  *  back to `id` if omitted. Returns false (and logs a warning) if the
  *  10-window cap is already full. */
-export function register (id, el, label) {
+export function register (id, el, label, opts = {}) {
   injectStyles()
   if (registry.has(id)) { bringToFront(id); return true }
   if (registry.size >= MAX_WINDOWS) {
@@ -72,6 +76,7 @@ export function register (id, el, label) {
     // "can't be brought to front later," never to "can't be used at all."
     topZ += 1
     el.style.zIndex = String(topZ)
+    Chrome.enhanceWindow(el, { id, ...opts })   // resize + maximize still apply to a window outside the registry
     return false
   }
   // Cascade positioning — every panel that registers gets this
@@ -86,15 +91,24 @@ export function register (id, el, label) {
     el.style.left = `${cascade.left}px`
     el.style.top = `${cascade.top}px`
   }
-  registry.set(id, { el, label: label ?? id })
+  const disposeChrome = Chrome.enhanceWindow(el, { id, ...opts })
+  registry.set(id, { el, label: label ?? id, disposeChrome })
   bringToFront(id, false)   // z-index only — not a real user focus event
   el.addEventListener('mousedown', () => bringToFront(id))
   return true
 }
 
 export function unregister (id) {
+  const entry = registry.get(id)
+  if (entry) { try { entry.disposeChrome?.() } catch (_) { /* already gone */ } stopWatchingOpacity(entry.el) }
   registry.delete(id)
 }
+
+// ── Window chrome (V187): resize + maximize for every registered window ─────
+export function toggleMaximize (id) { const e = registry.get(id); return e ? Chrome.toggleMaximize(e.el) : false }
+export function isMaximized (id) { const e = registry.get(id); return e ? Chrome.isMaximized(e.el) : false }
+export function resetWindowSizes () { return Chrome.resetWindowSizes() }
+export { enhanceWindow, reapplySavedSize } from '../utils/OmniWindowChrome.js'
 
 /** { id, label, isOpen } for every currently-registered panel — feeds
  *  the Global Context Menu's Windows category. isOpen is a best-effort
@@ -104,6 +118,7 @@ export function getRegisteredWindows () {
   return [...registry.entries()].map(([id, { el, label }]) => ({
     id, label, el,
     isOpen: el.style.visibility !== 'hidden',
+    maximized: Chrome.isMaximized(el),
   }))
 }
 
@@ -193,6 +208,7 @@ export function bringToFront (id, isUserAction = true) {
   if (!entry) return
   topZ += 1
   entry.el.style.zIndex = String(topZ)
+  Chrome.ensureInView(entry.el)   // a saved size must never leave a window partly off-screen
 
   // Only real user interaction (opening a panel, clicking into one)
   // should change what the Global Context Menu considers "focused."
@@ -264,45 +280,15 @@ export function getContextMenu (contextId) {
 }
 
 /**
- * Wires a maximize/restore toggle. `btn` is the header button element;
- * its textContent is swapped between the maximize and restore glyphs.
- * Optional `onMaximize`/`onRestore` callbacks let the panel convert its
- * own content into a grid dashboard (see ui/GridWidgets.js) — this
- * function only owns the size/transparency mechanics, not what's inside.
+ * Adopts `btn` (a panel's own header button) as the window's maximize / restore control. The size mechanics, the
+ * exact-restore snapshot and the glyph / tooltip swap live in utils/OmniWindowChrome.js; optional `onMaximize` /
+ * `onRestore` let the panel convert its own content (see ui/GridWidgets.js). The window also carries the
+ * `win-maximized` class while maximized (panels style against it).
  */
 export function makeMaximizable (el, btn, { onMaximize, onRestore } = {}) {
-  let saved  = null
-  let isMax  = false
-  const MAXIMIZE_GLYPH = '▢'
-  const RESTORE_GLYPH  = '❐'
-
-  btn.textContent = MAXIMIZE_GLYPH
-  btn.title = 'Maximize'
-
-  btn.addEventListener('click', () => {
-    if (!isMax) {
-      saved = {
-        left: el.style.left, top: el.style.top,
-        width: el.style.width, height: el.style.height,
-      }
-      el.classList.add('win-maximized')
-      gsap.to(el, { left: '3vw', top: '3vh', width: '94vw', height: '94vh', duration: 0.3, ease: 'power2.out' })
-      btn.textContent = RESTORE_GLYPH
-      btn.title = 'Restore'
-      isMax = true
-      onMaximize?.()
-    } else {
-      el.classList.remove('win-maximized')
-      if (saved) {
-        gsap.to(el, { left: saved.left, top: saved.top, width: saved.width, height: saved.height, duration: 0.28, ease: 'power2.inOut' })
-      }
-      btn.textContent = MAXIMIZE_GLYPH
-      btn.title = 'Maximize'
-      isMax = false
-      onRestore?.()
-    }
-    bringToFront(el.dataset.winId ?? '')
-  })
+  Chrome.enhanceWindow(el, { id: el.dataset?.winId || undefined, onMaximize, onRestore })
+  const st = Chrome.getWindowState(el)
+  if (st && btn) Chrome.adoptButton(el, btn)
 }
 
 /**
@@ -371,12 +357,27 @@ export function getPanelOpacity () {
  * on the next open). `isOpenFn` lets the caller report its own open
  * state without this module needing to know each panel's internals.
  */
+const opacityWatchers = new WeakMap()   // el -> listener
+
+function stopWatchingOpacity (el) {
+  const fn = opacityWatchers.get(el)
+  if (fn) { window.removeEventListener('omni:admin-settings-saved', fn); opacityWatchers.delete(el) }
+}
+
+/** Returns a function that stops watching. Never leaks: calling it again for the same element replaces the old
+ *  listener, unregister() removes it, and it removes itself once the element has left the document (V187; before,
+ *  every built panel added one window listener that was never removed). */
 export function watchPanelOpacity (el, isOpenFn) {
-  window.addEventListener('omni:admin-settings-saved', (e) => {
+  stopWatchingOpacity(el)
+  const fn = (e) => {
+    if (!el.isConnected) { stopWatchingOpacity(el); return }
     const raw = e.detail?.uiSettings?.panelOpacity
     if (raw === undefined || !isOpenFn()) return
     const v = Number(raw)
     if (!Number.isFinite(v) || v < 0.1 || v > 1) return   // same guard as getPanelOpacity — a bad live value should be ignored, not applied
     gsap.to(el, { opacity: v, duration: 0.25 })
-  })
+  }
+  opacityWatchers.set(el, fn)
+  window.addEventListener('omni:admin-settings-saved', fn)
+  return () => stopWatchingOpacity(el)
 }

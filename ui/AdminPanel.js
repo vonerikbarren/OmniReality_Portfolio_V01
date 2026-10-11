@@ -542,7 +542,9 @@ export default class AdminPanel {
         fileRow('Texture (default: wireframe)', 'userSpace.textureUrl', s.userSpace.textureUrl, 'image/*')
       ) +
       group('UI Settings', 'uisettings',
-        numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02, 0.3, 1)
+        numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02, 0.3, 1) +
+        `<div class="ap-row"><span class="ap-row-label">Window sizes (V187)</span><button class="ap-file-btn" id="ap-reset-window-sizes" type="button" data-omni-tip="Reset window sizes" data-omni-tip-key="—" data-omni-tip-desc="Forgets every size you gave a window by dragging its edges and puts the open windows back to their default size. Maximize is never remembered.">Reset window sizes</button></div>
+         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-window-sizes-status">Drag any window's edges or corners to resize it, or use its maximize button. Sizes are remembered per window.</div>`
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
@@ -561,6 +563,16 @@ export default class AdminPanel {
     this._bindCustomTheme(body)
     this._bindFields(body)
     this._bindDataManagement(body)
+    this._bindWindowSizes(body)
+  }
+
+  /** V187: forget every remembered window size (utils/OmniWindowChrome.js) and reset the open windows. */
+  _bindWindowSizes (body) {
+    body.querySelector('#ap-reset-window-sizes')?.addEventListener('click', () => {
+      const n = WindowManager.resetWindowSizes()
+      const st = body.querySelector('#ap-window-sizes-status')
+      if (st) st.textContent = n ? `Reset: ${n} open window${n === 1 ? '' : 's'} back to default size, saved sizes forgotten.` : 'Saved window sizes forgotten (no open window had a custom size).'
+    })
   }
 
   _bindCustomTheme (body) {

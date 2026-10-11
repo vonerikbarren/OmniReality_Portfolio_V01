@@ -378,12 +378,14 @@ export default class OmniChronos {
     this._applyMode()
     if (this.isMobile()) {
       gsap.set(el, { left: 0, top, width: vw, height: free })
+      WindowManager.reapplySavedSize?.(el)   // V187: remembered sheet height
       return
     }
     const rect = el.getBoundingClientRect()
     if (initial) {
       const w = Math.min(940, vw - 16), h = Math.min(560, free)
       gsap.set(el, { width: w, height: h, left: Math.max(8, Math.round((vw - w) / 2)), top })
+      WindowManager.reapplySavedSize?.(el)   // V187: this panel sizes itself on open; put the remembered size back
       return
     }
     // keep inside the viewport after a resize

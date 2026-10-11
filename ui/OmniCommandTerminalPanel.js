@@ -26,6 +26,7 @@
 
 import { parseCommand } from '../utils/CommandParser.js'
 import { getCommand, getAllCommands } from '../utils/CommandRegistry.js'
+import * as WindowManager from './WindowManager.js'
 
 const STYLES = `
 
@@ -94,6 +95,7 @@ export default class OmniCommandTerminalPanel {
     this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     shell.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnicommandterminal' })   // V187: resize handles + maximize button
     this._bindEvents()
 
     this._onNavSelect = (e) => {

@@ -1,6 +1,6 @@
 # 9. Settings and Admin
 
-Applies to: V184 · Status: verified against code on 2026-10-10 · Real devices: not verified.
+Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [OmniStore](08_OmniStore_and_OmniValue.md) · Next: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
@@ -28,7 +28,7 @@ Staged: changes apply when you press 💾.
 | Theme | Panel theme (Dark, Light, Custom); for Custom type Background, Border and Accent as rgba values and press "Apply Custom Colors" (applies at once) |
 | Domain Grid | Grid colour, Opacity (0–1), Wireframe, Visible |
 | User Space | Colour, Size multiplier, Visible, Spinning, Texture |
-| UI Settings | Panel opacity (0.3 to 1) |
+| UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187) |
 | Data Management | 🗑 Clear Scene, ⬇ Export Reality, ⬆ Import Reality |
 
 **Clear Scene** asks to confirm, then removes every created object. Cannot be undone. **Export Reality** downloads a .zip of all settings plus saved images, audio and video. **Import Reality** restores from such a zip and reloads the page. Export before you clear.

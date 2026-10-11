@@ -2750,6 +2750,165 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "Windows resize + maximize (V187)",
+      "items": [
+        {
+          "feature": "Every panel has edge and corner handles",
+          "howToReach": "Open any panel (ribbon tab, dock drawer, Developer / Admin menus); hover each edge and corner",
+          "whatToCheck": "Eight resize zones (cursor changes) on every panel window; no second old-style grip in the bottom-right corner; a panel that has none is a bug, name it",
+          "tested": false
+        },
+        {
+          "feature": "Drag to resize",
+          "howToReach": "Drag the bottom-right corner, then the left and top edges of a panel",
+          "whatToCheck": "The panel follows the pointer, stops at a minimum of about 220x120 and never goes under the ribbon or the dock; content scrolls, the title bar stays fixed",
+          "tested": false
+        },
+        {
+          "feature": "Maximize button",
+          "howToReach": "Click the square button (⛶) left of the minimize / close buttons",
+          "whatToCheck": "The panel fills the free area (full width, below the ribbon and the top hands, above the dock); the button becomes ❐; clicking it again restores the exact earlier size and place",
+          "tested": false
+        },
+        {
+          "feature": "Maximize by double-click",
+          "howToReach": "Double-click a panel title bar (not on a button)",
+          "whatToCheck": "Toggles maximize and restore; a click on a header button does not toggle",
+          "tested": false
+        },
+        {
+          "feature": "Dragging while maximized",
+          "howToReach": "Maximize a panel, try to drag the title bar",
+          "whatToCheck": "The maximized panel stays put; after restore the title bar drags normally again",
+          "tested": false
+        },
+        {
+          "feature": "Size is remembered",
+          "howToReach": "Resize a panel, reload the page, reopen it",
+          "whatToCheck": "Same size again (position is not remembered); a maximized panel reopens at its normal size, never maximized",
+          "tested": false
+        },
+        {
+          "feature": "Reset window sizes",
+          "howToReach": "Admin > UI Settings > Window sizes > Reset",
+          "whatToCheck": "Open panels return to their original size, saved sizes are cleared, and a reload shows the defaults",
+          "tested": false
+        },
+        {
+          "feature": "Charts and canvases follow the resize",
+          "howToReach": "Resize OmniChronos, the Exchange radial and the value charts; maximize them",
+          "whatToCheck": "The drawing refills the new size without a blank strip or stretching; no lag while dragging",
+          "tested": false
+        },
+        {
+          "feature": "Phone bottom sheets (390 px)",
+          "howToReach": "Open a panel on a phone",
+          "whatToCheck": "The sheet resizes by its top edge (height only), the maximize button is easy to hit (36 px), maximized fills the screen between the ribbon and the dock, restore returns the sheet",
+          "tested": false
+        },
+        {
+          "feature": "Opacity, tray, z-order unchanged",
+          "howToReach": "Set panel opacity in Admin; minimize a panel to the tray and restore; click overlapping panels",
+          "whatToCheck": "Opacity still applies live; tray minimize / restore works; the clicked panel comes to the front; Esc closes what it closed before",
+          "tested": false
+        },
+        {
+          "feature": "Panel that still cannot be resized or maximized",
+          "howToReach": "Try every panel you use",
+          "whatToCheck": "Report any exception by name in Claude Check",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniStar boot - shooting star (V187)",
+      "items": [
+        {
+          "feature": "Wordmark is Omni⟐Star",
+          "howToReach": "Open the app in a fresh tab, watch the first 3 s",
+          "whatToCheck": "The title reads Omni⟐Star in text (⟐ is a real character, same font and size as before) with OmniOS underneath; the tab title stays OmniOS",
+          "tested": false
+        },
+        {
+          "feature": "Shooting star from the top right",
+          "howToReach": "Fresh load, watch 0.1 - 1.7 s",
+          "whatToCheck": "A star with a tapered tail flies in on a curve from the top right, slows down, spinning, and lands BEHIND the ⟐ in about 1.5 s",
+          "tested": false
+        },
+        {
+          "feature": "Same sequence after landing",
+          "howToReach": "Fresh load, watch 1.7 - 5 s",
+          "whatToCheck": "The star pops to the 5-point shape, morphs into the urchin, spins and breathes as in V186; nothing jumps at the landing",
+          "tested": false
+        },
+        {
+          "feature": "The ⟐ stays readable",
+          "howToReach": "Look at the finished title",
+          "whatToCheck": "The ⟐ in front of the star is clearly legible (dark rim, dimmer star); the star is about twice the glyph height",
+          "tested": false
+        },
+        {
+          "feature": "Resize and font load",
+          "howToReach": "Resize the window during the boot or reload with a slow network",
+          "whatToCheck": "The star stays centred on the ⟐ after a resize or when the font swaps in",
+          "tested": false
+        },
+        {
+          "feature": "Phone and reduced motion",
+          "howToReach": "390 px window; OS reduce-motion on",
+          "whatToCheck": "No sideways scroll on the phone; reduced motion shows the finished title at once with no flight; Enter works in both",
+          "tested": false
+        },
+        {
+          "feature": "Enter still works",
+          "howToReach": "Click Enter",
+          "whatToCheck": "Stars converge on the glyph and fade, fullscreen is requested, the scene appears",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "Bottom hands summons (V187)",
+      "items": [
+        {
+          "feature": "Pair icons next to each other",
+          "howToReach": "Look at the dock",
+          "whatToCheck": "⚇ (top hands) and ⚉ (bottom hands) sit side by side and are not covered by the panel tray",
+          "tested": false
+        },
+        {
+          "feature": "Bottom pair icon toggles LH and RH",
+          "howToReach": "Click ⚉, click again",
+          "whatToCheck": "Both bottom hands hide, then show; the icon shows pressed when both are shown",
+          "tested": false
+        },
+        {
+          "feature": "One hand at a time",
+          "howToReach": "Ribbon > Hands > Summon: LH, RH, OH, CH buttons; OmniHands panel rows",
+          "whatToCheck": "Each button shows or hides only its own hand; the pair icon shows a half-filled (mixed) state when exactly one of the pair is shown",
+          "tested": false
+        },
+        {
+          "feature": "Hidden hand keeps working",
+          "howToReach": "Hide LH, press its key (1-4 / Shift)",
+          "whatToCheck": "Its pad and tunnel still work; hiding never closes a pad",
+          "tested": false
+        },
+        {
+          "feature": "Remembered per hand",
+          "howToReach": "Hide RH and CH, reload",
+          "whatToCheck": "The same hands are hidden after the reload; ribbon, dock and panel agree",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "Same at 390 px",
+          "whatToCheck": "Summon buttons reachable and not covered",
+          "tested": false
+        }
+      ]
     }
   ]
 }

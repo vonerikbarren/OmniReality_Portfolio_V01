@@ -162,6 +162,7 @@ export default class OmniKeyboardShortcutsPanel {
     injectStyles()
     this._el = this._buildDOM()
     document.body.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnishortcuts' })   // V187: resize handles + maximize button
 
     this._el.querySelector('.oks-close').addEventListener('click', () => this.close())
     this._el.querySelector('.oks-edit-btn').addEventListener('click', () => this._onEditClick())

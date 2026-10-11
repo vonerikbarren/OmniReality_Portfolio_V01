@@ -18,6 +18,7 @@
 import OmniLogPagesPanel from '../modules/OmniLogPagesPanel.js'
 import { getLogEntry } from '../utils/OmniLogRegistry.js'
 import { hexToRgba } from '../utils/ColorUtils.js'
+import * as WindowManager from './WindowManager.js'
 
 const TEMPLATES = {
   standard: '<h1>Post Title</h1><p>Start writing here…</p>',
@@ -58,7 +59,7 @@ const STYLES = `
   display: flex; flex-direction: column; gap: 8px;
 }
 .omni-log-editor.open { opacity: 1; visibility: visible; }
-.ole-title { font-size: 11px; letter-spacing: 0.05em; color: rgba(255,255,255,0.6); text-align: center; }
+.ole-title { font-size: 11px; letter-spacing: 0.05em; color: rgba(255,255,255,0.6); text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .ole-row { display: flex; gap: 6px; align-items: center; }
 .ole-select, .ole-input {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
@@ -119,6 +120,7 @@ export default class OmniLogEditorPanel {
     this._pagesPanel.init()
     this._el = this._buildDOM()
     document.body.appendChild(this._el)
+    WindowManager.enhanceWindow(this._el, { id: 'omnilogeditor' })   // V187: resize handles + maximize button
     this._bindEvents()
 
     this._onNavSelect = (e) => {
@@ -159,7 +161,7 @@ export default class OmniLogEditorPanel {
     const el = document.createElement('div')
     el.className = 'omni-log-editor'
     el.innerHTML = `
-      <div class="ole-title">⟐ OmniLog</div>
+      <div class="ole-title" data-win-header>⟐ OmniLog</div>
       <div class="ole-row">
         <input class="ole-input" type="text" placeholder="Title" id="ole-title-input" />
         <div class="ole-page-options" title="OmniLogPageOptions">

@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V186",
- "date": "2026-10-10",
- "summary": "V186: OmniStar boot final mark is now a drawn SVG sea-urchin orb (16 spikes, breathing) instead of the 12-point star; ?bootmark=star12 brings the old star back",
+ "version": "V187",
+ "date": "2026-10-11",
+ "summary": "V187: boot title is Omni⟐Star with a shooting star that lands behind the ⟐; every panel window can be resized (8 handles) and maximized (button + title double-click); LH and RH now have summon buttons (plus per-hand summons for all four hands)",
  "checks": [
   {
    "id": "omnistore-omnivalue-sandbox-v1.open-the-store",
@@ -1142,66 +1142,268 @@ export default {
    "whatToCheck": "Stars converge on the mark and fade; fullscreen is requested; the app enters as before",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.every-panel-has-edge-and-corner-handles",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Every panel has edge and corner handles",
+   "howToReach": "Open any panel (ribbon tab, dock drawer, Developer / Admin menus); hover each edge and corner",
+   "whatToCheck": "Eight resize zones (cursor changes) on every panel window; no second old-style grip in the bottom-right corner; a panel that has none is a bug, name it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.drag-to-resize",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Drag to resize",
+   "howToReach": "Drag the bottom-right corner, then the left and top edges of a panel",
+   "whatToCheck": "The panel follows the pointer, stops at a minimum of about 220x120 and never goes under the ribbon or the dock; content scrolls, the title bar stays fixed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.maximize-button",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Maximize button",
+   "howToReach": "Click the square button (⛶) left of the minimize / close buttons",
+   "whatToCheck": "The panel fills the free area (full width, below the ribbon and the top hands, above the dock); the button becomes ❐; clicking it again restores the exact earlier size and place",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.maximize-by-double-click",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Maximize by double-click",
+   "howToReach": "Double-click a panel title bar (not on a button)",
+   "whatToCheck": "Toggles maximize and restore; a click on a header button does not toggle",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.dragging-while-maximized",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Dragging while maximized",
+   "howToReach": "Maximize a panel, try to drag the title bar",
+   "whatToCheck": "The maximized panel stays put; after restore the title bar drags normally again",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.size-is-remembered",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Size is remembered",
+   "howToReach": "Resize a panel, reload the page, reopen it",
+   "whatToCheck": "Same size again (position is not remembered); a maximized panel reopens at its normal size, never maximized",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.reset-window-sizes",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Reset window sizes",
+   "howToReach": "Admin > UI Settings > Window sizes > Reset",
+   "whatToCheck": "Open panels return to their original size, saved sizes are cleared, and a reload shows the defaults",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.charts-and-canvases-follow-the-resize",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Charts and canvases follow the resize",
+   "howToReach": "Resize OmniChronos, the Exchange radial and the value charts; maximize them",
+   "whatToCheck": "The drawing refills the new size without a blank strip or stretching; no lag while dragging",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.phone-bottom-sheets-390-px",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Phone bottom sheets (390 px)",
+   "howToReach": "Open a panel on a phone",
+   "whatToCheck": "The sheet resizes by its top edge (height only), the maximize button is easy to hit (36 px), maximized fills the screen between the ribbon and the dock, restore returns the sheet",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "windows-resize-maximize-v187.opacity-tray-z-order-unchanged",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Opacity, tray, z-order unchanged",
+   "howToReach": "Set panel opacity in Admin; minimize a panel to the tray and restore; click overlapping panels",
+   "whatToCheck": "Opacity still applies live; tray minimize / restore works; the clicked panel comes to the front; Esc closes what it closed before",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "windows-resize-maximize-v187.panel-that-still-cannot-be-resized-or-maximized",
+   "category": "Windows resize + maximize (V187)",
+   "feature": "Panel that still cannot be resized or maximized",
+   "howToReach": "Try every panel you use",
+   "whatToCheck": "Report any exception by name in Claude Check",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.wordmark-is-omni-star",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Wordmark is Omni⟐Star",
+   "howToReach": "Open the app in a fresh tab, watch the first 3 s",
+   "whatToCheck": "The title reads Omni⟐Star in text (⟐ is a real character, same font and size as before) with OmniOS underneath; the tab title stays OmniOS",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.shooting-star-from-the-top-right",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Shooting star from the top right",
+   "howToReach": "Fresh load, watch 0.1 - 1.7 s",
+   "whatToCheck": "A star with a tapered tail flies in on a curve from the top right, slows down, spinning, and lands BEHIND the ⟐ in about 1.5 s",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.same-sequence-after-landing",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Same sequence after landing",
+   "howToReach": "Fresh load, watch 1.7 - 5 s",
+   "whatToCheck": "The star pops to the 5-point shape, morphs into the urchin, spins and breathes as in V186; nothing jumps at the landing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.the-stays-readable",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "The ⟐ stays readable",
+   "howToReach": "Look at the finished title",
+   "whatToCheck": "The ⟐ in front of the star is clearly legible (dark rim, dimmer star); the star is about twice the glyph height",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.resize-and-font-load",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Resize and font load",
+   "howToReach": "Resize the window during the boot or reload with a slow network",
+   "whatToCheck": "The star stays centred on the ⟐ after a resize or when the font swaps in",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.phone-and-reduced-motion",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Phone and reduced motion",
+   "howToReach": "390 px window; OS reduce-motion on",
+   "whatToCheck": "No sideways scroll on the phone; reduced motion shows the finished title at once with no flight; Enter works in both",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "omnistar-boot-shooting-star-v1.enter-still-works",
+   "category": "OmniStar boot - shooting star (V187)",
+   "feature": "Enter still works",
+   "howToReach": "Click Enter",
+   "whatToCheck": "Stars converge on the glyph and fade, fullscreen is requested, the scene appears",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.pair-icons-next-to-each-other",
+   "category": "Bottom hands summons (V187)",
+   "feature": "Pair icons next to each other",
+   "howToReach": "Look at the dock",
+   "whatToCheck": "⚇ (top hands) and ⚉ (bottom hands) sit side by side and are not covered by the panel tray",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.bottom-pair-icon-toggles-lh-and-rh",
+   "category": "Bottom hands summons (V187)",
+   "feature": "Bottom pair icon toggles LH and RH",
+   "howToReach": "Click ⚉, click again",
+   "whatToCheck": "Both bottom hands hide, then show; the icon shows pressed when both are shown",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.one-hand-at-a-time",
+   "category": "Bottom hands summons (V187)",
+   "feature": "One hand at a time",
+   "howToReach": "Ribbon > Hands > Summon: LH, RH, OH, CH buttons; OmniHands panel rows",
+   "whatToCheck": "Each button shows or hides only its own hand; the pair icon shows a half-filled (mixed) state when exactly one of the pair is shown",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.hidden-hand-keeps-working",
+   "category": "Bottom hands summons (V187)",
+   "feature": "Hidden hand keeps working",
+   "howToReach": "Hide LH, press its key (1-4 / Shift)",
+   "whatToCheck": "Its pad and tunnel still work; hiding never closes a pad",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.remembered-per-hand",
+   "category": "Bottom hands summons (V187)",
+   "feature": "Remembered per hand",
+   "howToReach": "Hide RH and CH, reload",
+   "whatToCheck": "The same hands are hidden after the reload; ribbon, dock and panel agree",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "bottom-hands-summons-v187.phone",
+   "category": "Bottom hands summons (V187)",
+   "feature": "Phone",
+   "howToReach": "Same at 390 px",
+   "whatToCheck": "Summon buttons reachable and not covered",
+   "priority": "normal",
+   "device": "phone"
   }
  ],
  "asks": [
   {
-   "id": "boot-mark-look",
-   "question": "Does the new boot mark look like what you wanted (a round body with spikes all around, like the sea urchin)? If not, say what to change in the message.",
-   "why": "I could only judge it in screenshots; the look (core size, spike thinness, glow) is taste, and every number is in the CONFIG object at the top of boot/OmniStarBoot.js.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "boot-mark-spikes",
-   "question": "How do the spike count and length feel?",
-   "why": "Defaults: 16 spikes, long tips 2.0x the core radius, short 1.64x, breathing +-6%. Pick the closest change; details in the message.",
-   "kind": "choice",
-   "choices": [
-    "fine",
-    "more spikes",
-    "fewer spikes",
-    "longer",
-    "shorter"
-   ],
-   "device": "any"
-  },
-  {
-   "id": "boot-mark-smooth",
-   "question": "How smooth is the boot animation (roll, landing, morph into the urchin, spin, breathing) on your real device?",
-   "why": "Only seen in software-rendered Chromium. The spin and breathing are compositor animations; the morph and star field need the main thread.",
+   "id": "boot-shooting-star",
+   "question": "How does the shooting-star entrance look (flight from the top right, tail, landing behind the ⟐)? If it needs a change, say what in the message.",
+   "why": "Only judged in screenshots from software-rendered Chromium; speed, tail length and star size are in the top of boot/OmniStarBoot.js.",
    "kind": "choice",
    "choices": [
     "good",
     "ok",
-    "janky"
+    "needs change"
    ],
-   "device": "phone"
+   "device": "any"
   },
   {
-   "id": "boot-landing",
-   "question": "Does the star's landing position after the word 'OmniStar' look right (gap, vertical centre)?",
-   "why": "The slot is measured from the real text width, but only judged on one system font; your device font may shift the baseline.",
+   "id": "boot-glyph-readable",
+   "question": "Is the ⟐ readable over the star?",
+   "why": "The star is dimmed and the glyph has a dark rim, but legibility depends on your display and font.",
    "kind": "yesno",
    "device": "any"
   },
   {
-   "id": "boot-balance",
-   "question": "Do the stars feel balanced between enterprise-grade and gaming-console?",
-   "why": "You wanted restrained but alive. Say in the message if it needs fewer / more stars, stronger pull, or no faint lines.",
-   "kind": "choice",
-   "choices": [
-    "too plain",
-    "balanced",
-    "too busy"
-   ],
+   "id": "window-cannot-resize",
+   "question": "Is there any panel that still cannot be resized or maximized? Name it.",
+   "why": "About every panel is covered by an automated check, but a panel I could not open (needs a special state) may be missed.",
+   "kind": "text",
    "device": "any"
   },
   {
-   "id": "boot-old-name",
-   "question": "Is there anything still saying OmniReality that should say OmniOS?",
-   "why": "I changed the tab title, boot screen, Global Bar logo tooltip, dump and user guide; I kept code names, OmniRealityGrid panels and the concept word Reality.",
-   "kind": "text",
+   "id": "window-maximize-phone",
+   "question": "Does maximize feel right on your phone (button size, sheet height, restore)?",
+   "why": "Only checked in a desktop browser at 390 px width, never with touch.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "ok",
+    "bad"
+   ],
+   "device": "phone"
+  },
+  {
+   "id": "hands-summon-found",
+   "question": "Where is the summon button for LH / RH (dock ⚉ or ribbon Hands > Summon) and was it easy to find?",
+   "why": "You asked for it; I put the pair on dock icon ⚉ and each hand in the ribbon and the OmniHands panel.",
+   "kind": "yesno",
    "device": "any"
   },
   {
@@ -1239,14 +1441,13 @@ export default {
   }
  ],
  "knownIssues": [
-  "The boot animation (and the urchin mark) was never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
-  "While main.js loads, the roll, spin and the urchin's breathing keep running off the main thread, but the 4-to-5 and 5-to-urchin morphs and the star field need the main thread and can stall during long tasks.",
+  "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
+  "Window positions are still not saved; only sizes are. Maximized state is never saved.",
+  "Panels that only exist in a special state (for example Cell or Account panels) were checked through a forced-visible test, not by a person.",
+  "Pointer resize of a window with a heavy canvas redraws through its own ResizeObserver; very large charts may lag on a weak device.",
   "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
   "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
   "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
-  "Objects near [200, 50, 300] can intersect a store moved there; there is no collision or warning.",
-  "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit).",
-  "The arbitrage guard only blocks continuing a loop within 10 minutes of your own buy log; it ignores fees and a second account.",
-  "Only the current identity's stores can be listed or entered; a pin from a store that is not active cannot be reached from the UI."
+  "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit)."
  ]
 }
