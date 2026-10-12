@@ -138,6 +138,7 @@ const SHORTCUTS = [
   { key: 'Escape',   desc: 'Exit fullscreen' },
   { key: '( / )',    desc: 'Wallpaper sphere spin direction' },
   { key: 'Enter',    desc: 'Toggle OmniStartHUD' },
+  { key: 'Ctrl/Cmd+K', desc: 'OmniStarLight search (sites and docs); Escape closes' },
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },

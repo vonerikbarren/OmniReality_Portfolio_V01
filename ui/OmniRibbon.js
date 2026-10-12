@@ -6,7 +6,7 @@
  * most, laid out flat as large icon + label buttons in captioned groups, in tabs so more can be
  * added later.
  *
- *   Tabs        Home (▦ dashboard) · Inspector · Realities · Hands      (data table TABS below)
+ *   Tabs        OmniStar (V190: Docs, OmniStarLight) · Home (▦ dashboard) · Inspector · Realities · Hands      (data table TABS below)
  *   Body        groups of buttons, a caption under each group, thin separators, horizontal scroll
  *   Collapse    chevron at the right (and double-click a tab) -> tabs only; tab + collapsed persist
  *   Phones      <= 700px: tabs row only; tapping a tab drops its body over the scene as an overlay,
@@ -63,19 +63,32 @@ const fakeKey = (key, code) => () => window.dispatchEvent(new KeyboardEvent('key
 // b(id, icon, label, key, desc, run, extras)  extras: { pressed(s), dim(s), name }
 
 const b = (id, icon, label, key, desc, run, extra = {}) => ({ id, icon, label, key, desc, run, name: label, ...extra })
+/** V190: which hand a Hands-tab button belongs to (lh / rh / oh / ch). A divider is drawn wherever the hand changes between two neighbours. */
+const HAND_TAG = { lh: 'lh', rh: 'rh', omnihand: 'oh', conscious: 'ch' }
+export const handDividerBetween = (prev, cur) => !!prev && (prev.hand ?? null) !== (cur.hand ?? null) && !!((prev.hand ?? null) || (cur.hand ?? null))
 
 function buildTabs () {
   const padBtn = (hand, label, name) => b(`pad-${hand}`, '⚇', label, '—',
     `Show or hide ${name}'s movement pad (the same as its ⚇ cell). Pad on/off is reported back by the pad itself.`,
-    (s) => ev('omni:pad-toggle', { hand, visible: !s.pads[hand] }), { name: `${name} pad`, pressed: (s) => !!s.pads[hand] })
+    (s) => ev('omni:pad-toggle', { hand, visible: !s.pads[hand] }), { name: `${name} pad`, pressed: (s) => !!s.pads[hand], hand: HAND_TAG[hand] })
   // V187: one hand on its own (the pair buttons above switch two at once). Hiding a hand never closes its pad.
   const handShow = (hand, label, name, icon) => b(`show-${hand}`, icon, label, '—',
     `Shows or hides ${name} on its own (the pair buttons switch two hands at once). Hiding a hand never closes its pad or tunnel; keys 1-4 / Shift and the menus on this tab keep working.`,
-    (s) => ev('omni:hand-visible-set', { hand, visible: !s.handShown[hand] }), { name: `${name} shown`, pressed: (s) => !!s.handShown[hand] })
+    (s) => ev('omni:hand-visible-set', { hand, visible: !s.handShown[hand] }), { name: `${name} shown`, pressed: (s) => !!s.handShown[hand], hand: HAND_TAG[hand] })
   const handSettings = (item, label, hand, extraDesc) => b(`set-${hand}`, '⚙', label, '—',
-    `Opens ⟐OmniHands on the ${label} view: speed, pad-on-start, pad dock${extraDesc}.`, nav(item), { name: `${label} settings` })
+    `Opens ⟐OmniHands on the ${label} view: speed, pad-on-start, pad dock${extraDesc}.`, nav(item), { name: `${label} settings`, hand: HAND_TAG[hand] })
 
   return [
+    {
+      id: 'omnistar', label: 'OmniStar', icon: '✧',
+      tip: 'OmniStar tab — the user guide and the search',
+      groups: [
+        { caption: 'OmniStar', btns: [
+          b('docs', '≡', 'Docs', '—', 'Opens the Docs panel: the user guide inside the app, a table of contents on the left, the page on the right, a search field that finds and highlights words across all pages. PageDown / PageUp turn pages while it is focused.', nav('⟐OmniDocs'), { name: 'Docs' }),
+          b('starlight', '✧', 'OmniStarLight', 'Ctrl/Cmd+K', 'Opens OmniStarLight, the Spotlight-style search: it lists the main sites of the app (Available or Unavailable) and finds user-guide pages. Arrow keys move, Enter opens, Escape closes.', () => ev('omni:starlight-toggle'), { name: 'OmniStarLight' }),
+        ] },
+      ],
+    },
     {
       id: 'home', label: 'Home', icon: '▦',
       tip: 'Home tab — dashboard, navigation, creating and the everyday tools',
@@ -189,14 +202,14 @@ function buildTabs () {
           handShow('omnihand', 'OH', '⟐OmniHand', '⚇'), handShow('conscious', 'CH', '⟐ConsciousHand', '⚇'),
         ] },
         { caption: 'Menus', btns: [
-          b('menu-omnimenu', '☰', '⟐mniMenu', '1', "Opens the ⟐mniMenu drawer (the ⟐OmniHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tl .hand-cell--hamburger', '⟐mniMenu')),
-          b('menu-navmenu', '☰', '⟐NavMenu', '2', "Opens the ⟐NavMenu drawer (the ⟐ConsciousHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tr .hand-cell--hamburger', '⟐NavMenu')),
+          b('menu-omnimenu', '☰', '⟐mniMenu', '1', "Opens the ⟐mniMenu drawer (the ⟐OmniHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tl .hand-cell--hamburger', '⟐mniMenu'), { hand: 'oh' }),
+          b('menu-navmenu', '☰', '⟐NavMenu', '2', "Opens the ⟐NavMenu drawer (the ⟐ConsciousHand's ☰). Works while the banner is hidden.", cell('.omni-hand--tr .hand-cell--hamburger', '⟐NavMenu'), { hand: 'ch' }),
         ] },
         { caption: 'Tools', btns: [
-          b('tools-lh', '⬢', 'LH tools', 'Left Shift', "Opens the ⟐LogicalHand's radial tool menu.", cell('.omni-hand--bl .hand-cell--radial', 'LH tools')),
-          b('tools-rh', '⬢', 'RH tools', 'Right Shift', "Opens the ⟐CreativeHand's radial tool menu.", cell('.omni-hand--br .hand-cell--radial', 'RH tools')),
-          b('tools-omnihand', '⬢', 'OmniHand', '3', "Opens the ⟐OmniHand's radial tool menu.", cell('.omni-hand--tl .hand-cell--radial', 'OmniHand tools'), { name: 'OmniHand tools' }),
-          b('tools-conscious', '⬢', 'Conscious', '4', "Opens the ⟐ConsciousHand's radial tool menu.", cell('.omni-hand--tr .hand-cell--radial', 'ConsciousHand tools'), { name: 'ConsciousHand tools' }),
+          b('tools-lh', '⬢', 'LH tools', 'Left Shift', "Opens the ⟐LogicalHand's radial tool menu.", cell('.omni-hand--bl .hand-cell--radial', 'LH tools'), { hand: 'lh' }),
+          b('tools-rh', '⬢', 'RH tools', 'Right Shift', "Opens the ⟐CreativeHand's radial tool menu.", cell('.omni-hand--br .hand-cell--radial', 'RH tools'), { hand: 'rh' }),
+          b('tools-omnihand', '⬢', 'OmniHand', '3', "Opens the ⟐OmniHand's radial tool menu.", cell('.omni-hand--tl .hand-cell--radial', 'OmniHand tools'), { name: 'OmniHand tools', hand: 'oh' }),
+          b('tools-conscious', '⬢', 'Conscious', '4', "Opens the ⟐ConsciousHand's radial tool menu.", cell('.omni-hand--tr .hand-cell--radial', 'ConsciousHand tools'), { name: 'ConsciousHand tools', hand: 'ch' }),
         ] },
         { caption: 'Settings', btns: [
           handSettings('⟐LogicalHand', 'LH', 'lh', ', ammo, fire'),
@@ -205,8 +218,8 @@ function buildTabs () {
           handSettings('⟐ConsciousHand', 'Conscious', 'conscious', ', travel timing, marker'),
         ] },
         { caption: 'Fire & tunnels', btns: [
-          b('fire-lh', '✦', 'LH fire', '—', "Opens ⟐OmniHands on the ⟐LogicalHand: element kind, chain, Fire distance, max alive for the pad's centre Fire button.", nav('⟐LogicalHand'), { name: 'LH Fire distance' }),
-          b('fire-rh', '✦', 'RH fire', '—', "Opens ⟐OmniHands on the ⟐CreativeHand: payloads, Fire distance, max alive for the pad's centre Fire button.", nav('⟐CreativeHand'), { name: 'RH Fire distance' }),
+          b('fire-lh', '✦', 'LH fire', '—', "Opens ⟐OmniHands on the ⟐LogicalHand: element kind, chain, Fire distance, max alive for the pad's centre Fire button.", nav('⟐LogicalHand'), { name: 'LH Fire distance', hand: 'lh' }),
+          b('fire-rh', '✦', 'RH fire', '—', "Opens ⟐OmniHands on the ⟐CreativeHand: payloads, Fire distance, max alive for the pad's centre Fire button.", nav('⟐CreativeHand'), { name: 'RH Fire distance', hand: 'rh' }),
           b('hand-tunnels', '◌', 'Tunnels', '—', 'Tunnels follow the pads (shared by all four hands).', (s) => ev('omni:dimension-axes-visible-set', { visible: !s.follow }), { name: 'Tunnels follow pads', pressed: (s) => s.follow }),
           b('hand-axinator', '⇋', 'Axinator', '—', 'Opens the OmniAxinator panel: pin tunnels, list their nodes.', nav('⟐OmniAxinator'), { name: 'OmniAxinator' }),
         ] },
@@ -277,6 +290,13 @@ const STYLES = /* css */`
 .orb-btns { display: flex; gap: 2px; flex: 1; min-height: 0; }
 .orb-cap { text-align: center; font-size: 9px; color: var(--orb-dim); letter-spacing: 0.05em; white-space: nowrap; height: 13px; line-height: 13px; }
 .orb-sep { flex: 0 0 1px; margin: 6px 3px; background: var(--orb-border); }
+/* V190 Hands tab: a visible divider wherever two neighbouring buttons belong to different hands (LH | RH | OH | CH), plus a thin coloured cap per hand */
+.orb-hsep { flex: 0 0 1px; align-self: stretch; margin: 2px 4px; background: rgba(255,255,255,0.34); border-radius: 1px; }
+.orb-btn[data-hand] { box-shadow: inset 0 2px 0 var(--orb-hand, transparent); }
+.orb-btn[data-hand="lh"] { --orb-hand: rgba(110,170,255,0.85); }
+.orb-btn[data-hand="rh"] { --orb-hand: rgba(255,170,90,0.85); }
+.orb-btn[data-hand="oh"] { --orb-hand: rgba(190,140,255,0.85); }
+.orb-btn[data-hand="ch"] { --orb-hand: rgba(120,230,160,0.85); }
 
 .orb-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -305,7 +325,7 @@ const STYLES = /* css */`
 
 @media (max-width: ${PHONE_MAX}px) {
   #omni-ribbon { --orb-tabs-h: ${TABS_H_PHONE}px; --orb-body-h: 76px; left: 0; }
-  .orb-tab { flex: 1; justify-content: center; padding: 0 4px; font-size: 11px; }
+  .orb-tab { flex: 1 1 0; min-width: 0; justify-content: center; gap: 3px; padding: 0 2px; font-size: 10.5px; letter-spacing: 0; }   /* V190: 5 tabs share 390px */
   .orb-collapse { display: none; }
   .orb-btn { min-width: 60px; min-height: 52px; }
   .orb-ico { font-size: 22px; }
@@ -423,8 +443,8 @@ export default class OmniRibbon {
       <div class="orb-panel" role="tabpanel" data-panel="${t.id}"><div class="orb-scroll">
         ${t.groups.map((g, gi) => `${gi ? '<span class="orb-sep" aria-hidden="true"></span>' : ''}
           <div class="orb-group" data-group="${esc(g.caption)}">
-            <div class="orb-btns">${g.btns.map(btn => `
-              <button type="button" class="orb-btn" data-tab="${t.id}" data-btn="${btn.id}"
+            <div class="orb-btns">${g.btns.map((btn, bi) => `${handDividerBetween(g.btns[bi - 1], btn) ? '<span class="orb-hsep" aria-hidden="true"></span>' : ''}
+              <button type="button" class="orb-btn"${btn.hand ? ` data-hand="${btn.hand}"` : ''} data-tab="${t.id}" data-btn="${btn.id}"
                       data-omni-tip="${esc(btn.name)}" data-omni-tip-key="${esc(btn.key)}" data-omni-tip-desc="${esc(btn.desc)}"
                       data-omni-tip-source="Ribbon · ${esc(t.label)} · ${esc(g.caption)}">
                 <span class="orb-ico" aria-hidden="true">${esc(btn.icon)}</span><span class="orb-lbl">${esc(btn.label)}</span>

@@ -101,6 +101,7 @@ import { getCurrentSeconds } from '../utils/PrimaryTime.js'
 import * as WindowManager from '../ui/WindowManager.js'
 import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
+import { classifyPointerGesture } from '../utils/OrbitRelease.js'
 import * as Kinds from '../utils/OmniNodeKinds.js'   // V183: StoreItemNode / OmniValueNode (data.nodeKind) — see docs/omniproducts/OMNISTORE_NODES_DESIGN.md
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -1625,7 +1626,16 @@ export default class OmniNode {
     if (!canvas) return
 
     this._onMouseMove = (e) => this._updateMouse(e)
-    this._onMouseClick = (e) => this._handleClick(e)
+    // V190: browsers fire `click` after an orbit-rotate DRAG too (mousedown + mouseup on the canvas). Without a guard a rotate
+    // drag over empty space counted as "click empty space" -> deselect -> the orbit target was dropped. Same classifier the
+    // orbit-release module uses (utils/OrbitRelease.js): a press that moved > 6 px is a drag, not a click (duration is not checked here so a slow click still selects).
+    this._lmbDown = null
+    this._onMouseClick = (e) => {
+      const d = this._lmbDown
+      this._lmbDown = null
+      if (d && classifyPointerGesture({ dx: e.clientX - d.x, dy: e.clientY - d.y, dt: 0, button: 0 }) !== 'click') return
+      this._handleClick(e)
+    }
 
     // Right-click-drag now pans the camera (OrbitModule.enablePan), and
     // contextmenu fires on mouse-up regardless of how far the button
@@ -1637,6 +1647,7 @@ export default class OmniNode {
     this._rmbDownPoint = null
     this._onCanvasMouseDown = (e) => {
       if (e.button === 2) this._rmbDownPoint = { x: e.clientX, y: e.clientY }
+      if (e.button === 0) this._lmbDown = { x: e.clientX, y: e.clientY, t: performance.now() }
     }
 
     // Real right-click context menu on a 3D object (Developer Queue

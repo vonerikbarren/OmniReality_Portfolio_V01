@@ -1,6 +1,20 @@
-# userCompass: the spinning globe under the logo (V188)
+# userCompass: the spinning globe, a draggable panel (V188, panel since V190)
 
-Applies to: V188 · Status: verified in jsdom and software-GL Chromium on 2026-10-11 · Real devices, real GPU, touch: not verified.
+Applies to: V190 (V188 built the globe) · Status: V190 panel verified in jsdom and software-GL Chromium · Real devices, real GPU, touch: not verified.
+
+## V190: its own draggable panel
+
+The owner asked: "The Compass needs to be in its own panel. And be draggable as well." So the globe is no longer tied to the strip under the logo.
+
+- **Own small panel** `#omni-user-compass`: `position: fixed`, `left/top` in px, a translucent rounded box (the sphere diameter + 10 px), `z-index: 42`, `cursor: grab`, `touch-action: none`. It is class B (a widget, not a window: no header, no resize handles, no maximize, never registered with the WindowManager), but it moves.
+- **Drag**: press and move more than 4 px (pointer events, mouse and touch). A click without a drag, or the click right after a drag, is handled correctly: a plain click (or right-click, Enter, Space) opens Admin > UI Settings > userCompass; the click that ends a drag does not. Arrow keys on the focused button nudge it 8 px (Shift: 32 px).
+- **Saved**: `omni:user-compass-pos-v1` = `{v:1,x,y}`. Validated on load (numbers only, range-limited, junk -> default spot) and clamped to the window every time the window changes; the clamp only changes what is shown, the saved value is kept, so a bigger window brings the original spot back.
+- **Clamp rule** (`clampCompassPos`, pure, in `utils/OmniUserCompassSettings.js`): inside the viewport; never over the ribbon (the top limit is the bottom of the ribbon, `--omni-top-offset`; it may sit in the strip left of the ribbon, below the Global Bar, when the OmniNotify box leaves that strip free); never over the bottom dock.
+- **Default spot** (`defaultCompassPos`): the strip under the logo, level with the ribbon, when it is free (the OmniNotify box docked at the side leaves the ribbon starting at x 332); otherwise the right edge under the ribbon / hands banner (always the case on phones and tablets). So it is **no longer hidden on narrow windows**.
+- **Align removed**: with a freely placed panel there is nothing to align to. The `align` option and the v0 `alignment` migration are gone; old stored `align` values are ignored (unknown keys are dropped on load). Other options (show, size, spin, mode, colour, opacity) are unchanged.
+- **Reset**: Admin > UI Settings > userCompass > Reset position (`omni:user-compass-set {resetPos:true}`); "Reset userCompass" clears options and position.
+- `computeCompassSlot` and the `--omni-compass-slot-*` variables in `utils/OmniLayout.js` stay (tests use them) but the compass no longer reads them. Everything below about the slot (Slot geometry, Measured rectangles, the hiding rules, the align row) describes V188 and is superseded by this section.
+- Tests: `v190a_pure_test`, `v190a_ui_test`, `v190a_nodev_test`.
 
 Files: `ui/OmniUserCompass.js` (the module), `utils/OmniUserCompassSettings.js` (options, validation, storage), `utils/OmniSphereGrid.js` (pure sphere math), `utils/OmniLayout.js` (`computeCompassSlot` + the `--omni-compass-slot-*` variables), `ui/AdminPanel.js` (the Admin > UI Settings > userCompass section + `omni:admin-open`), `main.js` (one `base.addModule`).
 
@@ -71,7 +85,6 @@ The same sweep (alignment, sizes, show off, hands banner hidden, ribbon folded) 
 | Key | Values | Default |
 |---|---|---|
 | `show` | true / false | true |
-| `align` | `left` / `center` / `right` (inside the 103 px slot) | `center` |
 | `size` | `small` 32 / `medium` 44 / `large` 56 | `medium` |
 | `spin` | `off` / `slow` 28 s / `normal` 14 s / `fast` 7 s per turn | `normal` (`off` under prefers-reduced-motion) |
 | `mode` | `spin` / `heading` | `spin` |
@@ -80,7 +93,7 @@ The same sweep (alignment, sizes, show off, hands banner hidden, ribbon folded) 
 
 - Storage `omni:user-compass-v1` = `{ v: 1, ...only the keys the person changed }`; everything else follows the defaults (so the reduced-motion default and any later default change still apply). Load is defensive: bad JSON, wrong types, arrays, unknown keys, `__proto__` / `constructor` keys, blocked storage (all in try / catch) end at the defaults; enums match after trim + lowercase; opacity is rounded and clamped; booleans accept `"true"` / `"false"` / 1 / 0; `true`, `""`, `null`, arrays are rejected for opacity. A v0 (unversioned) blob is migrated (`visible` -> `show`, `alignment` -> `align`, opacity 0..1 -> %); a newer `v` keeps the keys it understands.
 - Events: in `omni:user-compass-set { patch: {...} }` or `{ reset: true }` (invalid keys / values ignored, nothing announced when nothing changed); out `omni:user-compass-changed { settings }` after every accepted change and once at init. `omni:admin-open { section: 'uisettings', focus: 'usercompass' }` is what the click dispatches; `ui/AdminPanel.js` opens and scrolls to the section, and focuses its first control.
-- Admin > UI Settings > userCompass: Show (switch), Align (3-way segmented), Size, Spin, Mode, Line colour (selects), Opacity (slider 30..100), Reset userCompass. These apply **at once** through the set event (like the V187 "Reset window sizes" button) and never go through the Admin staged Save; the controls follow `omni:user-compass-changed`. No Dev import (a nodev test covers `OmniUserCompass`, the settings, the grid, `OmniLayout`, `AdminPanel`).
+- Admin > UI Settings > userCompass: Show (switch), Size, Spin, Mode, Line colour (selects), Opacity (slider 30..100), Reset position, Reset userCompass. These apply **at once** through the set event (like the V187 "Reset window sizes" button) and never go through the Admin staged Save; the controls follow `omni:user-compass-changed`. No Dev import (a nodev test covers `OmniUserCompass`, the settings, the grid, `OmniLayout`, `AdminPanel`).
 - Accessibility: a real `<button type="button" aria-label="userCompass">` with a visible round focus ring (`:focus-visible`); the canvas is `aria-hidden`.
 - Reduced motion: with `prefers-reduced-motion: reduce` the default spin is `off` (a still, tilted globe); an explicit spin choice always wins, and the media query is watched live.
 

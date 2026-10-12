@@ -28,16 +28,26 @@
  * meter's "middle" matches the wallpaper's own middle; X/Z center on
  * world origin, same as the floor/grid's own center).
  *
+ * V190: ROOT CAUSE of "the X axis meter is not showing": the Horizontal and Depth tracks (and the ⚙ button) were
+ * still pinned at top:16px — i.e. INSIDE the 48px Global Bar / ribbon, which draws over them (z-index 45-46 vs the
+ * bar's), so they were open but covered. V169 only moved the Vertical track below the chrome. The X meter now runs
+ * along the bottom, just above the Dock (its real top edge is measured, so it follows the dock height), and the
+ * Depth line and ⚙ button start under the chrome (--omni-top-offset). A left-edge SESSION readout was added (24h
+ * clock, session start, elapsed, progress bar against a configurable goal; helpers in utils/OmniSessionClock.js).
+ *
  * Old ui/OmniVerticalMeter.js is left in the repo untouched (its code
  * is what this file reuses) but is no longer instantiated from
  * main.js — this module fully replaces it.
  */
 
+import { formatClock, formatClockHM, formatElapsed, clampGoalHours, sessionProgress, getSessionStart, GOAL_DEFAULT_H, GOAL_MIN_H, GOAL_MAX_H } from '../utils/OmniSessionClock.js'
+
 const STYLES = `
 
 .omni-meter-vertical,
 .omni-meter-horizontal,
-.omni-meter-depth {
+.omni-meter-depth,
+.omni-meter-session {
   pointer-events   : none;
   position         : fixed;
   z-index          : 45;
@@ -48,7 +58,8 @@ const STYLES = `
 }
 .omni-meter-vertical.open,
 .omni-meter-horizontal.open,
-.omni-meter-depth.open { opacity: 1; visibility: visible; }
+.omni-meter-depth.open,
+.omni-meter-session.open { opacity: 1; visibility: visible; }
 
 /* ── Vertical (Y) — right edge, reused from OmniVerticalMeter ────────── */
 
@@ -85,10 +96,14 @@ const STYLES = `
       look rotated 90deg conceptually (same track/tick/marker roles). ── */
 
 .omni-meter-horizontal {
-  top              : 16px;
-  left             : 90px;
-  right            : 90px;
+  /* V190: along the bottom, just above the Dock. JS (_layoutDock) overwrites 'bottom' with the Dock's measured top edge. */
+  bottom           : calc(var(--omni-dock-h, 52px) + 4px);
+  left             : 112px;     /* clear of the two bottom hands (103px wide) */
+  right            : 112px;
   height           : 46px;
+}
+@media (max-width: 460px) {
+  .omni-meter-horizontal { left: 90px; right: 90px; }   /* small screens: the hands shrink to 83px */
 }
 .om-h-track {
   position: absolute; left: 0; right: 0; top: 6px; height: 2px;
@@ -118,10 +133,10 @@ const STYLES = `
       so it's a single radial line rather than an edge-spanning track. ── */
 
 .omni-meter-depth {
-  top              : 16px;
+  top              : calc(var(--omni-top-offset, 48px) + 4px);   /* V190: under the Global Bar + ribbon (was 16px = hidden behind them) */
   left             : 50%;
   width            : 2px;
-  height           : calc(50vh - 16px);
+  height           : calc(50vh - var(--omni-top-offset, 48px) - 4px);
   transform        : translateX(-50%);
 }
 .om-d-track {
@@ -147,12 +162,50 @@ const STYLES = `
   transform: translateY(-50%); white-space: nowrap; font-weight: bold;
 }
 
+/* ── Session readout (V190) — left edge: 24h clock, start, elapsed + a vertical progress bar vs the goal ───────── */
+
+.omni-meter-session {
+  top              : calc(var(--omni-top-stack, 138px) + 22px);   /* clears the top-left hand (103px tall, caption included) */
+  left             : 8px;
+  display          : flex;
+  gap              : 7px;
+  align-items      : stretch;
+  height           : 132px;
+  padding          : 6px 8px 6px 6px;
+  border-radius    : 8px;
+  background       : rgba(10, 10, 14, 0.55);
+  border           : 1px solid rgba(255, 255, 255, 0.1);
+  z-index          : 44;
+}
+.omni-meter-session > * { pointer-events: auto; }
+.om-s-bar {
+  position: relative; width: 8px; border-radius: 4px; overflow: hidden;
+  background: rgba(255,255,255,0.14); align-self: stretch;
+}
+.om-s-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: #5fd4a0; border-radius: 4px; transition: height 0.4s linear; }
+.om-s-bar.lap-odd  { background: #5fd4a0; }
+.om-s-bar.lap-odd  .om-s-fill { background: #ffb27f; }
+.om-s-bar.lap-even.has-lap { background: #ffb27f; }
+.om-s-bar.lap-even.has-lap .om-s-fill { background: #5fd4a0; }
+.om-s-text { display: flex; flex-direction: column; justify-content: space-between; min-width: 74px; }
+.om-s-row { display: flex; flex-direction: column; line-height: 1.15; }
+.om-s-k { font-size: 7.5px; letter-spacing: 0.08em; color: rgba(255,255,255,0.45); }
+.om-s-v { font-size: 12px; color: rgba(255,255,255,0.92); font-variant-numeric: tabular-nums; }
+.om-s-v.is-now { color: #78dcff; }
+.om-s-v.is-elapsed { color: #5fd4a0; }
+.omni-meter-session.is-over .om-s-v.is-elapsed { color: #ffb27f; }
+@media (max-width: 460px) {
+  .omni-meter-session { height: 112px; padding: 4px 6px 4px 5px; gap: 5px; }
+  .om-s-v { font-size: 10.5px; }
+  .om-s-text { min-width: 62px; }
+}
+
 /* ── Settings toggle + popover ─────────────────────────────────────── */
 
 .om-settings-btn {
   position         : fixed;
-  top              : 16px;
-  right            : 16px;
+  top              : calc(var(--omni-top-offset, 48px) + 4px);   /* V190: under the Global Bar + ribbon (was 16px = hidden behind them) */
+  right            : 112px;     /* V190: left of the top-right hand (103px wide) instead of on top of its MENU cell */
   width            : 26px;
   height           : 26px;
   border-radius    : 50%;
@@ -171,6 +224,7 @@ const STYLES = `
   transition       : opacity 0.18s ease;
 }
 .om-settings-btn.open { pointer-events: auto; opacity: 1; visibility: visible; }
+@media (max-width: 460px) { .om-settings-btn { right: 90px; } .om-settings-panel { right: 8px; } }
 
 .om-settings-panel {
   position         : fixed;
@@ -195,6 +249,7 @@ const STYLES = `
 .om-settings-title { font-size: 10px; letter-spacing: 0.04em; color: rgba(255,255,255,0.55); margin-bottom: 2px; }
 .om-settings-row { display: flex; align-items: center; gap: 7px; cursor: pointer; }
 .om-settings-row input { cursor: pointer; }
+.om-settings-num { width: 52px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: inherit; border-radius: 4px; padding: 2px 4px; font-family: inherit; font-size: 10px; }
 .om-settings-divider { border-top: 1px solid rgba(255,255,255,0.12); margin: 4px 0; }
 .om-settings-label-toggle {
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
@@ -228,7 +283,7 @@ const AXES = {
 }
 
 const SETTINGS_KEY = 'omni:meter:settings'
-const DEFAULT_SETTINGS = { showX: true, showY: true, showZ: true, labelStyle: 'spatial' }
+const DEFAULT_SETTINGS = { showX: true, showY: true, showZ: true, labelStyle: 'spatial', showSession: true, sessionGoalH: GOAL_DEFAULT_H }
 
 export default class OmniMeter {
   constructor (context) {
@@ -237,11 +292,19 @@ export default class OmniMeter {
     this._settings = { ...DEFAULT_SETTINGS }
     this._els = {}
     this._onNavSelect = null
+    this._sessionStart = 0
+    this._lastSec = -1
+    this._dockRO = null
+    this._onLayout = null
   }
 
   init () {
     injectStyles()
     this._loadSettings()
+    // V190: a reload of the same tab keeps its start time (sessionStorage); a new tab / reopened browser is a new session.
+    let store = null
+    try { store = window.sessionStorage } catch (_) {}
+    this._sessionStart = getSessionStart(store, Date.now())
     this._buildDOM()
     this._bindSettingsUI()
     this._applySettingsToDOM()
@@ -251,22 +314,37 @@ export default class OmniMeter {
       this.toggle()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+
+    // V190: keep the bottom X meter on the Dock's real top edge (dock height can change; the window can resize).
+    this._onLayout = () => this._layoutDock()
+    window.addEventListener('omni:layout-changed', this._onLayout)
+    window.addEventListener('resize', this._onLayout)
+    const dock = document.getElementById('omni-dock')
+    if (dock && typeof ResizeObserver !== 'undefined') {
+      this._dockRO = new ResizeObserver(this._onLayout)
+      this._dockRO.observe(dock)
+    }
+    this._layoutDock()
   }
 
   /** Real, per-frame update — camera position changes continuously on
    *  every axis, so all three markers track it every frame. */
   update () {
     if (!this._isOpen) return
+    this._updateSession(false)   // 1 DOM write per second (cheap guard on the wall-clock second), no extra timers
     const pos = this.ctx.camera.position
     if (this._settings.showY) this._updateAxis('y', pos.y, this._els.vMarker, this._els.vMarkerLabel, true)
     if (this._settings.showX) this._updateAxis('x', pos.x, this._els.hMarker, this._els.hMarkerLabel, false)
     if (this._settings.showZ) this._updateAxis('z', pos.z, this._els.dMarker, this._els.dMarkerLabel, true)
   }
 
-  onResize () {}
+  onResize () { this._layoutDock() }
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:layout-changed', this._onLayout)
+    window.removeEventListener('resize', this._onLayout)
+    this._dockRO?.disconnect()
     Object.values(this._els).forEach(el => { if (el?.parentNode) el.parentNode.removeChild(el) })
   }
 
@@ -275,8 +353,46 @@ export default class OmniMeter {
     this._els.vertical?.classList.toggle('open', this._isOpen && this._settings.showY)
     this._els.horizontal?.classList.toggle('open', this._isOpen && this._settings.showX)
     this._els.depth?.classList.toggle('open', this._isOpen && this._settings.showZ)
+    this._els.session?.classList.toggle('open', this._isOpen && this._settings.showSession)
     this._els.settingsBtn?.classList.toggle('open', this._isOpen)
+    if (this._isOpen) { this._layoutDock(); this._updateSession(true) }
     if (!this._isOpen) this._els.settingsPanel?.classList.remove('open')
+  }
+
+  /** V190: puts the bottom X meter 4px above the Dock's REAL top edge (falls back to 52px where there is no layout, e.g. jsdom). */
+  _layoutDock () {
+    const el = this._els.horizontal
+    if (!el) return
+    let gap = 52
+    try {
+      const r = document.getElementById('omni-dock')?.getBoundingClientRect()
+      if (r && r.height > 0) gap = Math.max(0, (window.innerHeight || 0) - r.top)
+    } catch (_) {}
+    el.style.bottom = `${Math.round(gap) + 4}px`
+    this._dockGap = gap
+  }
+
+  /** V190: clock / start / elapsed / progress bar. `force` skips the once-per-second guard. */
+  _updateSession (force) {
+    const e = this._els
+    if (!e.session || !this._settings.showSession) return
+    const now = Date.now()
+    const sec = Math.floor(now / 1000)
+    if (!force && sec === this._lastSec) return
+    this._lastSec = sec
+    const elapsed = Math.max(0, now - this._sessionStart)
+    const goalMs = clampGoalHours(this._settings.sessionGoalH) * 3600 * 1000
+    const pr = sessionProgress(elapsed, goalMs)
+    e.sNow.textContent = formatClock(now)
+    e.sStart.textContent = formatClockHM(this._sessionStart)
+    e.sElapsed.textContent = formatElapsed(elapsed)
+    e.sGoal.textContent = `${clampGoalHours(this._settings.sessionGoalH)}h` + (pr.over ? ` ×${pr.laps + 1}` : '')
+    e.sFill.style.height = `${pr.pct}%`
+    e.sBar.classList.toggle('has-lap', pr.laps >= 1)
+    e.sBar.classList.toggle('lap-odd', pr.laps % 2 === 1)
+    e.sBar.classList.toggle('lap-even', pr.laps % 2 === 0)
+    e.session.classList.toggle('is-over', pr.over)
+    e.sBar.setAttribute('data-omni-tip-desc', `${formatElapsed(elapsed)} of your ${clampGoalHours(this._settings.sessionGoalH)} h session goal${pr.over ? ' (goal reached; the bar wrapped to the second colour)' : ''}. Change the goal in the ⚙ OmniMeter settings.`)
   }
 
   // ── Shared per-axis math — same "clamp, normalize to 0-1, place as a
@@ -307,12 +423,14 @@ export default class OmniMeter {
     this._els.vertical   = this._buildVertical()
     this._els.horizontal = this._buildHorizontal()
     this._els.depth      = this._buildDepth()
+    this._els.session    = this._buildSession()
     this._els.settingsBtn = this._buildSettingsBtn()
     this._els.settingsPanel = this._buildSettingsPanel()
 
     shell.appendChild(this._els.vertical)
     shell.appendChild(this._els.horizontal)
     shell.appendChild(this._els.depth)
+    shell.appendChild(this._els.session)
     shell.appendChild(this._els.settingsBtn)
     shell.appendChild(this._els.settingsPanel)
 
@@ -322,6 +440,30 @@ export default class OmniMeter {
     this._els.hMarkerLabel = this._els.horizontal.querySelector('.om-h-marker-label')
     this._els.dMarker = this._els.depth.querySelector('.om-d-marker')
     this._els.dMarkerLabel = this._els.depth.querySelector('.om-d-marker-label')
+    this._els.sBar = this._els.session.querySelector('.om-s-bar')
+    this._els.sFill = this._els.session.querySelector('.om-s-fill')
+    this._els.sNow = this._els.session.querySelector('[data-s="now"]')
+    this._els.sStart = this._els.session.querySelector('[data-s="start"]')
+    this._els.sElapsed = this._els.session.querySelector('[data-s="elapsed"]')
+    this._els.sGoal = this._els.session.querySelector('[data-s="goal"]')
+  }
+
+  /** V190: the left-edge session readout. Every piece carries data-omni-tip so ⟐OmniNotify explains it on hover. */
+  _buildSession () {
+    const el = document.createElement('div')
+    el.className = 'omni-meter-session'
+    el.innerHTML = `
+      <div class="om-s-bar lap-even" data-omni-tip="Session meter" data-omni-tip-desc="Your time in the app against the session goal.">
+        <div class="om-s-fill"></div>
+      </div>
+      <div class="om-s-text">
+        <div class="om-s-row" data-omni-tip="Time now" data-omni-tip-desc="Your local time, 24-hour (military) clock."><span class="om-s-k">NOW</span><span class="om-s-v is-now" data-s="now">00:00:00</span></div>
+        <div class="om-s-row" data-omni-tip="Session start" data-omni-tip-desc="When this session began (HH:MM). Refreshing the page keeps it; a new tab starts a new session."><span class="om-s-k">STARTED</span><span class="om-s-v" data-s="start">00:00</span></div>
+        <div class="om-s-row" data-omni-tip="Time in the app" data-omni-tip-desc="How long you have been in the app this session (HH:MM:SS)."><span class="om-s-k">ELAPSED</span><span class="om-s-v is-elapsed" data-s="elapsed">00:00:00</span></div>
+        <div class="om-s-row" data-omni-tip="Session goal" data-omni-tip-desc="The bar fills up to this goal, then wraps to a second colour. Change it in the ⚙ OmniMeter settings."><span class="om-s-k">GOAL</span><span class="om-s-v" data-s="goal">2h</span></div>
+      </div>
+    `
+    return el
   }
 
   _axisLabel (axis) {
@@ -403,6 +545,8 @@ export default class OmniMeter {
       <label class="om-settings-row"><input type="checkbox" data-axis="showY" ${this._settings.showY ? 'checked' : ''}> <span data-axis-label="y"></span></label>
       <label class="om-settings-row"><input type="checkbox" data-axis="showX" ${this._settings.showX ? 'checked' : ''}> <span data-axis-label="x"></span></label>
       <label class="om-settings-row"><input type="checkbox" data-axis="showZ" ${this._settings.showZ ? 'checked' : ''}> <span data-axis-label="z"></span></label>
+      <label class="om-settings-row"><input type="checkbox" data-axis="showSession" ${this._settings.showSession ? 'checked' : ''}> <span>Session time</span></label>
+      <label class="om-settings-row"><span>Goal (h)</span> <input class="om-settings-num" type="number" min="${GOAL_MIN_H}" max="${GOAL_MAX_H}" step="0.25" value="${clampGoalHours(this._settings.sessionGoalH)}" data-session-goal data-omni-tip="Session goal (hours)" data-omni-tip-desc="Hours the session bar counts up to (0.25 to 24, default 2). After that the bar wraps to a second colour."></label>
       <div class="om-settings-divider"></div>
       <button class="om-settings-label-toggle" data-action="toggle-label-style">Labels: ${this._settings.labelStyle === 'xyz' ? 'X / Y / Z' : 'Horiz / Vert / Depth'}</button>
     `
@@ -428,6 +572,13 @@ export default class OmniMeter {
         this._applySettingsToDOM()
       })
     })
+    const goalInput = this._els.settingsPanel.querySelector('[data-session-goal]')
+    goalInput.addEventListener('change', () => {
+      this._settings.sessionGoalH = clampGoalHours(goalInput.value)
+      goalInput.value = this._settings.sessionGoalH   // show the clamped value back
+      this._saveSettings()
+      this._updateSession(true)
+    })
     this._els.settingsPanel.querySelector('[data-action="toggle-label-style"]').addEventListener('click', (e) => {
       this._settings.labelStyle = this._settings.labelStyle === 'xyz' ? 'spatial' : 'xyz'
       this._saveSettings()
@@ -442,12 +593,16 @@ export default class OmniMeter {
     this._els.vertical.classList.toggle('open', this._settings.showY)
     this._els.horizontal.classList.toggle('open', this._settings.showX)
     this._els.depth.classList.toggle('open', this._settings.showZ)
+    this._els.session.classList.toggle('open', this._settings.showSession)
+    if (this._settings.showSession) this._updateSession(true)
   }
 
   _loadSettings () {
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')
-      if (saved) this._settings = { ...DEFAULT_SETTINGS, ...saved }
+      if (saved && typeof saved === 'object') this._settings = { ...DEFAULT_SETTINGS, ...saved }
+      this._settings.sessionGoalH = clampGoalHours(this._settings.sessionGoalH)   // V190: validated on every load
+      this._settings.showSession = this._settings.showSession !== false
     } catch (_) { /* keep defaults */ }
   }
 

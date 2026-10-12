@@ -3039,6 +3039,148 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+      "items": [
+        {
+          "feature": "OmniNotify default spot",
+          "howToReach": "Hover any button, desktop 1280 wide, fresh profile",
+          "whatToCheck": "Box sits under your profile (top left), ribbon starts to its right; drag it away and reload: it stays; double-click header: returns",
+          "tested": false
+        },
+        {
+          "feature": "userCompass panel drag",
+          "howToReach": "Drag the globe",
+          "whatToCheck": "It follows the pointer, stays below the ribbon, reload keeps the spot; click without dragging opens Admin > UI Settings; Reset position works",
+          "tested": false
+        },
+        {
+          "feature": "userCompass on a phone",
+          "howToReach": "390x844",
+          "whatToCheck": "Globe visible at the right edge under the ribbon, not hidden, does not cover the tabs",
+          "tested": false
+        },
+        {
+          "feature": "OmniStar tab",
+          "howToReach": "Ribbon, leftmost tab",
+          "whatToCheck": "Two buttons: Docs, OmniStarLight; tooltips show; five tabs fit on a phone",
+          "tested": false
+        },
+        {
+          "feature": "Docs panel",
+          "howToReach": "OmniStar > Docs",
+          "whatToCheck": "Contents left, page right, window chrome (resize, maximize), prev/next, PageUp/PageDown, search filters pages and highlights, phone shows as a bottom sheet",
+          "tested": false
+        },
+        {
+          "feature": "OmniStarLight",
+          "howToReach": "Ctrl or Cmd+K, or OmniStar > OmniStarLight",
+          "whatToCheck": "Opens near the upper middle, input focused, empty list grouped Available/Unavailable, typing filters, arrows+Enter, Escape/outside click closes; an available site shows its name and description in OmniNotify then opens; an unavailable one shows a reason only; a docs result opens Docs with highlights",
+          "tested": false
+        },
+        {
+          "feature": "Hands tab dividers",
+          "howToReach": "Ribbon > Hands, desktop and 390px",
+          "whatToCheck": "A divider between LH, RH, OmniHand and Conscious in every group; all buttons still work",
+          "tested": false
+        },
+        {
+          "feature": "Centre reticle",
+          "howToReach": "Look at the screen centre, then Admin > UI Settings > Reticle",
+          "whatToCheck": "Faint turning circle at about 15% behind panels, never blocks clicks; switch and slider work and persist; reduced-motion stops the turning",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+      "items": [
+        {
+          "feature": "Floor: 20 texture slots",
+          "howToReach": "Admin > FloorSettings > Floor Texture",
+          "whatToCheck": "Grid shows Default + 20 numbered slots. Fill slot 17, click it: the floor is textured; slots 1-5 keep older saves; reload keeps the choice",
+          "tested": false
+        },
+        {
+          "feature": "Floor: removing the shown texture",
+          "howToReach": "same panel",
+          "whatToCheck": "Pressing x on the shown slot returns the floor to wireframe by itself",
+          "tested": false
+        },
+        {
+          "feature": "X axis meter at the bottom",
+          "howToReach": "Admin > OmniMeter(Internal)",
+          "whatToCheck": "Horizontal ruler along the bottom just above the Dock, between the bottom hands; A/D moves the marker; follows dock height; fits on a phone",
+          "tested": false
+        },
+        {
+          "feature": "Meter gear and depth line",
+          "howToReach": "same",
+          "whatToCheck": "Gear sits under the ribbon left of the top-right hand and opens meter settings; green Depth line starts under the ribbon",
+          "tested": false
+        },
+        {
+          "feature": "Session time readout",
+          "howToReach": "same, left edge under the top-left hand",
+          "whatToCheck": "NOW is a 24-hour clock ticking each second, STARTED shows session start (refresh keeps it), ELAPSED counts up, bar fills toward the goal (default 2 h) then restarts orange with x2",
+          "tested": false
+        },
+        {
+          "feature": "Session goal setting",
+          "howToReach": "OmniMeter gear > Goal (h)",
+          "whatToCheck": "0.25 fills fast; 999 becomes 24; letters give 2; untick Session time hides it; reload keeps both",
+          "tested": false
+        },
+        {
+          "feature": "Click empty space releases orbit",
+          "howToReach": "Select a node, then click empty 3D space",
+          "whatToCheck": "Notice 'Orbit released' shows and WASD flies freely",
+          "tested": false
+        },
+        {
+          "feature": "Dragging does not release",
+          "howToReach": "With a target set, drag to rotate",
+          "whatToCheck": "View rotates around the target, no release; clicking a panel, a node, or right-dragging does not release either",
+          "tested": false
+        },
+        {
+          "feature": "Esc releases orbit",
+          "howToReach": "With a target set press Esc",
+          "whatToCheck": "Same release; Esc while typing does nothing",
+          "tested": false
+        },
+        {
+          "feature": "Orbit release setting",
+          "howToReach": "Admin > Camera Movement Options > Orbit Target",
+          "whatToCheck": "Unticking stops click and Esc releasing; reload keeps it",
+          "tested": false
+        },
+        {
+          "feature": "Boot star size",
+          "howToReach": "Reload the page",
+          "whatToCheck": "After landing, the star is only slightly larger than the glyph (about 1.3x) and the glyph stays readable",
+          "tested": false
+        },
+        {
+          "feature": "Boot shooting stars",
+          "howToReach": "Wait a few seconds on the boot screen after landing",
+          "whatToCheck": "Thin faint streaks cross the background every 1-2 s heading down-left, stop on Enter; none with reduce motion",
+          "tested": false
+        },
+        {
+          "feature": "Dev intro settings",
+          "howToReach": "Developer drawer slot 8 DevOmniStarIntroSettings",
+          "whatToCheck": "Background colour, texture, texture opacity, star colour and opacity, shooting-star colour; Preview intro replays; reload shows the same; Reset restores defaults; custom image up to 200 KB",
+          "tested": false
+        },
+        {
+          "feature": "Boot escape hatch",
+          "howToReach": "Open the page with ?bootintro=off",
+          "whatToCheck": "Intro ignores saved dev settings for that load",
+          "tested": false
+        }
+      ]
     }
   ]
 }

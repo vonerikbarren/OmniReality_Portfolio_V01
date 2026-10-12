@@ -42,7 +42,10 @@ import UserSpaceSphere   from './modules/UserSpaceSphere.js'
 // ── Phase 3 — UI Shell ────────────────────────────────────
 import UI                from './ui/index.js'
 import MovementPad       from './ui/MovementPad.js'
-import OmniUserCompass   from './ui/OmniUserCompass.js'                      // V188: the userCompass globe under the logo (class-B overlay, not a window)
+import OmniUserCompass   from './ui/OmniUserCompass.js'                      // V188: the userCompass globe (V190: its own draggable panel; class-B overlay, not a window)
+import OmniReticle        from './ui/OmniReticle.js'                           // V190: the faint centre HUD reticle (class-B overlay, SVG, no WebGL)
+import OmniDocsPanel      from './ui/OmniDocsPanel.js'                         // V190: the in-app user guide (class-A window)
+import OmniStarLight      from './ui/OmniStarLight.js'                         // V190: Ctrl/Cmd+K search (class-B overlay)
 import OmniDimensionalAxes from './systems/OmniDimensionalAxes.js'
 import DimensionalAxesSettingsPanel from './ui/DimensionalAxesSettingsPanel.js'
 import OmniAxinatorPanel from './ui/OmniAxinatorPanel.js'
@@ -90,6 +93,7 @@ import OmniLogEditorPanel from './ui/OmniLogEditorPanel.js'
 import OmniRealityGridSelector from './systems/OmniRealityGridSelector.js'
 import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniMeter from './ui/OmniMeter.js'
+import OmniOrbitRelease from './systems/OmniOrbitRelease.js'
 import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
 import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
 import OmniPointing from './systems/OmniPointing.js'
@@ -160,6 +164,7 @@ import OmniValuePanel from './ui/OmniValuePanel.js'                      // V181
 import OmniStoreSettingsPanel from './ui/OmniStoreSettingsPanel.js'          // V177 user settings (Admin slot 19)
 import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // V177 DEV ONLY (Developer slot 6)
 import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // V184 DEV ONLY (Developer slot 7): what Claude wants checked + a way to answer back
+import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js'  // V190 DEV ONLY (Developer slot 8): boot / intro colours, texture, star + shooting-star settings
 
 
 
@@ -250,8 +255,12 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
   movementPad.setVisible('lh', false)
   movementPad.setVisible('rh', false)
 
-  // ── V188 userCompass — the small clear spinning globe in the strip under the logo / above the top-left hand ──
+  // ── V188 userCompass — the small clear spinning globe; V190: a small floating panel of its own, draggable, position remembered ──
   base.addModule(new OmniUserCompass(base.context))
+  // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
+  base.addModule(new OmniReticle(base.context))
+  base.addModule(new OmniDocsPanel())
+  base.addModule(new OmniStarLight(base.context))
 
   // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
   // The two top hands' pads drive these instead of the camera.
@@ -366,6 +375,16 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
     orbitMod.controls.update()
   }
 
+  // V190: systems/OmniOrbitRelease.js asks (click on empty space / Escape) to let go of the orbit target:
+  // drop the locked pivot, restore OrbitControls' default reach, aim the pivot just ahead of the camera and
+  // leave free-fly (WASD) exactly as it is before anything was targeted.
+  window.addEventListener('omni:orbit-release-request', (e) => {
+    _hasSelectedPivot = false
+    if (orbitMod.controls) orbitMod.controls.maxDistance = 80   // OrbitModule's own default (the axinator may have raised it)
+    _syncOrbitTarget()
+    window.dispatchEvent(new CustomEvent('omni:orbit-released', { detail: { reason: e.detail?.reason ?? 'request' } }))
+  })
+
   // after ui.init() inside the async IIFE
   const miniMap = new MiniMap(base.context)
   base.addModule(miniMap)
@@ -391,6 +410,7 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
   base.addModule(omniRealityGridSelector)
   base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
   base.addModule(new OmniMeter(base.context))
+  base.addModule(new OmniOrbitRelease(base.context, orbitMod))   // V190: click empty space / Escape releases the orbit target
   const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)
   base.addModule(omniRealityGridPointSelector)
   base.addModule(new OmniRealityGridPointSelectorPanel(omniRealityGridPointSelector))
@@ -547,6 +567,7 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
   base.addModule(new OmniStoreSettingsPanel())
   base.addModule(new DevOmniStoreSettingsPanel())
   base.addModule(new DevClaudeCheckPanel())   // V184: DEV ONLY; added once (addModule calls init()); no ribbon / dock button
+  base.addModule(new DevOmniStarIntroSettingsPanel())   // V190: DEV ONLY; added once; Developer slot 8
 
   // ── Spaces: real save-a-coordinate / teleport-there system ──
   // An empty slot saves the current camera position there; a saved
@@ -609,6 +630,8 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
         6: { label: 'DevOmniStoreSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevOmniStoreSettings' } })) },
         // V184: DEV ONLY (the checklist for this version, what Claude is looking for, a message box and a copyable report).
         7: { label: 'DevClaudeCheck', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevClaudeCheck' } })) },
+        // V190: DEV ONLY (intro / boot screen: background colour + texture, star colour + opacity, shooting-star colour, Preview intro).
+        8: { label: 'DevOmniStarIntroSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐DevOmniStarIntroSettings' } })) },
       },
     },
     {

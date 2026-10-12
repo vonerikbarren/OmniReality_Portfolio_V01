@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V189",
+ "version": "V190",
  "date": "2026-10-12",
- "summary": "V189: Omni⟐City step 1, a pure reality-address module (utils/OmniAddress.js: parse / serialize / validate, typed segments, drawers, perspectives); no UI change; design doc docs/architecture/OMNICITY_DESIGN.md",
+ "summary": "V190: OmniStar tab (Docs, OmniStarLight Ctrl/Cmd+K), compass as its own draggable panel, OmniNotify under the profile, hands-tab dividers, centre reticle, floor 20 textures, bottom X meter + session clock, click-empty-space releases orbit, smaller boot star with shooting stars + dev intro settings",
  "checks": [
   {
    "id": "omnistore-v183-storeitemnode-o.pin-a-store-item",
@@ -656,9 +656,299 @@ export default {
    "whatToCheck": "Reads OmniOS V189",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omninotify-default-spot",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "OmniNotify default spot",
+   "howToReach": "Hover any button, desktop 1280 wide, fresh profile",
+   "whatToCheck": "Box sits under your profile (top left), ribbon starts to its right; drag it away and reload: it stays; double-click header: returns",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.usercompass-panel-drag",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "userCompass panel drag",
+   "howToReach": "Drag the globe",
+   "whatToCheck": "It follows the pointer, stays below the ribbon, reload keeps the spot; click without dragging opens Admin > UI Settings; Reset position works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.usercompass-on-a-phone",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "userCompass on a phone",
+   "howToReach": "390x844",
+   "whatToCheck": "Globe visible at the right edge under the ribbon, not hidden, does not cover the tabs",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omnistar-tab",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "OmniStar tab",
+   "howToReach": "Ribbon, leftmost tab",
+   "whatToCheck": "Two buttons: Docs, OmniStarLight; tooltips show; five tabs fit on a phone",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.docs-panel",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "Docs panel",
+   "howToReach": "OmniStar > Docs",
+   "whatToCheck": "Contents left, page right, window chrome (resize, maximize), prev/next, PageUp/PageDown, search filters pages and highlights, phone shows as a bottom sheet",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omnistarlight",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "OmniStarLight",
+   "howToReach": "Ctrl or Cmd+K, or OmniStar > OmniStarLight",
+   "whatToCheck": "Opens near the upper middle, input focused, empty list grouped Available/Unavailable, typing filters, arrows+Enter, Escape/outside click closes; an available site shows its name and description in OmniNotify then opens; an unavailable one shows a reason only; a docs result opens Docs with highlights",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.hands-tab-dividers",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "Hands tab dividers",
+   "howToReach": "Ribbon > Hands, desktop and 390px",
+   "whatToCheck": "A divider between LH, RH, OmniHand and Conscious in every group; all buttons still work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.centre-reticle",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "feature": "Centre reticle",
+   "howToReach": "Look at the screen centre, then Admin > UI Settings > Reticle",
+   "whatToCheck": "Faint turning circle at about 15% behind panels, never blocks clicks; switch and slider work and persist; reduced-motion stops the turning",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.floor-20-texture-slots",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Floor: 20 texture slots",
+   "howToReach": "Admin > FloorSettings > Floor Texture",
+   "whatToCheck": "Grid shows Default + 20 numbered slots. Fill slot 17, click it: the floor is textured; slots 1-5 keep older saves; reload keeps the choice",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.floor-removing-the-shown-texture",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Floor: removing the shown texture",
+   "howToReach": "same panel",
+   "whatToCheck": "Pressing x on the shown slot returns the floor to wireframe by itself",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.x-axis-meter-at-the-bottom",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "X axis meter at the bottom",
+   "howToReach": "Admin > OmniMeter(Internal)",
+   "whatToCheck": "Horizontal ruler along the bottom just above the Dock, between the bottom hands; A/D moves the marker; follows dock height; fits on a phone",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.meter-gear-and-depth-line",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Meter gear and depth line",
+   "howToReach": "same",
+   "whatToCheck": "Gear sits under the ribbon left of the top-right hand and opens meter settings; green Depth line starts under the ribbon",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.session-time-readout",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Session time readout",
+   "howToReach": "same, left edge under the top-left hand",
+   "whatToCheck": "NOW is a 24-hour clock ticking each second, STARTED shows session start (refresh keeps it), ELAPSED counts up, bar fills toward the goal (default 2 h) then restarts orange with x2",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.session-goal-setting",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Session goal setting",
+   "howToReach": "OmniMeter gear > Goal (h)",
+   "whatToCheck": "0.25 fills fast; 999 becomes 24; letters give 2; untick Session time hides it; reload keeps both",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.click-empty-space-releases-orbit",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Click empty space releases orbit",
+   "howToReach": "Select a node, then click empty 3D space",
+   "whatToCheck": "Notice 'Orbit released' shows and WASD flies freely",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.dragging-does-not-release",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Dragging does not release",
+   "howToReach": "With a target set, drag to rotate",
+   "whatToCheck": "View rotates around the target, no release; clicking a panel, a node, or right-dragging does not release either",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.esc-releases-orbit",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Esc releases orbit",
+   "howToReach": "With a target set press Esc",
+   "whatToCheck": "Same release; Esc while typing does nothing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.orbit-release-setting",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Orbit release setting",
+   "howToReach": "Admin > Camera Movement Options > Orbit Target",
+   "whatToCheck": "Unticking stops click and Esc releasing; reload keeps it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-star-size",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Boot star size",
+   "howToReach": "Reload the page",
+   "whatToCheck": "After landing, the star is only slightly larger than the glyph (about 1.3x) and the glyph stays readable",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-shooting-stars",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Boot shooting stars",
+   "howToReach": "Wait a few seconds on the boot screen after landing",
+   "whatToCheck": "Thin faint streaks cross the background every 1-2 s heading down-left, stop on Enter; none with reduce motion",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.dev-intro-settings",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Dev intro settings",
+   "howToReach": "Developer drawer slot 8 DevOmniStarIntroSettings",
+   "whatToCheck": "Background colour, texture, texture opacity, star colour and opacity, shooting-star colour; Preview intro replays; reload shows the same; Reset restores defaults; custom image up to 200 KB",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-escape-hatch",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "feature": "Boot escape hatch",
+   "howToReach": "Open the page with ?bootintro=off",
+   "whatToCheck": "Intro ignores saved dev settings for that load",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
+  {
+   "id": "v190-starlight-rule",
+   "question": "Is the StarLight Available / Unavailable rule right (planned items and developer tools count as Unavailable)?",
+   "why": "There is no role system yet, so I used: not built = Unavailable, dev tools Unavailable unless dev mode.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v190-starlight-key",
+   "question": "Is Ctrl/Cmd+K OK for OmniStarLight?",
+   "why": "Browsers use it for the address bar; I block that only inside the app.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v190-reticle-look",
+   "question": "Is the centre reticle what you imagined at 15% opacity?",
+   "why": "Five thin rings with ticks, arcs and cross marks, slowly turning; 'multi tech circle' was my reading.",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "good",
+    "too busy",
+    "too faint",
+    "too strong",
+    "not what I meant"
+   ]
+  },
+  {
+   "id": "v190-compass-spot",
+   "question": "Is the compass panel's default spot OK (free spot, draggable)?",
+   "why": "It no longer sits under the logo; position is saved when you drag it.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v190-notify-spot",
+   "question": "Is OmniNotify now where you wanted (under your profile)?",
+   "why": "I used the profile column's x.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v190-boot-star",
+   "question": "Is the landed star about the right size (about 1.3x the glyph)?",
+   "why": "One number to change (CONFIG.STAR_EM).",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "too big",
+    "too small"
+   ]
+  },
+  {
+   "id": "v190-shooting-stars",
+   "question": "Do the boot shooting stars feel right?",
+   "why": "Judged only from screenshots; opacity, rate and angle are guesses.",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "good",
+    "too faint",
+    "too strong",
+    "too rare",
+    "too frequent"
+   ]
+  },
+  {
+   "id": "v190-session-pos",
+   "question": "Is the session-time readout (left edge under the top-left hand) comfortable?",
+   "why": "New panel inside the OmniMeter.",
+   "kind": "choice",
+   "device": "phone",
+   "choices": [
+    "good",
+    "move it",
+    "make it smaller"
+   ]
+  },
+  {
+   "id": "v190-orbit-release",
+   "question": "Does click-empty-space release the orbit without annoying you when you rotate?",
+   "why": "Drag, long press, right-click and UI clicks are ignored by design.",
+   "kind": "choice",
+   "device": "desktop",
+   "choices": [
+    "good",
+    "releases too easily",
+    "does not release"
+   ]
+  },
   {
    "id": "v189-no-regression",
    "question": "Does the app start and look the same as V188 (boot, ribbon, compass, a panel)?",
@@ -716,116 +1006,20 @@ export default {
     "not sure"
    ],
    "device": "phone"
-  },
-  {
-   "id": "compass-heading-mode",
-   "question": "Heading mode (the globe turns with where the camera faces): is that useful, and does the bright meridian read as north?",
-   "why": "Verified with real mouse drags in a desktop browser only; never with touch look-around on a phone.",
-   "kind": "choice",
-   "choices": [
-    "useful",
-    "not useful",
-    "confusing"
-   ],
-   "device": "any"
-  },
-  {
-   "id": "window-maximize-phone-v188",
-   "question": "V187 carry-over: how does maximize feel on your phone, and is there any panel that still cannot be resized or maximized? Name it.",
-   "why": "Windows were only checked in a desktop browser at 390 px width, never with touch.",
-   "kind": "text",
-   "device": "phone"
-  },
-  {
-   "id": "boot-shooting-star",
-   "question": "How does the shooting-star entrance look (flight from the top right, tail, landing behind the ⟐)? If it needs a change, say what in the message.",
-   "why": "Only judged in screenshots from software-rendered Chromium; speed, tail length and star size are in the top of boot/OmniStarBoot.js.",
-   "kind": "choice",
-   "choices": [
-    "good",
-    "ok",
-    "needs change"
-   ],
-   "device": "any"
-  },
-  {
-   "id": "boot-glyph-readable",
-   "question": "Is the ⟐ readable over the star?",
-   "why": "The star is dimmed and the glyph has a dark rim, but legibility depends on your display and font.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "window-cannot-resize",
-   "question": "Is there any panel that still cannot be resized or maximized? Name it.",
-   "why": "About every panel is covered by an automated check, but a panel I could not open (needs a special state) may be missed.",
-   "kind": "text",
-   "device": "any"
-  },
-  {
-   "id": "window-maximize-phone",
-   "question": "Does maximize feel right on your phone (button size, sheet height, restore)?",
-   "why": "Only checked in a desktop browser at 390 px width, never with touch.",
-   "kind": "choice",
-   "choices": [
-    "good",
-    "ok",
-    "bad"
-   ],
-   "device": "phone"
-  },
-  {
-   "id": "hands-summon-found",
-   "question": "Where is the summon button for LH / RH (dock ⚉ or ribbon Hands > Summon) and was it easy to find?",
-   "why": "You asked for it; I put the pair on dock icon ⚉ and each hand in the ribbon and the OmniHands panel.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "fps-emoji-store",
-   "question": "Real-GPU frame rate (fps) with the all-emoji demo store loaded and open?",
-   "why": "Every frame rate so far came from software rendering at about 1 fps; I cannot tell if the 1,914-emoji store or the shelf layouts are fast enough on a real GPU.",
-   "kind": "number",
-   "device": "gpu"
-  },
-  {
-   "id": "phone-store-feel",
-   "question": "How does the store feel on your phone (opening, paging, the exchange sheet, pinning a node)?",
-   "why": "The store and the Inspector block were only measured in a desktop browser with a narrow window. Add any detail in the message box.",
-   "kind": "choice",
-   "choices": [
-    "good",
-    "ok",
-    "bad"
-   ],
-   "device": "phone"
-  },
-  {
-   "id": "phone-panel-fit",
-   "question": "Is this Claude Check panel comfortable to use on your phone (no sideways scroll, buttons easy to hit)?",
-   "why": "It is new in V184 and was only checked at 390px in a desktop browser; the whole feedback loop depends on it being usable where you test.",
-   "kind": "yesno",
-   "device": "phone"
-  },
-  {
-   "id": "regress-ordinary-nodes",
-   "question": "Did any ordinary node behaviour regress after V183 changed OmniNode / OmniInspector (create, select, edit, group, duplicate, delete, save and reload)?",
-   "why": "V183 touched the shared node and Inspector code; the automated suites pass but only a hands-on session shows a changed feel. If yes, name the action in the message.",
-   "kind": "yesno",
-   "device": "any"
   }
  ],
  "knownIssues": [
+  "V190 was built in two parts and merged (main.js merged cleanly); only software-GL Chromium and jsdom were used. Nothing was judged on a real GPU, phone or touch device.",
+  "The in-scene HelpNode is NOT built; Docs is a DOM panel only. Hook: OmniDocsPanel.openDocs.",
+  "External controls (OmniPointing) got no session clock: it has no readout area.",
+  "Floor textures are still not in export/import (floor-plane is not in KNOWN_NAMESPACES).",
+  "On a phone an open Inspector can cover the ribbon dropdown and the meter gear.",
+  "V189 shipped with an empty utils/DevOmniStoreData.js (my error); fixed in the re-issued V189 zip and in V190.",
   "The address type letters (C core, B branch, S space) and the eye symbol are PLACEHOLDERS until the owner picks glyphs; nothing in the app uses OmniAddress yet.",
   "The userCompass was judged only in software-GL Chromium (six window sizes); never on a real GPU, a real phone or with touch.",
   "The userCompass is free only while the ribbon starts to the right of its strip: windows narrower than about 1010 px, phones, tablets and a floated OmniNotify box hide it (it never overlaps the ribbon).",
   "The userCompass slot is the top-left hand's width (103 px); the empty space up to the OmniNotify box (x 222) is not used.",
   "The camera feature is only documented (docs/omniproducts/OMNICAMERA_IDEA.md); seven questions for the owner are still open.",
-  "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
-  "Window positions are still not saved; only sizes are. Maximized state is never saved.",
-  "Panels that only exist in a special state (for example Cell or Account panels) were checked through a forced-visible test, not by a person.",
-  "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
-  "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
-  "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit)."
+  "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only)."
  ]
 }

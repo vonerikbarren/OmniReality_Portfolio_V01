@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V190 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 
@@ -29,6 +29,8 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | G | Everywhere | OmniGallery |
 | T | Everywhere, unless a button has focus | OmniTranslator |
 | K | Everywhere | OmniMixer |
+| Ctrl+K (Cmd+K on Mac) | Everywhere | OmniStarLight: search sites and docs; Up/Down + Enter pick, Escape closes (does not trigger the plain K) |
+| PageUp / PageDown | In the Docs panel | Scroll the page; at the end, turn to the next/previous page |
 | M | Everywhere (not while hovering Chronos) | Mini map |
 | Enter | Everywhere, unless a button has focus | Start HUD |
 | O / Shift+O | Everywhere | Show/hide the User Space sphere / toggle its spin |

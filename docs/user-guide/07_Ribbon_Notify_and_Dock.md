@@ -1,19 +1,20 @@
 # 7. Ribbon, OmniNotify and Dock
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V190 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Chronos](06_Chronos_Player_and_Timeline.md) · Next: [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md)
 
 ## The ribbon
 
-The ribbon is the strip of buttons under the top bar. It has four tabs. It remembers your tab and whether it is folded.
+The ribbon is the strip of buttons under the top bar. It has five tabs (V190 added OmniStar on the left). It remembers your tab and whether it is folded.
 
 | Tab | Groups (buttons) |
 |---|---|
+| OmniStar ✧ | Docs (this guide, with search); OmniStarLight (search sites and docs, Ctrl/Cmd+K) |
 | Home ▦ | Dashboard (Dashboard, Start HUD); Navigation (NavMap, MiniMap, Landing); Create (OmniDraw, Static, Dynamic, Behavior); Tools (Mixer, Translator, Presenter, Gallery, Browser); Windows (PanelControl, Panel Tray); Assistance (Shortcuts, Terminal, Fullscreen) |
 | Inspector ◧ | Panel (Inspector); Node, Look & logic, Content (the 12 sections, see [Inspector](03_Nodes_and_Inspector.md)) |
 | Realities ⟐ | Realities (Realities, Experiences, Spaces, Times, Products); Axes (Dim. Axes, Axinator, Tunnels, Domain grid); Scopes (Visor, Select, Floors, User space); Chronos (Chronos, Play, Step ◀, Step ▶, To start, Add node, Marker); Value (Store, Exchange, Wallet, Store Settings, Dev Store); Save (Save nodes) |
-| Hands ⚇ | Pads (LH, RH, OmniHand, Conscious, LH + RH together); Banner (⟐Hands, ⟐Hands LH/RH); Menus (⟐mniMenu, ⟐NavMenu); Tools (the four ⬢ menus); Settings (the four hand settings); Fire & tunnels (LH fire, RH fire, Tunnels, Axinator) |
+| Hands ⚇ | Pads (LH, RH, OmniHand, Conscious, LH + RH together); Banner (⟐Hands, ⟐Hands LH/RH); Menus (⟐mniMenu, ⟐NavMenu); Tools (the four ⬢ menus); Settings (the four hand settings); Fire & tunnels (LH fire, RH fire, Tunnels, Axinator). Since V190 a thin divider (with a colour cap) separates each hand's buttons (LH, RH, OmniHand, Conscious) in every group |
 
 Dev Store is marked DEV: a developer panel, not for normal use. Hover any button to see its key.
 
@@ -24,7 +25,7 @@ Dev Store is marked DEV: a developer panel, not for normal use. Hover any button
 
 ## OmniNotify
 
-**OmniNotify** is the info box under the "Current State" block in the top bar. Point at (or focus) any button or icon and it shows the name, a key chip, where it comes from, and what it does. Nothing happens until you hover; idle text reads "Hover any tool, button or icon to see its name, shortcut and what it does."
+**OmniNotify** is the info box. Since V190 it docks under your profile (top left) by default; drag it elsewhere, or double-click its header to dock it back, and it remembers where you left it. Point at (or focus) any button or icon and it shows the name, a key chip, where it comes from, and what it does. Nothing happens until you hover; idle text reads "Hover any tool, button or icon to see its name, shortcut and what it does."
 
 | Device | How |
 |---|---|

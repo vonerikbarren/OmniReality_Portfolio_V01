@@ -14,7 +14,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { floorTextureStore, FLOOR_TEXTURE_SLOTS, FLOOR_SHAPES } from '../modules/OmniFloor.js'
+import { floorTextureStore, FLOOR_TEXTURE_SLOTS, FLOOR_SHAPES, sanitizeFloorSlot } from '../modules/OmniFloor.js'
 
 const PLATFORM_STORE_KEY = 'omni:platform:settings'
 function loadPlatformSettings () {
@@ -30,7 +30,9 @@ function loadFloorSettings () {
   const defaults = { shape: 'PlaneGeometry', color: '#ffffff', alpha: 0.35, activeSlot: null }
   try {
     const raw = localStorage.getItem(FLOOR_STORE_KEY)
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+    const merged = raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+    merged.activeSlot = sanitizeFloorSlot(merged.activeSlot)
+    return merged
   } catch (_) { return defaults }
 }
 function saveFloorSettings (s) {
@@ -118,7 +120,8 @@ const STYLES = `
 .fs-color-input { width: 40px; height: 26px; padding: 2px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.18); background: transparent; }
 .fs-note { font-size: 9px; color: var(--fs-text-dim); opacity: 0.75; line-height: 1.5; margin-top: 6px; }
 
-.fs-slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.fs-slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fs-slot-grid > [data-slot="default"] { grid-column: 1 / -1; }
 .fs-slot-btn {
   position: relative; padding: 10px 4px; border-radius: 6px; cursor: pointer;
   border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03);
@@ -316,6 +319,8 @@ export default class FloorSettingsPanel {
       if (removeBtn) {
         e.stopPropagation()
         const slot = Number(removeBtn.dataset.removeSlot)
+        // removing the slot that is currently shown falls back to the default wireframe
+        if (loadFloorSettings().activeSlot === slot) this._applySlot(null)
         floorTextureStore.deleteWallpaper(slot).then(() => this._refreshSlots())
         return
       }

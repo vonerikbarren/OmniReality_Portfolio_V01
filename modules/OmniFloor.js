@@ -39,15 +39,26 @@ const REBUILD_CHECK_INTERVAL = 0.2   // seconds — throttled, not every frame
 const FLOOR_Y = -0.08   // just beneath the platform rings (which sit at y=0), never fighting them visually
 const FLOOR_SHAPES = ['PlaneGeometry', 'CircleGeometry', 'RingGeometry']   // genuinely flat, tileable forms only
 
-const FLOOR_TEXTURE_SLOTS = 5
+// V190: 5 -> 20 slots. Slots are plain integer keys (1..N) in IndexedDB, so
+// the old 5 keep their position and slots 6-20 are simply empty: no data
+// migration is needed, only the cap and the validation below.
+const FLOOR_TEXTURE_SLOTS = 20
 const floorTextureStore = createWallpaperStore('floor-plane', FLOOR_TEXTURE_SLOTS)
+
+/** Returns an integer slot in 1..FLOOR_TEXTURE_SLOTS, or null (= default wireframe). */
+function sanitizeFloorSlot (v) {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1 && n <= FLOOR_TEXTURE_SLOTS ? n : null
+}
 
 const STORE_KEY = 'omni:floor:settings'
 function loadSettings () {
   const defaults = { shape: 'PlaneGeometry', color: '#ffffff', alpha: 0.35, activeSlot: null }
   try {
     const raw = localStorage.getItem(STORE_KEY)
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+    const merged = raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+    merged.activeSlot = sanitizeFloorSlot(merged.activeSlot)   // old 5-slot saves stay valid; junk/out-of-range -> default
+    return merged
   } catch (_) { return defaults }
 }
 function saveSettings (s) {
@@ -117,7 +128,7 @@ export default class OmniFloor {
     this._shape = FLOOR_SHAPES.includes(saved.shape) ? saved.shape : 'PlaneGeometry'
     this._color = saved.color
     this._alpha = saved.alpha
-    this._activeSlot = saved.activeSlot
+    this._activeSlot = sanitizeFloorSlot(saved.activeSlot)
 
     this._group = new THREE.Group()
     this._group.position.set(0, FLOOR_Y, 0)
@@ -138,7 +149,7 @@ export default class OmniFloor {
       if (patch.color !== undefined) { this._color = patch.color; this._applyColor() }
       if (patch.alpha !== undefined) { this._alpha = patch.alpha; this._applyColor() }
       if (patch.activeSlot !== undefined) {
-        this._activeSlot = patch.activeSlot
+        this._activeSlot = sanitizeFloorSlot(patch.activeSlot)
         if (this._activeSlot) this._applySlotTexture(this._activeSlot)
         else this._clearTexture()
       }
@@ -172,6 +183,7 @@ export default class OmniFloor {
 
   destroy () {
     window.removeEventListener('omni:floor-set', this._onSettingsSet)
+    this._loadToken = (this._loadToken || 0) + 1
     this._texture?.dispose()
     if (this._group) {
       this.ctx.scene.remove(this._group)
@@ -231,12 +243,17 @@ export default class OmniFloor {
     this._solidMesh.material.opacity = this._alpha
   }
 
+  // Lazy by design: only the ONE active slot is ever read from IndexedDB and
+  // decoded into a texture (never all 20); switching disposes the previous one.
   async _applySlotTexture (slot) {
+    const token = (this._loadToken = (this._loadToken || 0) + 1)   // newest request wins if the user clicks quickly
     try {
       const record = await floorTextureStore.loadWallpaper(slot)
-      if (!record) return
+      if (!record || token !== this._loadToken || !this._solidMesh) return
       const url = URL.createObjectURL(record.blob)
       new THREE.TextureLoader().load(url, (texture) => {
+        URL.revokeObjectURL(url)
+        if (token !== this._loadToken || !this._solidMesh) { texture.dispose(); return }
         texture.colorSpace = THREE.SRGBColorSpace
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping
         texture.repeat.set(BOUNDARY_SIZE / TILE_SIZE, BOUNDARY_SIZE / TILE_SIZE)   // tiles at the same density as the wireframe grid
@@ -256,6 +273,7 @@ export default class OmniFloor {
   }
 
   _clearTexture () {
+    this._loadToken = (this._loadToken || 0) + 1   // cancel any in-flight load
     this._texture?.dispose()
     this._texture = null
     this._solidMesh.visible = false
@@ -270,4 +288,4 @@ export default class OmniFloor {
   }
 }
 
-export { floorTextureStore, FLOOR_TEXTURE_SLOTS, FLOOR_SHAPES, BOUNDARY_SIZE }
+export { floorTextureStore, FLOOR_TEXTURE_SLOTS, FLOOR_SHAPES, BOUNDARY_SIZE, sanitizeFloorSlot }

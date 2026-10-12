@@ -104,7 +104,7 @@
       position: absolute; inset: 0; z-index: 0; pointer-events: none;
     }
     .boot-brand {
-      --boot-star: 3.1em;                /* star box (tip radius ~ 0.46 x this, ~1.6-2 x the glyph height) */
+      --boot-star: 1.15em;               /* star box. V190: was 3.1em (landed mark ~4x the glyph height); now the landed mark is ~1.3-1.4x the glyph height. boot/OmniStarBoot.js CONFIG.STAR_EM sets this at run time. */
       font-size: clamp(2rem, 6vw, 4rem);
       font-weight: normal;
       color: #fff;
@@ -153,7 +153,7 @@
       position: absolute;
       inset: -30%;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.07) 38%, rgba(255,255,255,0) 68%);
+      background: radial-gradient(circle, rgba(var(--boot-star-rgb, 255,255,255),0.22) 0%, rgba(var(--boot-star-rgb, 255,255,255),0.07) 38%, rgba(var(--boot-star-rgb, 255,255,255),0) 68%);
       pointer-events: none;
     }
     .boot-star svg {
@@ -163,14 +163,14 @@
       height: 100%;
       overflow: visible;
       opacity: var(--boot-star-alpha, 0.7);   /* whole-group opacity: core + spikes overlap without double-blending */
-      filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.85));
+      filter: drop-shadow(0 0 calc(var(--boot-star) * 0.025) rgba(var(--boot-star-rgb, 255,255,255), 0.85));   /* V190: glow scales with the (smaller) star */
     }
-    .boot-star path, .boot-star circle { fill: #fff; }
+    .boot-star path, .boot-star circle { fill: var(--boot-star-color, #fff); }   /* V190: --boot-star-color from the dev intro settings */
     .boot-comet {                        /* JS-made: tapered gradient tail, head at the star centre, rotated/scaled by animations */
       height: calc(var(--boot-star) * 0.42);
       opacity: 0;
       transform-origin: 100% 50%;
-      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(190,215,255,0.55) 50%, rgba(255,255,255,0.95) 100%);
+      background: linear-gradient(to right, rgba(var(--boot-star-rgb, 255,255,255),0) 0%, rgba(var(--boot-comet-mid, 190,215,255),0.55) 50%, rgba(var(--boot-star-rgb, 255,255,255),0.95) 100%);
       clip-path: polygon(0 50%, 100% 0, 100% 100%);
       will-change: transform, opacity;
     }

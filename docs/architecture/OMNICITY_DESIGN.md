@@ -6,6 +6,9 @@ Product naming (decided 2026-10-12): company **OmniStar**, product **OmniOS**. "
 
 ---
 
+## 0. Build order (decided 2026-10-12): OmniNet first, then OmniCity
+We build **OmniNet (the OmniNetwork)** first. **Omni⟐City is a node within the OmniNetwork**, not the root. Consequence for addressing: the origin / Reality Core `0mni:C0` is the OmniNet's core, and OmniCity is the first branch beneath it (so the city's lobby is `0mni:C0/B1/B1/S1`-style, not `C0/B1/S1`). The address grammar in section 3 does not change; only which branch the city occupies. Infrastructure for OmniNet (address model, product registry, context registry) comes before any city work. What OmniNet itself contains is **not yet designed** (open question 9).
+
 ## 1. What this is
 
 Omni⟐City is a recursive, text-addressable tree of **contexts**. Every context is a small version of the whole OS and can contain more contexts. People who see the value get a branch of their own, with their own recursive context of the broader OS. Everything branches from the **origin = the Reality Core**.
@@ -158,6 +161,7 @@ First-person view ("a 3D Sims-like walk among the logical trees the user has acc
 5. Codex ("the book"): yes or no, and what does it record?
 6. Is the **sandbox** a private fork per user (assumed here; moot while there is one user)?
 7. Are states global or defined per branch (assumed: the city defines them, branches inherit and may hide or add)?
+9. What is OmniNet exactly (the set of all contexts and their transport, or a product with its own surface)? What lives directly under its core besides OmniCity?
 8. Namespace marker: `0mni` (assumed). Keep `⟐` only for display (assumed).
 
 ## 12. Not built / known gaps

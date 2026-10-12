@@ -896,6 +896,13 @@ export default class MovementPad {
       this._satEls[hand]?.speed?.setAttribute('aria-expanded', String(!!open))
     }
     this._onNodeSelected = this._handleNodeSelected.bind(this)
+    // V190: omni:orbit-released (click empty space / Escape) -> the keyboard-rotation pivot follows main.js: just ahead of the camera
+    this._onOrbitReleased = () => {
+      const cam = this.ctx?.camera
+      if (!cam) return
+      cam.getWorldDirection(this._v3right)
+      this._rotationPivot.copy(cam.position).addScaledVector(this._v3right, 4)
+    }
     this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
     this._onKeyDown    = this._handleKeyDown.bind(this)
     this._onBlur       = () => this._releaseAllDimensionPresses()
@@ -967,6 +974,7 @@ export default class MovementPad {
     window.removeEventListener('omni:radial-toggle', this._onRadialToggle)
     window.removeEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.removeEventListener('omni:node-selected', this._onNodeSelected)
+    window.removeEventListener('omni:orbit-released', this._onOrbitReleased)
     window.removeEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
@@ -1735,6 +1743,7 @@ export default class MovementPad {
     window.addEventListener('omni:radial-toggle', this._onRadialToggle)
     window.addEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.addEventListener('omni:node-selected', this._onNodeSelected)
+    window.addEventListener('omni:orbit-released', this._onOrbitReleased)
     window.addEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)

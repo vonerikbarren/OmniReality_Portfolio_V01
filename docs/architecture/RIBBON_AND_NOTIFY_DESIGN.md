@@ -19,7 +19,7 @@ State persisted in `omni:ribbon-v1` (tab, collapsed). Phone or collapsed: body i
 ## OmniNotify
 `utils/OmniNotifyHub.js`: capture listeners on document for `data-omni-tip`, `-key`, `-desc`, `-source`; 120 ms intent, 1.2 s revert, focus, touch long-press (450 ms, held 2.5 s).
 `setInfo`, `clearInfo`, `pushNote`, `subscribe`; event `omni:notify-info`; existing `omni:notify-push` becomes a note line.
-`ui/OmniNotifyBox.js`: modes `side` (next to the ribbon, x = Current State column), `under` (narrow / phone), `float` (after drag). Persisted in `omni:notify-box-v1`.
+`ui/OmniNotifyBox.js`: modes `side` (next to the ribbon; since V190 the default dock is under the profile, x = the profile column, 64 px, so the ribbon starts at x 332 instead of 490; before V190 it sat under Current State at x 222), `under` (narrow / phone), `float` (after drag). Persisted in `omni:notify-box-v1`.
 It extends the old Notify column: the feed, `omni:notify-panel-toggle` and the address bar still work.
 
 ## Hands banner

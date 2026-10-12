@@ -17,6 +17,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
+import { loadOrbitReleaseSettings } from '../utils/OrbitRelease.js'
 
 const STORE_KEY = 'omni:admin:settings'
 
@@ -248,6 +249,7 @@ export default class CameraMovementOptionsPanel {
     this._el.querySelector('[data-field="globalValue"]').value = steps.globalValue
     this._applyGlobalDisabledState(!!steps.globalSpeed)
 
+    this._el.querySelector('[data-field="orbitRelease"]').checked = loadOrbitReleaseSettings().enabled
     this._el.querySelector('[data-field="autoRotate"]').checked = !!this.orbitModule?.isAutoRotating()
     this._el.querySelector('[data-field="autoRotateSpeed"]').value = s.autoRotateSpeed ?? 2
   }
@@ -328,6 +330,13 @@ export default class CameraMovementOptionsPanel {
         <div class="cm-row"><span class="cm-row-label">Speed</span><input class="cm-num" type="range" min="0.2" max="10" step="0.1" data-field="autoRotateSpeed"></div>
         <div class="cm-note">A quick, automatic tour of the scene — you can still freely look around while it plays; the two run independently, so nothing you do interrupts it.</div>
 
+        <div class="cm-group-title">Orbit Target</div>
+        <div class="cm-row" data-omni-tip="Click empty space releases orbit" data-omni-tip-key="Esc" data-omni-tip-desc="While the camera orbits a target (a selected node, Take Me There, ...), a click on empty space or the Escape key lets go of it so WASD flies freely again. Dragging to rotate never releases.">
+          <span class="cm-row-label">Click empty space releases orbit (or press Esc)</span>
+          <input type="checkbox" data-field="orbitRelease">
+        </div>
+        <div class="cm-note">Applies at once. A drag (rotating the view) or a click on a node or on the target itself never releases; neither does a click on a panel.</div>
+
         <div class="cm-group-title">Global</div>
         <div class="cm-row">
           <span class="cm-row-label">One universal speed for all of the above</span>
@@ -351,6 +360,9 @@ export default class CameraMovementOptionsPanel {
     el.querySelector('[data-field="globalSpeed"]').addEventListener('change', (e) => this._applyGlobalDisabledState(e.target.checked))
     el.querySelector('[data-field="autoRotate"]').addEventListener('change', (e) => {
       this.orbitModule?.toggleAutoRotate(e.target.checked)
+    })
+    el.querySelector('[data-field="orbitRelease"]').addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:orbit-release-set', { detail: { enabled: e.target.checked } }))
     })
     el.querySelector('[data-field="autoRotateSpeed"]').addEventListener('input', (e) => {
       this.orbitModule?.setAutoRotateSpeed(parseFloat(e.target.value) || 2)

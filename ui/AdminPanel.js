@@ -43,6 +43,7 @@ import * as GridWidgets   from './GridWidgets.js'
 import * as ThemeManager  from './ThemeManager.js'
 import { createWallpaperStore, KNOWN_NAMESPACES } from '../utils/WallpaperStorage.js'
 import * as UC from '../utils/OmniUserCompassSettings.js'   // V188: userCompass options (user-facing, no Dev import)
+import * as RET from '../utils/OmniReticleSettings.js'      // V190: centre reticle options (user-facing, no Dev import)
 
 const SCHEMA_VERSION = 1
 
@@ -377,6 +378,7 @@ export default class AdminPanel {
     this._onNavSelect = null
     this._onAdminOpen = null
     this._onUserCompassChanged = null
+    this._onReticleChanged = null
   }
 
   init () {
@@ -397,6 +399,7 @@ export default class AdminPanel {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('omni:admin-open', this._onAdminOpen)
     window.removeEventListener(UC.CHANGED_EVENT, this._onUserCompassChanged)
+    window.removeEventListener(RET.CHANGED_EVENT, this._onReticleChanged)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('adminpanel')
   }
@@ -558,7 +561,8 @@ export default class AdminPanel {
         numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02, 0.3, 1) +
         `<div class="ap-row"><span class="ap-row-label">Window sizes (V187)</span><button class="ap-file-btn" id="ap-reset-window-sizes" type="button" data-omni-tip="Reset window sizes" data-omni-tip-key="—" data-omni-tip-desc="Forgets every size you gave a window by dragging its edges and puts the open windows back to their default size. Maximize is never remembered.">Reset window sizes</button></div>
          <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-window-sizes-status">Drag any window's edges or corners to resize it, or use its maximize button. Sizes are remembered per window.</div>` +
-        this._userCompassRows(UC.resolveSettings(UC.loadOverrides()))
+        this._userCompassRows(UC.resolveSettings(UC.loadOverrides())) +
+        this._reticleRows(RET.resolveSettings(RET.loadOverrides()))
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
@@ -579,6 +583,7 @@ export default class AdminPanel {
     this._bindDataManagement(body)
     this._bindWindowSizes(body)
     this._bindUserCompass(body)
+    this._bindReticle(body)
   }
 
   /** V188: the userCompass section of UI Settings. Applies at once (like Reset window sizes), through the omni:user-compass-set event; no staging, no Save. */
@@ -588,28 +593,52 @@ export default class AdminPanel {
     const row = (label, inner) => `<div class="ap-row"><span class="ap-row-label">${label}</span>${inner}</div>`
     return `
         <div class="ap-subhead" data-uc-section="usercompass" id="ap-uc-section">userCompass</div>
-        <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">The small globe under the logo, above the top-left hand. Changes apply at once. It hides itself when the ribbon covers its slot (narrow screens).</div>
+        <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">The small globe panel. Drag it anywhere (it remembers the spot); click it to come back here. Changes apply at once.</div>
         ${row('Show', `<button class="ap-toggle ${c.show ? 'is-on' : ''}" data-uc="show" role="switch" aria-checked="${c.show}" aria-label="Show userCompass" ${tip('Show userCompass', 'Shows or hides the globe under the logo.')}></button>`)}
-        ${row('Align', `<div class="ap-seg" role="group" aria-label="userCompass alignment">${UC.ALIGNS.map(a => `<button type="button" class="ap-file-btn" data-uc-align="${a}" aria-pressed="${c.align === a}">${a[0].toUpperCase() + a.slice(1)}</button>`).join('')}</div>`)}
         ${row('Size', sel('size', [['small', 'Small (32)'], ['medium', 'Medium (44)'], ['large', 'Large (56)']], c.size))}
         ${row('Spin', sel('spin', [['off', 'Off'], ['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], c.spin))}
         ${row('Mode', sel('mode', [['spin', 'Spin'], ['heading', 'Heading (follows the camera)']], c.mode))}
         ${row('Line colour', sel('color', [['white', 'White'], ['cyan', 'Cyan'], ['accent', 'Accent (theme)']], c.color))}
         ${row('Opacity (%)', `<input class="ap-range" type="range" min="${UC.OPACITY_MIN}" max="${UC.OPACITY_MAX}" step="1" value="${c.opacity}" data-uc="opacity" aria-label="userCompass opacity">`)}
-        <div class="ap-row"><span class="ap-row-label">userCompass</span><button class="ap-file-btn" id="ap-uc-reset" type="button" ${tip('Reset userCompass', 'Puts the userCompass back to its defaults: shown, centred, medium, normal spin, white, 85%.')}>Reset userCompass</button></div>`
+        <div class="ap-row"><span class="ap-row-label">Position</span><button class="ap-file-btn" id="ap-uc-reset-pos" type="button" ${tip('Reset userCompass position', 'Puts the userCompass panel back to its default spot (until you drag it again). Its options stay as they are.')}>Reset position</button></div>
+        <div class="ap-row"><span class="ap-row-label">userCompass</span><button class="ap-file-btn" id="ap-uc-reset" type="button" ${tip('Reset userCompass', 'Puts the userCompass back to its defaults (shown, medium, normal spin, white, 85%) and to its default spot.')}>Reset userCompass</button></div>`
+  }
+
+  /** V190: the centre reticle section of UI Settings (decorative HUD rings, opacity 15% by default). Applies at once through the omni:reticle-set event. */
+  _reticleRows (c) {
+    const tip = (name, desc) => `data-omni-tip="${name}" data-omni-tip-key="—" data-omni-tip-desc="${desc}"`
+    const row = (label, inner) => `<div class="ap-row"><span class="ap-row-label">${label}</span>${inner}</div>`
+    return `
+        <div class="ap-subhead" data-ret-section="reticle" id="ap-ret-section">Reticle</div>
+        <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">A faint technical circle in the middle of the screen (decoration only: it never blocks a click). It turns slowly unless your system asks for reduced motion. Changes apply at once.</div>
+        ${row('Show', `<button class="ap-toggle ${c.show ? 'is-on' : ''}" data-ret="show" role="switch" aria-checked="${c.show}" aria-label="Show reticle" ${tip('Show reticle', 'Shows or hides the faint technical circle in the middle of the screen.')}></button>`)}
+        ${row('Opacity (%)', `<input class="ap-range" type="range" min="${RET.OPACITY_MIN}" max="${RET.OPACITY_MAX}" step="1" value="${c.opacity}" data-ret="opacity" aria-label="Reticle opacity" ${tip('Reticle opacity', 'How visible the centre reticle is, in percent. The default is 15.')}>`)}
+        <div class="ap-row"><span class="ap-row-label">Reticle</span><button class="ap-file-btn" id="ap-ret-reset" type="button" ${tip('Reset reticle', 'Puts the reticle back to its defaults: shown, 15% opacity.')}>Reset reticle</button></div>`
+  }
+
+  _bindReticle (body) {
+    const set = (patch) => window.dispatchEvent(new CustomEvent(RET.SET_EVENT, { detail: { patch } }))
+    body.querySelector('[data-ret="show"]')?.addEventListener('click', (e) => set({ show: !e.currentTarget.classList.contains('is-on') }))
+    body.querySelector('input[data-ret="opacity"]')?.addEventListener('input', (e) => set({ opacity: Number(e.currentTarget.value) }))
+    body.querySelector('#ap-ret-reset')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent(RET.SET_EVENT, { detail: { reset: true } })))
+    const sync = (c) => {
+      const t = body.querySelector('[data-ret="show"]'); if (t) { t.classList.toggle('is-on', !!c.show); t.setAttribute('aria-checked', String(!!c.show)) }
+      const o = body.querySelector('input[data-ret="opacity"]'); if (o && Number(o.value) !== c.opacity) o.value = String(c.opacity)
+    }
+    this._onReticleChanged = (e) => { if (e.detail?.settings) sync(e.detail.settings) }
+    window.addEventListener(RET.CHANGED_EVENT, this._onReticleChanged)
   }
 
   _bindUserCompass (body) {
     const set = (patch) => window.dispatchEvent(new CustomEvent(UC.SET_EVENT, { detail: { patch } }))
     body.querySelector('[data-uc="show"]')?.addEventListener('click', (e) => set({ show: !e.currentTarget.classList.contains('is-on') }))
-    body.querySelectorAll('[data-uc-align]').forEach(b => b.addEventListener('click', () => set({ align: b.dataset.ucAlign })))
     body.querySelectorAll('select[data-uc]').forEach(sel => sel.addEventListener('change', () => set({ [sel.dataset.uc]: sel.value })))
     body.querySelector('input[data-uc="opacity"]')?.addEventListener('input', (e) => set({ opacity: Number(e.currentTarget.value) }))
+    body.querySelector('#ap-uc-reset-pos')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent(UC.SET_EVENT, { detail: { resetPos: true } })))
     body.querySelector('#ap-uc-reset')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent(UC.SET_EVENT, { detail: { reset: true } })))
     // keep the controls in step with the compass (it is the authority: validation, reset, other callers)
     const sync = (c) => {
       const t = body.querySelector('[data-uc="show"]'); if (t) { t.classList.toggle('is-on', !!c.show); t.setAttribute('aria-checked', String(!!c.show)) }
-      body.querySelectorAll('[data-uc-align]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ucAlign === c.align)))
       for (const k of ['size', 'spin', 'mode', 'color']) { const s = body.querySelector(`select[data-uc="${k}"]`); if (s && s.value !== c[k]) s.value = c[k] }
       const o = body.querySelector('input[data-uc="opacity"]'); if (o && Number(o.value) !== c.opacity) o.value = String(c.opacity)
     }
@@ -849,7 +878,7 @@ export default class AdminPanel {
     body.querySelectorAll('.ap-color').forEach(input => {
       input.addEventListener('input', () => this._setStaged(input.dataset.key, input.value))
     })
-    body.querySelectorAll('.ap-toggle:not([data-uc])').forEach(btn => {
+    body.querySelectorAll('.ap-toggle:not([data-uc]):not([data-ret])').forEach(btn => {
       btn.addEventListener('click', () => {
         const next = !btn.classList.contains('is-on')
         btn.classList.toggle('is-on', next)

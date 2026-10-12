@@ -38,6 +38,7 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | Make a node | n key, or ribbon Home > Create; [Nodes](03_Nodes_and_Inspector.md) |
 | Change a node | Click it; the Inspector; [Nodes](03_Nodes_and_Inspector.md) |
 | Put things on a timeline | Inspector Time section, or ribbon Realities > Chronos; [Chronos](06_Chronos_Player_and_Timeline.md) |
+| Search sites and docs | Ctrl/Cmd+K (OmniStarLight), or ribbon OmniStar > OmniStarLight; ribbon OmniStar > Docs opens this guide in the app |
 | Open a panel | Left drawer (⟐OmniHand ☰), right drawer (⟐ConsciousHand ☰), the ribbon, or the top-bar menus |
 | Change settings | ⟐Admin in the left drawer; a hand's ⚙; [Settings](09_Settings_and_Admin.md) |
 | Pin a product or value as a node | Exchange > Pin to my space; ⟐N picker > Store item; [Pin](08_OmniStore_and_OmniValue.md) |
@@ -51,7 +52,7 @@ The break is **700 pixels wide**. At 700px or narrower:
 
 | Part | Phone behaviour |
 |---|---|
-| Ribbon | Only tabs show; a tapped tab drops its buttons over the scene |
+| Ribbon | Only tabs show (five, including OmniStar); a tapped tab drops its buttons over the scene |
 | Inspector | One section at a time; left-docked, max 45% screen height |
 | Chronos | Tabs PLAYER / TIMELINE / SETTINGS instead of EDITOR / SETTINGS |
 | Exchange (store) | Full-width bottom sheet |

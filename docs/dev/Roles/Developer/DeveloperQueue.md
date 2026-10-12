@@ -1320,3 +1320,13 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 2. Type codes C / B / S and the eye symbol `◉` are placeholders (design open question 2); change `TYPES` / `EYE` only.
 3. Next steps in `docs/architecture/OMNICITY_DESIGN.md` section 10: OmniProductId registry, context registry + persistence, enter / exit + MainLobby, perspectives UI, cryptx, grants.
 4. Security statements in the design doc are intent only; an address is a name, not a permission.
+
+## 80. V190 (UI + scene batch): what was not verified, follow-ups
+
+1. Software-GL Chromium and jsdom only: no real GPU, phone or touch (compass touch drag, reticle cost, Ctrl+K in Firefox/Safari, shooting-star feel, orbit release with touch).
+2. HelpNode (docs in the scene, PageUp/PageDown) not built; setting 'docs open in GUI / scene / both' pending; hook is `OmniDocsPanel.openDocs`. Re-run `node tools/build-docs-data.mjs` after any user-guide edit.
+3. StarLight 'Unavailable' rule is a guess (planned or dev-only); `computeCompassSlot` in OmniLayout is now unused by the compass.
+4. Session clock has no external-controls twin (OmniPointing has no readout area). Floor textures not exportable. Orbit: nothing happens on re-clicking the same empty point.
+5. Phone: open Inspector can cover the ribbon dropdown and the meter gear; X meter can sit behind floating windows.
+6. OmniAlphabet index worksheet written (`docs/omniproducts/OMNIALPHABET_INDEX_V01.md`), waiting for the owner's symbols and indexes.
+7. V189 had an empty DevOmniStoreData.js (my write error); a size-0 file check is now part of verification.

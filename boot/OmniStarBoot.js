@@ -1,4 +1,5 @@
-/* OmniStarBoot.js — V187 (wordmark Omni⟐Star; shooting-star entrance). Classic (non-module) script: runs as soon as
+/* OmniStarBoot.js — V190 (V187 wordmark Omni⟐Star + shooting-star entrance; V190: smaller landed star, light shooting stars after landing,
+ * dev intro settings read from localStorage 'omni:dev-intro-v1', window.__omniBootPreview()). Classic (non-module) script: runs as soon as
  * the boot markup is parsed, with no dependency on main.js's ES import graph.
  * See docs/architecture/OMNISTAR_BOOT_DESIGN.md for the timeline and rules.
  *
@@ -26,6 +27,9 @@
   var glyphEl = document.getElementById('boot-glyph-char')
   var enterBtn = document.getElementById('boot-enter-btn')
   if (!boot || !starEl || !pathEl || !wordEl || !markEl || !glyphEl) return
+  // V190: the untouched markup, kept so the dev panel can replay the intro (window.__omniBootPreview below) without a reload
+  var TEMPLATE = boot.outerHTML
+  var SELF_SRC = (document.currentScript && document.currentScript.src) || ''
 
   // ── Shape math ────────────────────────────────────────────
   // ONE star function: 2n vertices, alternating outer / inner radius.
@@ -63,11 +67,85 @@
     BASE_W: 0.17,            // spike base width at the core edge, x core radius
     MIN_BASE_UNITS: 4,       // base width floor in viewBox units (~1 px at the smallest 30 px star box)
     FIT: 1.1,                // whole mark scaled so the nominal long-tip radius = FIT x the old star's outer radius (50)
+    STAR_EM: 1.15,           // V190: star box in em of the wordmark font (V187-V189: 3.1 -> the landed mark was ~4x the glyph height; 1.15 -> ~1.35x). Sets --boot-star.
     BREATH_AMP: 0.06,        // spikes group scale 1 +- this
     BREATH_MS: 3200,         // breathing period
     SAMPLES_URCHIN: 400,     // polar samples: divisible by 80 so 4-, 5-star tips and all 16 spikes land exactly on a sample
-    SAMPLES_STAR12: 120      // V185 sampling for the 12-point fallback
+    SAMPLES_STAR12: 120,     // V185 sampling for the 12-point fallback
+    // V190: light shooting stars drawn on the boot canvas AFTER the star has landed (none under prefers-reduced-motion)
+    SHOOT_START: 1700,       // virtual ms: the star lands at FLY_END = 1650
+    SHOOT_GAP: [800, 2500],  // ms between spawn events (random)
+    SHOOT_DOUBLE: 0.3,       // chance that an event spawns 2 streaks instead of 1
+    SHOOT_LIFE: [600, 1000], // ms a streak lives
+    SHOOT_SPEED: [650, 1000],// px / s
+    SHOOT_LEN: [90, 170],    // tail length, px
+    SHOOT_ANGLE: 135,        // degrees on screen (y down): 135 = down-left; +- SHOOT_SPREAD
+    SHOOT_SPREAD: 40,
+    SHOOT_ALPHA: 0.5,        // peak head opacity (the colour comes from the dev intro settings)
+    SHOOT_MAX_LIVE: 3
   }
+
+  // ── V190: intro settings (written by the DEV panel ui/DevOmniStarIntroSettingsPanel.js; this script runs before any module) ─
+  // The value in localStorage is NEVER trusted: parsed in try/catch, every field regex-validated / clamped, defaults on any doubt.
+  // `?bootintro=off` in the page URL ignores the saved value (escape hatch if a colour made the intro unreadable).
+  var INTRO_KEY = 'omni:dev-intro-v1'
+  var INTRO_DEFAULTS = { bg: '#000000', texture: 'none', textureOpacity: 0.35, customUrl: '', starColor: '#ffffff', starOpacity: 0.7, fieldOpacity: 1, shootColor: '#ffffff' }
+  var INTRO_TEXTURES = ['none', 'noise', 'grid', 'scanlines', 'dots', 'custom']
+  var MAX_DATA_URL = 400000, MAX_HTTPS_URL = 500
+  function introHex (v, d) {
+    if (typeof v !== 'string') return d
+    var m = /^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.exec(v.trim())
+    if (!m) return d
+    var h = m[1].toLowerCase()
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]
+    return '#' + h
+  }
+  function intro01 (v, d) {
+    var n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
+    return isFinite(n) ? Math.min(1, Math.max(0, n)) : d
+  }
+  function introUrl (v) {   // a data: image (png/jpeg/webp/gif, base64, capped) or an https URL without quotes / parentheses / spaces
+    if (typeof v !== 'string' || !v) return ''
+    if (v.length <= MAX_DATA_URL && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+\/]+=*$/.test(v)) return v
+    if (v.length <= MAX_HTTPS_URL && /^https:\/\/[A-Za-z0-9._~:\/?#\[\]@!$&*+,;=%-]+$/.test(v)) return v
+    return ''
+  }
+  function sanitizeIntro (raw) {
+    var d = INTRO_DEFAULTS, o = {}
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {}
+    o.bg = introHex(raw.bg, d.bg)
+    o.texture = INTRO_TEXTURES.indexOf(raw.texture) >= 0 ? raw.texture : d.texture
+    o.textureOpacity = intro01(raw.textureOpacity, d.textureOpacity)
+    o.customUrl = introUrl(raw.customUrl)
+    if (o.texture === 'custom' && !o.customUrl) o.texture = 'none'
+    o.starColor = introHex(raw.starColor, d.starColor)
+    o.starOpacity = intro01(raw.starOpacity, d.starOpacity)
+    o.fieldOpacity = intro01(raw.fieldOpacity, d.fieldOpacity)
+    o.shootColor = introHex(raw.shootColor, d.shootColor)
+    return o
+  }
+  function readIntro () {
+    try {
+      if (/(^|[?&])bootintro=off(&|$)/.test(window.location.search)) return sanitizeIntro(null)
+      var txt = window.localStorage.getItem(INTRO_KEY)
+      if (!txt || txt.length > 600000) return sanitizeIntro(null)
+      return sanitizeIntro(JSON.parse(txt))
+    } catch (e) { return sanitizeIntro(null) }
+  }
+  function rgbOf (hex) { return parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) }
+  var INTRO = readIntro()
+  var STAR_RGB = rgbOf(INTRO.starColor), SHOOT_RGB = rgbOf(INTRO.shootColor)
+  ;(function applyIntroStyle () {
+    var brand = boot.querySelector('.boot-brand')
+    if (brand) brand.style.setProperty('--boot-star', CONFIG.STAR_EM + 'em')
+    if (INTRO.bg !== INTRO_DEFAULTS.bg) boot.style.background = INTRO.bg
+    boot.style.setProperty('--boot-star-alpha', String(INTRO.starOpacity))
+    if (INTRO.starColor !== INTRO_DEFAULTS.starColor) {
+      boot.style.setProperty('--boot-star-color', INTRO.starColor)
+      boot.style.setProperty('--boot-star-rgb', STAR_RGB)
+      boot.style.setProperty('--boot-comet-mid', STAR_RGB)
+    }
+  })()
   var MARK = CONFIG.FINAL_MARK
   try {
     var qm = new URLSearchParams(window.location.search).get('bootmark')
@@ -182,7 +260,7 @@
   var BURST = 6                            // spin-up overshoot during the 12-morph
   var CONVERGE_MS = 500
   var FLY_SPIN = -720                      // degrees the 4-star spins during the flight (ends tip-up = 0)
-  var STAR_ALPHA = 0.7                     // final star opacity behind the glyph (keep equal to CSS --boot-star-alpha default)
+  var STAR_ALPHA = INTRO.starOpacity       // final star opacity behind the glyph (default 0.7 = CSS --boot-star-alpha default; V190: dev intro setting)
   var FLY_STEPS = 48                       // keyframes sampled along the curve (linear between; time is the eased parameter)
 
   var reduced = false
@@ -228,6 +306,34 @@
   canvas.id = 'boot-starfield'
   canvas.setAttribute('aria-hidden', 'true')
   boot.insertBefore(canvas, boot.firstChild)
+  // V190: optional background texture (dev intro setting) — a layer UNDER the star canvas, generated procedurally (no assets)
+  function makeTextureTile (kind) {
+    var n = kind === 'noise' ? 96 : kind === 'grid' ? 40 : kind === 'scanlines' ? 4 : 16
+    var c = document.createElement('canvas'); c.width = c.height = n
+    var g = c.getContext('2d'), i
+    if (kind === 'noise') {
+      var im = g.createImageData(n, n)
+      for (i = 0; i < n * n; i++) { var v = (Math.random() * 255) | 0; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255 }
+      g.putImageData(im, 0, 0)
+    } else if (kind === 'grid') {
+      g.fillStyle = '#fff'; g.fillRect(0, 0, n, 1); g.fillRect(0, 0, 1, n)
+    } else if (kind === 'scanlines') {
+      g.fillStyle = '#fff'; g.fillRect(0, 0, n, 1)
+    } else {   // dots
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(n / 2, n / 2, 1.6, 0, 6.2832); g.fill()
+    }
+    return c.toDataURL('image/png')
+  }
+  if (INTRO.texture !== 'none') {
+    try {
+      var tex = document.createElement('div')
+      tex.id = 'boot-texture'; tex.setAttribute('aria-hidden', 'true')
+      tex.style.cssText = 'position:absolute;inset:0;z-index:0;pointer-events:none;opacity:' + INTRO.textureOpacity
+      if (INTRO.texture === 'custom') tex.style.cssText += ';background:url("' + INTRO.customUrl + '") center / cover no-repeat'
+      else tex.style.cssText += ';background:url("' + makeTextureTile(INTRO.texture) + '") 0 0 / auto repeat'
+      boot.insertBefore(tex, canvas)
+    } catch (e) {}
+  }
   var ctx = canvas.getContext('2d')
   var dpr = 1, vw = 0, vh = 0
   var stars = [], links = []
@@ -236,7 +342,7 @@
   function makeHalo () {
     var c = document.createElement('canvas'); c.width = c.height = 32
     var g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16)
-    gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)')
+    gr.addColorStop(0, 'rgba(' + STAR_RGB + ',0.55)'); gr.addColorStop(1, 'rgba(' + STAR_RGB + ',0)')
     g.fillStyle = gr; g.fillRect(0, 0, 32, 32)
     return c
   }
@@ -268,6 +374,10 @@
   var over = false           // pointer / touch / focus on the Enter button
   var moveLevel = 0, lastMove = 0
   var clickedAt = -1         // virtual time of the Enter click
+  function cleanup () {   // V190: the loop is over (boot removed): drop the window listeners so a preview replay does not pile them up
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('resize', onResize)
+  }
   function onMove (e) {
     var onBtn = !!(enterBtn && e.target && e.target.closest && e.target.closest('#boot-enter-btn'))
     moveLevel = onBtn ? 0.5 : 0.15
@@ -333,25 +443,65 @@
         var L = links[i]; L.life += dt
         if (L.life >= L.span) { links.splice(i, 1); continue }
         var dx = L.b.px - L.a.px, dy = L.b.py - L.a.py, dd = Math.sqrt(dx * dx + dy * dy)
-        var la = Math.sin(Math.PI * L.life / L.span) * 0.16 * clamp01(1.6 - dd / maxD) * alphaAll * fade
+        var la = Math.sin(Math.PI * L.life / L.span) * 0.16 * clamp01(1.6 - dd / maxD) * alphaAll * fade * INTRO.fieldOpacity
         if (la <= 0.003) continue
-        ctx.strokeStyle = 'rgba(255,255,255,' + la.toFixed(3) + ')'
+        ctx.strokeStyle = 'rgba(' + STAR_RGB + ',' + la.toFixed(3) + ')'
         ctx.beginPath(); ctx.moveTo(L.a.px, L.a.py); ctx.lineTo(L.b.px, L.b.py); ctx.stroke()
       }
     }
-    ctx.fillStyle = '#fff'
+    ctx.fillStyle = INTRO.starColor
     var secs = T / 1000
     for (i = 0; i < stars.length; i++) {
       s = stars[i]
       var appear = clamp01((fieldT - s.delay) / FIELD_FADE)
       if (appear <= 0) continue
-      var al = s.a * appear * alphaAll * fade * (0.78 + 0.22 * Math.sin(secs * s.tw + s.ph))
+      var al = s.a * appear * alphaAll * fade * INTRO.fieldOpacity * (0.78 + 0.22 * Math.sin(secs * s.tw + s.ph))
       if (al <= 0.01) continue
       ctx.globalAlpha = al
       if (s.size > 1.3) ctx.drawImage(halo, s.px - 8, s.py - 8, 16, 16)
       ctx.beginPath(); ctx.arc(s.px, s.py, s.size * 0.7, 0, 6.2832); ctx.fill()
     }
     ctx.globalAlpha = 1
+    if (!reduced) drawShooters(dt, alphaAll * fade, converging)
+  }
+
+  // ── V190: light shooting stars (after the landing) ─────────
+  // Thin fading streaks on the boot canvas: one spawn event every SHOOT_GAP ms (1 or 2 streaks), angle biased down-left, short life,
+  // low opacity. At most SHOOT_MAX_LIVE alive; cost is a couple of gradient strokes per frame. Nothing is spawned once the Enter click
+  // starts the convergence, once the boot fades out, or under prefers-reduced-motion (that path never runs the frame loop at all).
+  var shooters = [], nextShoot = -1
+  function rnd (r) { return r[0] + Math.random() * (r[1] - r[0]) }
+  function spawnShooter () {
+    var a = (CONFIG.SHOOT_ANGLE + (Math.random() + Math.random() - 1) * CONFIG.SHOOT_SPREAD) * Math.PI / 180
+    shooters.push({
+      x: vw * (0.25 + Math.random() * 0.8), y: vh * (-0.05 + Math.random() * 0.6),
+      dx: Math.cos(a), dy: Math.sin(a), sp: rnd(CONFIG.SHOOT_SPEED) / 1000, len: rnd(CONFIG.SHOOT_LEN), life: rnd(CONFIG.SHOOT_LIFE), age: 0
+    })
+  }
+  function drawShooters (dt, alphaAll, converging) {
+    var i, sh
+    if (!converging && T >= CONFIG.SHOOT_START && !boot.classList.contains('fade-out')) {
+      if (nextShoot < 0) nextShoot = T + 300 + Math.random() * 500
+      if (T >= nextShoot) {
+        var n = Math.random() < CONFIG.SHOOT_DOUBLE ? 2 : 1
+        while (n-- > 0 && shooters.length < CONFIG.SHOOT_MAX_LIVE) spawnShooter()
+        nextShoot = T + rnd(CONFIG.SHOOT_GAP)
+      }
+    }
+    if (!shooters.length) return
+    ctx.lineWidth = 1.2; ctx.lineCap = 'round'
+    for (i = shooters.length - 1; i >= 0; i--) {
+      sh = shooters[i]; sh.age += dt
+      if (sh.age >= sh.life) { shooters.splice(i, 1); continue }
+      var u = sh.age / sh.life, env = Math.sin(Math.PI * u)            // fades in and out over its life
+      var al = CONFIG.SHOOT_ALPHA * env * alphaAll
+      if (al <= 0.004) continue
+      var hx = sh.x + sh.dx * sh.sp * sh.age, hy = sh.y + sh.dy * sh.sp * sh.age, tl = sh.len * (0.5 + 0.5 * env)
+      var gr = ctx.createLinearGradient(hx - sh.dx * tl, hy - sh.dy * tl, hx, hy)
+      gr.addColorStop(0, 'rgba(' + SHOOT_RGB + ',0)'); gr.addColorStop(1, 'rgba(' + SHOOT_RGB + ',' + al.toFixed(3) + ')')
+      ctx.strokeStyle = gr
+      ctx.beginPath(); ctx.moveTo(hx - sh.dx * tl, hy - sh.dy * tl); ctx.lineTo(hx, hy); ctx.stroke()
+    }
   }
 
   // Compositor animations (created on the first frame so they start with the first paint).
@@ -427,7 +577,7 @@
   }
 
   function frame (ts) {
-    if (!document.getElementById('omni-boot')) { ended = true; return }   // boot removed: stop
+    if (!document.getElementById('omni-boot')) { ended = true; cleanup(); return }   // boot removed: stop
     raf = requestAnimationFrame(frame)
     var t0 = performance.now()
     if (!animsOn) startAnimations(ts)
@@ -468,9 +618,9 @@
 
   function drawStatic () {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vw, vh)
-    ctx.fillStyle = '#fff'
+    ctx.fillStyle = INTRO.starColor
     for (var i = 0; i < stars.length; i++) {
-      var s = stars[i]; ctx.globalAlpha = s.a * 0.7
+      var s = stars[i]; ctx.globalAlpha = s.a * 0.7 * INTRO.fieldOpacity
       ctx.beginPath(); ctx.arc(s.x * vw, s.y * vh, s.size * 0.7, 0, 6.2832); ctx.fill()
     }
     ctx.globalAlpha = 1
@@ -480,8 +630,38 @@
   window.__omniStarBoot = {
     stats: stats, reduced: reduced, mark: MARK, config: CONFIG, urchin: URCHIN && { coreR: URCHIN.coreR, tips: URCHIN.tips, hs: URCHIN.hs },
     breathing: function () { return !!breathAnim }, pathFor: pathFor, easeInOut: easeInOut, // pathFor/easeInOut: test hooks
+    intro: INTRO, sanitizeIntro: sanitizeIntro, shooters: function () { return shooters.length },   // V190: test hooks
 
     state: function () { return { T: T, ended: ended, links: links.length, over: over, moveLevel: moveLevel, clickedAt: clickedAt, animsOn: animsOn, geo: geo } }
+  }
+  // V190: replay the intro without a reload (the dev panel calls this after saving). Only possible once the real boot is gone.
+  // The untouched markup is re-created and this very script is run again (it re-reads the saved intro settings).
+  if (!window.__omniBootPreview) {
+    window.__omniBootPreview = function () {
+      if (!SELF_SRC || document.getElementById('omni-boot')) return false
+      var wrap = document.createElement('div')
+      wrap.innerHTML = TEMPLATE
+      var el = wrap.firstElementChild
+      if (!el) return false
+      var btn = el.querySelector('#boot-enter-btn'), bar = el.querySelector('#boot-progress-bar')
+      if (bar) { bar.classList.add('is-complete'); bar.style.width = '100%' }
+      if (btn) { btn.classList.add('is-ready'); btn.textContent = 'Close preview' }
+      var closed = false
+      function close () {
+        if (closed) return; closed = true
+        window.removeEventListener('keydown', onKey)
+        el.classList.add('fade-out')
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el) }, 1300)
+      }
+      function onKey (e) { if (e.key === 'Escape') close() }
+      if (btn) btn.addEventListener('click', close)
+      window.addEventListener('keydown', onKey)
+      document.body.appendChild(el)
+      var sc = document.createElement('script')
+      sc.src = SELF_SRC.split('?')[0] + '?preview=' + Date.now()
+      document.head.appendChild(sc)
+      return true
+    }
   }
   if (reduced) {
     pathEl.setAttribute('d', pathFor(1, 1))

@@ -31,22 +31,26 @@ Staged: changes apply when you press 💾.
 | UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187); the **userCompass** section (V188, below) |
 | Data Management | 🗑 Clear Scene, ⬇ Export Reality, ⬆ Import Reality |
 
-### userCompass (Admin > UI Settings > userCompass, V188)
+### userCompass (Admin > UI Settings > userCompass, V188; own panel since V190)
 
-The userCompass is the small clear globe under the logo and above the top-left hand's MENU cell. Its controls apply **at once** (no 💾 needed) and are remembered on this device. Clicking the globe, or right-clicking it, opens this section.
+The userCompass is the small clear globe in its own little panel. **Drag it anywhere** (it remembers the spot on this device); it stays inside the window and never covers the ribbon. Its controls apply **at once** (no 💾 needed) and are remembered on this device. Clicking the globe, or right-clicking it, opens this section.
 
 | Option | Choices | Default |
 |---|---|---|
 | Show | on / off | on |
-| Align | Left / Center / Right inside its small slot (the slot is as wide as the top-left hand, about 103 px) | Center |
-| Size | Small 32 / Medium 44 / Large 56 px (it shrinks to fit the slot; under 24 px it hides) | Medium |
+| Size | Small 32 / Medium 44 / Large 56 px | Medium |
 | Spin | Off / Slow (28 s per turn) / Normal (14 s) / Fast (7 s) | Normal; **Off** if your device asks for reduced motion |
 | Mode | Spin, or Heading (the globe turns with the way the camera faces, like a compass) | Spin |
 | Line colour | White / Cyan / Accent (your theme's accent colour) | White |
 | Opacity | 30 to 100 % | 85 % |
-| Reset userCompass | puts all of the above back | |
+| Reset position | puts the panel back at its default spot | |
+| Reset userCompass | puts all of the above back, and the position | |
 
-It never covers the ribbon, the OmniNotify box, the hands or the Global Bar. When the window is narrower than about 1010 px (or you drag the OmniNotify box away from its docked spot) the ribbon runs under the whole bar and covers that strip, so the globe hides itself instead of overlapping; widen the window or dock the OmniNotify box (double-click its header) to see it again. It is not a window: it cannot be moved, resized or maximized.
+By default it sits in the strip under the logo; when that strip is not free (narrow window, phone, or a moved OmniNotify box) it starts at the right edge under the ribbon. It is a small widget, not a window: it moves but has no resize handles or maximize. Click it (without dragging) to open this section; with the keyboard, focus it and press Enter, or use the arrow keys to move it (Shift for bigger steps).
+
+### Reticle (Admin > UI Settings > Reticle, V190)
+
+A faint decorative technical circle in the middle of the screen, behind every panel. It cannot be clicked. It turns slowly (not when your device asks for reduced motion). Controls apply at once: **Show** (on by default), **Opacity** (5 to 100 %, default 15 %), **Reset reticle**.
 
 **Clear Scene** asks to confirm, then removes every created object. Cannot be undone. **Export Reality** downloads a .zip of all settings plus saved images, audio and video. **Import Reality** restores from such a zip and reloads the page. Export before you clear.
 

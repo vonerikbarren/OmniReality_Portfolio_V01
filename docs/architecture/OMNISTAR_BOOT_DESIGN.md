@@ -1,10 +1,39 @@
-# OmniStar boot screen (V185; urchin mark V186; Omni⟐Star + shooting star V187)
+# OmniStar boot screen (V185; urchin mark V186; Omni⟐Star + shooting star V187; smaller landed star, background shooting stars, dev intro settings V190)
 
-Applies to: V187 · Status: verified in software-GL Chromium on 2026-10-11 · Real devices: not verified.
+Applies to: V190 (V187 below for the parts V190 did not change) · Status: verified in software-GL Chromium on 2026-10-11 · Real devices: not verified.
 
 Files: `index.html` (markup + CSS), `boot/OmniStarBoot.js` (classic script, no module graph). `main.js` is unchanged.
 
-## V187: Omni⟐Star title and shooting-star entrance
+## V190: smaller landed star, background shooting stars, dev intro settings
+
+**Landed star size (`CONFIG.STAR_EM`).** The star box was `--boot-star: 3.1em`, which made the landed urchin about 4x the height of the ⟐ glyph. `CONFIG.STAR_EM` (new, in `boot/OmniStarBoot.js`) now sets `--boot-star` at run time (the same number is the fallback in `index.html`); default **1.15** so the landed mark is "slightly larger than the ⟐". The flying 4-point star, the 5-point pop and the urchin all share that one box, so the whole star shrinks together; the comet tail length still comes from the flight speed, and the glow (`drop-shadow`) is now proportional to the box (`0.025 x --boot-star`). Everything else about the mark (`FIT`, `CORE_R`, spikes...) is unchanged. Measured in software-GL Chromium on the final frame (pixels brighter than 110/255 of a white-on-black screenshot; the glyph alone for its ink box, the star alone for its extent; 3 frames because the mark rotates and breathes): glyph ink 45 px at 1280x720 (22 px at 390x844), star tip-to-tip 58-65 px (desktop) and 28-31 px (phone) = **1.28-1.45x** (desktop) / **1.26-1.40x** (phone) the glyph height; before: 4.1x. The theoretical longest-spike tip-to-tip is about 1.5-1.7x because the needle tips fade below the threshold. To change it: edit `STAR_EM` (ratio is proportional to it: 1.0 -> about 1.15x, 1.3 -> about 1.5x).
+
+**Shooting stars after the landing (`CONFIG.SHOOT_*`).** Drawn on the boot canvas inside `drawField` (after the stars), from `SHOOT_START` = 1700 ms (the landing is at 1650). One spawn event every 800-2500 ms (random), 30% of the events spawn 2 streaks instead of 1, at most 3 alive; angle 135 degrees on screen (down-left) +- 40 degrees (sum of two uniforms, so mostly near 135); start point random in the upper-right 2/3 of the screen; speed 650-1000 px/s, life 600-1000 ms, tail 90-170 px, thin (1.2 px) line with a gradient from transparent (tail) to the head, alpha `SHOOT_ALPHA` 0.5 x a sine envelope (fades in and out). Spawning stops on the Enter click (the convergence), once `#omni-boot` has `.fade-out`, and when the loop ends (boot removed); `prefers-reduced-motion` never starts the frame loop, so there are none. Cost: one linear gradient + one stroke per live streak per frame (at most 3); measured 25 s after the landing in the harness: p50 0.2 ms, p95 0.3 ms (V189: 0.1 / 0.3), p99 about 1 ms.
+
+**Loop clean-up.** When the loop ends the script now removes its window `resize` / `pointermove` listeners (`cleanup()`), so replaying the intro does not stack them.
+
+### Dev intro settings (localStorage `omni:dev-intro-v1`)
+
+The boot script is a classic script that runs before any module, so the settings live in plain JSON in localStorage and the script reads them itself (`readIntro()`); the DEV panel (`ui/DevOmniStarIntroSettingsPanel.js`, Developer drawer slot 8, model `utils/DevOmniStarIntroSettings.js`) only writes them. User-facing modules never import the Dev files (static test); the boot script reading localStorage directly is fine.
+
+| field | values | applies to |
+|---|---|---|
+| `bg` | `#rrggbb` (any colour; `#rgb` and a missing `#` are normalised) | `#omni-boot` background (default `#000000`) |
+| `texture` | `none`, `noise`, `grid`, `scanlines`, `dots`, `custom` | a layer `#boot-texture` under the star canvas (generated procedurally on a small canvas tile, no assets; `custom` = the image below) |
+| `textureOpacity` | 0..1 (default 0.35) | opacity of that layer |
+| `customUrl` | `''`, a `data:image/(png\|jpeg\|webp\|gif);base64,...` URL up to 400000 chars, or an `https://` URL up to 500 chars without quotes / parentheses / spaces | the `custom` texture (`cover`, centred). The panel's file picker accepts png / jpeg / webp / gif up to 200 KB and stores it as a data URL |
+| `starColor` | `#rrggbb` (default white) | landed star + flight tail + glow + the background star field and its faint lines (`--boot-star-color`, `--boot-star-rgb`) |
+| `starOpacity` | 0..1 (default 0.7) | the landed star's final opacity |
+| `fieldOpacity` | 0..1 (default 1) | the drifting background stars and lines |
+| `shootColor` | `#rrggbb` (default white) | the shooting stars |
+
+Read defensively: the value is parsed in try/catch, ignored above 600 KB, and every field is regex-validated / clamped; any doubt -> that field's default (`sanitizeIntro`, the same rules as `sanitize` in the Dev model; the tests run the same 40 hostile inputs through both and require identical output). A texture `custom` without a valid image falls back to `none`. Nothing from storage is ever put into the page except through those validated values (colours as `#rrggbb`, URLs only after the regexes, set through `style` properties). **Escape hatch:** open the page with `?bootintro=off` to ignore the saved value for that load.
+
+Applied on the next load, or at once with **Preview intro**: the script keeps the untouched boot markup and its own `src`, and `window.__omniBootPreview()` (defined by the first run) re-creates the markup on top of the app and runs the script again (cache-busted `?preview=...`), which re-reads the saved settings. The Enter button becomes "Close preview"; Esc or the button fades it out and removes it. It refuses (returns false; the panel then says "reload the page") while the real boot is still showing or if the script's `src` is unknown. Reset to defaults removes the key.
+
+Not verified: real GPU, a real phone, touch; the preview was exercised in software-GL Chromium inside the full app (about 1 fps there, so its timing is not representative).
+
+## V187: Omni⟐Star title and shooting-star entrance (the 3.1em box below is superseded by V190 `STAR_EM`)
 
 - **Wordmark** is real text `Omni` + `⟐` + `Star` (same monospace stack and size as before); `aria-label="Omni Star OmniOS"` on the h1 (the visual parts are `aria-hidden`); the tab `<title>` stays `OmniOS`. The subtitle `OmniOS` is unchanged.
 - **Star behind the glyph.** The star box (`.boot-star`, `z-index:-1` inside the h1 stacking context) is centred on the ink centre of the `⟐`: `measure()` takes the glyph's box from `getBoundingClientRect` and corrects the horizontal centre for the trailing letter-spacing (box minus half the letter-spacing) and the vertical centre from canvas `measureText` ink metrics. Final tip radius is about 1.6 - 2.2x the glyph height (`--boot-star: 3.1em`). Legibility: the star is dimmed to opacity 0.7 after the flight (flight itself is full white) and the glyph and subtitle carry a dark text-shadow rim.

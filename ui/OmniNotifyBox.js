@@ -9,9 +9,11 @@
  * the existing feed (`omni:notify-panel-toggle`).
  *
  * Placement (measured, not guessed):
- *   side   desktop default. Docked right under the "Current State" column (#ob-col03's left edge),
- *          same height as the ribbon; the ribbon starts to its right (utils/OmniLayout
- *          --omni-ribbon-left). Used only while at least MIN_RIBBON px remain for the ribbon.
+ *   side   desktop default. (V190: moved under the PROFILE area; before it sat under "Current State".) Docked right under
+ *          the Global Bar's profile columns (its left edge is the avatar column #ob-col01, below the bar), same height as
+ *          the ribbon; the ribbon starts to its right (utils/OmniLayout --omni-ribbon-left). Used only while at least
+ *          MIN_RIBBON px remain for the ribbon. The strip to its left (under the logo) is now free: the userCompass's
+ *          default spot (ui/OmniUserCompass.js).
  *   under  too narrow for side (or a phone): a small floating box just under the ribbon.
  *   float  the person dragged it: stays where they put it; the ribbon gets the full width back.
  *          Double-click the header to dock it again.
@@ -38,7 +40,7 @@ export const DEFAULT_W  = 260
 export const MIN_RIBBON = 520       // px the ribbon needs next to the box, or the box drops under it
 export const GAP        = 8
 export const PHONE_MAX  = 700
-const COL03_FALLBACK_LEFT = 222     // 64 (Col00) + 48 (Col01) + 110 (Col02) — GlobalBar's fixed widths
+const PROFILE_FALLBACK_LEFT = 64    // V190: Col00 (the logo cell) is 64px wide, so the profile avatar column (#ob-col01) starts at x=64
 
 const IDLE_DESC = 'Hover any tool, button or icon to see its name, shortcut and what it does.'
 
@@ -233,7 +235,7 @@ export default class OmniNotifyBox {
     el.setAttribute('aria-live', 'polite')
     el.innerHTML = /* html */`
       <div class="onb-head" data-omni-tip="OmniNotify box" data-omni-tip-key="Drag · double-click to dock"
-           data-omni-tip-desc="Shows what you point at (name, shortcut, description) and the latest notification. Drag the header to move it, the corner to resize it, double-click the header to dock it back under Current State.">
+           data-omni-tip-desc="Shows what you point at (name, shortcut, description) and the latest notification. Drag the header to move it, the corner to resize it, double-click the header to dock it back under your profile.">
         <span class="onb-grip" aria-hidden="true">⠿</span>
         <span class="onb-title">⟐OmniNotify</span>
         <span class="onb-inline"></span>
@@ -309,9 +311,10 @@ export default class OmniNotifyBox {
     this._raf = requestAnimationFrame(() => { this._raf = 0; this._layout() })
   }
 
-  _col03Left () {
-    const r = document.getElementById('ob-col03')?.getBoundingClientRect?.()
-    return r && r.width > 0 ? Math.round(r.left) : COL03_FALLBACK_LEFT
+  /** V190: the default dock x = the left edge of the profile area (the avatar column), measured; 64 when the bar is not laid out. */
+  _profileLeft () {
+    const r = document.getElementById('ob-col01')?.getBoundingClientRect?.()
+    return r && r.width > 0 ? Math.round(r.left) : PROFILE_FALLBACK_LEFT
   }
 
   /** The measuring step: where does the box go, and how much room is left for the ribbon? */
@@ -331,7 +334,7 @@ export default class OmniNotifyBox {
       const y = clamp(s.y ?? BAR_H, BAR_H, vh - 52 - HEADER_H)
       return { mode: 'float', x, y, w, h, inset: 0, collapsed }
     }
-    const left = this._col03Left()
+    const left = this._profileLeft()
     if (!phone && vw - (left + w + GAP) >= MIN_RIBBON) {
       const ribbonH = getRibbonHeight() || 96
       return { mode: 'side', x: left, y: BAR_H, w, h: collapsed ? HEADER_H : Math.max(HEADER_H, ribbonH), inset: left + w + GAP, collapsed }
