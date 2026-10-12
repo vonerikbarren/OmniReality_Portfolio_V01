@@ -2909,6 +2909,136 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "userCompass (V188)",
+      "items": [
+        {
+          "feature": "Where it sits",
+          "howToReach": "Desktop window at least ~1010 px wide: look under the logo, above the top-left hand's ☰ MENU cell",
+          "whatToCheck": "A small clear spinning globe sits in that strip. It does not touch the Global Bar, the ribbon, the OmniNotify box or the MENU cell.",
+          "tested": false
+        },
+        {
+          "feature": "Looks like a globe",
+          "howToReach": "Look at it for 20 seconds",
+          "whatToCheck": "6 meridians and 5 parallels, the equator a little brighter, front lines bright and back lines dim, tilted about 23 degrees, turns once in about 14 seconds, no filled background.",
+          "tested": false
+        },
+        {
+          "feature": "Hover tip",
+          "howToReach": "Hover the globe",
+          "whatToCheck": "The OmniNotify box says userCompass, your orientation globe, click for settings.",
+          "tested": false
+        },
+        {
+          "feature": "Click opens settings",
+          "howToReach": "Click the globe (or right-click it, or Tab to it and press Enter)",
+          "whatToCheck": "Admin opens and scrolls to Admin > UI Settings > userCompass.",
+          "tested": false
+        },
+        {
+          "feature": "Show on / off",
+          "howToReach": "Admin > UI Settings > userCompass > Show",
+          "whatToCheck": "The globe disappears and comes back at once, no Save needed; it is remembered after a reload.",
+          "tested": false
+        },
+        {
+          "feature": "Alignment left / center / right",
+          "howToReach": "Admin > UI Settings > userCompass > Align",
+          "whatToCheck": "The globe moves inside its strip (left edge, middle, right edge) and never goes under the MENU cell or past the strip.",
+          "tested": false
+        },
+        {
+          "feature": "Size small / medium / large",
+          "howToReach": "Admin > UI Settings > userCompass > Size",
+          "whatToCheck": "32 / 44 / 56 px; with the ribbon folded (strip only 29 px tall) it shrinks to about 25 px instead of overlapping.",
+          "tested": false
+        },
+        {
+          "feature": "Spin speed",
+          "howToReach": "Admin > UI Settings > userCompass > Spin",
+          "whatToCheck": "Off stops it; Slow about 28 s, Normal 14 s, Fast 7 s per turn. Does the speed feel right? (answer in Claude Check)",
+          "tested": false
+        },
+        {
+          "feature": "Heading mode",
+          "howToReach": "Set Mode to Heading, then drag the scene to look around",
+          "whatToCheck": "The globe turns with where the camera faces (turn right: the globe's front moves left); the bright meridian marks north.",
+          "tested": false
+        },
+        {
+          "feature": "Line colour and opacity",
+          "howToReach": "Admin > UI Settings > userCompass > Line colour / Opacity",
+          "whatToCheck": "White, Cyan, Accent (theme colour; change the theme to see it change); opacity 30 to 100 percent.",
+          "tested": false
+        },
+        {
+          "feature": "Reset userCompass",
+          "howToReach": "Admin > UI Settings > userCompass > Reset userCompass",
+          "whatToCheck": "Everything goes back to: shown, centre, medium, normal spin, white, 85 percent.",
+          "tested": false
+        },
+        {
+          "feature": "Reduced motion",
+          "howToReach": "Turn on 'reduce motion' in the operating system, reload",
+          "whatToCheck": "The globe starts still (Spin = Off) but tilted; you can still choose a speed.",
+          "tested": false
+        },
+        {
+          "feature": "Hides when the ribbon covers its strip",
+          "howToReach": "Make the window narrower than about 1010 px, or drag the OmniNotify box away from its docked spot",
+          "whatToCheck": "The globe hides itself (no overlap with the ribbon); it returns when you widen the window or double-click the OmniNotify header to dock it.",
+          "tested": false
+        },
+        {
+          "feature": "Phone (390 px wide)",
+          "howToReach": "Open on a phone in portrait",
+          "whatToCheck": "No globe is expected on a phone in portrait (the ribbon covers the strip); nothing else moved, no console error. Tell me if you want a place for it on phones.",
+          "tested": false
+        },
+        {
+          "feature": "Hands banner hidden / shown",
+          "howToReach": "Dock ⚇ icon, or ribbon Hands tab: hide and show the top hands",
+          "whatToCheck": "The globe stays exactly where it is under the logo.",
+          "tested": false
+        },
+        {
+          "feature": "Never blocks clicks",
+          "howToReach": "Click just beside the globe (inside its strip but off the circle)",
+          "whatToCheck": "The click goes to whatever is underneath (the scene); only the round globe takes clicks.",
+          "tested": false
+        },
+        {
+          "feature": "Persistence",
+          "howToReach": "Change a few options, reload the page",
+          "whatToCheck": "Options are the same after the reload (stored in omni:user-compass-v1).",
+          "tested": false
+        },
+        {
+          "feature": "Not a window",
+          "howToReach": "Look for resize handles or a maximize button on the globe",
+          "whatToCheck": "There are none (it is not a panel window).",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "OmniAddress (V189)",
+      "items": [
+        {
+          "feature": "Address model has no visible UI",
+          "howToReach": "Nothing to open: V189 adds only utils/OmniAddress.js (pure module)",
+          "whatToCheck": "Open the app: it should look and behave exactly like V188 (regression only)",
+          "tested": false
+        },
+        {
+          "feature": "Version label",
+          "howToReach": "Developer drawer > store dump (app field)",
+          "whatToCheck": "Reads OmniOS V189",
+          "tested": false
+        }
+      ]
     }
   ]
 }

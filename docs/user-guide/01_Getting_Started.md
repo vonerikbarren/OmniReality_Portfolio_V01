@@ -1,6 +1,6 @@
 # 1. Getting Started
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V188 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Next: [The Four Hands](02_The_Four_Hands.md)
 
@@ -35,6 +35,7 @@ Click a node in the scene. The **Inspector** opens on the right ([Nodes and Insp
 |---|---|---|
 | Global bar | Top, 48px tall | Logo, your profile, Current State (space, time), the ⟐Notify bar, and 8 menus: Realities, Experiences, Perspectives, Times, Spaces, Objects, Windows, Assistance |
 | Ribbon | Under the bar | Tabs Home, Inspector, Realities, Hands with buttons ([Ribbon](07_Ribbon_Notify_and_Dock.md)) |
+| userCompass | Under the logo, above the top-left hand's ☰ MENU | A small clear globe that spins slowly. Hover for its name, click it (or right-click) to open its settings. It hides itself when the window is too narrow for it (the ribbon then covers that strip). Options: [Settings and Admin](09_Settings_and_Admin.md) |
 | Hands | Four screen corners | Four 2x2 button groups. ☰ opens a menu, ⚇ opens a pad, ⬢ opens tools ([Hands](02_The_Four_Hands.md)) |
 | Dock | Bottom, 52px tall | Pinned icons ⚇ and ⚉, minimized panels, a panel tray button |
 | OmniNotify box | Under Current State | Tells you what anything under your pointer is and what key it has |

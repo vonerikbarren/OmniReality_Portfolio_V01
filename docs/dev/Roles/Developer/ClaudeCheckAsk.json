@@ -1,9 +1,86 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V187",
-  "date": "2026-10-11",
-  "summary": "V187: boot title is Omni⟐Star with a shooting star that lands behind the ⟐; every panel window can be resized (8 handles) and maximized (button + title double-click); LH and RH now have summon buttons (plus per-hand summons for all four hands)",
+  "version": "V189",
+  "date": "2026-10-12",
+  "summary": "V189: Omni⟐City step 1, a pure reality-address module (utils/OmniAddress.js: parse / serialize / validate, typed segments, drawers, perspectives); no UI change; design doc docs/architecture/OMNICITY_DESIGN.md",
   "asks": [
+    {
+      "id": "v189-no-regression",
+      "question": "Does the app start and look the same as V188 (boot, ribbon, compass, a panel)?",
+      "why": "V189 adds only a pure module nothing imports yet, so nothing should change; this is a cheap sanity check.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "compass-looks-right",
+      "question": "Does the userCompass look right in its slot under the logo?",
+      "why": "Only judged in screenshots from software-rendered Chromium at six window sizes; line weight, brightness and size are taste. If it is too small, too big or touches something, say what in the message.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "too small",
+        "too big",
+        "overlaps something"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "compass-alignment",
+      "question": "Is the difference between Left, Center and Right alignment noticeable enough?",
+      "why": "The slot is only as wide as the top-left hand (103 px) and the globe is 44 px, so the globe moves about 26 px between Left and Center. A wider slot is one constant if you want more room.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "compass-spin-speed",
+      "question": "How does the spin speed feel (Normal = 14 s per turn)?",
+      "why": "Speeds are a guess: Slow 28 s, Normal 14 s, Fast 7 s. It rides the app ticker, so on a real GPU it should be smooth; I only saw it at about 1 fps in the software renderer.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "too fast",
+        "too slow"
+      ],
+      "device": "gpu"
+    },
+    {
+      "id": "compass-click-action",
+      "question": "What should clicking the userCompass do? (today: it opens Admin > UI Settings > userCompass)",
+      "why": "It had to do something, so it opens its own settings. A compass could instead reset the camera heading to north, snap the view to look north, or open the camera idea later. Write what you want.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "compass-hidden-narrow",
+      "question": "On a narrow window or a phone the globe is hidden (the ribbon covers its strip). Do you want it visible there too?",
+      "why": "Below about 1010 px the ribbon runs under the whole bar, so there is no free strip. Showing it would mean giving the ribbon a 103 px left margin (tabs shrink) or putting the globe somewhere else. Say which you prefer in the message.",
+      "kind": "choice",
+      "choices": [
+        "fine, hide it",
+        "show it on phones too",
+        "not sure"
+      ],
+      "device": "phone"
+    },
+    {
+      "id": "compass-heading-mode",
+      "question": "Heading mode (the globe turns with where the camera faces): is that useful, and does the bright meridian read as north?",
+      "why": "Verified with real mouse drags in a desktop browser only; never with touch look-around on a phone.",
+      "kind": "choice",
+      "choices": [
+        "useful",
+        "not useful",
+        "confusing"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "window-maximize-phone-v188",
+      "question": "V187 carry-over: how does maximize feel on your phone, and is there any panel that still cannot be resized or maximized? Name it.",
+      "why": "Windows were only checked in a desktop browser at 390 px width, never with touch.",
+      "kind": "text",
+      "device": "phone"
+    },
     {
       "id": "boot-shooting-star",
       "question": "How does the shooting-star entrance look (flight from the top right, tail, landing behind the ⟐)? If it needs a change, say what in the message.",
@@ -84,12 +161,15 @@
     }
   ],
   "knownIssues": [
+    "The address type letters (C core, B branch, S space) and the eye symbol are PLACEHOLDERS until the owner picks glyphs; nothing in the app uses OmniAddress yet.",
+    "The userCompass was judged only in software-GL Chromium (six window sizes); never on a real GPU, a real phone or with touch.",
+    "The userCompass is free only while the ribbon starts to the right of its strip: windows narrower than about 1010 px, phones, tablets and a floated OmniNotify box hide it (it never overlaps the ribbon).",
+    "The userCompass slot is the top-left hand's width (103 px); the empty space up to the OmniNotify box (x 222) is not used.",
+    "The camera feature is only documented (docs/omniproducts/OMNICAMERA_IDEA.md); seven questions for the owner are still open.",
     "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
     "Window positions are still not saved; only sizes are. Maximized state is never saved.",
     "Panels that only exist in a special state (for example Cell or Account panels) were checked through a forced-visible test, not by a person.",
-    "Pointer resize of a window with a heavy canvas redraws through its own ResizeObserver; very large charts may lag on a weak device.",
     "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
-    "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
     "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
     "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit)."
   ]

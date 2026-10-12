@@ -42,6 +42,7 @@ import UserSpaceSphere   from './modules/UserSpaceSphere.js'
 // ── Phase 3 — UI Shell ────────────────────────────────────
 import UI                from './ui/index.js'
 import MovementPad       from './ui/MovementPad.js'
+import OmniUserCompass   from './ui/OmniUserCompass.js'                      // V188: the userCompass globe under the logo (class-B overlay, not a window)
 import OmniDimensionalAxes from './systems/OmniDimensionalAxes.js'
 import DimensionalAxesSettingsPanel from './ui/DimensionalAxesSettingsPanel.js'
 import OmniAxinatorPanel from './ui/OmniAxinatorPanel.js'
@@ -248,6 +249,9 @@ import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // 
   base.addModule(movementPad)
   movementPad.setVisible('lh', false)
   movementPad.setVisible('rh', false)
+
+  // ── V188 userCompass — the small clear spinning globe in the strip under the logo / above the top-left hand ──
+  base.addModule(new OmniUserCompass(base.context))
 
   // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
   // The two top hands' pads drive these instead of the camera.

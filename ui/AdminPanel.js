@@ -42,6 +42,7 @@ import * as WindowManager from './WindowManager.js'
 import * as GridWidgets   from './GridWidgets.js'
 import * as ThemeManager  from './ThemeManager.js'
 import { createWallpaperStore, KNOWN_NAMESPACES } from '../utils/WallpaperStorage.js'
+import * as UC from '../utils/OmniUserCompassSettings.js'   // V188: userCompass options (user-facing, no Dev import)
 
 const SCHEMA_VERSION = 1
 
@@ -294,6 +295,12 @@ const STYLES = /* css */`
   padding          : 3px 4px;
 }
 
+/* V188: userCompass section inside UI Settings */
+.ap-subhead { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ap-accent); margin: 10px 0 2px; padding-top: 8px; border-top: 1px solid var(--ap-border); }
+.ap-seg { display: flex; gap: 4px; }
+.ap-seg .ap-file-btn { padding: 4px 8px; }
+.ap-seg .ap-file-btn[aria-pressed="true"] { background: rgba(255, 178, 127, 0.34); border-color: rgba(255, 178, 127, 0.7); color: var(--ap-text); }
+.ap-range { width: 110px; accent-color: var(--ap-accent); }
 .ap-file-row { flex-direction: column; align-items: stretch; gap: 4px; }
 .ap-file-controls { display: flex; align-items: center; gap: 8px; }
 .ap-file-btn {
@@ -368,6 +375,8 @@ export default class AdminPanel {
     this._staged = structuredClone(this._saved)   // what the form currently shows, pre-save
 
     this._onNavSelect = null
+    this._onAdminOpen = null
+    this._onUserCompassChanged = null
   }
 
   init () {
@@ -377,6 +386,8 @@ export default class AdminPanel {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+    this._onAdminOpen = (e) => this._openSection(e.detail)
+    window.addEventListener('omni:admin-open', this._onAdminOpen)
   }
 
   update () {}
@@ -384,6 +395,8 @@ export default class AdminPanel {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:admin-open', this._onAdminOpen)
+    window.removeEventListener(UC.CHANGED_EVENT, this._onUserCompassChanged)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('adminpanel')
   }
@@ -544,7 +557,8 @@ export default class AdminPanel {
       group('UI Settings', 'uisettings',
         numRow('Panel opacity (0.3–1)', 'uiSettings.panelOpacity', s.uiSettings.panelOpacity, 0.02, 0.3, 1) +
         `<div class="ap-row"><span class="ap-row-label">Window sizes (V187)</span><button class="ap-file-btn" id="ap-reset-window-sizes" type="button" data-omni-tip="Reset window sizes" data-omni-tip-key="—" data-omni-tip-desc="Forgets every size you gave a window by dragging its edges and puts the open windows back to their default size. Maximize is never remembered.">Reset window sizes</button></div>
-         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-window-sizes-status">Drag any window's edges or corners to resize it, or use its maximize button. Sizes are remembered per window.</div>`
+         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-window-sizes-status">Drag any window's edges or corners to resize it, or use its maximize button. Sizes are remembered per window.</div>` +
+        this._userCompassRows(UC.resolveSettings(UC.loadOverrides()))
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
@@ -564,6 +578,52 @@ export default class AdminPanel {
     this._bindFields(body)
     this._bindDataManagement(body)
     this._bindWindowSizes(body)
+    this._bindUserCompass(body)
+  }
+
+  /** V188: the userCompass section of UI Settings. Applies at once (like Reset window sizes), through the omni:user-compass-set event; no staging, no Save. */
+  _userCompassRows (c) {
+    const tip = (name, desc) => `data-omni-tip="${name}" data-omni-tip-key="—" data-omni-tip-desc="${desc}"`
+    const sel = (key, opts, cur) => `<select class="ap-select" data-uc="${key}" aria-label="userCompass ${key}">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('')}</select>`
+    const row = (label, inner) => `<div class="ap-row"><span class="ap-row-label">${label}</span>${inner}</div>`
+    return `
+        <div class="ap-subhead" data-uc-section="usercompass" id="ap-uc-section">userCompass</div>
+        <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">The small globe under the logo, above the top-left hand. Changes apply at once. It hides itself when the ribbon covers its slot (narrow screens).</div>
+        ${row('Show', `<button class="ap-toggle ${c.show ? 'is-on' : ''}" data-uc="show" role="switch" aria-checked="${c.show}" aria-label="Show userCompass" ${tip('Show userCompass', 'Shows or hides the globe under the logo.')}></button>`)}
+        ${row('Align', `<div class="ap-seg" role="group" aria-label="userCompass alignment">${UC.ALIGNS.map(a => `<button type="button" class="ap-file-btn" data-uc-align="${a}" aria-pressed="${c.align === a}">${a[0].toUpperCase() + a.slice(1)}</button>`).join('')}</div>`)}
+        ${row('Size', sel('size', [['small', 'Small (32)'], ['medium', 'Medium (44)'], ['large', 'Large (56)']], c.size))}
+        ${row('Spin', sel('spin', [['off', 'Off'], ['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], c.spin))}
+        ${row('Mode', sel('mode', [['spin', 'Spin'], ['heading', 'Heading (follows the camera)']], c.mode))}
+        ${row('Line colour', sel('color', [['white', 'White'], ['cyan', 'Cyan'], ['accent', 'Accent (theme)']], c.color))}
+        ${row('Opacity (%)', `<input class="ap-range" type="range" min="${UC.OPACITY_MIN}" max="${UC.OPACITY_MAX}" step="1" value="${c.opacity}" data-uc="opacity" aria-label="userCompass opacity">`)}
+        <div class="ap-row"><span class="ap-row-label">userCompass</span><button class="ap-file-btn" id="ap-uc-reset" type="button" ${tip('Reset userCompass', 'Puts the userCompass back to its defaults: shown, centred, medium, normal spin, white, 85%.')}>Reset userCompass</button></div>`
+  }
+
+  _bindUserCompass (body) {
+    const set = (patch) => window.dispatchEvent(new CustomEvent(UC.SET_EVENT, { detail: { patch } }))
+    body.querySelector('[data-uc="show"]')?.addEventListener('click', (e) => set({ show: !e.currentTarget.classList.contains('is-on') }))
+    body.querySelectorAll('[data-uc-align]').forEach(b => b.addEventListener('click', () => set({ align: b.dataset.ucAlign })))
+    body.querySelectorAll('select[data-uc]').forEach(sel => sel.addEventListener('change', () => set({ [sel.dataset.uc]: sel.value })))
+    body.querySelector('input[data-uc="opacity"]')?.addEventListener('input', (e) => set({ opacity: Number(e.currentTarget.value) }))
+    body.querySelector('#ap-uc-reset')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent(UC.SET_EVENT, { detail: { reset: true } })))
+    // keep the controls in step with the compass (it is the authority: validation, reset, other callers)
+    const sync = (c) => {
+      const t = body.querySelector('[data-uc="show"]'); if (t) { t.classList.toggle('is-on', !!c.show); t.setAttribute('aria-checked', String(!!c.show)) }
+      body.querySelectorAll('[data-uc-align]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ucAlign === c.align)))
+      for (const k of ['size', 'spin', 'mode', 'color']) { const s = body.querySelector(`select[data-uc="${k}"]`); if (s && s.value !== c[k]) s.value = c[k] }
+      const o = body.querySelector('input[data-uc="opacity"]'); if (o && Number(o.value) !== c.opacity) o.value = String(c.opacity)
+    }
+    this._onUserCompassChanged = (e) => { if (e.detail?.settings) sync(e.detail.settings) }
+    window.addEventListener(UC.CHANGED_EVENT, this._onUserCompassChanged)
+  }
+
+  /** V188: `omni:admin-open { section: 'uisettings', focus: 'usercompass' }` (the userCompass click): open Admin and bring that section into view. */
+  _openSection (detail) {
+    this.open()
+    const body = this._el?.querySelector('#ap-body'); if (!body) return
+    const target = detail?.focus === 'usercompass' ? body.querySelector('#ap-uc-section') : body.querySelector(`[data-group="${detail?.section}"]`)
+    const run = () => { try { target?.scrollIntoView?.({ block: 'start' }) } catch (_) {} ; try { body.querySelector('[data-uc="show"]')?.focus?.({ preventScroll: true }) } catch (_) {} }
+    run(); setTimeout(run, 320)
   }
 
   /** V187: forget every remembered window size (utils/OmniWindowChrome.js) and reset the open windows. */
@@ -789,7 +849,7 @@ export default class AdminPanel {
     body.querySelectorAll('.ap-color').forEach(input => {
       input.addEventListener('input', () => this._setStaged(input.dataset.key, input.value))
     })
-    body.querySelectorAll('.ap-toggle').forEach(btn => {
+    body.querySelectorAll('.ap-toggle:not([data-uc])').forEach(btn => {
       btn.addEventListener('click', () => {
         const next = !btn.classList.contains('is-on')
         btn.classList.toggle('is-on', next)

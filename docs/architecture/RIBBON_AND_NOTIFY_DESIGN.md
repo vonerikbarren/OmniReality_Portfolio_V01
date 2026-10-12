@@ -1,10 +1,11 @@
-# Ribbon and OmniNotify design (V169, Inspector strip V170)
+# Ribbon and OmniNotify design (V169, Inspector strip V170; V188: userCompass slot variables)
 
 ## Layout offset
 `utils/OmniLayout.js` owns the vertical stack and writes CSS vars on `:root`:
 `--omni-bar-h` (48), `--omni-ribbon-h` (97 docked / 29 collapsed / 37 phone),
 `--omni-top-offset` (bar + ribbon), `--omni-hands-banner-h` (90 when shown, else 0),
 `--omni-top-stack` (offset + banner), `--omni-ribbon-left`. `omni:layout-changed` fires on change.
+V188 adds the userCompass slot vars `--omni-compass-slot-top / -w / -h / -on` (the strip under the logo cell, above the top-left hand; see `USER_COMPASS_DESIGN.md`).
 Consumers use `var(--omni-top-offset, 48px)` or `var(--omni-top-stack, 138px)`; JS code uses `getTopOffset()` / `getTopStack()`.
 Changed consumers and the intentionally left ones are listed in the V169 BuildLog entry.
 

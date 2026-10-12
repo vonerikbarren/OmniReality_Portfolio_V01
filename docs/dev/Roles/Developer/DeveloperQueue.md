@@ -1296,3 +1296,27 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 2. New: each hand has its own summon (ribbon Hands tab > Summon: LH, RH, OH, CH; OmniHands panel rows; events `omni:hand-visible-set` / `omni:hand-visible-state`; keys `omni:hand-<id>-v1`). The pair icons show a half-filled "mixed" state with `aria-pressed="mixed"` when one of the pair is hidden.
 3. The gesture summon was not built (as agreed).
 4. Hiding a hand never closes its pad or tunnel and never disables keys 1-4 / Shift (checked: no new console errors with hidden hands).
+
+## 77. userCompass (V188): what was not verified, follow-ups
+1. Judged in software-GL Chromium only (1280x720, 1920x1080, 1100x700, 844x390, 768x1024, 390x844) with screenshots and DOM rectangles; never on a real GPU, a real phone or with touch. The look (line weight, brightness, size) and the spin speed are taste: answer the Claude Check asks.
+2. **The slot is free only while the ribbon starts to the right of it.** The ribbon sits at `--omni-ribbon-left`, which is 0 whenever the OmniNotify box is not docked beside it: windows narrower than about 1010 px, phones, tablets, phone landscape (844 px), and a floated notify box. There the ribbon runs under the whole bar and covers the strip, so the compass hides itself (`data-reason="ribbon-overlaps"`) instead of drawing on the ribbon. If you want it visible on those screens, options: (a) reserve a left inset for the ribbon (`setRibbonInset(103)`) while the compass is shown, shrinking the ribbon by 103 px (tabs would scroll on a phone), (b) put it in the Global Bar on narrow screens, (c) a different corner. Not built; your call.
+3. The strip is the ribbon's height: 97 px with the ribbon open, 29 px folded (the globe shrinks to 25 px), 37 px tabs-only on a phone. Under 24 px it hides (`too-small`).
+4. The slot width is the top-left hand's width (103 px, 83 px at 460 px or narrower), not the whole empty area up to the OmniNotify box (x 222). Alignment moves the globe inside those 103 px only. Widening the slot is one constant (`HAND_COL_W` in `utils/OmniLayout.js`).
+5. Heading mode follows the camera's yaw (from its quaternion; looking straight down it uses the screen-up direction, like a map). Verified with real orbit drags in Chromium (see the BuildLog); the prime meridian is the "north" marker. Not built: a numeric bearing, N/E/S/W letters, a compass needle.
+6. Cost: the draw runs from the shared ticker (`update(delta)`), capped at about 30 fps while moving, redrawn only on change when still, skipped when the tab is hidden, the compass is off or its slot is unavailable. About 0.1 - 0.4 ms per draw in the browser, 0 WebGL contexts added (5 before and after).
+7. Click or right-click opens Admin > UI Settings > userCompass through a new event `omni:admin-open { section, focus }` (handled in `ui/AdminPanel.js`). Nothing else uses it yet.
+8. Old suites adjusted in the retargeted copies only: the dump `app` string `OmniOS V187` -> `OmniOS V188` and the V187 version constants in `v184_model_test` / `v184_ui_test`.
+9. The two top-right ERR_FAILED console lines in the harness are the blocked CDN requests (fonts / analytics), the same two as in V187.
+
+## 78. Camera feature (deferred idea, see OMNICAMERA_IDEA.md)
+1. Parked 2026-10-11. The idea (self-view + local recording, three-section tile: camera / record / settings), the feasibility notes, the settings and icon candidates, the scope boundaries, a build plan, a test plan and an acceptance checklist are in `docs/omniproducts/OMNICAMERA_IDEA.md`. The list of all parked ideas is `docs/dev/Roles/Developer/buildOrder_Ideas_V01.md`.
+2. Nothing is built. The slot under the logo that the camera tile was meant for now holds the userCompass (item 77).
+3. Questions for the owner before building: is the second icon ("form icon") film / record? what does the middle section do? which settings? explainer every time or first time only? audio default? where do recordings go (download or storage)? where does the camera live now?
+4. Real-device testing is mandatory for this feature (iOS Safari, Android Chrome, desktop Chrome / Firefox / Safari, permission denied / blocked / no camera, HTTPS only); the jsdom and software-GL harness cannot show any of it.
+
+## 79. OmniAddress (V189): what was not verified, follow-ups
+
+1. Nothing imports `utils/OmniAddress.js` yet; it is covered only by node tests (95 checks incl. a 20 000-case fuzz). No browser run was needed for a pure module.
+2. Type codes C / B / S and the eye symbol `◉` are placeholders (design open question 2); change `TYPES` / `EYE` only.
+3. Next steps in `docs/architecture/OMNICITY_DESIGN.md` section 10: OmniProductId registry, context registry + persistence, enter / exit + MainLobby, perspectives UI, cryptx, grants.
+4. Security statements in the design doc are intent only; an address is a name, not a permission.

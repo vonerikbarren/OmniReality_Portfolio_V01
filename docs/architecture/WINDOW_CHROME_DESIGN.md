@@ -1,6 +1,6 @@
 # Window chrome: resize + maximize for every panel window (V187)
 
-Applies to: V187 · Status: verified in software-GL Chromium and jsdom on 2026-10-11 · Real devices, real GPU, touch: not verified.
+Applies to: V188 (V187 resize + maximize; V188 added the userCompass to class B) · Status: verified in software-GL Chromium and jsdom on 2026-10-11 · Real devices, real GPU, touch: not verified.
 
 Files: `utils/OmniWindowChrome.js` (new, the whole mechanism), `ui/WindowManager.js` (hooks it into `register` / `unregister` / `makeMaximizable` / `bringToFront`), `ui/AdminPanel.js` (Reset window sizes), explicit `enhanceWindow` calls in the eleven panels that never registered with the WindowManager (table below).
 
@@ -57,14 +57,14 @@ Files: `utils/OmniWindowChrome.js` (new, the whole mechanism), `ui/WindowManager
 ## Classes
 
 - **A, window panels:** must resize and maximize. Everything the enumeration found (below) that has a title bar.
-- **B, not a window (excluded):** `#omni-ribbon` (docked bar), `#omni-dock` (bar), `#omni-panel-tray` (tray strip), `#omni-global-bar`, the four hands `.omni-hand` and their pads / tunnels (corner controls), `#omni-notify-box` and `.omni-notify-panel` (toast / dropdown), OmniNotify tooltips, `.omni-inspection` / `.omni-inspection-hud` (reticle and HUD), `#omni-start-hud`, `#omni-store-hud` (fixed HUD strip), `.oiv-hud` (OmniVisor HUD), `.ot-vault` (OmniTranslator strips), the minimap, the quick launcher (`.omni-ql`), the boot layer.
+- **B, not a window (excluded):** `#omni-user-compass` (V188: the small spinning globe under the logo, a fixed 103 x ~97 px pointer-events:none box whose only live part is its round button; no header, no handles, never registered with the WindowManager), `#omni-ribbon` (docked bar), `#omni-dock` (bar), `#omni-panel-tray` (tray strip), `#omni-global-bar`, the four hands `.omni-hand` and their pads / tunnels (corner controls), `#omni-notify-box` and `.omni-notify-panel` (toast / dropdown), OmniNotify tooltips, `.omni-inspection` / `.omni-inspection-hud` (reticle and HUD), `#omni-start-hud`, `#omni-store-hud` (fixed HUD strip), `.oiv-hud` (OmniVisor HUD), `.ot-vault` (OmniTranslator strips), the minimap, the quick launcher (`.omni-ql`), the boot layer.
 - **C, edge cases, decided:**
   - `.omni-draw-mode-picker`, `OmniKeyCryptxReveal`, `OmniEmojiPicker`: modal pickers. Not windows, excluded.
   - Context menus: excluded.
   - Detached movement pads: excluded (small controls that already remember a position).
   - `HandSpeedPanel`: a transient popover that is deliberately not registered. Excluded.
 
-Counts: **class A 79 panels**, **class B 18 groups** (not windows), **class C 6 decisions**.
+Counts: **class A 79 panels**, **class B 19 groups** (not windows; V188 added the userCompass), **class C 6 decisions**.
 
 ## Inventory of class A (how each panel is built, header, before V187)
 

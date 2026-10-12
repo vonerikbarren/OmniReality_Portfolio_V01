@@ -1,6 +1,6 @@
 # 9. Settings and Admin
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V188 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [OmniStore](08_OmniStore_and_OmniValue.md) · Next: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
@@ -28,8 +28,25 @@ Staged: changes apply when you press 💾.
 | Theme | Panel theme (Dark, Light, Custom); for Custom type Background, Border and Accent as rgba values and press "Apply Custom Colors" (applies at once) |
 | Domain Grid | Grid colour, Opacity (0–1), Wireframe, Visible |
 | User Space | Colour, Size multiplier, Visible, Spinning, Texture |
-| UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187) |
+| UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187); the **userCompass** section (V188, below) |
 | Data Management | 🗑 Clear Scene, ⬇ Export Reality, ⬆ Import Reality |
+
+### userCompass (Admin > UI Settings > userCompass, V188)
+
+The userCompass is the small clear globe under the logo and above the top-left hand's MENU cell. Its controls apply **at once** (no 💾 needed) and are remembered on this device. Clicking the globe, or right-clicking it, opens this section.
+
+| Option | Choices | Default |
+|---|---|---|
+| Show | on / off | on |
+| Align | Left / Center / Right inside its small slot (the slot is as wide as the top-left hand, about 103 px) | Center |
+| Size | Small 32 / Medium 44 / Large 56 px (it shrinks to fit the slot; under 24 px it hides) | Medium |
+| Spin | Off / Slow (28 s per turn) / Normal (14 s) / Fast (7 s) | Normal; **Off** if your device asks for reduced motion |
+| Mode | Spin, or Heading (the globe turns with the way the camera faces, like a compass) | Spin |
+| Line colour | White / Cyan / Accent (your theme's accent colour) | White |
+| Opacity | 30 to 100 % | 85 % |
+| Reset userCompass | puts all of the above back | |
+
+It never covers the ribbon, the OmniNotify box, the hands or the Global Bar. When the window is narrower than about 1010 px (or you drag the OmniNotify box away from its docked spot) the ribbon runs under the whole bar and covers that strip, so the globe hides itself instead of overlapping; widen the window or dock the OmniNotify box (double-click its header) to see it again. It is not a window: it cannot be moved, resized or maximized.
 
 **Clear Scene** asks to confirm, then removes every created object. Cannot be undone. **Export Reality** downloads a .zip of all settings plus saved images, audio and video. **Import Reality** restores from such a zip and reloads the page. Export before you clear.
 

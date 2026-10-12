@@ -50,6 +50,7 @@ Plain-language instructions for using the app, verified against the code (V180).
   V158 the two top hands drive the Δ / ⟐ dimensional axes (confirmed
   design recorded at the bottom of that doc); the data behind them is
   still unbuilt.
+- [`architecture/USER_COMPASS_DESIGN.md`](architecture/USER_COMPASS_DESIGN.md) (V188 userCompass: the spinning globe under the logo; slot geometry, options, performance)
 
 ## Core systems
 
@@ -82,6 +83,7 @@ specific named OmniProduct.
 One doc (or more) per named product — a mix of what's built and what's
 still purely conceptual. Check each doc's own Status section.
 
+- [`omniproducts/OMNICAMERA_IDEA.md`](omniproducts/OMNICAMERA_IDEA.md) — **parked idea (V188):** camera self-view + local recording; feasibility, settings, build + test plan, open questions. List of all parked ideas: [`dev/Roles/Developer/buildOrder_Ideas_V01.md`](dev/Roles/Developer/buildOrder_Ideas_V01.md)
 - [`omniproducts/OMNIBROWSER.md`](omniproducts/OMNIBROWSER.md) —
   OmniBrowser, OmniBrowserProperties, OmniBrowserSpace, and the
   Electron/webview path to a real browser.

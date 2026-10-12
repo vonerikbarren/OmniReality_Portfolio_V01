@@ -5,820 +5,10 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V187",
- "date": "2026-10-11",
- "summary": "V187: boot title is Omni⟐Star with a shooting star that lands behind the ⟐; every panel window can be resized (8 handles) and maximized (button + title double-click); LH and RH now have summon buttons (plus per-hand summons for all four hands)",
+ "version": "V189",
+ "date": "2026-10-12",
+ "summary": "V189: Omni⟐City step 1, a pure reality-address module (utils/OmniAddress.js: parse / serialize / validate, typed segments, drawers, perspectives); no UI change; design doc docs/architecture/OMNICITY_DESIGN.md",
  "checks": [
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.open-the-store",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Open the store",
-   "howToReach": "Ribbon Realities > Value > Store, or drawer ⟐OmniStore",
-   "whatToCheck": "Shelf of 16 products appears in clear space, HUD shows SANDBOX, clear of ribbon and hands",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.cubes-and-discs",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Cubes and discs",
-   "howToReach": "Look at the shelf; orbit behind it",
-   "whatToCheck": "Cube faces and both disc faces show the emoji; the back is not mirrored",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.sections-and-media-lenses",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Sections and media lenses",
-   "howToReach": "HUD chips Physical / Life / Social / Emotional / Emoji / Images / Videos",
-   "whatToCheck": "Section changes the products; a lens with no media is empty; media switch changes every texture",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.hover-and-click",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Hover and click",
-   "howToReach": "Hover then click a product",
-   "whatToCheck": "Ring and tooltip on hover; a drag does not click; click opens the exchange radial",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.radial-wheel-and-3-levels",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Radial wheel and 3 levels",
-   "howToReach": "Select a product, tap a spoke, press the down arrow",
-   "whatToCheck": "Wheel > Form > Channels > Line detail; USD split and Venmo fee appear at level 3",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.stated-remainder",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Stated remainder",
-   "howToReach": "Buy Grapes paying Bells",
-   "whatToCheck": "Receipt and the line below state the remainder in Credits; it appears in the wallet ledger",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.one-list-model",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "One list model",
-   "howToReach": "Window / Wish / Cart buttons, List tab",
-   "whatToCheck": "One item per product and state; moving merges; compare view shows window vs cart",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.checkout-and-buy-now",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Checkout and buy now",
-   "howToReach": "List tab Checkout; Buy now",
-   "whatToCheck": "Balances change once per type; transaction log grows; no network",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.sell-with-editable-accept-forms",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Sell with editable accept forms",
-   "howToReach": "Radial SELL tab",
-   "whatToCheck": "Accept forms editable; sell now credits the account and reduces inventory",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.wallet",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Wallet",
-   "howToReach": "Ribbon Wallet or drawer ⟐OmniValue",
-   "whatToCheck": "Balances, remainder claim, inventory, last 20 transactions, grant, starter pack, two-click reset",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.persistence",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Persistence",
-   "howToReach": "Reload the page",
-   "whatToCheck": "Balances, list, media and current section survive (omni:value-v1, omni:store-v1)",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.mobile-layout-390px",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Mobile layout (390px)",
-   "howToReach": "Open the store and a product on a phone",
-   "whatToCheck": "Bottom sheet clear of the dock, HUD steps aside, shelf stays visible above the sheet, buttons are 44px",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.no-overlap-with-hands",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "No overlap with hands",
-   "howToReach": "Open store + radial at 1280x720",
-   "whatToCheck": "HUD, radial and shelf do not overlap the four hands, ribbon or dock",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-omnivalue-sandbox-v1.sandbox-banners",
-   "category": "OmniStore / OmniValue sandbox (V176)",
-   "feature": "Sandbox banners",
-   "howToReach": "Open the store, radial and wallet",
-   "whatToCheck": "SANDBOX is visible in each",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.open-the-user-settings",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Open the user settings",
-   "howToReach": "Drawer ⟐Admin slot 19 OmniStoreSettings, or ribbon Realities > Value > Store Settings",
-   "whatToCheck": "Draggable panel opens left of the shelf, below the ribbon, clear of the hands and the dock; the open shelf re-frames into the free space; on a phone it is a bottom sheet",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.live-colours",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Live colours",
-   "howToReach": "Open the store, then change Hover selector, Selected selector, Shelf rim / back / planks (picker or hex field)",
-   "whatToCheck": "Shelf, disc rims and selector rings recolour at once with no flicker or rebuild; hover a product to see the hover ring colour, click one for the selected ring; HUD chip accents follow; the SANDBOX badge stays orange",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.invalid-hex",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Invalid hex",
-   "howToReach": "Type #zzz into a hex field",
-   "whatToCheck": "Field is flagged, nothing changes, the old colour stays",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.backdrop",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Backdrop",
-   "howToReach": "Backdrop mode: Solid / Gradient, colours, opacity",
-   "whatToCheck": "A dome fills the view behind the shelf and hides the wallpaper; gradient is top colour to bottom colour; opacity below 100% lets the wallpaper show through; orbit around and behind the shelf; no edge or seam",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.backdrop-goes-away",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Backdrop goes away",
-   "howToReach": "Close the store (HUD ✕) or set mode None; zoom far out",
-   "whatToCheck": "Dome is gone after close and with None; far zoom-out hides it so it never covers the wallpaper as a ball",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.presets",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Presets",
-   "howToReach": "Market Wood / Fresh Green / Night Market / Clean White",
-   "whatToCheck": "Each applies colours and backdrop together; the active preset is highlighted; Market Wood is exactly the V176 look",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.own-presets",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Own presets",
-   "howToReach": "Type a name, Save current as…, then the × next to it",
-   "whatToCheck": "Preset appears and applies later; × deletes it; built-ins cannot be deleted",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.store-name-and-reset",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Store name and reset",
-   "howToReach": "Type a name; Reset to default",
-   "whatToCheck": "Name shows in the store HUD title; Reset restores the Market Wood look and keeps the name",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.settings-survive-reload",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Settings survive reload",
-   "howToReach": "Change colours, reload the page, open the store",
-   "whatToCheck": "Same colours, backdrop and name come back (per store id, 'omni:store-settings-v1')",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.open-the-dev-panel",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Open the dev panel",
-   "howToReach": "Drawer ⟐Developer slot 6 DevOmniStoreSettings, or ribbon Realities > Value > Dev Store (DEV in the tooltip)",
-   "whatToCheck": "Panel shows the red DEV ONLY badge and banner; four collapsible sections; the user panel works the same with it never opened",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.store-type-records",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Store type records",
-   "howToReach": "Dev panel a)",
-   "whatToCheck": "Record #1 = Produce stand (shelf); add / edit / delete; layouts other than shelf are marked (not built); JSON view applies and rejects bad JSON",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.catalog-export",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Catalog export",
-   "howToReach": "Dev panel b) Export",
-   "whatToCheck": "JSON of the current 16 products appears, downloads and copies; schema 'omni-store-catalog/1'",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.catalog-validate-and-preview",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Catalog validate and preview",
-   "howToReach": "Edit the JSON (e.g. a 3 product catalog), Validate",
-   "whatToCheck": "Counts ok / warnings / rejected, what merge and replace would add / update / remove, a row table with errors and warnings; nothing is applied yet; editing the text disables Import until Validate again",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.catalog-import-merge-replace-undo",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Catalog import merge / replace / undo",
-   "howToReach": "Import (merge), Import (replace: click twice), Undo last import",
-   "whatToCheck": "Products appear on the shelf (emoji visible); replace removes the rest; undo restores the previous catalog; undo is lost on reload",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.invalid-catalog",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Invalid catalog",
-   "howToReach": "Paste products with an unknown value type, a wrong quality, <script> in a name, javascript: image URL, a 100-character name",
-   "whatToCheck": "Each row shows a specific error and is rejected; valid rows can still be imported; no HTML is ever rendered",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.copy-ai-prompt-schema",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Copy AI prompt + schema",
-   "howToReach": "Dev panel b) button",
-   "whatToCheck": "Clipboard holds a prompt with the schema, the value types with their qualities, the section ids, an example, and 'ONLY the JSON'; this is a prototype, the user-facing flow is not built",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.items-per-page",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Items per page",
-   "howToReach": "Dev panel c) 6 / 12 / 60",
-   "whatToCheck": "Shelf shows that many per page, pages change, 60 fills ten rows and frames correctly; stays between 6 and 60",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.test-data",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Test data",
-   "howToReach": "Dev panel c) Grant sandbox value, Starter pack, Reset ledger / store (two clicks)",
-   "whatToCheck": "Balances change in the Wallet; resets need a second click; store reset restores the 16 seed products",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.live-readout-and-dump-state",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Live readout and Dump state",
-   "howToReach": "Dev panel c) readout, Dump state (copy)",
-   "whatToCheck": "Products shown, meshes, textures cached, videos, draw calls, triangles, fps update; the dump is one line of JSON with settings, presets, dev records, notes, counts and scene stats",
-   "priority": "normal",
-   "device": "gpu"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.notes-for-claude",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Notes for Claude",
-   "howToReach": "Dev panel d)",
-   "whatToCheck": "Text persists across reload and appears in Dump state",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-user-devomni.phone-390-px",
-   "category": "OmniStoreSettings (user) / DevOmniStoreSettings (dev only) (V177)",
-   "feature": "Phone (390 px)",
-   "howToReach": "Open both panels on a phone",
-   "whatToCheck": "Bottom sheet above the dock, buttons at least 40 px, scrolls inside, the shelf stays visible above it; check by touch on a real phone (not done in V177)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.open-the-catalog-tab",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Open the Catalog tab",
-   "howToReach": "Open ⟐OmniStoreSettings (drawer ⟐Admin slot 19 or ribbon Realities > Value > Store Settings), press the Catalog tab",
-   "whatToCheck": "Tabs Look | Catalog; Catalog shows four steps (1 open), the privacy line, and 'Your products' below; the panel stays below the ribbon and clear of the dock and the hands; on a phone it is a 56vh bottom sheet (taller than the Look tab) with the shelf visible above it; it covers the bottom hands like the other sheets; Show in store minimises it",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.copy-ai-prompt",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Copy AI prompt",
-   "howToReach": "Catalog > step 1: type a description (e.g. a bakery), tick 25, a category hint and credits + flowers, press Copy AI prompt, paste into any text box",
-   "whatToCheck": "The clipboard holds ~3-4k characters: rules, schema version, value types with their quality grades, sections, a valid example, your count / hint / forms, your description; no assistant or product names; 'Show the prompt' shows the same text; step 1 gets a green check",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.blank-template-and-download",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Blank template and download",
-   "howToReach": "Catalog > step 1: Copy blank template, Download template .json",
-   "whatToCheck": "JSON with schema 'omni-store-catalog/1', a store block and ONE filled example product that uses the ticked payment types; the file downloads",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.paste-a-realistic-ai-answer",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Paste a realistic AI answer",
-   "howToReach": "Catalog > step 2: paste a reply with chatty text and a ```json fence around the catalog (also try: a bare [ ... ] list, a reply with a trailing comma, curly quotes, text cut off in the middle, prose only)",
-   "whatToCheck": "It is read automatically and step 3 opens; the fence / prose is ignored and noted; a bare list is wrapped; trailing comma / curly quotes / comments / cut-off text give a plain red message with the line number and are NOT silently fixed",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.check-preview-and-fix-it-prompt",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Check preview and fix-it prompt",
-   "howToReach": "Catalog > step 3 with some bad rows (unknown value type, unknown quality grade, HTML in a name)",
-   "whatToCheck": "Counts line (ready / with notes / with problems), a table with emoji, name, category, shape, accepted forms, stock and a ✓ / ! / ✗ mark, plain-language messages under each row; nothing is applied; Copy fix-it prompt puts every error and only the offending products on the clipboard and asks for the FULL corrected JSON",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.import-merge-replace",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Import merge / replace",
-   "howToReach": "Catalog > step 4: choose Merge, Import N products; then paste again, choose Replace, Import",
-   "whatToCheck": "Merge adds new and updates same id OR same name (no duplicate when only the id differs); Replace shows an inline box with 'removes N, adds M' and needs 'Replace now'; success summary; the open shelf shows the products (24 per page, section Physical unless the answer named others)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.undo-last-import-also-after-reload",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Undo last import (also after reload)",
-   "howToReach": "After an import press Undo last import; or import, reload the page, open Catalog > step 4 and press Undo",
-   "whatToCheck": "The catalog (and store name) return to the state before the import; after a reload the Undo button is still enabled ('kept after a reload'); with browser storage full it says 'this session only'; undo discards manual edits made after the import",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.manual-add-edit-product",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Manual: add / edit product",
-   "howToReach": "Catalog > Your products > + Add product; fill name, emoji (try the quick-picks), category, sections, shape, image link, forms, stock, note; Save; then Edit it",
-   "whatToCheck": "Live messages explain problems (javascript: link, qty 0, empty name) and Save stays disabled until valid; image / video can be chosen as 'shown' only once a link exists; the product appears on the open shelf at once; Edit keeps its reviews and stats",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.manual-duplicate-delete-delete-all-search-pages",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Manual: duplicate / delete / delete all / search / pages",
-   "howToReach": "Catalog > Your products: Copy, Del, Delete all products, the search box, with more than 20 products the pager",
-   "whatToCheck": "Copy puts '<name> (copy)' right after the original; Del and Delete all ask first and also clear the product from shopping lists; an emptied store stays empty after a reload; search filters by name / category; 20 rows per page",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistoresettings-catalog-ai-a.export-catalog",
-   "category": "OmniStoreSettings Catalog: AI-assisted import + manual products (V178)",
-   "feature": "Export catalog",
-   "howToReach": "Catalog > Your products > Export catalog",
-   "whatToCheck": "File omni-store-catalog.json downloads and the same text is copied; it can be pasted back into step 2 with no errors",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.layout-selector-in-omnistoresettings",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Layout selector in OmniStoreSettings",
-   "howToReach": "Open ⟐OmniStoreSettings (drawer ⟐Admin slot 19 or ribbon Realities > Value > Store Settings), Look tab, scroll to Layout",
-   "whatToCheck": "Four cards: Shelf wall, Ring, Aisle, Island table, each with an icon and a one-line description; the current one is highlighted (aria-checked); clicking one switches the OPEN store at once and survives closing / reopening the store and a page reload; the old read-only 'Layout: Shelf wall' row is gone; on a phone the cards are one column and at least 44 px tall",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.shelf-wall-is-unchanged",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Shelf wall is unchanged",
-   "howToReach": "Open the store (ribbon Realities > Value > Store) with the layout on Shelf wall",
-   "whatToCheck": "Looks exactly like V178: 6 columns (4 on a narrow screen), back panel and one plank per row, products face you, same framing; hover ring, select ring, page buttons, and framing around an open settings panel all as before",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.ring-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Ring layout",
-   "howToReach": "Settings > Layout > Ring, or the layout chip in the store HUD",
-   "whatToCheck": "Products stand on a circle with a floor disc and a shelf band under each tier; the radius grows with the product count (spacing stays even); 30+ products make two tiers (phone: 12 per tier); the default view is from outside, in front and above; the whole ring fits in the free part of the screen (clear of the HUD, hands, dock and an open settings / exchange panel)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.ring-enter-exit-and-recentre",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Ring: Enter / Exit and recentre",
-   "howToReach": "In the Ring layout use the HUD button Enter, drag to look around, then Exit and the ⌖ button",
-   "whatToCheck": "Enter moves the camera to the middle of the ring and the button reads Exit; dragging turns the view; Exit and ⌖ return to the outside overview; switching layout always returns to outside",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.aisle-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Aisle layout",
-   "howToReach": "Settings > Layout > Aisle, or the HUD chip",
-   "whatToCheck": "A corridor: shelves on both sides facing the walkway (angled toward you), a floor strip, uprights and an end wall; the camera starts at the entrance; the HUD shows ◀ Entrance ▶; products are in bays of up to 6 (phone 4)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.aisle-stop-stepping",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Aisle: stop stepping",
-   "howToReach": "In the Aisle layout press ▶ and ◀ in the HUD; drag the view while it glides",
-   "whatToCheck": "▶ glides about 0.9 s to Bay 1/n, then Bay 2/n ...; ◀ at the entrance and ▶ at the last stop are disabled; grabbing the view (pointer down) stops the glide where it is; ⌖ returns to the entrance; with more products per page there are more stops; arrow keys do nothing (they belong to the movement pad)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.island-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Island layout",
-   "howToReach": "Settings > Layout > Island table, or the HUD chip",
-   "whatToCheck": "A tiered display table: rows rise toward the back, products are tilted up and face you; the default view is 3/4 from the front and above; drag to orbit around it; from behind the products still read (cubes identical, discs two-sided)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.hud-layout-chip",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "HUD layout chip",
-   "howToReach": "Open the store; the third row of the store HUD",
-   "whatToCheck": "The chip shows the current layout (icon + name); each click cycles Shelf -> Ring -> Aisle -> Island -> Shelf, saves it (the settings panel follows), and flies the camera to the new layout's pose; the tooltip names the layout and the next one; tap target at least 28 px (36 on a phone)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.hover-and-select-in-every-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Hover and select in every layout",
-   "howToReach": "In each layout hover a product (desktop) and click / tap it",
-   "whatToCheck": "The hover ring appears in the hover colour and faces the product (also on the ring, the aisle and the tilted island); clicking shows the selected ring in the selected colour and opens the exchange radial for that product; a product hidden behind a rail / wall / table is not picked through it",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.paging-in-every-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Paging in every layout",
-   "howToReach": "Import a catalog of 40 products (Store Settings > Catalog), use the ‹ › buttons in each layout",
-   "whatToCheck": "24 products on page 1 and 16 on page 2; the layout rebuilds for the smaller page (the aisle may have fewer stops: a stop past the end is clamped and the camera flies there); nothing is clipped by the near / far planes",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.items-per-page-60-in-every-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Items per page 60 in every layout",
-   "howToReach": "DevOmniStoreSettings > Test data & perf > items per page 60, with 60+ products",
-   "whatToCheck": "All 60 products shown in each layout; the aisle becomes 5 pairs of bays (about 26 units long), the ring two tiers; the camera frames everything; everything is inside the backdrop dome (turn a backdrop on: no product or furniture pokes out)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.backdrop-dome-encloses-every-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Backdrop dome encloses every layout",
-   "howToReach": "Settings > Backdrop > gradient, then try each layout and orbit all around",
-   "whatToCheck": "The dome (radius 120) surrounds the whole layout and the camera; no furniture leaves it; zooming out beyond 0.92 x the radius hides the dome as before",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.dev-panel-record-layout-preview-layout",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Dev panel: record layout + Preview layout",
-   "howToReach": "Open ⟐DevOmniStoreSettings (⟐Developer slot 6 / ribbon Dev Store), section a) Store type records, open record #1",
-   "whatToCheck": "The layout select lists shelf / ring / aisle / island (none marked 'not built'); selecting a layout in a record does NOT change the open store; 'Preview layout' shows it in the OPEN store without saving (say so when the store is closed); 'End preview', closing the store, or the user picking a layout ends the preview; the saved layout in Store Settings is unchanged",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.dev-panel-per-layout-readout-and-dump-state",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Dev panel: per-layout readout and Dump state",
-   "howToReach": "DevOmniStoreSettings > c) Test data & perf",
-   "whatToCheck": "'Layouts at the current page size' lists a line per layout (placements, furniture meshes, bounds radius / height, stops); the live readout has a 'layout' row naming the active layout (PREVIEW when previewing); Dump state contains layouts.active, layouts.all and scene.layout",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.layout-is-independent-of-colour-presets",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Layout is independent of colour presets",
-   "howToReach": "Settings > Presets, Reset to default",
-   "whatToCheck": "Applying a preset or Reset to default never changes the layout (Reset keeps the name and the layout); a saved user preset has no layout",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.saved-settings-from-before-v179",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Saved settings from before V179",
-   "howToReach": "Settings saved by V178 (no layout key) then open V179",
-   "whatToCheck": "The store opens as Shelf wall with the old name and colours; nothing is lost",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-layouts-shelf-ring-a.switching-layouts-repeatedly",
-   "category": "OmniStore layouts: shelf / ring / aisle / island (V179)",
-   "feature": "Switching layouts repeatedly",
-   "howToReach": "Click the HUD chip 20+ times, also while hovering and with the exchange panel open",
-   "whatToCheck": "No flicker or growth (the frame rate does not drop with each switch), the selected ring follows the selected product, the exchange panel stays usable; closing the store releases the extra furniture",
-   "priority": "normal",
-   "device": "gpu"
-  },
-  {
-   "id": "user-guide-v180.guide-pages-open-and-link",
-   "category": "User guide (V180)",
-   "feature": "Guide pages open and link",
-   "howToReach": "docs/user-guide/README.md",
-   "whatToCheck": "Every page link opens; Previous/Next links work",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "user-guide-v180.getting-started-steps",
-   "category": "User guide (V180)",
-   "feature": "Getting Started steps",
-   "howToReach": "01_Getting_Started.md",
-   "whatToCheck": "Follow Enter, camera, select a node on a fresh browser profile; steps match what you see",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "user-guide-v180.keyboard-cheatsheet",
-   "category": "User guide (V180)",
-   "feature": "Keyboard cheatsheet",
-   "howToReach": "10_Keyboard_and_Touch_Cheatsheet.md",
-   "whatToCheck": "Try each key; the table matches behaviour; check R/F do not move twice",
-   "priority": "normal",
-   "device": "touch"
-  },
-  {
-   "id": "user-guide-v180.phone-behaviour-in-the-guide",
-   "category": "User guide (V180)",
-   "feature": "Phone behaviour in the guide",
-   "howToReach": "Real phone, width 700px or less",
-   "whatToCheck": "Ribbon overlay, one-section Inspector, Chronos tabs, Exchange sheet match the guide",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "user-guide-v180.troubleshooting-steps",
-   "category": "User guide (V180)",
-   "feature": "Troubleshooting steps",
-   "howToReach": "11_Troubleshooting.md",
-   "whatToCheck": "Hands dock icons, store reset, Clear Scene work as described",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.store-location-x-y-z",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Store location X/Y/Z",
-   "howToReach": "Ribbon Realities > Value > Store Settings > Look > Location",
-   "whatToCheck": "Typing X, Y, Z moves the open store at once; the camera follows; over-range values clamp; Reset location returns to 0, 3, -40; Place at my camera puts it about 30 ahead",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.location-with-each-layout",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Location with each layout",
-   "howToReach": "Store Settings > Look > Layout cards, with a moved store",
-   "whatToCheck": "Shelf, ring, aisle and island all sit at the moved position and the camera frames them; the dome still hides when you are outside",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.emoji-picker",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Emoji picker",
-   "howToReach": "Store Settings > Catalog > + Add product > All emojis…",
-   "whatToCheck": "Search 'apple' finds the apple emoji; group tabs work; picking fills the Emoji field; recents tab shows your last picks",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.all-emoji-demo-store",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "All-emoji demo store",
-   "howToReach": "Store Settings > Catalog > Demo stores > Load all-emoji demo store",
-   "whatToCheck": "1,914 products in 9 section chips; the shelf stays smooth; Undo last import restores your store; the newest emoji render (needs a current emoji font)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.exchange-chart-views",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Exchange chart views",
-   "howToReach": "Click a product, then the chips Radial wheel / Sunburst / Treemap / Sankey",
-   "whatToCheck": "Each view shows the accepted forms; clicking a slice selects the same form as the wheel; at level 1-2 the chart slot shows the quote; no sideways scroll on a phone",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.chart-library-failure",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Chart library failure",
-   "howToReach": "Block cdn.jsdelivr.net, open the exchange, pick Sunburst",
-   "whatToCheck": "A plain message appears and the wheel still works",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.omnitalent-panel",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "OmniTalent panel",
-   "howToReach": "Ribbon Realities > Value > Talent, or drawer ⟐OmniTalent",
-   "whatToCheck": "Sunburst / Treemap / Sankey of balances; picking a type shows its balance and conversions; Open exchange / Open wallet work; SANDBOX shown",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v181-location-emoji.arbitrage-guard",
-   "category": "OmniStore V181 (location, emoji, D3 views, guard)",
-   "feature": "Arbitrage guard",
-   "howToReach": "DevOmniStoreSettings > e) Rate loops, and the exchange panel",
-   "whatToCheck": "Seeded rates: no loop. Rate loops scan in the Dev panel; to see a loop, add a gaining edge in code (no rate editor exists): 'These rates form a loop that makes value from nothing' shows; closing the loop right after the first leg is refused",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.create-stores-from-types",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Create stores from types",
-   "howToReach": "Store Settings > Stores > + New store",
-   "whatToCheck": "Bakery and Electronics cards make a store with their look, layout and products; each sits at its own place (150 apart); the list shows 3 stores",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.switch-with-the-hud-chip",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Switch with the HUD chip",
-   "howToReach": "Store open with 2+ stores; HUD row 3 chip",
-   "whatToCheck": "Chip lists the stores; picking one flies the camera in front of that store; only one store is drawn; chip hides with one store",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.switch-20-times",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Switch 20 times",
-   "howToReach": "Chip A,B,A,B...",
-   "whatToCheck": "No slowdown or growth; shelf looks the same each time on return",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.phone-width",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Phone width",
-   "howToReach": "390px wide, store open, Stores tab and chip menu",
-   "whatToCheck": "No horizontal scroll; the chip and menu do not cover the hands; list buttons are tappable",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.rename-and-delete",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Rename and delete",
-   "howToReach": "Stores tab",
-   "whatToCheck": "Rename shows in list, HUD and panel title; Delete asks inline; deleting the active store opens another; the last store cannot be deleted",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.reload-keeps-the-active-store",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Reload keeps the active store",
-   "howToReach": "Reload the page with 3 stores",
-   "whatToCheck": "Same store active and the stores still listed",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.look-layout-location-catalog-follow-the-active-sto",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Look/Layout/Location/Catalog follow the active store",
-   "howToReach": "Switch store, open each tab",
-   "whatToCheck": "Edits change only the active store; the panel header names it",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.catalog-import-export-per-store",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Catalog import/export per store",
-   "howToReach": "Catalog tab in the bakery",
-   "whatToCheck": "Export then Replace round-trips the bakery; the produce store is untouched; AI prompt names the active store",
-   "priority": "high",
-   "device": "touch"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.undo-is-per-store",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Undo is per store",
-   "howToReach": "Import in store A, switch to B, Undo",
-   "whatToCheck": "Refused with the store name; switching back allows Undo",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.shopping-list-per-store-wallet-global",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Shopping list per store, wallet global",
-   "howToReach": "Add to cart in the bakery, switch",
-   "whatToCheck": "Cart differs per store; wallet balance and inventory are the same",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.accepted-forms",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Accepted forms",
-   "howToReach": "Electronics Exchange, try paying in Bells",
-   "whatToCheck": "Bells spoke is absent; the panel says what the store takes; a forced attempt is refused with a message",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.arbitrage-guard",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Arbitrage guard",
-   "howToReach": "Exchange loop attempt (V181)",
-   "whatToCheck": "Still warns and refuses a continued loop",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.dev-types-and-stores",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Dev: types and stores",
-   "howToReach": "DevOmniStoreSettings > Store types and stores",
-   "whatToCheck": "Validate / Save / Delete / Load file; Create store from this type; stores table marks the active one; Dump state lists stores, active, anchors",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.dev-invalid-type-json",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Dev: invalid type JSON",
-   "howToReach": "Paste broken or hostile JSON into the type editor",
-   "whatToCheck": "Plain errors, nothing saved, no script runs",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v182-store-types-sec.real-gpu-phone-touch",
-   "category": "OmniStore V182 (store types, second store)",
-   "feature": "Real GPU / phone / touch",
-   "howToReach": "A real phone",
-   "whatToCheck": "Switching, chip menu and Stores tab with touch; frame rate in the bakery and electronics stores",
-   "priority": "high",
-   "device": "phone"
-  },
   {
    "id": "omnistore-v183-storeitemnode-o.pin-a-store-item",
    "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
@@ -907,78 +97,6 @@ export default {
    "howToReach": "DevOmniStoreSettings > node readout > Create 50 test nodes / Remove test nodes",
    "whatToCheck": "Counts and texture numbers change; removing returns textures to the starting number",
    "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "claude-check-v184.open-the-claude-check-panel",
-   "category": "Claude Check (V184)",
-   "feature": "Open the Claude Check panel",
-   "howToReach": "Left drawer > ⟐Developer > slot 7 (DevClaudeCheck)",
-   "whatToCheck": "A panel opens with a red DEV ONLY badge, the version V184, the date and the one-line summary, progress 'N of M checked', five device chips and a Hide done toggle; there is NO new ribbon or dock button",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "claude-check-v184.mark-checks-and-add-notes",
-   "category": "Claude Check (V184)",
-   "feature": "Mark checks and add notes",
-   "howToReach": "Claude Check panel > Check these, open a category",
-   "whatToCheck": "Pass / Fail / Skip highlight the chosen button and clicking it again clears it; Fail always shows a one-line note box (optional for the others); the progress line and the count in the panel title change at once; marks survive closing the panel and reloading the page",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "claude-check-v184.answer-what-claude-is-looking-for",
-   "category": "Claude Check (V184)",
-   "feature": "Answer what Claude is looking for",
-   "howToReach": "Claude Check panel > What I'm looking for",
-   "whatToCheck": "Each question shows its reason in small text and the right input (number, yes / no, choice, text); answers persist after a reload; the frame-rate questions are tagged GPU and the phone questions Phone",
-   "priority": "high",
-   "device": "phone"
-  },
-  {
-   "id": "claude-check-v184.device-chips-and-hide-done",
-   "category": "Claude Check (V184)",
-   "feature": "Device chips and Hide done",
-   "howToReach": "Claude Check panel header",
-   "whatToCheck": "Desktop / Phone / Touch / GPU hide items tagged for another device (items tagged any always show); All shows everything; Hide done hides checked items at the next redraw; the chosen chip and toggle persist after a reload",
-   "priority": "high",
-   "device": "phone"
-  },
-  {
-   "id": "claude-check-v184.carry-over-to-the-next-version",
-   "category": "Claude Check (V184)",
-   "feature": "Carry-over to the next version",
-   "howToReach": "Mark one Fail and one Skip; then, in the browser console, edit localStorage 'omni:claude-check-v1' so the stored version is V183 instead of V184 (or wait for the next build) and reopen the panel",
-   "whatToCheck": "A 'Carried over' section appears ABOVE the checks with those two items and a 'from V183' tag; items marked Pass are not carried",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "claude-check-v184.copy-report-and-fallback",
-   "category": "Claude Check (V184)",
-   "feature": "Copy report and fallback",
-   "howToReach": "Claude Check panel > Message to Claude > Copy report (then Download report)",
-   "whatToCheck": "One compact JSON block lands on the clipboard (schema omni-claude-report/1: version, device, summary, failed, skipped, passed ids, answers, message); paste it into the chat; if the browser refuses the clipboard a read-only box shows the text to copy by hand; Download saves a .json file; with 'Include app state (Dump)' ticked the report also carries a state block",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "claude-check-v184.phone-layout-and-no-leak-into-normal-use",
-   "category": "Claude Check (V184)",
-   "feature": "Phone layout and no leak into normal use",
-   "howToReach": "Open the panel in a 390px-wide window or on a phone; also load the app and look through the user panels",
-   "whatToCheck": "No sideways scroll, buttons at least 40 px high, the list scrolls inside the sheet; nothing in the normal user menus, ribbon or dock mentions Claude Check (it is developer-only)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "claude-check-v184.reset-this-version-s-answers",
-   "category": "Claude Check (V184)",
-   "feature": "Reset this version's answers",
-   "howToReach": "Claude Check panel > Reset this version's answers",
-   "whatToCheck": "The first click asks for confirmation (the button changes), the second clears marks, notes, answers and the message of this version only; carried items from older versions stay",
-   "priority": "normal",
    "device": "any"
   },
   {
@@ -1358,9 +476,266 @@ export default {
    "whatToCheck": "Summon buttons reachable and not covered",
    "priority": "normal",
    "device": "phone"
+  },
+  {
+   "id": "usercompass-v188.where-it-sits",
+   "category": "userCompass (V188)",
+   "feature": "Where it sits",
+   "howToReach": "Desktop window at least ~1010 px wide: look under the logo, above the top-left hand's ☰ MENU cell",
+   "whatToCheck": "A small clear spinning globe sits in that strip. It does not touch the Global Bar, the ribbon, the OmniNotify box or the MENU cell.",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "usercompass-v188.looks-like-a-globe",
+   "category": "userCompass (V188)",
+   "feature": "Looks like a globe",
+   "howToReach": "Look at it for 20 seconds",
+   "whatToCheck": "6 meridians and 5 parallels, the equator a little brighter, front lines bright and back lines dim, tilted about 23 degrees, turns once in about 14 seconds, no filled background.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.hover-tip",
+   "category": "userCompass (V188)",
+   "feature": "Hover tip",
+   "howToReach": "Hover the globe",
+   "whatToCheck": "The OmniNotify box says userCompass, your orientation globe, click for settings.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.click-opens-settings",
+   "category": "userCompass (V188)",
+   "feature": "Click opens settings",
+   "howToReach": "Click the globe (or right-click it, or Tab to it and press Enter)",
+   "whatToCheck": "Admin opens and scrolls to Admin > UI Settings > userCompass.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.show-on-off",
+   "category": "userCompass (V188)",
+   "feature": "Show on / off",
+   "howToReach": "Admin > UI Settings > userCompass > Show",
+   "whatToCheck": "The globe disappears and comes back at once, no Save needed; it is remembered after a reload.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.alignment-left-center-right",
+   "category": "userCompass (V188)",
+   "feature": "Alignment left / center / right",
+   "howToReach": "Admin > UI Settings > userCompass > Align",
+   "whatToCheck": "The globe moves inside its strip (left edge, middle, right edge) and never goes under the MENU cell or past the strip.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.size-small-medium-large",
+   "category": "userCompass (V188)",
+   "feature": "Size small / medium / large",
+   "howToReach": "Admin > UI Settings > userCompass > Size",
+   "whatToCheck": "32 / 44 / 56 px; with the ribbon folded (strip only 29 px tall) it shrinks to about 25 px instead of overlapping.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.spin-speed",
+   "category": "userCompass (V188)",
+   "feature": "Spin speed",
+   "howToReach": "Admin > UI Settings > userCompass > Spin",
+   "whatToCheck": "Off stops it; Slow about 28 s, Normal 14 s, Fast 7 s per turn. Does the speed feel right? (answer in Claude Check)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.heading-mode",
+   "category": "userCompass (V188)",
+   "feature": "Heading mode",
+   "howToReach": "Set Mode to Heading, then drag the scene to look around",
+   "whatToCheck": "The globe turns with where the camera faces (turn right: the globe's front moves left); the bright meridian marks north.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.line-colour-and-opacity",
+   "category": "userCompass (V188)",
+   "feature": "Line colour and opacity",
+   "howToReach": "Admin > UI Settings > userCompass > Line colour / Opacity",
+   "whatToCheck": "White, Cyan, Accent (theme colour; change the theme to see it change); opacity 30 to 100 percent.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.reset-usercompass",
+   "category": "userCompass (V188)",
+   "feature": "Reset userCompass",
+   "howToReach": "Admin > UI Settings > userCompass > Reset userCompass",
+   "whatToCheck": "Everything goes back to: shown, centre, medium, normal spin, white, 85 percent.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.reduced-motion",
+   "category": "userCompass (V188)",
+   "feature": "Reduced motion",
+   "howToReach": "Turn on 'reduce motion' in the operating system, reload",
+   "whatToCheck": "The globe starts still (Spin = Off) but tilted; you can still choose a speed.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.hides-when-the-ribbon-covers-its-strip",
+   "category": "userCompass (V188)",
+   "feature": "Hides when the ribbon covers its strip",
+   "howToReach": "Make the window narrower than about 1010 px, or drag the OmniNotify box away from its docked spot",
+   "whatToCheck": "The globe hides itself (no overlap with the ribbon); it returns when you widen the window or double-click the OmniNotify header to dock it.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.phone-390-px-wide",
+   "category": "userCompass (V188)",
+   "feature": "Phone (390 px wide)",
+   "howToReach": "Open on a phone in portrait",
+   "whatToCheck": "No globe is expected on a phone in portrait (the ribbon covers the strip); nothing else moved, no console error. Tell me if you want a place for it on phones.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "usercompass-v188.hands-banner-hidden-shown",
+   "category": "userCompass (V188)",
+   "feature": "Hands banner hidden / shown",
+   "howToReach": "Dock ⚇ icon, or ribbon Hands tab: hide and show the top hands",
+   "whatToCheck": "The globe stays exactly where it is under the logo.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.never-blocks-clicks",
+   "category": "userCompass (V188)",
+   "feature": "Never blocks clicks",
+   "howToReach": "Click just beside the globe (inside its strip but off the circle)",
+   "whatToCheck": "The click goes to whatever is underneath (the scene); only the round globe takes clicks.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.persistence",
+   "category": "userCompass (V188)",
+   "feature": "Persistence",
+   "howToReach": "Change a few options, reload the page",
+   "whatToCheck": "Options are the same after the reload (stored in omni:user-compass-v1).",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.not-a-window",
+   "category": "userCompass (V188)",
+   "feature": "Not a window",
+   "howToReach": "Look for resize handles or a maximize button on the globe",
+   "whatToCheck": "There are none (it is not a panel window).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omniaddress-v189.address-model-has-no-visible-ui",
+   "category": "OmniAddress (V189)",
+   "feature": "Address model has no visible UI",
+   "howToReach": "Nothing to open: V189 adds only utils/OmniAddress.js (pure module)",
+   "whatToCheck": "Open the app: it should look and behave exactly like V188 (regression only)",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "omniaddress-v189.version-label",
+   "category": "OmniAddress (V189)",
+   "feature": "Version label",
+   "howToReach": "Developer drawer > store dump (app field)",
+   "whatToCheck": "Reads OmniOS V189",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
+  {
+   "id": "v189-no-regression",
+   "question": "Does the app start and look the same as V188 (boot, ribbon, compass, a panel)?",
+   "why": "V189 adds only a pure module nothing imports yet, so nothing should change; this is a cheap sanity check.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "compass-looks-right",
+   "question": "Does the userCompass look right in its slot under the logo?",
+   "why": "Only judged in screenshots from software-rendered Chromium at six window sizes; line weight, brightness and size are taste. If it is too small, too big or touches something, say what in the message.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "too small",
+    "too big",
+    "overlaps something"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "compass-alignment",
+   "question": "Is the difference between Left, Center and Right alignment noticeable enough?",
+   "why": "The slot is only as wide as the top-left hand (103 px) and the globe is 44 px, so the globe moves about 26 px between Left and Center. A wider slot is one constant if you want more room.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "compass-spin-speed",
+   "question": "How does the spin speed feel (Normal = 14 s per turn)?",
+   "why": "Speeds are a guess: Slow 28 s, Normal 14 s, Fast 7 s. It rides the app ticker, so on a real GPU it should be smooth; I only saw it at about 1 fps in the software renderer.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "too fast",
+    "too slow"
+   ],
+   "device": "gpu"
+  },
+  {
+   "id": "compass-click-action",
+   "question": "What should clicking the userCompass do? (today: it opens Admin > UI Settings > userCompass)",
+   "why": "It had to do something, so it opens its own settings. A compass could instead reset the camera heading to north, snap the view to look north, or open the camera idea later. Write what you want.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "compass-hidden-narrow",
+   "question": "On a narrow window or a phone the globe is hidden (the ribbon covers its strip). Do you want it visible there too?",
+   "why": "Below about 1010 px the ribbon runs under the whole bar, so there is no free strip. Showing it would mean giving the ribbon a 103 px left margin (tabs shrink) or putting the globe somewhere else. Say which you prefer in the message.",
+   "kind": "choice",
+   "choices": [
+    "fine, hide it",
+    "show it on phones too",
+    "not sure"
+   ],
+   "device": "phone"
+  },
+  {
+   "id": "compass-heading-mode",
+   "question": "Heading mode (the globe turns with where the camera faces): is that useful, and does the bright meridian read as north?",
+   "why": "Verified with real mouse drags in a desktop browser only; never with touch look-around on a phone.",
+   "kind": "choice",
+   "choices": [
+    "useful",
+    "not useful",
+    "confusing"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "window-maximize-phone-v188",
+   "question": "V187 carry-over: how does maximize feel on your phone, and is there any panel that still cannot be resized or maximized? Name it.",
+   "why": "Windows were only checked in a desktop browser at 390 px width, never with touch.",
+   "kind": "text",
+   "device": "phone"
+  },
   {
    "id": "boot-shooting-star",
    "question": "How does the shooting-star entrance look (flight from the top right, tail, landing behind the ⟐)? If it needs a change, say what in the message.",
@@ -1441,12 +816,15 @@ export default {
   }
  ],
  "knownIssues": [
+  "The address type letters (C core, B branch, S space) and the eye symbol are PLACEHOLDERS until the owner picks glyphs; nothing in the app uses OmniAddress yet.",
+  "The userCompass was judged only in software-GL Chromium (six window sizes); never on a real GPU, a real phone or with touch.",
+  "The userCompass is free only while the ribbon starts to the right of its strip: windows narrower than about 1010 px, phones, tablets and a floated OmniNotify box hide it (it never overlaps the ribbon).",
+  "The userCompass slot is the top-left hand's width (103 px); the empty space up to the OmniNotify box (x 222) is not used.",
+  "The camera feature is only documented (docs/omniproducts/OMNICAMERA_IDEA.md); seven questions for the owner are still open.",
   "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only).",
   "Window positions are still not saved; only sizes are. Maximized state is never saved.",
   "Panels that only exist in a special state (for example Cell or Account panels) were checked through a forced-visible test, not by a person.",
-  "Pointer resize of a window with a heavy canvas redraws through its own ResizeObserver; very large charts may lag on a weak device.",
   "OmniReality is still the name of an OmniBrowserSpace layer and of OmniRealityGrid* code; only user-facing product text became OmniOS.",
-  "The newest Unicode 16/17 emoji may not draw on a device whose emoji font is older; the all-emoji demo draws them on demand only.",
   "d3 loads from jsDelivr in the real app; first load on a real network was never tested.",
   "The all-emoji store uses about 837 KB of the roughly 5 MB localStorage budget (an IndexedDB store would remove the limit)."
  ]

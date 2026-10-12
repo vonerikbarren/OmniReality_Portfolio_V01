@@ -13,6 +13,10 @@
  *   --omni-hands-banner-h     the top ConsciousHand / OmniHand banner (90px, 0 when hidden)
  *   --omni-top-stack          top-offset + banner = where the top pads start
  *   --omni-ribbon-left        ribbon left inset (the docked OmniNotify box sits to its left)
+ *   --omni-compass-slot-top   (V188) the userCompass slot: the strip right under the logo cell and above the top-left hand
+ *   --omni-compass-slot-w     (V188)   x 0..w (= the top-left hand's width), y bar-bottom .. top-offset (= the ribbon's height)
+ *   --omni-compass-slot-h     (V188)   h = 0 when the ribbon (hence the slot) is not there yet
+ *   --omni-compass-slot-on    (V188) 1 when the slot is really free, 0 when the ribbon covers it or it is too small (see computeCompassSlot)
  *
  * JS consumers call getTopOffset() / getTopStack() at use time (never cache at module load).
  * Every change dispatches `omni:layout-changed` with the same numbers. No per-frame work.
@@ -44,6 +48,32 @@ export function estimateRibbonHeight () {
   return computeRibbonHeight({ phone, collapsed })
 }
 
+// ── userCompass slot (V188) ──────────────────────────────────────────────────
+// The slot is the empty strip directly under the Global Bar's logo cell (#ob-col00) and directly above the top-left hand
+// (.omni-hand--tl starts at --omni-top-offset). Vertically it is exactly the ribbon's height (bar bottom .. top-offset);
+// horizontally it is the hand's own column (103px, 83px on <= 460px screens where the hand cells shrink to 40px).
+// It is only FREE while the ribbon starts to the right of it: the ribbon sits at --omni-ribbon-left, which is 0 whenever the
+// OmniNotify box is not docked beside it (narrow screens, phones, a floated box). Then the ribbon covers the slot and the
+// compass hides itself (reason 'ribbon-overlaps'); it never draws on top of the ribbon.
+export const HAND_COL_W = 103
+export const HAND_COL_W_SMALL = 83
+export const HAND_SMALL_MAX = 460
+export const COMPASS_PAD_X = 4
+export const COMPASS_PAD_Y = 2
+export const COMPASS_MIN_D = 24
+
+/** Pure: the compass slot for a layout snapshot ({barH, ribbonH, ribbonLeft}) and a viewport width. */
+export function computeCompassSlot (layout, viewportW = 1280) {
+  const barH = Math.max(0, Number(layout?.barH) || 0)
+  const h = Math.max(0, Math.round(Number(layout?.ribbonH) || 0))
+  const ribbonLeft = Math.max(0, Number(layout?.ribbonLeft) || 0)
+  const w = (Number(viewportW) || 0) <= HAND_SMALL_MAX ? HAND_COL_W_SMALL : HAND_COL_W
+  const maxD = Math.max(0, Math.floor(Math.min(w - 2 * COMPASS_PAD_X, h - 2 * COMPASS_PAD_Y)))
+  const clear = ribbonLeft >= w
+  const reason = !clear ? 'ribbon-overlaps' : (maxD < COMPASS_MIN_D ? 'too-small' : '')
+  return { x: 0, y: barH, w, h, maxD, available: reason === '', reason }
+}
+
 const state = { ribbonH: 0, bannerH: HANDS_BANNER_H, ribbonLeft: 0 }
 
 function snapshot () {
@@ -66,14 +96,26 @@ function apply (announce) {
     set('--omni-hands-banner-h', snap.bannerH)
     set('--omni-top-stack', snap.topStack)
     set('--omni-ribbon-left', snap.ribbonLeft)
+    const slot = computeCompassSlot(snap, typeof window !== 'undefined' ? window.innerWidth : 1280)
+    set('--omni-compass-slot-top', slot.y)
+    set('--omni-compass-slot-w', slot.w)
+    set('--omni-compass-slot-h', slot.h)
+    root.style.setProperty('--omni-compass-slot-on', slot.available ? '1' : '0')
   }
   if (announce && typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('omni:layout-changed', { detail: snap }))
   }
 }
 
-/** Idempotent: writes the variables with the current values (call early). */
-export function initLayout () { apply(false) }
+let resizeBound = false
+/** Idempotent: writes the variables with the current values (call early). V188: also re-writes them on window resize (the slot width follows the viewport). */
+export function initLayout () {
+  apply(false)
+  if (!resizeBound && typeof window !== 'undefined' && window.addEventListener) {
+    resizeBound = true
+    window.addEventListener('resize', () => apply(false))
+  }
+}
 
 export function setRibbonHeight (px) {
   const v = Math.max(0, Math.round(Number(px) || 0))
