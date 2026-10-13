@@ -179,7 +179,7 @@ dimensional axes instead. LH/RH are unchanged.
 
 | | Conscious Hand | OmniHand |
 |---|---|---|
-| Symbol | **Δ** (Delta) | **⟐** |
+| Symbol | **◬** (U+25EC; V191 replaced the placeholder Δ) | **⟐** |
 | Primary axis (top-down) | starts at the world origin toward 2 o'clock (V159; was 2 <-> 8 through the origin) | starts at the world origin toward 11 o'clock (V159; was 10 <-> 4 through the origin) |
 | Primary nodes | layers / perspectives / visors | the OmniProducts |
 | Relative-Y axis (**Υ**, Upsilon) | **scale degrees** | **tier** of the product |

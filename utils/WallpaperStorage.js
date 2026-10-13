@@ -128,6 +128,7 @@ export const KNOWN_NAMESPACES = [
   'omniexpression-video',   // OmniExpressionVideoPlayer's main video
   'omniexpression-circles', // OmniExpressionVideoPlayer's backing circle images
   'wallpaper-video',        // WallpaperSphere's video-wallpaper slots
+  'floorpanel-media',       // V191: pictures / GIFs / videos on floor panel faces (utils/FloorPanelMedia.js)
 ]
 
 /**

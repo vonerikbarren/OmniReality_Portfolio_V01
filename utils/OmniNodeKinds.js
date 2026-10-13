@@ -400,6 +400,7 @@ export function refreshAll () {
 
 /** Give back this mesh's textures and registry slot. Idempotent; call before the mesh's material is disposed. The shared geometry is not disposed. */
 export function releaseKindMesh (mesh) {
+  mesh?.userData?.omniRelease?.(mesh)   // V191: OmniPathNode / floorPanelNode meshes (utils/OmniExtraKinds.js) release their own things
   const kd = mesh?.userData?.omniKind
   if (!kd) return
   delete mesh.userData.omniKind

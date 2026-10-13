@@ -368,6 +368,8 @@ export default class OmniMeter {
       const r = document.getElementById('omni-dock')?.getBoundingClientRect()
       if (r && r.height > 0) gap = Math.max(0, (window.innerHeight || 0) - r.top)
     } catch (_) {}
+    // V191: the OmniDock_Realities row sits directly above the Dock (utils/OmniLayout.js setDockRow -> --omni-dock-row-h): the meter goes above it
+    try { gap += Math.max(0, parseFloat(document.documentElement.style.getPropertyValue('--omni-dock-row-h')) || 0) } catch (_) {}
     el.style.bottom = `${Math.round(gap) + 4}px`
     this._dockGap = gap
   }

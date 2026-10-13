@@ -41,13 +41,17 @@ import gsap from 'gsap'
 
 const STORAGE_KEY = 'omni:quicklauncher:pos'
 const SIZE = 48
-const RING_R = 56
+const RING_R = 76   // V191: three 44 px items now fan out; 76 px keeps them >= 8 px apart (2 x 76 x sin 21 = 54)
+const RING_STEP = 42   // degrees between neighbouring items
 const DRAG_THRESHOLD_SQ = 36 // ~6px — below this, a pointerup is a click, not a drag
 const DOCK_H = 52 // px — matches Dock.js's own DOCK_H; kept as a local copy, same
                    // pattern MovementPad.js already uses for this same constant
 
+// V191: + OmniKeys (the OmniKeys panel, the other keyboard) and OmniDraw (the mode picker). `detail` is sent with the event.
 const TOOLS = [
-  { id: 'keyboard', label: 'Keyboard', glyph: '⌨', event: 'omni:cryptx-keyboard-toggle' },
+  { id: 'keyboard', label: 'Keyboard', glyph: '⌨', event: 'omni:cryptx-keyboard-toggle', tip: 'Opens the CryptX keyboard (the keyboard tool this launcher always had).' },
+  { id: 'omnikeys', label: 'OmniKeys', glyph: '⟐⌨', event: 'omni:nav-select', detail: { item: '⟐OmniKeys' }, tip: 'Opens the OmniKeys panel (the other keyboard: QWERTY grid, symbols, command mode).' },
+  { id: 'omnidraw', label: 'OmniDraw', glyph: '✎', event: 'omni:nav-select', detail: { item: '⟐OmniDraw' }, tip: 'Opens the OmniDraw mode picker (Static, Dynamic, Behavior, Cell, Chat, Log).' },
 ]
 
 const STYLES = /* css */`
@@ -118,12 +122,14 @@ const STYLES = /* css */`
   background       : rgba(255, 255, 255, 0.16);
   border-color     : rgba(255, 255, 255, 0.45);
 }
-.oql-item-glyph { font-size: 15px; line-height: 1; pointer-events: none; }
-.oql-item-label { font-size: 6px; letter-spacing: 0.06em; color: rgba(255,255,255,0.65); pointer-events: none; margin-top: 2px; }
+.oql-item-glyph { font-size: 14px; white-space: nowrap; line-height: 1; pointer-events: none; }
+.oql-item-label { font-size: 7px; white-space: nowrap; letter-spacing: 0.06em; color: rgba(255,255,255,0.65); pointer-events: none; margin-top: 2px; }
 
 @media (max-width: 460px) {
   .oql-launcher { width: 40px; height: 40px; font-size: 17px; }
   .oql-item     { width: 38px; height: 38px; }
+  .oql-item-label { font-size: 6px; }
+  .oql-item-glyph { font-size: 12px; }
 }
 
 `
@@ -283,23 +289,38 @@ export default class OmniQuickLauncher {
     // don't get lost behind it — clamps toward screen center if the
     // launcher is sitting near an edge, same spirit as RadialMenu's own
     // viewport-aware shifting.
-    const startAngle = -90 - (n - 1) * 20
+    const half = window.innerWidth <= 460 ? 19 : 22   // item radius (CSS: 44 px, 38 px on a phone)
+    // V191: fan the items around "up" by default; near an edge, turn the whole fan (try 15 degree steps
+    // either side of up, then sideways and down) to the first angle that keeps every item on screen.
+    const fits = (base) => TOOLS.every((_, i) => {
+      const a = ((base + (i - (n - 1) / 2) * RING_STEP) * Math.PI) / 180
+      const x = cx + Math.cos(a) * RING_R, y = cy + Math.sin(a) * RING_R
+      return x >= half + 4 && x <= window.innerWidth - half - 4 && y >= half + 4 && y <= window.innerHeight - half - 4
+    })
+    const baseAngle = [-90, -75, -105, -60, -120, -45, -135, -30, -150, -15, -165, 0, 180, 15, 165, 90, 60, 120].find(fits) ?? -90
+    const startAngle = baseAngle - (n - 1) * (RING_STEP / 2)
     this._itemEls = TOOLS.map((tool, i) => {
-      const angleDeg = startAngle + i * 40
+      const angleDeg = startAngle + i * RING_STEP
       const rad = (angleDeg * Math.PI) / 180
-      const x = cx + Math.cos(rad) * RING_R
-      const y = cy + Math.sin(rad) * RING_R
+      // V191: keep every item fully on screen (the launcher can sit near any edge)
+      const x = Math.min(Math.max(half + 4, cx + Math.cos(rad) * RING_R), window.innerWidth - half - 4)
+      const y = Math.min(Math.max(half + 4, cy + Math.sin(rad) * RING_R), window.innerHeight - half - 4)
 
       const el = document.createElement('div')
       el.className = 'oql-item'
       el.setAttribute('role', 'button')
       el.setAttribute('aria-label', tool.label)
+      el.dataset.tool = tool.id
+      el.dataset.omniTip = tool.label
+      el.dataset.omniTipKey = '—'
+      el.dataset.omniTipDesc = tool.tip ?? tool.label
+      el.title = tool.tip ?? tool.label
       el.innerHTML = `<span class="oql-item-glyph">${tool.glyph}</span><span class="oql-item-label">${tool.label}</span>`
-      el.style.left = `${x - 22}px`
-      el.style.top  = `${y - 22}px`
+      el.style.left = `${x - half}px`
+      el.style.top  = `${y - half}px`
       el.addEventListener('pointerdown', (e) => {
         e.stopPropagation()
-        window.dispatchEvent(new CustomEvent(tool.event))
+        window.dispatchEvent(tool.detail ? new CustomEvent(tool.event, { detail: tool.detail }) : new CustomEvent(tool.event))
         this._closeRing()
       })
       document.getElementById('omni-ui')?.appendChild(el) ?? document.body.appendChild(el)

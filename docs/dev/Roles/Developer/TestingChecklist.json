@@ -3181,6 +3181,242 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+      "items": [
+        {
+          "feature": "Round pad buttons",
+          "howToReach": "Open any pad (⚇) at 1280x900 and at 390x844",
+          "whatToCheck": "The 4 buttons and the chip around each pad are circles with clear space to the pad; labels fully readable; nothing overlaps the ribbon, dock, other hands or the edge",
+          "tested": false
+        },
+        {
+          "feature": "Chip text",
+          "howToReach": "LH pad ⚙ > OmniHands > LogicalHand > Ammo: load Transform and set it current",
+          "whatToCheck": "The chip circle reads Transform completely, no clipping",
+          "tested": false
+        },
+        {
+          "feature": "LH ascend / descend",
+          "howToReach": "Open LH pad, hold ASC (top-right corner) then DSC; or hold E / Q",
+          "whatToCheck": "Camera rises / falls along world Y while held and stops on release; speed follows OmniHands LH Speed",
+          "tested": false
+        },
+        {
+          "feature": "RH ascend / descend",
+          "howToReach": "RH pad right corners",
+          "whatToCheck": "Same motion as RISE / FALL; holding both does not double",
+          "tested": false
+        },
+        {
+          "feature": "RH vertical orbit",
+          "howToReach": "RH pad, hold ORB-U then ORB-D (top-left corner); or keys Y / H",
+          "whatToCheck": "View orbits up / down around the selected node (else the scene centre), stops short of straight up/down, speed follows RH Speed",
+          "tested": false
+        },
+        {
+          "feature": "◬ symbol",
+          "howToReach": "ConsciousHand pad, ribbon Home > Dim. Axes, Keyboard Shortcuts, OmniHands > ConsciousHand, tunnel labels",
+          "whatToCheck": "◬ everywhere the Conscious Hand was Δ; it renders (not a missing-glyph box) on your OS",
+          "tested": false
+        },
+        {
+          "feature": "Axis tool options on OmniHand / ConsciousHand pads",
+          "howToReach": "Open the pad and click the round chip",
+          "whatToCheck": "Menu opens with TakeMeThere, Root, Back, Forth, up, down, Reset marker, Tunnel, Follow pads, Settings; each matches the same action at the axis",
+          "tested": false
+        },
+        {
+          "feature": "Launcher",
+          "howToReach": "Click the round ⟐ at the bottom centre",
+          "whatToCheck": "Ring with Keyboard, OmniKeys, OmniDraw; each opens its panel; near a screen edge all three stay on screen",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+      "items": [
+        {
+          "feature": "Path node, LINK mode",
+          "howToReach": "Ribbon Home > Create > Path node, Record links, select 3 nodes",
+          "whatToCheck": "List shows them in order, a line joins them, reload keeps it",
+          "tested": false
+        },
+        {
+          "feature": "Path node, GENEALOGY mode",
+          "howToReach": "OmniNodeOrder, mode GENEALOGY, select a parent, Use selected as root, Build",
+          "whatToCheck": "Pre-order and breadth-first orders match the tree",
+          "tested": false
+        },
+        {
+          "feature": "OmniNodeOrderPanel reorder",
+          "howToReach": "Drag the handle (mouse and touch), or the up / down buttons",
+          "whatToCheck": "Order changes, Undo restores",
+          "tested": false
+        },
+        {
+          "feature": "Deleting a member node",
+          "howToReach": "Delete a node that is in a path",
+          "whatToCheck": "It leaves the order and the panel notes it",
+          "tested": false
+        },
+        {
+          "feature": "Floor panels place",
+          "howToReach": "Admin slot 20 or ribbon Floor panels: pick T, click the grid, Place in scene",
+          "whatToCheck": "Tiles lie on the floor in the right shape; rotate and mirror work",
+          "tested": false
+        },
+        {
+          "feature": "Floor panel faces",
+          "howToReach": "Face tool or Inspector: add png, GIF, mp4",
+          "whatToCheck": "Pictures show, GIF animates, video plays muted and loops; with 5+ videos only 4 play",
+          "tested": false
+        },
+        {
+          "feature": "Remove one panel",
+          "howToReach": "Inspector Remove panel or click the grid cell",
+          "whatToCheck": "Only that cell goes",
+          "tested": false
+        },
+        {
+          "feature": "Grid overlay + ghost",
+          "howToReach": "Place with pointer",
+          "whatToCheck": "Ghost follows the pointer, red when blocked, snaps",
+          "tested": false
+        },
+        {
+          "feature": "Reload",
+          "howToReach": "Reload the page",
+          "whatToCheck": "Floor panels, faces and paths return",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "390 px",
+          "whatToCheck": "Both windows open as bottom sheets, nothing overflows",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+      "items": [
+        {
+          "feature": "OmniDock_Realities strip",
+          "howToReach": "open the app, look above the bottom Dock",
+          "whatToCheck": "a scrollable row of 20 wireframe shapes with count badges; compass at its left end; no overlap with Dock, bottom hands, X meter",
+          "tested": false
+        },
+        {
+          "feature": "Realities quickTip",
+          "howToReach": "hover a shape (desktop) / tap once (phone)",
+          "whatToCheck": "tip shows \"N nodes\"; a second tap on phone opens the panel",
+          "tested": false
+        },
+        {
+          "feature": "RealitiesInShape panel",
+          "howToReach": "click a shape",
+          "whatToCheck": "window lists id / name / kind, live-updates on create/delete, row click selects and flies to the node, resizable/maximizable, same shape again closes",
+          "tested": false
+        },
+        {
+          "feature": "Dock settings",
+          "howToReach": "Admin > OmniDock_Realities rows, or the gear at the row end",
+          "whatToCheck": "S/M/L + slider, opacity, per-shape colour/opacity, hide-empty, show/hide, reset, Dock compass reset; survives reload",
+          "tested": false
+        },
+        {
+          "feature": "Compass",
+          "howToReach": "drag it away, reload",
+          "whatToCheck": "saved position wins; \"Dock compass\" returns it to the row",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign",
+          "howToReach": "press ` with a node selected",
+          "whatToCheck": "panel with X/Y/Z; one axis active, others locked; ArrowUp/Down, wheel over the node, drag the gizmo, typed value + Enter all move it; Esc or ` exits",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign blocked nodes",
+          "howToReach": "select a locked / tracking node",
+          "whatToCheck": "panel shows why it cannot move",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign vs F1",
+          "howToReach": "press F1",
+          "whatToCheck": "terminal still opens; ` while typing in a field does nothing",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign Admin",
+          "howToReach": "Admin > StrictAlign rows",
+          "whatToCheck": "step, shift step, axis line, close-after-Enter, snap drag",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard panel",
+          "howToReach": "open shortcuts",
+          "whatToCheck": "F1 terminal, ` StrictAlign, 1 2 3 / x y z listed",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+      "items": [
+        {
+          "feature": "Wallpaper Rectangle shape",
+          "howToReach": "Admin > Wallpaper Settings > Shape > \"Rectangle (16:9 room)\"",
+          "whatToCheck": "Pick it with a 1080p image (slot) and a 1080p video: front and back walls show it undistorted (circle stays round), left/right walls are square, no stretching. Spin is on by default: press \"Hold still\".",
+          "tested": false
+        },
+        {
+          "feature": "Rectangle: left/right + top/bottom options",
+          "howToReach": "same panel, \"Rectangle room\" section",
+          "whatToCheck": "Left/right: Square crop / Mirror fill / Solid colour; Top/bottom: Media / Solid / None; each updates live and survives reload.",
+          "tested": false
+        },
+        {
+          "feature": "Rectangle: size + lock + fit",
+          "howToReach": "same section",
+          "whatToCheck": "Width/Height (aspect lock moves the other; 16:9 button), Fit Contain (bars in Bar colour) vs Cover (crop) with a 4:3 and a 21:9 image.",
+          "tested": false
+        },
+        {
+          "feature": "Rectangle with video",
+          "howToReach": "upload a video slot, then Rectangle",
+          "whatToCheck": "video fills front/back, switching shape back to Sphere keeps the video, Deactivate returns to the image, no leftover playing video (check CPU/audio).",
+          "tested": false
+        },
+        {
+          "feature": "Old wallpaper save unaffected",
+          "howToReach": "reload with a sphere/cubemap wallpaper saved before V191",
+          "whatToCheck": "looks the same.",
+          "tested": false
+        },
+        {
+          "feature": "NavMap close",
+          "howToReach": "Ribbon Home > NavMap",
+          "whatToCheck": "x in the header closes it; click the panel then press Esc closes it; Esc with the 3D view focused does not; reopen from the ribbon; maximize and x do not overlap; on a phone the whole panel (and x) is on screen.",
+          "tested": false
+        },
+        {
+          "feature": "Perspectives toolbar entry",
+          "howToReach": "Ribbon > Realities tab > Perspectives (right after Experiences)",
+          "whatToCheck": "glyph is a plain text circle-dot (not a coloured emoji eye); click shows the \"planned\" notice; tab row still fits at 390px.",
+          "tested": false
+        },
+        {
+          "feature": "OmniStarLight",
+          "howToReach": "Ctrl/Cmd+K, type \"perspectives\"",
+          "whatToCheck": "listed as Unavailable (Planned) with its reason.",
+          "tested": false
+        }
+      ]
     }
   ]
 }

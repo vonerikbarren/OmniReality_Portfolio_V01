@@ -28,7 +28,7 @@ import {
   POS_KEY, PAD, EDGE, boxFor, sanitizePos, loadPos, savePos, clampCompassPos, defaultCompassPos,
 } from '../utils/OmniUserCompassSettings.js'
 import { buildSphereGrid, projectSphere, bucketSegments, headingFromQuaternion, headingToYaw, DEFAULT_TILT, DEFAULT_PITCH } from '../utils/OmniSphereGrid.js'
-import { getLayout } from '../utils/OmniLayout.js'
+import { getLayout, getDockRow, getDockRowInset } from '../utils/OmniLayout.js'
 
 export const ROOT_ID = 'omni-user-compass'
 const STYLE_ID = 'omni-user-compass-styles'
@@ -295,21 +295,29 @@ export default class OmniUserCompass {
     return Number.isFinite(x) && x > 0 ? x : 0
   }
 
-  _clamp (pos) { return clampCompassPos(pos, this._box, this._viewport()) }
+  /** V191: a compass that is NOT docked stays above the OmniDock_Realities row (and the Dock); the docked default sits in the row itself. */
+  _vpFor (docked) {
+    const vp = this._viewport(), row = getDockRow()
+    return docked ? vp : { ...vp, dockH: row.bottom + (row.on ? row.h : 0) }
+  }
+
+  _clamp (pos) { return clampCompassPos(pos, this._box, this._vpFor(false)) }
 
   _layout () {
     if (!this._el) return
     const vp = this._viewport()
     this._d = fitDiameter(this._settings.size, vp.vw)
     this._box = boxFor(this._d)
-    const spot = this._saved ?? defaultCompassPos(this._box, vp.vw, { ...vp, leftFree: this._leftFree(vp) })
-    this._pos = clampCompassPos(this._drag?.live ?? spot, this._box, vp)
+    const dockRow = { ...getDockRow(), inset: getDockRowInset(vp.vw) }      // V191: the default spot is the left end of the OmniDock_Realities row
+    const spot = this._saved ?? defaultCompassPos(this._box, vp.vw, { ...vp, leftFree: this._leftFree(vp), dockRow })
+    const docked = !this._saved && !this._drag?.live && dockRow.on
+    this._pos = clampCompassPos(this._drag?.live ?? spot, this._box, this._vpFor(docked))
     const st = this._el.style
     st.left = this._pos.x + 'px'; st.top = this._pos.y + 'px'
     st.setProperty('--ouc-box', this._box + 'px')
     st.setProperty('--ouc-d', this._d + 'px')
     this._el.dataset.available = String(this._d > 0)
-    this._el.dataset.pos = this._saved ? 'custom' : 'default'
+    this._el.dataset.pos = this._saved ? 'custom' : (docked ? 'docked' : 'default')
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const px = Math.max(1, Math.round(this._d * dpr))
     if (this._canvas && (this._canvas.width !== px || dpr !== this._dpr)) { this._canvas.width = px; this._canvas.height = px }

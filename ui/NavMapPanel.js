@@ -59,7 +59,17 @@ const STYLES = `
   user-select      : none;
   font-size        : 11px;
   color            : var(--omni-theme-text-dim, rgba(255,255,255,0.7));
+  position         : relative;
+  padding          : 0 36px;   /* V191: room for the close (and maximize) buttons on the right */
 }
+.nm-controls { position: absolute; right: 6px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; }
+.nm-ctrl {
+  width: 22px; height: 22px; padding: 0; border-radius: 5px; cursor: pointer;
+  background: transparent; border: 1px solid transparent; color: inherit;
+  font: inherit; font-size: 14px; line-height: 1;
+}
+.nm-ctrl:hover, .nm-ctrl:focus-visible { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.18); outline: none; }
+.omni-navmap-panel:focus { outline: none; }
 
 .nm-list { flex: 1 1 auto; overflow-y: auto; padding: 8px; }
 .nm-item {
@@ -127,15 +137,21 @@ export default class NavMapPanel {
     if (!this._el) this._el = this._buildDOM()
     const shell = document.getElementById('omni-ui') ?? document.body
     if (!this._el.parentNode) shell.appendChild(this._el)
+    gsap.killTweensOf(this._el)   // a re-open during the close fade must not be hidden by its onComplete
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), duration: 0.25 })
+    WindowManager.bringToFront('navmap-' + this.navLabel)   // V191: on top, and on a phone pulled fully on-screen (the cascade spot left the close button off the right edge)
     this._isOpen = true
+    try { this._el.focus({ preventScroll: true }) } catch (_) { /* detached */ }
   }
 
   close () {
     if (!this._el) return
-    gsap.to(this._el, { opacity: 0, duration: 0.18, onComplete: () => { this._el.style.visibility = 'hidden' } })
+    const el = this._el
+    gsap.killTweensOf(el)
+    gsap.to(el, { opacity: 0, duration: 0.18, onComplete: () => { if (!this._isOpen) el.style.visibility = 'hidden' } })
     this._isOpen = false
+    if (el.contains(document.activeElement)) { try { document.activeElement.blur() } catch (_) { /* ignore */ } }
   }
 
   /** Real fast-travel: snaps the camera directly to the node's real
@@ -158,7 +174,13 @@ export default class NavMapPanel {
     const el = document.createElement('div')
     el.className = 'omni-navmap-panel'
     el.innerHTML = `
-      <div class="nm-header">${this.navLabel}</div>
+      <div class="nm-header">
+        <span class="nm-title">${this.navLabel}</span>
+        <div class="nm-controls">
+          <button class="nm-ctrl" data-action="close" title="Close" aria-label="Close ${this.navLabel}"
+            data-omni-tip="Close" data-omni-tip-key="Esc" data-omni-tip-desc="Closes the NavMap. Open it again from the ribbon Home tab (NavMap) or the nav drawer. Esc also closes it while the panel is focused.">×</button>
+        </div>
+      </div>
       <div class="nm-list" id="nm-list"></div>
     `
     const list = el.querySelector('#nm-list')
@@ -171,6 +193,15 @@ export default class NavMapPanel {
     })
 
     this._bindHeader(el)
+    el.tabIndex = -1   // focusable, so Escape can close it ONLY while the panel itself has focus
+    el.setAttribute('role', 'dialog')
+    el.setAttribute('aria-label', this.navLabel)
+    el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || !this._isOpen) return
+      e.preventDefault(); e.stopPropagation()
+      this.close()
+    })
     el.dataset.winId = 'navmap-' + this.navLabel
     WindowManager.register('navmap-' + this.navLabel, el, this.navLabel)
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
@@ -182,6 +213,7 @@ export default class NavMapPanel {
     const header = el.querySelector('.nm-header')
     const drag = { active: false }
     const onDown = (e) => {
+      if (e.target.closest?.('button')) return   // V191: the close / maximize buttons are not drag handles
       const cx = e.touches?.[0]?.clientX ?? e.clientX
       const cy = e.touches?.[0]?.clientY ?? e.clientY
       const rect = el.getBoundingClientRect()

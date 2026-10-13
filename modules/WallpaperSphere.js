@@ -54,6 +54,7 @@
 
 import * as THREE from 'three'
 import { loadWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
+import { RECT_SHAPE, RECT_ASPECT, normalizeRectSettings, pickRectPatch, boxSize, layoutFaces, faceUVArray } from '../utils/WallpaperRect.js'
 
 // wallpaperVideoStore now has the same 20 slots as the image browser
 // (previously a single-slot, maxSlots=1 store, always slot 1) — see
@@ -134,8 +135,9 @@ const SHAPE_BUILDERS = {
   DodecahedronGeometry: (s) => new THREE.DodecahedronGeometry(s),
   CapsuleGeometry:      (s) => new THREE.CapsuleGeometry(s * 0.6, s, 16, 32),
 }
-export const WALLPAPER_SHAPES = [...Object.keys(SHAPE_BUILDERS), CUBEMAP_SHAPE]
-export { CUBEMAP_SHAPE }
+// V191: RECT_SHAPE ('RectangleRoom') = a box room, 16:9 media on the front/back walls, square left/right walls (utils/WallpaperRect.js)
+export const WALLPAPER_SHAPES = [...Object.keys(SHAPE_BUILDERS), CUBEMAP_SHAPE, RECT_SHAPE]
+export { CUBEMAP_SHAPE, RECT_SHAPE }
 
 function readAdminSettings () {
   try {
@@ -177,6 +179,9 @@ export default class WallpaperSphere {
     this._mesh = null
     this._shape = DEFAULT_SHAPE
     this._isCubemap = false   // set by _buildMesh — true only when this._shape === CUBEMAP_SHAPE
+    this._isRect = false      // V191: set by _buildMesh — true only when this._shape === RECT_SHAPE
+    this._rect = normalizeRectSettings({})   // V191: the Rectangle room settings (utils/WallpaperRect.js)
+    this._lastColor = DEFAULT_COLOR          // V191: the plain wallpaper colour, shown on media faces that have no picture yet
     this._texture = null
     this._loader = new THREE.TextureLoader()
     this._imgUrl = ''
@@ -216,6 +221,8 @@ export default class WallpaperSphere {
     const saved = readWallpaperSettings()
 
     this._shape = saved.shape ?? DEFAULT_SHAPE
+    this._rect = normalizeRectSettings(saved)   // V191: validation + migration (an older save has none of the rect keys)
+    this._lastColor = typeof saved.color === 'string' ? saved.color : DEFAULT_COLOR
     this._buildMesh(this._shape, saved.alpha ?? DEFAULT_ALPHA)
 
     this._rotationSpeed = saved.rotationSpeed ?? 0.05
@@ -239,6 +246,7 @@ export default class WallpaperSphere {
       if (!saved.imgUrl) this._eachMaterial(m => m.color.set(saved.color ?? DEFAULT_COLOR))
     }
 
+    if (this._isRect) this._layoutRect()
     this._videoLoop = saved.videoLoop ?? true
     this._videoMuted = saved.videoMuted ?? true
     this._videoVolume = saved.videoVolume ?? 0
@@ -250,6 +258,13 @@ export default class WallpaperSphere {
 
     this._onSettingsSet = (e) => {
       const w = e.detail ?? {}
+      const rp = pickRectPatch(w)   // V191: Rectangle room settings
+      if (Object.keys(rp).length) {
+        const prev = this._rect
+        this._rect = normalizeRectSettings({ ...prev, ...rp })
+        if (this._isRect) this._rebuildRectGeometry(prev)
+      }
+      if (typeof w.color === 'string') this._lastColor = w.color
       if (w.shape !== undefined && w.shape !== this._shape) this._changeShape(w.shape)
       if (w.alpha !== undefined) this._eachMaterial(m => { m.opacity = w.alpha })
       if (w.rotationSpeed !== undefined) this._rotationSpeed = w.rotationSpeed
@@ -263,6 +278,7 @@ export default class WallpaperSphere {
       else if (w.imgUrl === '') this._clearImage(w.color ?? DEFAULT_COLOR)
       else if (w.color !== undefined && !this._texture) this._eachMaterial(m => m.color.set(w.color))
       if (w.activeSlot) this._applyFromSlot(w.activeSlot)
+      if (this._isRect && typeof w.color === 'string') this._layoutRect()
 
       // ── Video wallpaper ──────────────────────────────────────────
       if (w.activeVideoSlot) this._applyVideoFromSlot(w.activeVideoSlot)
@@ -301,8 +317,9 @@ export default class WallpaperSphere {
    *  in place the way a texture or color can. */
   _buildMesh (shape, alpha) {
     this._isCubemap = shape === CUBEMAP_SHAPE
+    this._isRect = shape === RECT_SHAPE
     const builder = this._isCubemap ? SHAPE_BUILDERS.BoxGeometry : (SHAPE_BUILDERS[shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE])
-    const geo = builder(BASE_SIZE)
+    const geo = this._isRect ? this._rectGeometry() : builder(BASE_SIZE)
     const matParams = {
       color: DEFAULT_COLOR,
       transparent: true,
@@ -314,21 +331,24 @@ export default class WallpaperSphere {
     // an array of 6 in its own +x/-x/+y/-y/+z/-z order) so each face
     // can carry a different sliced texture — every other shape keeps
     // the original single shared material.
-    const mat = this._isCubemap
-      ? Array.from({ length: 6 }, () => new THREE.MeshBasicMaterial({ ...matParams }))
-      : new THREE.MeshBasicMaterial(matParams)
+    const mat = this._isRect
+      ? Array.from({ length: 6 }, () => this._makeRectMaterial(matParams))
+      : this._isCubemap
+        ? Array.from({ length: 6 }, () => new THREE.MeshBasicMaterial({ ...matParams }))
+        : new THREE.MeshBasicMaterial(matParams)
     this._mesh = new THREE.Mesh(geo, mat)
     this._mesh.renderOrder = -2   // between the cube (-3) and domain grid (-1)
     this.ctx.scene.add(this._mesh)
   }
 
   _changeShape (shape) {
-    if (!SHAPE_BUILDERS[shape] && shape !== CUBEMAP_SHAPE) return
+    if (!SHAPE_BUILDERS[shape] && shape !== CUBEMAP_SHAPE && shape !== RECT_SHAPE) return
 
     const wasCubemap = this._isCubemap
+    const wasRect = this._isRect   // V191
     const prevMat = this._mesh.material
-    const prevAlpha = wasCubemap ? prevMat[0].opacity : prevMat.opacity
-    const prevColor = (wasCubemap ? prevMat[0] : prevMat).color.clone()
+    const prevAlpha = Array.isArray(prevMat) ? prevMat[0].opacity : prevMat.opacity
+    const prevColor = wasRect ? new THREE.Color(this._lastColor) : (wasCubemap ? prevMat[0] : prevMat).color.clone()
     const prevTexture = this._texture   // always the whole, un-sliced image — see _applyImage
 
     // Cubemap slicing can't track a live video frame-by-frame without
@@ -344,15 +364,22 @@ export default class WallpaperSphere {
 
     this.ctx.scene.remove(this._mesh)
     this._mesh.geometry.dispose()
-    if (Array.isArray(prevMat)) prevMat.forEach(m => { m.map?.dispose(); m.dispose() })
+    if (Array.isArray(prevMat)) prevMat.forEach(m => { if (!wasRect) m.map?.dispose(); m.dispose() })   // V191: a Rectangle room's faces SHARE one texture (this._texture / the video), never dispose it per face
     else prevMat.dispose()
 
     this._shape = shape
     this._buildMesh(shape, prevAlpha)
 
-    if (this._isCubemap) {
+    if (this._isRect) {
+      this._layoutRect()
+    } else if (this._isCubemap) {
       if (prevTexture?.image) this._applyCubemapFaces(prevTexture.image)
       else this._mesh.material.forEach(m => m.color.copy(prevColor))
+    } else if (this._videoActive && this._videoTexture) {   // V191: a live video follows the shape change (it used to be dropped for the still image)
+      this._flipForInteriorView(this._videoTexture)
+      this._mesh.material.map = this._videoTexture
+      this._mesh.material.color.set(0xffffff)
+      this._mesh.material.needsUpdate = true
     } else if (prevTexture) {
       this._flipForInteriorView(prevTexture)
       this._mesh.material.map = prevTexture
@@ -363,6 +390,81 @@ export default class WallpaperSphere {
       this._mesh.material.needsUpdate = true
     }
     this._applyTransform()
+  }
+
+  // ── V191: Rectangle room ──────────────────────────────────────────────────────
+
+  _rectGeometry () {
+    const { w, h, d } = boxSize(this._rect)
+    return new THREE.BoxGeometry(w, h, d)
+  }
+
+  /** A face material: BackSide like every wallpaper, plus a tiny shader patch that paints the letterbox bars (uv outside 0..1)
+   *  in rectBarColor when uRectBars is 1. No extra pass, no new WebGL context. */
+  _makeRectMaterial (matParams) {
+    const mat = new THREE.MeshBasicMaterial({ ...matParams })
+    const uniforms = { uRectBars: { value: 0 }, uRectBarColor: { value: new THREE.Color(this._rect.rectBarColor) } }
+    mat.userData.rect = uniforms
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uRectBars = uniforms.uRectBars
+      shader.uniforms.uRectBarColor = uniforms.uRectBarColor
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uRectBars;\nuniform vec3 uRectBarColor;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\n#ifdef USE_MAP\nif (uRectBars > 0.5 && (vMapUv.x < 0.0 || vMapUv.x > 1.0 || vMapUv.y < 0.0 || vMapUv.y > 1.0)) diffuseColor.rgb = uRectBarColor;\n#endif')
+    }
+    mat.customProgramCacheKey = () => 'omni-rect-bars'
+    return mat
+  }
+
+  /** The picture the room shows: the live video when one is active, else the still image (or null). */
+  _mediaTexture () { return (this._videoActive && this._videoTexture) ? this._videoTexture : this._texture }
+
+  _mediaAspect () {
+    const v = this._videoActive ? this._videoEl : null
+    if (v?.videoWidth && v?.videoHeight) return v.videoWidth / v.videoHeight
+    const img = this._texture?.image
+    const w = img?.naturalWidth || img?.width
+    const h = img?.naturalHeight || img?.height
+    return w && h ? w / h : RECT_ASPECT
+  }
+
+  /** New width/height -> new box geometry (old one disposed), then re-layout. Other rect settings only need the layout. */
+  _rebuildRectGeometry (prev) {
+    if (!this._isRect || !this._mesh) return
+    if (prev.rectWidth !== this._rect.rectWidth || prev.rectHeight !== this._rect.rectHeight) {
+      this._mesh.geometry.dispose()
+      this._mesh.geometry = this._rectGeometry()
+    }
+    this._layoutRect()
+  }
+
+  /** Writes the per-face uv, map, colour and visibility from the pure plan (utils/WallpaperRect.js layoutFaces). Idempotent. */
+  _layoutRect () {
+    if (!this._isRect || !this._mesh || !Array.isArray(this._mesh.material)) return
+    const mats = this._mesh.material
+    const tex = this._mediaTexture()
+    if (tex && (tex.repeat.x !== 1 || tex.wrapS !== THREE.MirroredRepeatWrapping || tex.wrapT !== THREE.MirroredRepeatWrapping)) {
+      tex.repeat.x = 1
+      tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping   // only 'mirror' side walls reach outside 0..1 without bars
+      if (!tex.isVideoTexture) tex.needsUpdate = true
+    }
+    const faces = layoutFaces(this._rect, this._mediaAspect())
+    const bar = new THREE.Color(this._rect.rectBarColor)
+    const uv = this._mesh.geometry.attributes.uv
+    faces.forEach((f, i) => {
+      const m = mats[i]
+      const a = faceUVArray(f.uv, true)
+      for (let k = 0; k < 4; k++) uv.setXY(i * 4 + k, a[k * 2], a[k * 2 + 1])
+      m.visible = f.mode !== 'none'
+      const map = f.mode === 'media' ? (tex ?? null) : null
+      if ((m.map ?? null) !== map) { m.map = map; m.needsUpdate = true }
+      if (f.mode === 'media' && tex) m.color.set(0xffffff)
+      else if (f.mode === 'media') m.color.set(this._lastColor)
+      else m.color.copy(bar)
+      m.userData.rect.uRectBars.value = (f.bars && tex) ? 1 : 0
+      m.userData.rect.uRectBarColor.value.copy(bar)
+    })
+    uv.needsUpdate = true
   }
 
   /** Runs fn against every real material this mesh currently has —
@@ -439,7 +541,11 @@ export default class WallpaperSphere {
    *  most photos, which is why this went uncaught until video (where
    *  motion/on-screen text/faces make a mirrored image obvious). */
   _flipForInteriorView (texture) {
+    // V191: a texture coming back from a Rectangle room has mirrored wrapping; put the sphere/box defaults back
+    const wrapChanged = texture.wrapT !== THREE.ClampToEdgeWrapping || texture.wrapS === THREE.MirroredRepeatWrapping
     texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+    if (wrapChanged && !texture.isVideoTexture) texture.needsUpdate = true
     texture.repeat.x = -1
     return texture
   }
@@ -467,7 +573,9 @@ export default class WallpaperSphere {
         this._imgUrl = url
         this._imgUrlIsObjectUrl = isObjectUrl
         if (this._videoActive) return   // video stays on top — texture is ready for when it's cleared
-        if (this._isCubemap) {
+        if (this._isRect) {
+          this._layoutRect()
+        } else if (this._isCubemap) {
           this._applyCubemapFaces(texture.image)
         } else {
           this._flipForInteriorView(texture)
@@ -487,6 +595,7 @@ export default class WallpaperSphere {
     this._texture = null
     this._imgUrl = ''
     if (this._videoActive) return   // don't touch the live material — video owns it right now
+    if (this._isRect) { this._lastColor = fallbackColor; this._layoutRect(); return }
     if (this._isCubemap) {
       this._mesh.material.forEach(mat => {
         mat.map?.dispose()
@@ -589,6 +698,7 @@ export default class WallpaperSphere {
     video.addEventListener('loadedmetadata', () => {
       video.muted = this._videoMuted
       video.volume = this._videoVolume
+      if (this._isRect) { this._layoutRect(); return }   // V191: the room fits the video's real aspect, no 2:1 needed
       if (video.videoWidth && video.videoHeight) {
         const ratio = video.videoWidth / video.videoHeight
         if (Math.abs(ratio - 2) > 0.1) {
@@ -607,6 +717,7 @@ export default class WallpaperSphere {
     texture.colorSpace = THREE.SRGBColorSpace
     this._flipForInteriorView(texture)
     this._videoTexture = texture
+    if (this._isRect) { this._layoutRect(); return }   // V191: the room puts it on its walls itself
     this._mesh.material.map = texture
     this._mesh.material.color.set(0xffffff)
     this._mesh.material.needsUpdate = true
@@ -632,6 +743,7 @@ export default class WallpaperSphere {
   _clearVideo () {
     this._disposeVideo(false)
     this._commitVideoActive(false)
+    if (this._isRect) { this._layoutRect(); return }   // V191
     // Fall back to whatever image/color was already loaded — same
     // texture _applyImage kept ready in the background the whole time.
     // (Video can't be active in Cubemap mode at all — see _applyVideo

@@ -136,3 +136,15 @@ All four hands own a full-length, two-sided tunnel through the origin (`data/Omn
 
 See DeveloperQueue items 48 and 53 for follow-ups. Related:
 `docs/architecture/HAND_TOGGLE_CONTROL_DESIGN.md`, `CAMERA_MOVEMENT_OPTIONS_DESIGN.md`.
+
+## V191 — round satellites, corner buttons, tool options on the axis pads
+
+**Satellites are circles (supersedes the V165 / V166 numbers above).** `border-radius:50%`, 46 px desktop / 40 px phone (was 40 / 34 squares); orbit radius R = padHalf + gap + satHalf with a 10 px (desktop) / 8 px (phone) clear gap to the pad rim (was 4); 24 degree step, so neighbouring circles are 13 px (desktop) / 9 px (phone) apart. Angles (release/speed/activate/settings): LH 90/114/138/162, RH 270/246/222/198, OmniHand 90/66/42/18, Conscious 270/294/318/342; phone LH 36/12/348/324, RH 324/348/12/36, OmniHand 144/168/192/216, Conscious 216/192/168/144. The last slot is 18 degrees (not 0 / 180) off vertical so it clears the 103 px hand wrapper in the corner. Every satellite now carries a small second line (FREE, ×1.0, FIRE or TUNL, SET).
+
+**One round data chip on every pad** (second ring, radially outward of `CHIP_ANCHOR`: activate on LH / RH, speed on the two top hands; 56 px desktop / 46 phone, 8 px clear of its satellite). LH / RH: the ammo name (unchanged behaviour). OmniHand / ConsciousHand: the marker's current node + `n/N`, click opens `ui/HandToolsPanel.js`.
+
+**Tool options of OmniHand / ConsciousHand on the pad.** `ui/HandToolsPanel.js` is a transient popover (like the Speed popover, not a window): TakeMeThere, Root, Back, Forth, Υ up, Υ down, Reset marker, Tunnel, Follow pads, Settings. Each calls the API the axis already had (`OmniAxinator.travelToNode`, `OmniDimensionalAxes.step`, `omni:dimension-axes-reset`, `omni:hand-activate`, `omni:dimension-axes-visible-set`, `omni:nav-select`). The axis-side access (node menu, readout, ⟐DimensionalAxesSettings, ⟐OmniHands) is unchanged.
+
+**Corner buttons in the pad cross** (`PAD_CONFIGS[hand].corners`, `EXTRA_BUTTONS`): LH tr/br = ascend / descend (keys E / Q); RH tl/bl = orbit up / down (keys Y / H), tr/br = ascend / descend. Ascend / descend add to `camera.position.y` through the altitude-up / -down multipliers and the hand's eased speed, exactly like RH Rise / Fall (on RH, Rise held together with ascend is one rise, not two). Orbit up / down: `_pitchBy`, the vertical twin of ORB-L / ORB-R, around `_rotationPivot` (selected node, else (0,2,0)), ±85 degrees, YAW_SPEED x Admin vertical-orbit step x RH speed. They dispatch `omni:movement { hand, direction: 'ascend'|'descend'|'pitchUp'|'pitchDown' }` like the other pad buttons. No camera "invert" setting exists in the code, so none is applied.
+
+**Symbol.** ◬ (U+25EC) replaces the placeholder Δ for the ConsciousHand (`CONSCIOUS_SYMBOL`).

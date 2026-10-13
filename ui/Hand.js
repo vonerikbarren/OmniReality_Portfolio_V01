@@ -87,7 +87,7 @@ const HAND_CONFIGS = {
     // V158: this pad no longer moves the camera. It drives Conscious Hand's
     // dimensional axes (systems/OmniDimensionalAxes.js) — what the ⚇ button
     // here actually opens.
-    padFunction  : 'Δ axis — ◂▸ travel the perspective axis (8↔2 o\'clock), ▲▼ Υ scale degree. No camera movement.',
+    padFunction  : '◬ axis — ◂▸ travel the perspective axis (8↔2 o\'clock), ▲▼ Υ scale degree. No camera movement.',
     radialDir    : 'center-left',
     topRow       : ['pad', 'hamburger'],    // right-side: ⚇ inner, ☰ outer
     bottomRow    : ['orbiter', 'radial'],

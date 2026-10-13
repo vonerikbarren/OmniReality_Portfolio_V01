@@ -1,5 +1,15 @@
 # Build Log
 
+## 2026-10-12 — V191: pad circles + vertical buttons + ◬, hand tool options, OmniPathNode / OmniNodeOrderPanel, floorPanelNode + FloorNodeMakerSettings, OmniDock_Realities, OmniState_StrictAlign, wallpaper Rectangle, NavMap close, Perspectives
+
+Built as four parallel parts from V190 (git merge-file; one trivial doc conflict).
+- **Pads/hands:** option buttons are circles with clear gaps (46 px desktop / 38 px phone; chips 56 / 52); LH and RH ascend / descend buttons (E / Q); RH vertical orbit ORB-U / ORB-D (Y / H, clamped 85 degrees); Conscious Hand symbol Δ -> ◬ everywhere (UI, data, docs); OmniHand and ConsciousHand tool options on their pads via a chip and `ui/HandToolsPanel.js` (10 options, axis access kept); the round ⟐ launcher gained OmniKeys and OmniDraw.
+- **Nodes:** nothing like OmniPathNode existed. New OmniPathNode (LINK and GENEALOGY modes, `omni:paths:v1`, caps) + OmniNodeOrderPanel (reorder, jump, rename; Inspector + Home > Create buttons). New floorPanelNode: 11 Tetris-style pieces with rotate/mirror, merged mesh per piece, per-cell picture / GIF / video faces (new IndexedDB `omni-wallpapers-floorpanel-media`, at most 4 animated at once). New FloorNodeMakerSettings (Admin slot 20): 12x12 blueprint grid (6-24), Piece / Face tools, Place in scene, scene grid overlay + ghost.
+- **Realities dock + StrictAlign:** OmniDock_Realities, a scrollable row above the Dock with 20 wireframe SVG shapes + count badges, quickTip with the count (tap once on touch), click opens a live RealitiesInShape window, settings (size, opacity, per-shape colour / opacity, hide empty; `omni:dock-realities-v1`); the userCompass defaults to its left end; X meter moved above the row via `--omni-dock-stack-h`. OmniState_StrictAlign: the ` key, one axis at a time, drag / nudge / typed exact value, other axes locked, works for all node kinds and multi-selection (`utils/StrictAlign.js`, `omni:strictalign-v1`).
+- **Wallpaper / misc:** wallpaper shape Rectangle (16:9 front/back walls, square left/right, widescreen top/bottom, fit, aspect lock, Hold still; `utils/WallpaperRect.js`); a shape change while a video plays now keeps the video; NavMap got a close button (and opens fully on a phone); Perspectives entry after Experiences with the text glyph ◉ (`utils/OmniGlyphs.js`; Planned notice).
+- **Tests (all pass on merged V191):** v191a 137; v191b 58+121+60+77+119+18; v191c 62+41+81+96 (+ merge-only nodev checks: main.js block contiguity and notes file, expected after merge); v191d 48+75+17; v190 suites re-run 142+193+13+27+50+48+55+32. Real Chromium (software GL): app boots with the dock row, new ribbon buttons, no new console errors.
+- **Not verified:** real GPU, phone, touch; see DeveloperQueue 81.
+
 ## 2026-10-12 — V190: OmniStar tab (Docs, OmniStarLight), compass panel, notify under profile, hands dividers, reticle, floor 20 slots, bottom X meter + session clock, orbit release, boot star + shooting stars + dev intro settings
 
 Built as two parallel parts from V189 and merged (only main.js changed in both; git merge-file, no conflicts).

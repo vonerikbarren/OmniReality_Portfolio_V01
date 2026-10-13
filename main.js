@@ -158,6 +158,10 @@ import OmniSystemCreatorPanel from './ui/OmniSystemCreatorPanel.js'
 import ComingSoonPanel from './ui/ComingSoonPanel.js'
 import OmniStoreScene from './systems/OmniStoreScene.js'
 import OmniStoreNodes from './systems/OmniStoreNodes.js'                    // V183: StoreItemNode / OmniValueNode runtime (live refresh, pin, conversion labels)
+import OmniPathNodes from './systems/OmniPathNodes.js'                      // V191: OmniPathNode runtime (path lines, link recording, genealogy build)
+import OmniFloorPanels from './systems/OmniFloorPanels.js'                  // V191: floorPanelNode runtime (Tetris pieces on the floor grid, face media)
+import OmniNodeOrderPanel from './ui/OmniNodeOrderPanel.js'                 // V191: ⟐OmniNodeOrder (class-A window)
+import FloorNodeMakerSettingsPanel from './ui/FloorNodeMakerSettingsPanel.js'   // V191: ⟐FloorNodeMakerSettings (user settings, Admin slot 20)
 import OmniExchangeRadial from './ui/OmniExchangeRadial.js'
 import OmniWalletPanel from './ui/OmniWalletPanel.js'
 import OmniValuePanel from './ui/OmniValuePanel.js'                      // V181: standalone OmniValue panel (component of OmniTalent)
@@ -257,12 +261,15 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
 
   // ── V188 userCompass — the small clear spinning globe; V190: a small floating panel of its own, draggable, position remembered ──
   base.addModule(new OmniUserCompass(base.context))
+  // ── V191 OmniDock_Realities (wireframe geometry strip above the Dock, its window + settings) and OmniState_StrictAlign (the ` key) ──
+  const { addV191Modules } = await import('./ui/OmniV191Modules.js')
+  addV191Modules(base, omniNode)
   // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
   base.addModule(new OmniReticle(base.context))
   base.addModule(new OmniDocsPanel())
   base.addModule(new OmniStarLight(base.context))
 
-  // ── Dimensional axes (Δ Conscious Hand / ⟐ OmniHand) ─────
+  // ── Dimensional axes (◬ Conscious Hand / ⟐ OmniHand) ─────
   // The two top hands' pads drive these instead of the camera.
   // V163 ⟐OmniHands settings panel — registered BEFORE the axes so it catches their
   // initial omni:dimension-state announcements for its position readout.
@@ -559,6 +566,11 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // Data lives in utils/OmniValueModel.js + utils/OmniStoreModel.js (no init; lazy-loaded from localStorage).
   base.addModule(new OmniStoreScene(base.context))
   base.addModule(new OmniStoreNodes(base.context, omniNode))   // V183: nodes that REPRESENT a store product / value type (ordinary OmniNode nodes with data.nodeKind)
+  // V191: OmniPathNode + floorPanelNode (ordinary OmniNode nodes with data.nodeKind) and the two panels that edit them
+  const omniPathNodes = base.addModule(new OmniPathNodes(base.context, omniNode))
+  const omniFloorPanels = base.addModule(new OmniFloorPanels(base.context, omniNode))
+  base.addModule(new OmniNodeOrderPanel(omniPathNodes))
+  base.addModule(new FloorNodeMakerSettingsPanel(omniFloorPanels))
   base.addModule(new OmniExchangeRadial())
   base.addModule(new OmniWalletPanel())
   base.addModule(new OmniValuePanel())
@@ -676,6 +688,8 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
         18: { label: 'OmniAxinator', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniAxinator' } })) },
         // V177: the USER's store look (colours, backdrop, presets). Its dev twin is ⟐Developer slot 6.
         19: { label: 'OmniStoreSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniStoreSettings' } })) },
+        // V191: the USER's floor panel maker (Tetris pieces, blueprint grid, media). No Dev twin yet.
+        20: { label: 'FloorNodeMakerSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorNodeMakerSettings' } })) },
       }
     },
     { id: 'experiences',     navLabel: '⟐Experiences',     title: '⟐Experiences',     prefix: 'Experience',     iconLabel: '⟐E' },

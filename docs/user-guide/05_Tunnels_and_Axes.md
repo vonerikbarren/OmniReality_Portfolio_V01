@@ -1,6 +1,6 @@
 # 5. Tunnels and Axes
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-09 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Firing and Payloads](04_Firing_and_Payloads.md) · Next: [Chronos, Player and Timeline](06_Chronos_Player_and_Timeline.md)
 
@@ -18,7 +18,7 @@ A **tunnel** is a long line through the middle of the space with nodes along it,
 
 ## Stepping along a tunnel
 
-1. Open the ⟐ AXIS pad (OmniHand) or Δ AXIS pad (ConsciousHand).
+1. Open the ⟐ AXIS pad (OmniHand) or ◬ AXIS pad (ConsciousHand).
 2. Press a direction, or use the keys listed in [Hands](02_The_Four_Hands.md). One press = one step; hold to repeat.
 3. The marker moves to the next node. Step speed, travel time and the repeat interval are in the hand's settings ([Settings](09_Settings_and_Admin.md)).
 
@@ -30,6 +30,8 @@ Click (do not drag) a tunnel node. A small menu appears with:
 - **🎯 TakeMeThere** flies the camera into that node.
 - **⟐ Root** returns to the root.
 Escape closes the menu. Hovering shows a tooltip.
+
+The same actions (and more: Back, Forth, Υ up, Υ down, Reset marker, Tunnel, Follow pads, Settings) are also on the pad since V191: click the round chip on the OmniHand or ConsciousHand pad (it shows the marker's current node). See [Hands](02_The_Four_Hands.md).
 
 ## When is a tunnel visible?
 

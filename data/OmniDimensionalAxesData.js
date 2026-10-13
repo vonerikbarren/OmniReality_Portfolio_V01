@@ -24,7 +24,7 @@
 
 // ── Symbols (trivially changeable) ──────────────────────────────────────────
 
-export const CONSCIOUS_SYMBOL = 'Δ'   // Delta — Conscious Hand's dimension
+export const CONSCIOUS_SYMBOL = '◬'   // U+25EC white up-pointing triangle with dot — Conscious Hand's dimension (V191; was a placeholder Δ)
 export const OMNIHAND_SYMBOL  = '⟐'   // OmniHand's dimension
 export const LOGICAL_SYMBOL   = 'Λ'   // V166 LogicalHand tunnel (view only)
 export const CREATIVE_SYMBOL  = 'Ψ'   // V166 CreativeHand tunnel (view only)

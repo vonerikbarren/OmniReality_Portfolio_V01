@@ -37,7 +37,7 @@
  */
 
 import * as THREE from 'three'
-import { WALLPAPER_SHAPES, CUBEMAP_SHAPE } from './WallpaperSphere.js'
+import { WALLPAPER_SHAPES, CUBEMAP_SHAPE, RECT_SHAPE } from './WallpaperSphere.js'
 import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 
 // A local list, not a direct re-export — Grid is exclusive to
@@ -51,7 +51,7 @@ import { createWallpaperStore } from '../utils/WallpaperStorage.js'
 // image), so it's excluded here rather than showing up as a
 // dropdown option that silently does nothing when picked.
 const boxIndex = WALLPAPER_SHAPES.indexOf('BoxGeometry')
-const REAL_WALLPAPER_SHAPES = WALLPAPER_SHAPES.filter(sh => sh !== CUBEMAP_SHAPE)
+const REAL_WALLPAPER_SHAPES = WALLPAPER_SHAPES.filter(sh => sh !== CUBEMAP_SHAPE && sh !== RECT_SHAPE)   // V191: the Rectangle room is WallpaperSphere-exclusive too
 export const BROWSERSPACE_SHAPES = [
   ...REAL_WALLPAPER_SHAPES.slice(0, boxIndex + 1),
   'Grid',

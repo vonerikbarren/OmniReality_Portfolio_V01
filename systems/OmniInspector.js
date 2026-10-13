@@ -112,6 +112,8 @@ import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
 import { isKindData } from '../utils/OmniNodeKinds.js'                       // V183: StoreItemNode / OmniValueNode keep their block in Appearance, like Sequence / Group / Essence
 import { kindOptionsHTML, wireKindOptions } from '../ui/OmniNodeKindInspector.js'
+import { isExtraKind } from '../utils/OmniExtraKinds.js'                      // V191: OmniPathNode / floorPanelNode keep their block in Appearance too
+import { extraOptionsHTML, wireExtraOptions } from '../ui/OmniExtraKindInspector.js'
 import { CHANGED_EVENT as STORE_CHANGED } from '../utils/OmniStoreModel.js'
 import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
@@ -2566,7 +2568,7 @@ export default class OmniInspector {
     const ext   = this._ext
     // V183: on a phone only one section is open; a store item / value node keeps its block in Appearance, so open that
     // when such a node is first shown (once per node, the user can close it again).
-    if (data && isKindData(data) && this._isPhone() && this._kindOpenedFor !== data.id) {
+    if (data && (isKindData(data) || isExtraKind(data)) && this._isPhone() && this._kindOpenedFor !== data.id) {
       this._kindOpenedFor = data.id
       this._sectionOpen = { appearance: true }; this._lastOpened = 'appearance'
     }
@@ -3433,6 +3435,7 @@ export default class OmniInspector {
    */
   _customOptionsHTML (data) {
     if (isKindData(data)) return kindOptionsHTML(data, { edges: this._allEdges, nodes: this._allNodes }) + this._sequenceOptionsHTML(data)
+    if (isExtraKind(data)) return extraOptionsHTML(data) + this._sequenceOptionsHTML(data)   // V191
     if (data?.isGroupNode) return this._groupOptionsHTML(data)
     if (data?.isEssenceNode) return this._essenceOptionsHTML(data) + this._sequenceOptionsHTML(data)
     if (data?.label !== 'MasterClock') return this._sequenceOptionsHTML(data)
@@ -3740,6 +3743,7 @@ export default class OmniInspector {
    *  source of truth. */
   _wireCustomOptions (body, data) {
     if (isKindData(data)) { wireKindOptions(body, data); this._wireSequenceOptions(body, data); return }
+    if (isExtraKind(data)) { wireExtraOptions(body, data); this._wireSequenceOptions(body, data); return }   // V191
     if (data?.isGroupNode) return this._wireGroupOptions(body, data)
     if (data?.isEssenceNode) { this._wireEssenceOptions(body, data); this._wireSequenceOptions(body, data); return }
     if (data?.label !== 'MasterClock') return this._wireSequenceOptions(body, data)

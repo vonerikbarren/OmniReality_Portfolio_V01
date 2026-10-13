@@ -47,7 +47,7 @@ Plain-language instructions for using the app, verified against the code (V180).
 - [`architecture/OMNISTAR_BOOT_DESIGN.md`](architecture/OMNISTAR_BOOT_DESIGN.md) (V185 boot screen, OmniStar / OmniOS branding)
   — the four hands as toggle control surfaces; Conscious Hand as
   "ToggleMaster," OmniHand mapped to the OmniProducts themselves. As of
-  V158 the two top hands drive the Δ / ⟐ dimensional axes (confirmed
+  V158 the two top hands drive the ◬ / ⟐ dimensional axes (confirmed
   design recorded at the bottom of that doc); the data behind them is
   still unbuilt.
 - [`architecture/USER_COMPASS_DESIGN.md`](architecture/USER_COMPASS_DESIGN.md) (V188 userCompass: the spinning globe under the logo; slot geometry, options, performance)

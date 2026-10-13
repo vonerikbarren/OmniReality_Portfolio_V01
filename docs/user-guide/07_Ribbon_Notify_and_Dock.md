@@ -1,6 +1,6 @@
 # 7. Ribbon, OmniNotify and Dock
 
-Applies to: V190 · Status: verified against code on 2026-10-12 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Chronos](06_Chronos_Player_and_Timeline.md) · Next: [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md)
 
@@ -49,6 +49,23 @@ The dock is the bar at the bottom (52px).
 A panel's _ button minimizes it to the dock.
 
 The ⚇ and ⚉ icons are half-filled when only one hand of the pair is shown. Ribbon Hands tab > **Summon** has the pair buttons plus one button per hand (LH, RH, OH, CH); the same four toggles are rows in the ⟐OmniHands panel.
+
+## The OmniDock_Realities row (V191)
+
+A second, thin dock sits directly **above** the dock: the **OmniDock_Realities**. It holds one small **wireframe icon for each main shape** a node can have (Box, Sphere, Cylinder, Cone, Torus, TorusKnot, Octahedron, Tetrahedron, Icosahedron, Dodecahedron, Plane, Circle, Ring, Capsule, Lathe, Tube, Extrude, Shape, Edges, Wireframe: the same 20 as the geometry picker). The row has its own space, so it **scrolls sideways** (drag it, swipe it, or use the mouse wheel) without a scrollbar.
+
+| Action | Does |
+|---|---|
+| Hover a shape (desktop) | The OmniNotify box shows the shape's name and its **number of nodes**, for example "4 nodes". The icon also turns slowly while the pointer is on it (not when your device asks for reduced motion) |
+| Tap a shape once (phone) | The same quick tip appears and the shape is marked. **Tap it again** (within 6 seconds) to open its list. A long-press also shows the tip |
+| Click a shape | Opens **⟐RealitiesInShape**, a window listing every node with that shape: its name, its kind (node, group, essence, store item, value, structural ...) and its **id**. Click a row to select that node and fly to it. The list updates by itself when nodes are added, removed or given another shape. Click the same shape again to close the window |
+| ⚙ at the right end | Opens the OmniDock_Realities settings |
+
+The **userCompass** now lives at the **left end** of this row by default. You can still drag it anywhere (a spot you chose is remembered and wins). **Dock compass** (in the settings, or in Admin > UI Settings) puts it back in the row.
+
+The row stays between the two bottom hands, so it never covers them or the dock. The icons get bigger or smaller with the screen width, and on a phone the row stays one line and scrolls. The X meter (the thin horizontal bar) and the bottom sheets sit above the row.
+
+Settings (Admin > UI Settings > OmniDock_Realities > Open settings, or the ⚙ on the row, or the nav item `⟐OmniDockRealitiesSettings`): **Show** the row; **icon size** with S / M / L buttons and a 60 to 160 % slider; **opacity** (20 to 100 %); **hide shapes with 0 nodes**; and for **each shape** its own colour and opacity with a reset. Everything applies at once and is remembered on this device. Counts are the nodes in the current reality; nothing here involves money.
 
 ## Resizing and maximizing panels (V187)
 

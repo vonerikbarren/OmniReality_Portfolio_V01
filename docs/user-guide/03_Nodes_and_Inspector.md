@@ -1,6 +1,6 @@
 # 3. Nodes and the Inspector
 
-Applies to: V183 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [The Four Hands](02_The_Four_Hands.md) · Next: [Firing and Payloads](04_Firing_and_Payloads.md)
 
@@ -83,6 +83,28 @@ Desktop: Identity, Location and Appearance start open and sections open independ
 | Keyframe property + ◇ At playhead | Position X/Y/Z, Scale, Rotation Y (deg), Opacity or Colour keyframe now |
 | Keyframe list | Click to jump, edit the value, ✕ to delete (first 60 shown) |
 | Reveal on timeline | Show the clip in the timeline |
+
+## Path nodes and the OmniNodeOrderPanel
+
+A **path node** (an octahedron) stands for one ordered list of your nodes, such as a tour or a reading order. Make one with ribbon Home > Create > Path node; it opens the **⟐OmniNodeOrder** window. The Inspector shows the same controls for a selected path node.
+
+| Control | What it does |
+|---|---|
+| Mode LINK | Press **Record links**, then select node A, B, C in turn. Each node is added to the end and a line joins it to the one before. Esc or **Stop recording** ends it |
+| Mode GENEALOGY | Select a root node, **Use selected as root**, choose pre-order or breadth-first, then **Build from hierarchy**. The list is built once from the parent/child tree; rebuild after you change the tree |
+| Drag, ▲ ▼, ✕ | Reorder by dragging the ⠿ handle (mouse or touch) or with ▲ ▼. ✕ removes a node from the path only. **Undo** (last 30 steps of this path) |
+| ⌖ | Selects the node and flies the camera to it |
+| Add selected | Appends the selected node |
+| Loop, Line | Close the line into a loop; show or hide the line |
+| Rename, path picker, New, Delete | Up to 50 paths of up to 200 nodes each. Deleting a path also deletes its path node, never the members |
+
+Paths are saved and come back after a reload. If you delete a node that is in a path, it is taken out of the order and the window says so ("1 deleted node was dropped"); a node that cannot be found shows as missing and can be removed.
+
+## Floor panel nodes
+
+A **floor panel node** is a flat piece of floor: one square panel per floor grid cell, laid out as a Tetris piece (I, O, T, S, Z, J, L, plus single, double and three-cell pieces). A piece is one node; you can still remove single panels. Build and place them in **⟐FloorNodeMakerSettings** (Admin panel, slot 20, or ribbon Home > Create > Floor panels); see [Settings and Admin](09_Settings_and_Admin.md).
+
+With a floor panel node selected, the Inspector shows: piece and floor cell; **Rotate left/right** and **Mirror** (quarter turns); **Snap** (puts a dragged piece back on the grid); a small map of the panels, where you click one to choose it; **Choose file** or a link for the chosen panel's face (picture png/jpg/webp up to 2 MB, GIF up to 4 MB, video mp4/webm up to 8 MB, https links only); **Clear**; **Link for all panels**; opacity; **Remove panel**. Videos are muted and loop; at most 4 animated faces play at once (the nearest on screen), the rest pause. A link must allow other sites to load it, otherwise the face stays grey and the Inspector shows the reason.
 
 ## Activation and the ammo chip
 

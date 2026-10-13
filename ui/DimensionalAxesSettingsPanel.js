@@ -1,7 +1,7 @@
 /**
  * ui/DimensionalAxesSettingsPanel.js — ⟐DimensionalAxesSettings, Admin slot 17
  *
- * Settings for systems/OmniDimensionalAxes.js (the Δ Conscious Hand and
+ * Settings for systems/OmniDimensionalAxes.js (the ◬ Conscious Hand and
  * ⟐ OmniHand axes). Follows ui/MiniMapSettingsPanel.js's pattern: its own
  * small draggable panel opened from an Admin slot via omni:nav-select,
  * registered with WindowManager, and a live toggle that dispatches an
@@ -157,7 +157,7 @@ export default class DimensionalAxesSettingsPanel {
     gsap.to(this._el, { opacity: 0, scale: 0.3, duration: 0.2, onComplete: () => { this._el.style.visibility = 'hidden' } })
     this._isOpen = false
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
-      detail: { id: 'dimaxessettings', label: '⟐DimensionalAxesSettings', iconLabel: 'ΔΥ',
+      detail: { id: 'dimaxessettings', label: '⟐DimensionalAxesSettings', iconLabel: '◬Υ',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }, variant: 'app' }
     }))
   }
@@ -182,7 +182,7 @@ export default class DimensionalAxesSettingsPanel {
           </label>
         </div>
         <button class="das-btn" id="das-reset">Reset Both Markers to Default</button>
-        <div class="das-note">Δ Conscious Hand and ⟐ OmniHand axes. ON (default): each hand's tunnel, nodes, marker and readout show while that hand's pad is open. OFF: they never show automatically (pins from ⟐OmniAxinator still work). Pad state keeps stepping and saving either way. Persists across reloads.</div>
+        <div class="das-note">◬ Conscious Hand and ⟐ OmniHand axes. ON (default): each hand's tunnel, nodes, marker and readout show while that hand's pad is open. OFF: they never show automatically (pins from ⟐OmniAxinator still work). Pad state keeps stepping and saving either way. Persists across reloads.</div>
       </div>
     `
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())

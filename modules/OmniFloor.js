@@ -289,3 +289,7 @@ export default class OmniFloor {
 }
 
 export { floorTextureStore, FLOOR_TEXTURE_SLOTS, FLOOR_SHAPES, BOUNDARY_SIZE, sanitizeFloorSlot }
+
+// V191: the floor grid unit and level, read by the floor panel maker (utils/FloorNodeMakerSettings.js has the same numbers; a test compares them).
+export const FLOOR_CELL = TILE_SIZE / TILE_DIVISIONS
+export const FLOOR_LEVEL_Y = FLOOR_Y

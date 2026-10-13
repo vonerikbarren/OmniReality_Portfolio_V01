@@ -41,6 +41,7 @@ import {
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
 import * as PrimaryTime from '../utils/PrimaryTime.js'
 import * as TL from '../utils/OmniTimeline.js'
+import { EYE_GLYPH } from '../utils/OmniGlyphs.js'
 
 export { STORAGE_KEY, PHONE_MAX, TABS_H_DESKTOP, TABS_H_PHONE, BODY_H }
 export { INSPECTOR_SECTIONS }   // V170: the list lives in utils/OmniInspectorSections.js (shared with the Inspector's own icon strip)
@@ -107,6 +108,9 @@ function buildTabs () {
           b('draw-static', '▢', 'Static', '—', 'Opens OmniDraw (Static): place a node from a form.', nav('⟐OmniDrawStatic'), { name: 'OmniDraw Static' }),
           b('draw-dynamic', '◇', 'Dynamic', '—', 'Opens OmniDraw (Dynamic): spawn a node in front of the camera.', nav('⟐OmniDrawDynamic'), { name: 'OmniDraw Dynamic' }),
           b('draw-behavior', '↯', 'Behavior', '—', 'Opens OmniDraw (BehaviorNode): the behaviour-node creation flow.', nav('⟐OmniDrawBehavior'), { name: 'OmniDraw Behavior' }),
+          b('path-node', '⤳', 'Path node', '—', 'Creates an OmniPathNode in front of the camera: an ordered path of nodes, attached one to the next (LINK) or built from the hierarchy (GENEALOGY). Opens the node order panel.', () => { ev('omni:path-create-request', { select: true }); nav('⟐OmniNodeOrder')() }, { name: 'New path node' }),
+          b('node-order', '⇅', 'Node order', '—', 'Opens ⟐OmniNodeOrder: the nodes of a path in order, drag to reorder, jump to a node, add, remove.', nav('⟐OmniNodeOrder'), { name: 'Node order panel' }),
+          b('floor-panels', '▦', 'Floor panels', '—', 'Opens ⟐FloorNodeMakerSettings (Admin): Tetris-piece floor panels, a blueprint grid, pictures / GIFs / videos on the faces, Place in scene.', nav('⟐FloorNodeMakerSettings'), { name: 'Floor panel maker' }),
         ] },
         { caption: 'Tools', btns: [
           b('mixer', '♫', 'Mixer', 'k', 'Toggles OmniMixer.', nav('⟐OmniMixer')),
@@ -148,12 +152,13 @@ function buildTabs () {
         { caption: 'Realities', btns: [
           b('realities', '⟐', 'Realities', '—', 'Opens the ⟐Realities indexed panel.', nav('⟐Realities')),
           b('experiences', '◈', 'Experiences', '—', 'Opens the ⟐Experiences indexed panel.', nav('⟐Experiences')),
+          b('perspectives', EYE_GLYPH, 'Perspectives', '—', 'PLANNED. Will list the dimensions (perspectives) of the product the ⟐OmniHand selects, on the ⟐ConsciousHand. Not built yet: the button only tells you so.', () => note('Perspectives', 'ConsciousHand lists the dimensions of the product OmniHand selects (planned)'), { name: 'Perspectives (planned)' }),
           b('spaces', '▫', 'Spaces', '—', 'Opens ⟐Spaces: click an empty slot to save the camera position, a saved slot (📍) to fly back to it.', nav('⟐Spaces')),
           b('times', '◷', 'Times', '—', 'Opens the ⟐Times indexed panel.', nav('⟐Times')),
           b('products', '▣', 'Products', '—', 'Opens the ⟐Products indexed panel.', nav('⟐Products')),
         ] },
         { caption: 'Axes', btns: [
-          b('axes', 'Δ', 'Dim. Axes', '—', 'Opens the Dimensional Axes settings.', nav('⟐DimensionalAxesSettings'), { name: 'Dimensional Axes' }),
+          b('axes', '◬', 'Dim. Axes', '—', 'Opens the Dimensional Axes settings.', nav('⟐DimensionalAxesSettings'), { name: 'Dimensional Axes' }),
           b('axinator', '⇋', 'Axinator', '—', 'Opens the OmniAxinator panel: the tunnels and their nodes.', nav('⟐OmniAxinator'), { name: 'OmniAxinator' }),
           b('tunnels', '◌', 'Tunnels', '—', 'Tunnels follow the pads: when on, a tunnel shows while its pad is open. Shared by all four hands.', (s) => ev('omni:dimension-axes-visible-set', { visible: !s.follow }), { name: 'Tunnels follow pads', pressed: (s) => s.follow }),
           b('domain-grid', '⊞', 'Domain grid', '0 / 9', "Toggles the domain grid sphere's visibility.", () => ev('omni:domaingrid-toggle-visible')),

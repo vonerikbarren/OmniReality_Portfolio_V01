@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V190 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 
@@ -11,8 +11,10 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | **Camera** | | |
 | W A S D | Everywhere | LH pad: forward, left, back, right |
 | R / F | Everywhere | Camera up / down |
+| E / Q | Everywhere | LH pad corner buttons: ascend / descend along world Y (V191) |
 | Arrow Up / Down | Everywhere | RH pad: rise / fall |
 | Arrow Left / Right | Everywhere | RH pad: orbit left / right |
+| Y / H | Everywhere | RH pad corner buttons: orbit up / down, the vertical twin of the left / right orbit (V191) |
 | C | Everywhere (not while hovering Chronos) | Return to the landing view |
 | **Hands** | | |
 | 1 / 2 | Everywhere | ⟐OmniHand ☰ / ⟐ConsciousHand ☰ (top-row digits or numpad) |
@@ -36,7 +38,8 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | O / Shift+O | Everywhere | Show/hide the User Space sphere / toggle its spin |
 | 0 or 9 (top row) | Everywhere | Domain grid sphere |
 | ( and ) | Everywhere | Wallpaper sphere spin direction |
-| ` or F1 | Everywhere | Terminal |
+| F1 | Everywhere | Terminal (before V191 the ` key also opened it; ` now belongs to StrictAlign) |
+| ` (Backquote) | Everywhere, not while typing in a text box | **OmniState_StrictAlign** on / off: move the selected node along ONE axis with exact coordinates (V191) |
 | F3 | Everywhere | Camera auto-rotate |
 | F6 | Everywhere | Window inspector dev tool |
 | J | Only while OmniMeter(External) is on | OmniStemming |
@@ -47,7 +50,25 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | Space, ← →, Home, End, I, O, M, C, Delete, + -, Escape | Chronos window | See [Chronos](06_Chronos_Player_and_Timeline.md) |
 | → ↓ / ← ↑, Space, Esc, Home, End | OmniPresenter open | Next / previous, play, stop, first / last |
 
+E, Q, Y and H do nothing while Ctrl, Cmd or Alt is held (browser shortcuts keep working), and are ignored while you type in a text box. Not checked on a device.
+
 Note: R and F are bound both to the camera and the RH pad. Whether they move you twice has not been checked on a device.
+
+## OmniState_StrictAlign keys (V191)
+
+Press ` with a node selected. A small panel shows the node's exact X, Y, Z. Only the chosen axis can change; the other two are locked and shown underneath.
+
+| Key | While the mode is on |
+|---|---|
+| 1 2 3 or x y z | Choose the axis (X, Y or Z) |
+| Arrow Up / Right, PageUp | One step up along the axis (the step is 0.1; **Shift** = 1) |
+| Arrow Down / Left, PageDown | One step down |
+| Mouse wheel over the node or its line | One step (the wheel zooms as usual elsewhere) |
+| Enter | Jump to the axis field to type an exact value; Enter again moves the node there |
+| Ctrl+Z (Cmd+Z) | Undo the last move made in this mode |
+| Esc or ` | Leave the mode |
+
+Touch: use the X / Y / Z buttons, drag the coloured line with a finger, and type in the field.
 
 ## Panel windows (V187)
 

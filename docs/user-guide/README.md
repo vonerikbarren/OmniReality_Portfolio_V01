@@ -70,7 +70,7 @@ The break is **700 pixels wide**. At 700px or narrower:
 | Hand | A 2x2 group of buttons in a screen corner |
 | Cell | One button of a hand (☰ ⚇ ⬢ ⦿) |
 | Pad | A floating direction control a hand opens |
-| Satellite | One of four small buttons around a pad |
+| Satellite | One of four round buttons around a pad (a fifth round chip shows the ammo or the marker's node) |
 | Tunnel | A long line through the centre with nodes along it |
 | Root | The centre node (0,0,0) of the tunnels |
 | Ribbon | The tabbed button strip under the top bar |

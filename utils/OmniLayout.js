@@ -142,3 +142,35 @@ export const getRibbonHeight = () => state.ribbonH
 export const getTopOffset    = () => BAR_H + state.ribbonH
 export const getTopStack     = () => BAR_H + state.ribbonH + state.bannerH
 export const getLayout       = () => snapshot()
+
+// ── OmniDock_Realities row (V191) ────────────────────────────────────────────
+// The wireframe-geometry strip (ui/OmniDockRealities.js) sits directly ABOVE the Dock. Whatever anchors itself to "the top of the
+// bottom chrome" (the X meter, the bottom sheets) reads --omni-dock-stack-h = Dock (52) + the row's height (0 while the row is hidden).
+//   --omni-dock-row-h     the row's height (0 when hidden)
+//   --omni-dock-stack-h   Dock + row            (the X meter's `_layoutDock` uses it)
+//   --omni-dock-h         kept in step with the stack so the bottom sheets (`bottom: var(--omni-dock-h, 52px)`) clear the row too
+export const DOCK_BASE_H = 52           // = ui/Dock.js DOCK_H
+export const DOCK_ROW_INSET = 112       // clear of the two bottom hands (103px wide); 90 on <= 460px screens (the hands shrink to 83px)
+export const DOCK_ROW_INSET_SMALL = 90
+const dockRow = { h: 0, on: false }
+
+export function getDockRowInset (viewportW = (typeof window !== 'undefined' ? window.innerWidth : 1280)) {
+  return (Number(viewportW) || 0) <= HAND_SMALL_MAX ? DOCK_ROW_INSET_SMALL : DOCK_ROW_INSET
+}
+
+/** The row announces its height ({ on:false } / h 0 when hidden). Writes the three variables and fires omni:layout-changed once per change. */
+export function setDockRow ({ h = 0, on = true } = {}) {
+  const v = on ? Math.max(0, Math.round(Number(h) || 0)) : 0
+  const isOn = on && v > 0
+  if (v === dockRow.h && isOn === dockRow.on) return
+  dockRow.h = v; dockRow.on = isOn
+  const root = typeof document !== 'undefined' ? document.documentElement : null
+  if (root?.style) {
+    root.style.setProperty('--omni-dock-row-h', `${v}px`)
+    root.style.setProperty('--omni-dock-stack-h', `${DOCK_BASE_H + v}px`)
+    root.style.setProperty('--omni-dock-h', `${DOCK_BASE_H + v}px`)
+  }
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('omni:layout-changed', { detail: snapshot() }))
+}
+export const getDockRow = () => ({ h: dockRow.h, on: dockRow.on, bottom: DOCK_BASE_H })
+export const getDockStackHeight = () => DOCK_BASE_H + dockRow.h

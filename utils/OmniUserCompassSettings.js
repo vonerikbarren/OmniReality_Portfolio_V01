@@ -191,6 +191,12 @@ export function clampCompassPos (pos, box, vp) {
  *    below the top hands banner (topStack), so it never covers the ribbon, the tab row, or the notify box that sits at the left.
  */
 export function defaultCompassPos (box, vw, lay) {
+  // V191: while the OmniDock_Realities row is shown the default spot is its left end (level with the row, centred in it).
+  const dr = lay?.dockRow
+  if (dr && dr.on && Number(dr.h) > 0) {
+    const vh = Math.max(box, Number(lay?.vh) || 720), h = Number(dr.h), bottom = Math.max(0, Number(dr.bottom) || DOCK_H)
+    return { x: Math.max(0, Math.round((Number(dr.inset) || 0) + 3)), y: Math.max(0, Math.round(vh - bottom - h + Math.max(0, (h - box) / 2))) }
+  }
   const barH = Math.max(0, Number(lay?.barH) || 0)
   const leftFree = Math.max(0, Number(lay?.leftFree) || 0)
   if (leftFree >= box + 4) {

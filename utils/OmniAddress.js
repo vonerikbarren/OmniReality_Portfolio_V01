@@ -19,6 +19,8 @@
  * Parsing never throws: parse() returns { ok:true, address } or { ok:false, error, at }.
  */
 
+import { EYE_GLYPH } from './OmniGlyphs.js'
+
 export const NAMESPACE = '0mni'
 export const MAX_LENGTH = 512
 export const MAX_DEPTH = 32            // segments including the core
@@ -26,7 +28,7 @@ export const MAX_ORDINAL = 1_000_000_000
 export const MAX_PERSPECTIVES = 8
 export const MAX_PARAMS = 8
 export const MAX_PARAM_LENGTH = 32
-export const EYE = '◉'                 // display placeholder for the perspective (eye) symbol, design open question 2
+export const EYE = EYE_GLYPH                // display placeholder for the perspective (eye) symbol, design open question 2
 
 /** Placeholder type table. code -> meaning. 'core' is the origin / Reality Core. */
 export const TYPES = Object.freeze({ C: 'core', B: 'branch', S: 'space' })

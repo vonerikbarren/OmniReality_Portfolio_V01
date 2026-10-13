@@ -1,6 +1,6 @@
 # 9. Settings and Admin
 
-Applies to: V188 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [OmniStore](08_OmniStore_and_OmniValue.md) · Next: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
@@ -46,13 +46,52 @@ The userCompass is the small clear globe in its own little panel. **Drag it anyw
 | Reset position | puts the panel back at its default spot | |
 | Reset userCompass | puts all of the above back, and the position | |
 
-By default it sits in the strip under the logo; when that strip is not free (narrow window, phone, or a moved OmniNotify box) it starts at the right edge under the ribbon. It is a small widget, not a window: it moves but has no resize handles or maximize. Click it (without dragging) to open this section; with the keyboard, focus it and press Enter, or use the arrow keys to move it (Shift for bigger steps).
+Since V191 it sits by default at the **left end of the OmniDock_Realities row** just above the dock (see [Ribbon, OmniNotify and Dock](07_Ribbon_Notify_and_Dock.md)); **Reset position** or **Dock compass** puts it back there. If the row is hidden it falls back to the old spots: the strip under the logo, or when that strip is not free (narrow window, phone, or a moved OmniNotify box) the right edge under the ribbon. It is a small widget, not a window: it moves but has no resize handles or maximize. Click it (without dragging) to open this section; with the keyboard, focus it and press Enter, or use the arrow keys to move it (Shift for bigger steps).
+
+### OmniDock_Realities (Admin > UI Settings > OmniDock_Realities, V191)
+
+Show or hide the row of wireframe shapes above the dock, **Open settings** (icon size S / M / L plus a slider, opacity, a colour and opacity for each shape, hide shapes with 0 nodes, reset), and **Dock compass** (puts the userCompass back at the left end of the row). Stored on this device (`omni:dock-realities-v1`). Details: [Ribbon, OmniNotify and Dock](07_Ribbon_Notify_and_Dock.md).
+
+### OmniState_StrictAlign (Admin > UI Settings > OmniState_StrictAlign, V191)
+
+The ` key moves the selected node along one axis with exact numbers. Controls apply at once and are remembered on this device (`omni:strictalign-v1`).
+
+| Option | Choices | Default |
+|---|---|---|
+| Step | 0.001 to 100 | 0.1 |
+| Shift step | 0.001 to 1000 | 1 |
+| Show axis line | on / off | on |
+| Close after Enter | on / off | off |
+| Snap drag to step | on / off | on |
+| Reset StrictAlign | puts all of the above back | |
+
+Keys are in [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md). A node that cannot be moved (a tracking node, a behaviour-locked or structural node, an object that is not an OmniNode) says why in the panel. If several nodes are set to move together, each moves by the same amount along the axis.
 
 ### Reticle (Admin > UI Settings > Reticle, V190)
 
 A faint decorative technical circle in the middle of the screen, behind every panel. It cannot be clicked. It turns slowly (not when your device asks for reduced motion). Controls apply at once: **Show** (on by default), **Opacity** (5 to 100 %, default 15 %), **Reset reticle**.
 
 **Clear Scene** asks to confirm, then removes every created object. Cannot be undone. **Export Reality** downloads a .zip of all settings plus saved images, audio and video. **Import Reality** restores from such a zip and reloads the page. Export before you clear.
+
+## FloorNodeMakerSettings (Admin slot 20)
+
+Opens from the ⟐Admin special slot 20 or ribbon Home > Create > Floor panels. It is a normal window (resize, maximize; a bottom sheet on a phone).
+
+1. **Piece**: choose I, O, T, S, Z, J, L or an extra (single, double, three-cell). **Rotate** turns it a quarter turn; **Mirror** flips it.
+2. **Grid** (12 x 12 by default, 6 to 24): with the Piece tool, click an empty cell to stamp the piece there (hover shows its footprint; red means it does not fit) and click a panel to remove that panel only. With the Face tool, click a panel, then give it a picture, GIF or video by file or https link; **Clear** removes it.
+3. **Place in scene** stamps the whole blueprint at the camera target; **Place at cell** uses a floor cell you type; **Place with pointer** lets you click the floor. Placing over existing panels is refused.
+
+| Setting | Range / default |
+|---|---|
+| Grid size | 6 to 24, default 12. Shrinking drops pieces that no longer fit |
+| Cell size | 1 to 200, default 20 (the floor grid unit); "= floor unit" resets it |
+| Panel thickness | 0.02 to 2, default 0.2 |
+| Colour, Opacity | default light blue, 0.1 to 1 (default 0.9) |
+| Snap to the floor grid | On: pieces sit exactly on floor cells |
+| Grid overlay on the floor | Draws the placement grid near the camera target |
+| Max panels | 20 to 1000, default 400, counted over the whole scene |
+
+The media list shows stored files (in use / unused); **Clean unused** deletes the unused ones. Media is kept in this browser and goes with Export Reality / Import Reality (60 files at most). **Reset** restores the settings and keeps the blueprint.
 
 ## Hand settings
 

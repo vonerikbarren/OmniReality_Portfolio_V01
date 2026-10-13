@@ -13,7 +13,7 @@
  *                      Left/Right → back/forth along OmniHand's primary axis
  *                                   (starts at the origin toward 11 o'clock; OmniProducts)
  *                      Up/Down    → Υ axis: product tier up/down
- *   ⟐CH       TR  →  DIMENSIONAL AXIS (Δ) — NO camera movement
+ *   ⟐CH       TR  →  DIMENSIONAL AXIS (◬) — NO camera movement
  *                      Left/Right → back/forth along Conscious Hand's primary
  *                                   axis (starts at the origin toward 2 o'clock; perspectives)
  *                      Up/Down    → Υ axis: scale degree (Human → Atomic)
@@ -118,6 +118,7 @@ import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/Omn
 import { getCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
 import { getEffectiveSpeed, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
 import HandSpeedPanel, { HAND_NAMES, formatSpeed } from './HandSpeedPanel.js'
+import HandToolsPanel from './HandToolsPanel.js'   // V191: the dimensional pads' tool options (opened by their data chip)
 import {
   CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL, HOLD_REPEAT_MS,
 } from '../systems/OmniDimensionalAxes.js'
@@ -165,13 +166,33 @@ const PAD_CONFIGS = {
     movable: true, keyboard: 'wasd',
     dirLabels: { up: 'FWD', down: 'BCK', left: 'STR-L', right: 'STR-R' },
     centerLabel: '⟐LH',
+    corners: { tr: 'ascend', br: 'descend' },   // V191: vertical movement, in the cross's free corner cells
   },
   rh: {
     id: 'rh', corner: 'br', abbr: 'RH', modeLabel: 'NAV',
     movable: true, keyboard: 'rf',
     dirLabels: { up: 'RISE', down: 'FALL', left: 'ORB-L', right: 'ORB-R' },
     centerLabel: '⟐RH',
+    corners: { tl: 'pitchUp', bl: 'pitchDown', tr: 'ascend', br: 'descend' },   // V191: vertical rotate (pitch) + vertical movement
   },
+}
+
+// V191: the extra buttons in the cross's corner cells (lh: ascend / descend; rh: those two + vertical orbit).
+// `ascend` / `descend` move the camera along world Y through the SAME altitude code (and settings:
+// ⟐OmniHands speed x Admin altitude-up / -down step or Global speed) as RH's Rise / Fall. `pitchUp` /
+// `pitchDown` orbit the camera up / down around the rotation pivot (the selected node, else the scene
+// centre, same pivot as OmniKeys' vertical rotation), clamped at 85 degrees, at YAW_SPEED x the Admin
+// "vertical orbit" step x the hand's speed: the vertical twin of ORB-L / ORB-R.
+const EXTRA_BUTTONS = {
+  ascend:    { glyph: '⇧', label: 'ASC',   name: 'Ascend',   tip: 'Move up along world Y (hold). Same altitude settings and speed as RH Rise.' },
+  descend:   { glyph: '⇩', label: 'DSC',   name: 'Descend',  tip: 'Move down along world Y (hold). Same altitude settings and speed as RH Fall.' },
+  pitchUp:   { glyph: '⌃', label: 'ORB-U', name: 'Orbit up', tip: 'Rotate the view up around the pivot (the selected node, else the scene centre), hold. Speed: Admin vertical orbit x RH speed.' },
+  pitchDown: { glyph: '⌄', label: 'ORB-D', name: 'Orbit down', tip: 'Rotate the view down around the pivot (the selected node, else the scene centre), hold. Speed: Admin vertical orbit x RH speed.' },
+}
+// V191 keys (free ones: nothing else binds them). Ignored with Ctrl / Cmd / Alt held so browser shortcuts survive.
+const EXTRA_KEYS = {
+  KeyE: { handId: 'lh', dir: 'ascend' }, KeyQ: { handId: 'lh', dir: 'descend' },
+  KeyY: { handId: 'rh', dir: 'pitchUp' }, KeyH: { handId: 'rh', dir: 'pitchDown' },
 }
 
 const DIRS       = ['up', 'down', 'left', 'right']
@@ -179,52 +200,72 @@ const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 
 // ── Satellite cluster geometry ─────────────────────────────────────────────────
 //
-// FOUR buttons (V165: Release / Speed / Activate / Settings) sit on each movable pad's
-// own circular rim, not inside its 3×3 cross. Clock angle θ is measured clockwise from
-// 12 o'clock; (dx, dy) is the screen offset from the pad's own center (dx: +right,
-// dy: +down), at radius R from that center.
+// FOUR round buttons (V165: Release / Speed / Activate / Settings) sit on each movable pad's
+// own circular rim, not inside its 3×3 cross, plus ONE round data chip (V191: every pad). Clock
+// angle θ is measured clockwise from 12 o'clock; (dx, dy) is the screen offset from the pad's own
+// center (dx: +right, dy: +down), at radius R from that center.
 //
-// LH spans the 3–6 o'clock arc of its own circle (90°, 120°, 150°, 180°: a 30° step, so
-// neighbouring buttons are 2·R·sin 15° ≈ 69 px apart on desktop / 57 px on mobile — more
-// than the 40 / 34 px button size); RH mirrors it across the vertical axis (360 − θ),
-// landing in 6–9 o'clock. Both clusters face inward-and-down. OmniHand / ConsciousHand
-// (top corners) mirror that vertically (180 − θ): inward-and-UP, the straight-down 180°
-// slot becoming straight-up 0°. Release stays nearest screen-center (90° / 270°) on all
-// four. 180° / 0° is the farthest slot from Release and the one the V150 layout already
-// used, so no slot reaches past the screen edge that the old layout did not.
+// V191 (owner: "make the border radius so they look like circles ... big enough where they can
+// view the data inside ... bring them a little farther from the movement pad so there is a clear
+// space around them"): the buttons are true circles (border-radius 50%), 46 px on desktop / 38 px
+// on a phone (was 40 / 34 px squares), and the orbit radius is R = padHalf + SAT_GAP + satHalf
+// with an 11 px (desktop) / 9 px (phone) gap from the pad's box to every circle (10 / 8 px clear of its 1 px border; was 4).
+// The angular step is 24 degrees (22.5 on a phone): neighbouring circles are 2·R·sin 12° ≈ 60 px
+// (desktop) / 46 px (phone) apart centre to centre, i.e. 14 / 8 px clear of each other.
+//
+// The data CHIP (ammo name on lh / rh; current node on omnihand / conscious) is a bigger circle
+// (56 / 52 px) on a second ring: radially OUTWARD of one of the four buttons (CHIP_ANCHOR), 8 / 7 px
+// clear of it, so it can show a whole name (the longest ammo name is 9 characters).
+//
+// LH spans the 3–6 o'clock arc of its own circle (90°, 114°, 138°, 162°); RH mirrors it across
+// the vertical axis (360 − θ), landing in 6–9 o'clock. Both clusters face inward-and-down.
+// OmniHand / ConsciousHand (top corners) mirror that vertically (180 − θ): inward-and-UP.
+// Release stays nearest screen-center (90° / 270°) on all four. The last slot (162° / 18°) keeps
+// the circle clear of the 103 px hand wrapper in the screen corner (a straight-down 180° slot
+// would touch it), and everything stays under the 52 px dock / over the 145 px ribbon stack.
 const _SAT_ROLES = ['release', 'speed', 'activate', 'settings']
 const _SAT_ANGLES = {
-  lh:        { release: 90,  speed: 120, activate: 150, settings: 180 },
-  rh:        { release: 270, speed: 240, activate: 210, settings: 180 },
-  omnihand:  { release: 90,  speed: 60,  activate: 30,  settings: 0   },
-  conscious: { release: 270, speed: 300, activate: 330, settings: 0   },
+  lh:        { release: 90,  speed: 114, activate: 138, settings: 162 },
+  rh:        { release: 270, speed: 246, activate: 222, settings: 198 },
+  omnihand:  { release: 90,  speed: 66,  activate: 42,  settings: 18  },
+  conscious: { release: 270, speed: 294, activate: 318, settings: 342 },
 }
-// V166 phone layout (<= 460px). The inward arcs above put each bottom pad's Release / Speed on
-// top of the OTHER bottom pad's (two 180px pads leave a 22px gap, 111px-radius clusters reach
-// the centre line), so on a phone the Speed buttons of the two pads sat on top of each other.
-// Mobile therefore fans the four buttons over the arc facing the screen's vertical middle
-// (above the bottom pads, below the top pads), 24 degrees apart, Release innermost as before.
+// V166 phone layout (<= 460px). The inward arcs above would put each bottom pad's Release / Speed
+// on top of the OTHER bottom pad's (two 180px pads leave a ~18px gap), so on a phone the four
+// buttons are fanned over the arc facing the screen's vertical middle (above the bottom pads,
+// below the top pads), 22.5 degrees apart (the span is limited to -37.5 .. +30 degrees so a 360 px wide
+// screen keeps both clusters on screen and apart), Release innermost as before.
 // Mirror rules are unchanged: RH = 360 - LH, top hands = 180 - bottom hands.
 const _SAT_ANGLES_MOBILE = {
-  lh:        { release: 30,  speed: 6,   activate: 342, settings: 318 },
-  rh:        { release: 330, speed: 354, activate: 18,  settings: 42  },
-  omnihand:  { release: 150, speed: 174, activate: 198, settings: 222 },
-  conscious: { release: 210, speed: 186, activate: 162, settings: 138 },
+  lh:        { release: 30,  speed: 7.5,   activate: 345, settings: 322.5 },
+  rh:        { release: 330, speed: 352.5, activate: 15,  settings: 37.5  },
+  omnihand:  { release: 150, speed: 172.5, activate: 195, settings: 217.5 },
+  conscious: { release: 210, speed: 187.5, activate: 165, settings: 142.5 },
 }
 const _SAT_SIDE   = { lh: 'left', rh: 'right', omnihand: 'left', conscious: 'right' }
 const _SAT_ANCHOR = { lh: 'bottom', rh: 'bottom', omnihand: 'top', conscious: 'top' }
-const CHIP_W = 64
-const CHIP_H = 16
+// V191: the chip sits radially outward of this button. On a phone the two lower chips (outward of
+// Activate, x ≈ 59 / 331) and the two upper chips (outward of Speed, x ≈ 129 / 261) share the one
+// 66 px band between the pads without touching.
+const CHIP_ANCHOR = { lh: 'activate', rh: 'activate', omnihand: 'speed', conscious: 'speed' }
+const SAT_SIZE      = { desktop: 46, mobile: 38 }   // satellite circle diameter
+const CHIP_SIZE     = { desktop: 56, mobile: 52 }   // data chip circle diameter
+const SAT_GAP       = { desktop: 11, mobile: 9 }   // the pad's 1 px border makes the real gap 1 px less    // clear space between the pad's rim and a satellite circle
+const CHIP_GAP      = { desktop: 8, mobile: 7 }     // clear space between a satellite and its chip
+const CHIP_W = CHIP_SIZE.desktop    // (kept for the SAT_LAYOUT hook; the phone chip is CHIP_SIZE.mobile)
+const CHIP_H = CHIP_SIZE.desktop
 const FIRE_HANDS = ['lh', 'rh']   // V168: the centre cell is the Fire button on these two only
-const CHIP_HANDS = ['lh', 'rh']   // the ammo chip (beside Activate) exists on the two lower hands only
+const CHIP_HANDS = ['lh', 'rh']   // the AMMO chip (beside Activate) exists on the two lower hands only
+const DIM_HANDS  = ['omnihand', 'conscious']   // V191: their chip shows the marker's current node and opens the tools menu
 
 function _clockOffset (clockDeg, r) {
   const rad = (clockDeg * Math.PI) / 180
   return { dx: r * Math.sin(rad), dy: -r * Math.cos(rad) }
 }
 
-function _buildSatGeom (padHalf, satHalf, angles = _SAT_ANGLES, chipOutside = false) {
-  const R = padHalf + PAD_OFFSET + satHalf
+function _buildSatGeom (padHalf, satHalf, chipHalf, gap, chipGap, angles = _SAT_ANGLES) {
+  const R = padHalf + gap + satHalf
+  const R2 = R + satHalf + chipGap + chipHalf   // chip ring (radially outward of CHIP_ANCHOR)
   const center = padHalf + 4 // pad's own left/right CSS offset is 4px
   const bottomBase = DOCK_H + HAND_WH + PAD_OFFSET + padHalf
   const topBase    = BAR_H  + HAND_WH + PAD_OFFSET + padHalf
@@ -250,29 +291,20 @@ function _buildSatGeom (padHalf, satHalf, angles = _SAT_ANGLES, chipOutside = fa
       const { dx, dy } = _clockOffset(clockDeg, R)
       out[hand][role] = { ...place(dx, dy, satHalf, satHalf), dx, dy }
     })
-    if (CHIP_HANDS.includes(hand)) {
-      // The ammo chip sits directly BELOW the Activate button (both lower hands face down), nudged
-      // outward away from the pad so it also clears the 180° Settings button. A 4 px gap keeps the
-      // two boxes from touching.
-      const a = out[hand].activate
-      const rad = (angles[hand].activate * Math.PI) / 180
-      const dx = a.dx + Math.sign(Math.sin(rad)) * 8
-      // desktop: below Activate. Phone: ABOVE it (the phone arc is above the pad, so "below" would land on the pad's rim).
-      const dy = chipOutside ? a.dy - satHalf - CHIP_H / 2 - 4 : a.dy + satHalf + CHIP_H / 2 + 4
-      out[hand].chip = { ...place(dx, dy, CHIP_W / 2, CHIP_H / 2), dx, dy }
-    }
+    const { dx, dy } = _clockOffset(angles[hand][CHIP_ANCHOR[hand]], R2)
+    out[hand].chip = { ...place(dx, dy, chipHalf, chipHalf), dx, dy }
   })
   return out
 }
 
-const _SAT_GEOM        = _buildSatGeom(110, 20) // desktop: 220px pad, 40px satellite buttons
-const _SAT_GEOM_MOBILE = _buildSatGeom(90, 17, _SAT_ANGLES_MOBILE, true)  // mobile: 180px pad, 34px buttons, fanned toward screen middle
+const _SAT_GEOM        = _buildSatGeom(110, SAT_SIZE.desktop / 2, CHIP_SIZE.desktop / 2, SAT_GAP.desktop, CHIP_GAP.desktop) // desktop: 220px pad, 46px satellite circles
+const _SAT_GEOM_MOBILE = _buildSatGeom(90, SAT_SIZE.mobile / 2, CHIP_SIZE.mobile / 2, SAT_GAP.mobile, CHIP_GAP.mobile, _SAT_ANGLES_MOBILE)  // mobile: 180px pad, 40px circles, fanned toward screen middle
 
 /** Test / tooling hook: the computed geometry, and the sizes it was built for. */
 export const SAT_LAYOUT = {
-  roles: _SAT_ROLES, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H },
-  desktop: { geom: _SAT_GEOM, padHalf: 110, satHalf: 20 },
-  mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: 17, angles: _SAT_ANGLES_MOBILE },
+  roles: _SAT_ROLES, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H }, chipAnchor: CHIP_ANCHOR,
+  desktop: { geom: _SAT_GEOM, padHalf: 110, satHalf: SAT_SIZE.desktop / 2, chip: { w: CHIP_SIZE.desktop, h: CHIP_SIZE.desktop }, gap: SAT_GAP.desktop, chipGap: CHIP_GAP.desktop },
+  mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: SAT_SIZE.mobile / 2, chip: { w: CHIP_SIZE.mobile, h: CHIP_SIZE.mobile }, gap: SAT_GAP.mobile, chipGap: CHIP_GAP.mobile, angles: _SAT_ANGLES_MOBILE },
   barH: BAR_H, dockH: DOCK_H, handWH: HAND_WH, padOffset: PAD_OFFSET,
 }
 
@@ -419,8 +451,10 @@ const STYLES = `
 
 .omni-pad-sat {
   position         : fixed;
-  width            : 40px;
-  height           : 40px;
+  width            : ${SAT_SIZE.desktop}px;
+  height           : ${SAT_SIZE.desktop}px;
+  box-sizing       : border-box;
+  overflow         : hidden;
   display          : flex;
   flex-direction   : column;
   align-items      : center;
@@ -428,9 +462,9 @@ const STYLES = `
   gap              : 0;
   background       : rgba(8, 8, 12, 0.20);
   border           : 1px solid rgba(255, 255, 255, 0.85);
-  border-radius    : 8px;
+  border-radius    : 50%;   /* V191: true circles */
   color            : rgba(255, 255, 255, 0.90);
-  font-size        : 13px;
+  font-size        : 15px;
   line-height      : 1;
   letter-spacing   : 0.02em;
   cursor           : pointer;
@@ -463,7 +497,7 @@ const STYLES = `
   text-shadow      : 0 0 10px rgba(255, 255, 255, 0.22);
 }
 .omni-pad-sat .sat-glyph { pointer-events: none; }
-.omni-pad-sat .sat-sub   { pointer-events: none; font-size: 8px; margin-top: 2px; opacity: 0.85; }
+.omni-pad-sat .sat-sub   { pointer-events: none; font-size: 8px; margin-top: 2px; opacity: 0.85; white-space: nowrap; letter-spacing: 0; }
 /* "No target" / "blocked" / "empty magazine" — a brief red pulse on Activate (V165). */
 .omni-pad-sat.is-nope { animation: pad-sat-nope 0.5s ease; }
 .omni-pad-sat.is-fired { animation: pad-sat-fired 0.35s ease; }
@@ -476,39 +510,50 @@ const STYLES = `
   100% { box-shadow: 0 0 0 12px rgba(255, 255, 255, 0); }
 }
 
-/* Ammo chip (lh / rh): the current behaviour, beside the Activate button. */
+/* Data chip (V191: a circle on every pad): lh / rh = the current ammo name, omnihand / conscious =
+   the marker's current node (opens the tools menu). Radially outward of one satellite (second ring). */
 .omni-pad-chip {
   position         : fixed;
-  width            : ${CHIP_W}px;
-  height           : ${CHIP_H}px;
+  width            : ${CHIP_SIZE.desktop}px;
+  height           : ${CHIP_SIZE.desktop}px;
   box-sizing       : border-box;
-  padding          : 0 4px;
-  display          : block;
+  padding          : 2px;
+  display          : flex;
+  flex-direction   : column;
+  align-items      : center;
+  justify-content  : center;
+  gap              : 1px;
   background       : rgba(8, 8, 12, 0.55);
   border           : 1px solid rgba(255, 255, 255, 0.70);
-  border-radius    : 8px;
+  border-radius    : 50%;
   color            : rgba(255, 255, 255, 0.92);
   font-family      : 'Courier New', Courier, monospace;
   font-size        : 9px;
-  line-height      : ${CHIP_H - 2}px;
+  line-height      : 1.1;
   text-align       : center;
   white-space      : nowrap;
   overflow         : hidden;
-  text-overflow    : ellipsis;
+  text-overflow    : clip;
   cursor           : pointer;
   pointer-events   : none;   /* V166: see .omni-pad-sat (inline auto while the pad is open) */
   opacity          : 0;
   z-index          : 47;
   -webkit-tap-highlight-color: transparent;
 }
+.omni-pad-chip .chip-name { pointer-events: none; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; white-space: normal; line-height: 1.05; }   /* node names can be long (OmniExpression): two lines, the tooltip has the whole name */
+.omni-pad-chip .chip-sub  { pointer-events: none; display: block; font-size: 7px; opacity: 0.8; letter-spacing: 0; }
+.omni-pad-chip--long  { font-size: 8px; }    /* 8-9 characters: still one line inside the circle */
+.omni-pad-chip--xlong { font-size: 7px; }
 .omni-pad-chip:hover { background: rgba(255, 255, 255, 0.18); }
+.omni-pad-chip.is-active { background: rgba(255, 255, 255, 0.26); box-shadow: 0 0 14px rgba(255, 255, 255, 0.40); }
 .omni-pad-chip:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.9); outline-offset: 1px; }
 
 ${_satRules(_SAT_GEOM)}
 
 @media (max-width: 460px) {
-  .omni-pad-sat { width: 34px; height: 34px; font-size: 11px; }
+  .omni-pad-sat { width: ${SAT_SIZE.mobile}px; height: ${SAT_SIZE.mobile}px; font-size: 13px; }
   .omni-pad-sat .sat-sub { font-size: 7px; margin-top: 1px; }
+  .omni-pad-chip { width: ${CHIP_SIZE.mobile}px; height: ${CHIP_SIZE.mobile}px; }
   ${_satRules(_SAT_GEOM_MOBILE).replace(/\n/g, '\n  ')}
 }
 
@@ -600,6 +645,16 @@ ${_satRules(_SAT_GEOM)}
   color            : var(--pad-accent);
   text-shadow      : var(--pad-glow);
 }
+
+/* V191: corner-cell buttons (vertical movement / vertical orbit): round, a touch smaller than the cross cells */
+.pad-btn--corner {
+  border-radius    : 50%;
+  width            : calc(var(--pad-cell) - 4px);
+  height           : calc(var(--pad-cell) - 4px);
+  margin           : 2px;
+  place-self       : center;
+}
+.pad-btn--corner .pad-dir-label { font-size: 5px; letter-spacing: 0.02em; }
 
 /* Pressed — sinks into the surface */
 .pad-btn.is-pressed {
@@ -773,7 +828,10 @@ ${_satRules(_SAT_GEOM)}
     height         : 180px;
     padding        : 16px;
     --pad-cell     : 36px;
-  }
+  }  /* V191: the LH / RH key strips carry six / four keys now; keep them inside the smaller circle */
+  .pad-keys { gap: 2px; }
+  .pad-keys-label { margin-right: 0; font-size: 5px; }
+  .pad-key { min-width: 11px; height: 12px; padding: 0 2px; font-size: 6px; }
 }
 
 `
@@ -796,12 +854,10 @@ export default class MovementPad {
     this._btnEls = {}
     this._keyEls = {}
     this._visible = { omnihand: false, conscious: false, lh: false, rh: false }
-    this._pressed = {
-      lh:        { up: false, down: false, left: false, right: false },
-      rh:        { up: false, down: false, left: false, right: false },
-      omnihand:  { up: false, down: false, left: false, right: false },
-      conscious: { up: false, down: false, left: false, right: false },
-    }
+    this._pressed = {}   // V191: the four cross directions plus each pad's corner buttons (PAD_CONFIGS[hand].corners)
+    Object.keys(PAD_CONFIGS).forEach(id => {
+      this._pressed[id] = Object.fromEntries([...DIRS, ...Object.values(PAD_CONFIGS[id].corners ?? {})].map(d => [d, false]))
+    })
 
     this._v3fwd   = new THREE.Vector3()
     this._v3right = new THREE.Vector3()
@@ -823,8 +879,9 @@ export default class MovementPad {
     // x the admin step multiplier above — composed once, never twice. The eased value is
     // advanced once per frame in update().
     this._satEls         = { lh: {}, rh: {}, omnihand: {}, conscious: {} }
-    this._chipEls        = { lh: null, rh: null }
+    this._chipEls        = { lh: null, rh: null, omnihand: null, conscious: null }   // V191: a data chip on every pad (ammo name on lh / rh, current node on the two axis hands)
     this._speedPanel     = new HandSpeedPanel()
+    this._toolsPanel     = new HandToolsPanel({ getAxes: () => this._axes })   // V191: tool options of omnihand / conscious (chip -> menu)
     this._tunnelOn       = { conscious: false, omnihand: false }   // Activation lit state (mirrors the tunnel)
     this._ammoActive     = { lh: 0, rh: 0 }                        // hand-fired behaviours currently held
     this._handsPanel     = { open: false, hand: null }             // ⟐OmniHands state (settings button lit state)
@@ -895,6 +952,13 @@ export default class MovementPad {
       const { hand, open } = e.detail ?? {}
       this._satEls[hand]?.speed?.setAttribute('aria-expanded', String(!!open))
     }
+    // V191: the axis hands' data chip shows the marker's current node (omni:dimension-state: init / travel / settle)
+    this._onDimState = (e) => { const h = e.detail?.hand; if (DIM_HANDS.includes(h)) this._refreshChip(h) }
+    this._onToolsPanelState = (e) => {
+      const { hand, open } = e.detail ?? {}
+      const chip = this._chipEls[hand]
+      chip?.setAttribute('aria-expanded', String(!!open)); chip?.classList.toggle('is-active', !!open)
+    }
     this._onNodeSelected = this._handleNodeSelected.bind(this)
     // V190: omni:orbit-released (click empty space / Escape) -> the keyboard-rotation pivot follows main.js: just ahead of the camera
     this._onOrbitReleased = () => {
@@ -916,6 +980,7 @@ export default class MovementPad {
     this._buildAllPads()
     this._buildAllSatelliteClusters()
     this._speedPanel.init()
+    this._toolsPanel.init()
     this._bindGlobalEvents()
     this._bindKeyboard()
     const initialAll = this._computeAllMultipliers(this._readAdminSteps())
@@ -945,6 +1010,10 @@ export default class MovementPad {
       this._lastLHError = err.message
     }
     this._applyNavMovement(cam, delta, 'rh')
+    // V191: the corner buttons (vertical movement on both lower pads, vertical orbit on RH)
+    this._applyVerticalMovement(cam, delta, 'lh')
+    this._applyVerticalMovement(cam, delta, 'rh')
+    this._applyPitchRotation(cam, delta, 'rh')
     // omnihand / conscious intentionally absent: they never move the camera.
   }
 
@@ -954,6 +1023,7 @@ export default class MovementPad {
       Object.values(group).forEach(el => el?.parentNode?.removeChild(el)))
     Object.values(this._chipEls).forEach(el => el?.parentNode?.removeChild(el))
     this._speedPanel?.destroy()
+    this._toolsPanel?.destroy()
     clearTimeout(this._nopeTimers?.lh); clearTimeout(this._nopeTimers?.rh)
     window.removeEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)
@@ -968,6 +1038,8 @@ export default class MovementPad {
     clearTimeout(this._fireTimers?.lh); clearTimeout(this._fireTimers?.rh)
     window.removeEventListener('omni:hands-panel-state', this._onHandsPanelState)
     window.removeEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
+    window.removeEventListener('omni:dimension-state', this._onDimState)
+    window.removeEventListener('omni:hand-tools-panel-state', this._onToolsPanelState)
     window.removeEventListener('omni:pad-toggle',  this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)
     window.removeEventListener('omni:pad-redock', this._onPadRedock)
@@ -990,6 +1062,7 @@ export default class MovementPad {
     this._visible[handId] = visible
     visible ? this._animateIn(handId) : this._animateOut(handId)
     if (!visible && this._speedPanel.isOpen(handId)) this._speedPanel.close()   // V165: its popover belongs to the pad
+    if (!visible && this._toolsPanel.isOpen(handId)) this._toolsPanel.close()   // V191: ... and so does the tool-options menu
     // V160: MovementPad is the single source of truth for pad visibility. Every
     // real change is announced so ui/Hand.js (the ⚇ cell state) and
     // systems/OmniAxinator.js (tunnels follow the pads) can never drift from it.
@@ -1005,6 +1078,7 @@ export default class MovementPad {
    *  buttons still light up but do nothing. */
   setDimensionalAxes (axes) {
     this._axes = axes
+    DIM_HANDS.forEach(h => this._refreshChip(h))   // V191: the chips show the markers' current nodes
   }
 
   // ── DOM construction ────────────────────────────────────────────────────────
@@ -1036,12 +1110,12 @@ export default class MovementPad {
     const name = HAND_NAMES[handId]
     const tunnelHand = !!PAD_CONFIGS[handId].dimensional
     return {
-      release:  { glyph: '⏏', title: 'Release — detach this pad into a free-floating panel', label: 'Release pad from its docked position', pressed: true },
+      release:  { glyph: '⏏', sub: 'FREE', title: 'Release — detach this pad into a free-floating panel', label: 'Release pad from its docked position', pressed: true },
       speed:    { glyph: '»', sub: '×1.0', title: `${name} speed`, label: `${name} speed`, pressed: true },
       activate: tunnelHand
-        ? { glyph: '◎', title: `${name} tunnel — show / hide`, label: `Toggle the ${name} tunnel`, pressed: true }
-        : { glyph: '✦', title: `${name} — fire the loaded behaviour at the target`, label: `Fire ${name} ammo`, pressed: true },
-      settings: { glyph: '⚙', title: `${name} settings`, label: `${name} settings`, pressed: true },
+        ? { glyph: '◎', sub: 'TUNL', title: `${name} tunnel — show / hide`, label: `Toggle the ${name} tunnel`, pressed: true }
+        : { glyph: '✦', sub: 'FIRE', title: `${name} — fire the loaded behaviour at the target`, label: `Fire ${name} ammo`, pressed: true },
+      settings: { glyph: '⚙', sub: 'SET', title: `${name} settings`, label: `${name} settings`, pressed: true },
     }
   }
 
@@ -1073,16 +1147,23 @@ export default class MovementPad {
       shell.appendChild(el)
       this._satEls[handId][role] = el
     })
-    if (CHIP_HANDS.includes(handId)) {
+    {   // V191: a round data chip on every pad (lh / rh: ammo name -> cycle; omnihand / conscious: current node -> tools menu)
       const chip = document.createElement('button')
       chip.id = `omni-pad-chip-${handId}`
       chip.className = `omni-pad-chip omni-pad-chip--${handId}`
       chip.type = 'button'
       chip.dataset.hand = handId
-      chip.addEventListener('click', (e) => {
-        this._ammoHand = handId
-        window.dispatchEvent(new CustomEvent('omni:hand-ammo-cycle', { detail: { hand: handId, dir: e.shiftKey ? -1 : 1 } }))
-      })
+      chip.dataset.omniTipSource = 'Pad tool option'
+      if (DIM_HANDS.includes(handId)) {
+        chip.setAttribute('aria-haspopup', 'true')
+        chip.setAttribute('aria-expanded', 'false')
+        chip.addEventListener('click', () => this._toolsPanel.toggle(handId, chip))
+      } else {
+        chip.addEventListener('click', (e) => {
+          this._ammoHand = handId
+          window.dispatchEvent(new CustomEvent('omni:hand-ammo-cycle', { detail: { hand: handId, dir: e.shiftKey ? -1 : 1 } }))
+        })
+      }
       shell.appendChild(chip)
       this._chipEls[handId] = chip
     }
@@ -1145,18 +1226,42 @@ export default class MovementPad {
     el.setAttribute('aria-pressed', String(on))
   }
 
-  /** The current-ammo chip's text: stored ammo if loaded, else the first loaded one. */
+  /** The data chip's text. lh / rh: the current ammo (stored ammo if loaded, else the first loaded one).
+   *  omnihand / conscious (V191): the marker's current node name + "n/N" (omni:dimension-state). */
   _refreshChip (handId) {
     const chip = this._chipEls[handId]
     if (!chip) return
+    chip.classList.remove('omni-pad-chip--long', 'omni-pad-chip--xlong')
+    const fit = (txt) => { if (txt.length > 11) chip.classList.add('omni-pad-chip--xlong'); else if (txt.length > 7) chip.classList.add('omni-pad-chip--long') }
+    if (DIM_HANDS.includes(handId)) {
+      const st = this._axes?.getState?.(handId)
+      const name = st?.activeNode?.name ?? '—'
+      const sub = st ? `${st.primaryIndex + 1}/${st.primaryCount}` : ''
+      chip.innerHTML = `<span class="chip-name"></span><span class="chip-sub"></span>`
+      chip.querySelector('.chip-name').textContent = name
+      chip.querySelector('.chip-sub').textContent = sub
+      if (name.length > 9) chip.classList.add('omni-pad-chip--xlong'); else if (name.length > 7) chip.classList.add('omni-pad-chip--long')
+      const lvl = st?.activeLevel?.name
+      const full = st ? `${HAND_NAMES[handId]} marker: ${name} (${sub})${lvl ? `, ${lvl} (${st.relativeIndex + 1}/${st.relativeCount})` : ''}.` : `${HAND_NAMES[handId]} axis not connected yet.`
+      chip.title = `${full} Click for the ${HAND_NAMES[handId]} tool options: TakeMeThere, Root, back / forth, Υ up / down, reset, tunnel.`
+      chip.setAttribute('aria-label', `${full} Opens the tool options menu.`)
+      chip.dataset.omniTip = `${HAND_NAMES[handId]} tool options`
+      chip.dataset.omniTipKey = '—'
+      chip.dataset.omniTipDesc = chip.title
+      return
+    }
     const mag = (getHandSetting(handId, 'magazine') ?? [])
     const cur = getHandSetting(handId, 'ammo')
     const ammo = mag.includes(cur) ? cur : (mag[0] ?? null)
     chip.textContent = ammo ?? 'empty'
+    fit(ammo ?? 'empty')
     chip.title = ammo
       ? `Ammo: ${ammo} (${mag.length} loaded). Click to cycle, Shift+click for previous, [ ] keys.`
       : 'Magazine empty — load behaviours in ⟐OmniHands'
     chip.setAttribute('aria-label', ammo ? `Current ammo ${ammo}. Click to cycle to the next loaded behaviour.` : 'Magazine empty')
+    chip.dataset.omniTip = ammo ? `Ammo: ${ammo}` : 'Magazine empty'
+    chip.dataset.omniTipKey = '[ / ]'
+    chip.dataset.omniTipDesc = chip.title
     const act = this._satEls[handId]?.activate
     if (act) act.title = ammo
       ? `${HAND_NAMES[handId]} — fire ${ammo} at the target (again on the same node to release it)`
@@ -1397,10 +1502,12 @@ export default class MovementPad {
   _buildCross (handId) {
     const cross = document.createElement('div')
     cross.className = 'pad-cross'
-    const layout = ['empty','up','empty','left','center','right','empty','down','empty']
+    const layout = ['tl','up','tr','left','center','right','bl','down','br']
     this._btnEls[handId] = {}
-    layout.forEach(slot => {
+    layout.forEach(slot0 => {
       let cell
+      let slot = slot0
+      if (['tl', 'tr', 'bl', 'br'].includes(slot0)) slot = PAD_CONFIGS[handId].corners?.[slot0] ?? 'empty'   // V191
       if (slot === 'empty') {
         cell = document.createElement('div')
         cell.className = 'pad-slot-empty'
@@ -1418,13 +1525,22 @@ export default class MovementPad {
   _buildDirBtn (handId, dir) {
     const cfg   = PAD_CONFIGS[handId]
     const isTBD = !cfg.movable
-    const label = cfg.dirLabels?.[dir] ?? DIR_GLYPHS[dir]
+    const extra = EXTRA_BUTTONS[dir]   // V191: corner button (ascend / descend / pitchUp / pitchDown)
+    const label = extra ? extra.label : (cfg.dirLabels?.[dir] ?? DIR_GLYPHS[dir])
     const btn   = document.createElement('button')
-    btn.className = ['pad-btn', `pad-btn--${dir}`, isTBD ? 'pad-btn--tbd' : ''].filter(Boolean).join(' ')
+    btn.className = ['pad-btn', `pad-btn--${dir}`, extra ? 'pad-btn--corner' : '', isTBD ? 'pad-btn--tbd' : ''].filter(Boolean).join(' ')
     btn.dataset.hand = handId
     btn.dataset.dir  = dir
-    if (!isTBD) btn.setAttribute('aria-label', `${dir}: ${label}`)
-    btn.innerHTML = `<span class="pad-glyph">${DIR_GLYPHS[dir]}</span><span class="pad-dir-label">${label}</span>`
+    if (!isTBD) btn.setAttribute('aria-label', extra ? `${extra.name}: ${extra.tip}` : `${dir}: ${label}`)
+    if (extra) {
+      const key = Object.entries(EXTRA_KEYS).find(([, v]) => v.handId === handId && v.dir === dir)?.[0]?.replace('Key', '')
+      btn.title = `${extra.name} — ${extra.tip}${key ? ` Key: ${key}.` : ''}`
+      btn.dataset.omniTip = `${HAND_NAMES[handId]} ${extra.name}`
+      btn.dataset.omniTipKey = key ?? '—'
+      btn.dataset.omniTipDesc = extra.tip
+      btn.dataset.omniTipSource = 'Movement pad'
+    }
+    btn.innerHTML = `<span class="pad-glyph">${extra ? extra.glyph : DIR_GLYPHS[dir]}</span><span class="pad-dir-label">${label}</span>`
 
     if (!isTBD) {
       btn.addEventListener('contextmenu', (e) => e.preventDefault())
@@ -1471,8 +1587,8 @@ export default class MovementPad {
     // use free Numpad keys, since Numpad1-4 are already the app's
     // hand-menu shortcuts (main.js's HAND_KEY_BINDINGS).
     const HINTS = {
-      wasd:            { keys: ['W', 'A', 'S', 'D'], dirs: ['up', 'left', 'down', 'right'] },
-      rf:              { keys: ['R', 'F'],           dirs: ['up', 'down'] },
+      wasd:            { keys: ['W', 'A', 'S', 'D', 'E', 'Q'], dirs: ['up', 'left', 'down', 'right', 'ascend', 'descend'] },
+      rf:              { keys: ['R', 'F', 'Y', 'H'],           dirs: ['up', 'down', 'pitchUp', 'pitchDown'] },
       'omnihand-axes': { keys: ['/', '*', '-', '+'],       dirs: ['up', 'down', 'left', 'right'] },
       'conscious-axes': { keys: ['N7', 'N9', 'N5', 'N6'],  dirs: ['up', 'down', 'left', 'right'] },
     }
@@ -1513,7 +1629,7 @@ export default class MovementPad {
       onComplete: () => {
         el.style.pointerEvents = 'none'
         el.style.transform = ''
-        if (this._pressed[handId]) DIRS.forEach(d => this._setPressed(handId, d, false, true))
+        if (this._pressed[handId]) Object.keys(this._pressed[handId]).forEach(d => this._setPressed(handId, d, false, true))
       }
     })
     this._animateSatellitesOut(handId)
@@ -1667,6 +1783,44 @@ export default class MovementPad {
     }
   }
 
+  /** V191: ascend / descend corner buttons (lh and rh): world-Y movement through the same altitude
+   *  settings as RH Rise / Fall (Admin altitude-up / -down step or the Global override, x the hand's
+   *  EASED speed). On rh, Rise / Fall already moving the same way is never added twice. */
+  _applyVerticalMovement (cam, delta, handId) {
+    const p = this._pressed[handId]
+    if (!p?.ascend && !p?.descend) return
+    const hs = getEffectiveSpeed(handId)
+    if (p.ascend  && !(handId === 'rh' && p.up))   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier   * hs * delta
+    if (p.descend && !(handId === 'rh' && p.down)) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * hs * delta
+  }
+
+  /** V191: RH vertical rotate (ORB-U / ORB-D), the twin of the horizontal ORB-L / ORB-R. */
+  _applyPitchRotation (cam, delta, handId) {
+    const p = this._pressed[handId]
+    const dir = (p?.pitchUp ? 1 : 0) - (p?.pitchDown ? 1 : 0)
+    if (!dir) return
+    this._pitchBy(cam, dir * YAW_SPEED * this._orbitVerticalMultiplier * getEffectiveSpeed(handId) * delta)
+  }
+
+  /** Orbit the camera up (angle > 0) / down around the rotation pivot and keep it aimed at the pivot;
+   *  clamped to +-85 degrees so the view never flips over the pole. */
+  _pitchBy (cam, angle) {
+    const offset = cam.position.clone().sub(this._rotationPivot)
+    const radius = offset.length()
+    if (radius < 0.0001) return
+    const current = Math.asin(THREE.MathUtils.clamp(offset.y / radius, -1, 1))
+    const next = THREE.MathUtils.clamp(current + angle, -this._pitchLimit, this._pitchLimit)
+    const actual = next - current
+    if (Math.abs(actual) < 1e-7) return
+    const horizontal = new THREE.Vector3(offset.x, 0, offset.z)
+    const axis = horizontal.lengthSq() > 0.0001
+      ? this._v3right.crossVectors(horizontal, this._worldUp).normalize()   // horizontal x up: a positive angle raises the camera
+      : new THREE.Vector3(-1, 0, 0)
+    offset.applyAxisAngle(axis, actual)
+    cam.position.copy(this._rotationPivot).add(offset)
+    cam.lookAt(this._rotationPivot)
+  }
+
   // ── Keyboard ────────────────────────────────────────────────────────────────
 
   _bindKeyboard () {
@@ -1690,6 +1844,7 @@ export default class MovementPad {
     }
     const mapped = this._mapKey(e.code)
     if (!mapped) return
+    if (EXTRA_KEYS[e.code] && (e.ctrlKey || e.metaKey || e.altKey)) return   // V191: leave Ctrl/Cmd/Alt+E/Q/Y/H to the browser
     const { handId, dir } = mapped
     e.preventDefault()
     if (this._pressed[handId]?.[dir]) return
@@ -1730,7 +1885,7 @@ export default class MovementPad {
       case 'Numpad9': return { handId: 'conscious', dir: 'down'  }
       case 'Numpad5': return { handId: 'conscious', dir: 'left'  }
       case 'Numpad6': return { handId: 'conscious', dir: 'right' }
-      default:     return null
+      default:     return EXTRA_KEYS[code] ?? null   // V191: E / Q (lh ascend / descend), Y / H (rh orbit up / down)
     }
   }
 
@@ -1757,6 +1912,8 @@ export default class MovementPad {
     window.addEventListener('omni:hand-fire-feedback', this._onFireFeedback)
     window.addEventListener('omni:hands-panel-state', this._onHandsPanelState)
     window.addEventListener('omni:hand-speed-panel-state', this._onSpeedPanelState)
+    window.addEventListener('omni:dimension-state', this._onDimState)
+    window.addEventListener('omni:hand-tools-panel-state', this._onToolsPanelState)
   }
 
   /** Switches the rotation pivot to whatever was just selected — "so

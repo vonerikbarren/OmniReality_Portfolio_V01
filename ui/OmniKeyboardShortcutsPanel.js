@@ -121,7 +121,9 @@ function injectStyles () {
 // guessed. Each entry's own key/description matches its real,
 // current behavior.
 const SHORTCUTS = [
-  { key: '` / F1',   desc: 'Invoke the terminal tunnel' },
+  { key: 'F1',       desc: 'Invoke the terminal tunnel' },
+  { key: '`',        desc: 'Toggle OmniState_StrictAlign: move the selected node along ONE axis (X, Y or Z) with exact coordinates (V191; the terminal keeps F1)' },
+  { key: '1 2 3 / x y z', desc: 'While OmniState_StrictAlign is on: choose the axis. Arrow keys / PageUp / PageDown / mouse wheel on the node = one step (Shift = big step); Enter = type an exact value; Ctrl+Z = undo; Esc = leave' },
   { key: 'Escape',   desc: 'Dismiss the terminal tunnel' },
   { key: 'c',        desc: 'Return to landing point coordinates' },
   { key: 'o',        desc: 'User Space sphere quick toggles' },
@@ -142,13 +144,16 @@ const SHORTCUTS = [
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
+  // V191: corner buttons of the LH / RH pads (ui/MovementPad.js). Ignored with Ctrl / Cmd / Alt held.
+  { key: 'e and q',  desc: 'LH pad: ascend / descend along world Y (hold). Same altitude settings and speed as Rise / Fall' },
+  { key: 'y and h',  desc: 'RH pad: orbit the view up / down around the pivot (hold); the vertical twin of the Arrow Left / Right orbit' },
   // OmniHand / Conscious Hand axis pads (V158). These move NO camera — they
   // step the dimensional-axis markers (systems/OmniDimensionalAxes.js). Press
   // = one step, hold = repeat. Compiled from ui/MovementPad.js's _mapKey.
   { key: 'Numpad / and Numpad *', desc: '⟐ OmniHand: Υ tier up / down (no camera movement)' },
   { key: 'Numpad - and Numpad +', desc: '⟐ OmniHand: back / forth along the OmniProduct axis, 10 to 4 o\'clock (no camera movement)' },
-  { key: 'Numpad 7 and Numpad 9', desc: 'Δ Conscious Hand: Υ scale degree up / down (no camera movement)' },
-  { key: 'Numpad 5 and Numpad 6', desc: 'Δ Conscious Hand: back / forth along the perspective axis, 8 to 2 o\'clock (no camera movement)' },
+  { key: 'Numpad 7 and Numpad 9', desc: '◬ Conscious Hand: Υ scale degree up / down (no camera movement)' },
+  { key: 'Numpad 5 and Numpad 6', desc: '◬ Conscious Hand: back / forth along the perspective axis, 8 to 2 o\'clock (no camera movement)' },
 ]
 
 export default class OmniKeyboardShortcutsPanel {

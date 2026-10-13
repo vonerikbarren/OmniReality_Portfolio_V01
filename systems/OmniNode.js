@@ -103,6 +103,7 @@ import * as Store from '../utils/OmniStoreModel.js'
 import * as Value from '../utils/OmniValueModel.js'
 import { classifyPointerGesture } from '../utils/OrbitRelease.js'
 import * as Kinds from '../utils/OmniNodeKinds.js'   // V183: StoreItemNode / OmniValueNode (data.nodeKind) — see docs/omniproducts/OMNISTORE_NODES_DESIGN.md
+import * as Extra from '../utils/OmniExtraKinds.js'   // V191: OmniPathNode / floorPanelNode (data.nodeKind) — see docs/architecture/OMNIPATHNODE_DESIGN.md, FLOORPANELNODE_DESIGN.md
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -254,6 +255,8 @@ const GEO_LABELS = {
   EssenceData          : 'Essence Data',
   StoreItemNode        : 'Store item',
   OmniValueNode        : 'Value type',
+  OmniPathNode         : 'Path',          // V191
+  FloorPanelNode       : 'Floor panels',  // V191
 }
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -902,6 +905,8 @@ const GEO_ICONS = {
   EssenceData          : '◈',
   StoreItemNode        : '🛍',
   OmniValueNode        : '🪙',
+  OmniPathNode         : '⤳',   // V191
+  FloorPanelNode       : '▦',   // V191
 }
 
 // ── ID generator ──────────────────────────────────────────────────────────────
@@ -1959,6 +1964,7 @@ export default class OmniNode {
     const color  = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
     const mesh   = Kinds.isKindData(data)
       ? Kinds.buildKindMesh(data, color)   // V183: a reference node (store product / value type): shared geometry + shared glyph / label textures
+      : Extra.isExtraKind(data) ? Extra.buildExtraMesh(data, color)   // V191: an OmniPathNode / floorPanelNode
       : this._buildMesh(data.geometry, color, data.text, {
         metalness: data.metalness, roughness: data.roughness,
         emissive: data.emissive, emissiveIntensity: data.emissiveIntensity,
@@ -3296,7 +3302,7 @@ export default class OmniNode {
       const { id, geometry } = e.detail ?? {}
       const entry = this._nodes.get(id)
       if (!entry) return
-      if (Kinds.isKindData(entry.data)) return   // V183: a store item / value node's shape follows its product / type; it is not swappable
+      if (Kinds.isKindData(entry.data) || Extra.isExtraKind(entry.data)) return   // V183 / V191: a reference / path / floor panel node's shape is fixed; it is not swappable
 
       // Swap geometry in-place
       const color = PRIMITIVE_COLORS[entry.data.primitive] ?? 0xffffff
@@ -3416,10 +3422,11 @@ export default class OmniNode {
     this._onCreateRequest = (e) => {
       const d = e.detail ?? {}
       const kf = Kinds.kindCreateFields(d)   // V183: null for every ordinary node
+      const xk = Extra.extraCreateFields(d)   // V191: null unless an OmniPathNode / floorPanelNode request
       const data = {
         id        : d.id ?? generateId(),
-        label     : d.label ?? kf?.label ?? 'Object_' + Date.now().toString(36).slice(-4),
-        geometry  : kf?.geometry ?? d.geometry ?? 'BoxGeometry',
+        label     : d.label ?? kf?.label ?? xk?.label ?? 'Object_' + Date.now().toString(36).slice(-4),
+        geometry  : kf?.geometry ?? xk?.geometry ?? d.geometry ?? 'BoxGeometry',
         primitive : d.primitive ?? 'objective',
         color     : d.color ?? '#ffffff',
         position  : d.position ?? [0, 1, 0],
@@ -3477,6 +3484,7 @@ export default class OmniNode {
         flowElement: d.flowElement ?? null,
         // V183 — a reference node (systems/OmniStoreNodes.js): only the validated reference is kept (no product / type copy).
         ...(kf ? { nodeKind: kf.nodeKind, ...(kf.storeId ? { storeId: kf.storeId, productId: kf.productId } : { valueTypeId: kf.valueTypeId }) } : {}),
+        ...(xk ? xk.data : {}),   // V191: only the validated fields of an OmniPathNode / floorPanelNode
       }
       // V183: noSelect = create without selecting (a pin must not pop the Inspector over the store). skipAutoSelect cannot be used for that:
       // it also takes the node out of hover / click picking (_selectableMeshes), so it is only set while the node is being created.
@@ -3961,7 +3969,7 @@ export default class OmniNode {
           // doesn't stick after reload" bug: it always used the
           // primitive default here, discarding whatever the user set.
           const color = data.color ?? (PRIMITIVE_COLORS[data.primitive] ?? 0xffffff)
-          const mesh  = Kinds.isKindData(data) ? Kinds.buildKindMesh(data, color) : this._buildMesh(data.geometry, color, data.text)
+          const mesh  = Kinds.isKindData(data) ? Kinds.buildKindMesh(data, color) : Extra.isExtraKind(data) ? Extra.buildExtraMesh(data, color) : this._buildMesh(data.geometry, color, data.text)
           mesh.position.set(...(data.position ?? [0, PLACE_Y_OFFSET, 0]))
           // Same bug for rotation/scale — previously never reapplied on
           // restore, so a saved node always came back at default

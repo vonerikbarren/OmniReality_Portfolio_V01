@@ -1,9 +1,119 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V190",
+  "version": "V191",
   "date": "2026-10-12",
-  "summary": "V190: OmniStar tab (Docs, OmniStarLight Ctrl/Cmd+K), compass as its own draggable panel, OmniNotify under the profile, hands-tab dividers, centre reticle, floor 20 textures, bottom X meter + session clock, click-empty-space releases orbit, smaller boot star with shooting stars + dev intro settings",
+  "summary": "V191: round pad buttons, vertical move + RH pitch buttons, ◬ for ConsciousHand, tool options on OmniHand/ConsciousHand pads, OmniPathNode + OmniNodeOrderPanel, floorPanelNode (Tetris pieces, picture/GIF/video faces) + FloorNodeMakerSettings grid, OmniDock_Realities, OmniState_StrictAlign (` key), wallpaper Rectangle shape, NavMap close, Perspectives entry",
   "asks": [
+    {
+      "id": "v191-pad-circles",
+      "question": "Do the round option buttons around the pads read well and clear the pads?",
+      "why": "Judged only in software-GL screenshots; below about 842 px phone height the second-ring chips can touch.",
+      "kind": "choice",
+      "device": "phone",
+      "choices": [
+        "good",
+        "too small",
+        "too big",
+        "touching"
+      ]
+    },
+    {
+      "id": "v191-orbit-dir",
+      "question": "Is 'orbit up' (camera goes up) the direction you expect on RH ORB-U / Y?",
+      "why": "I assumed the camera moves up around the target.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "right",
+        "reverse it"
+      ]
+    },
+    {
+      "id": "v191-hand-tools",
+      "question": "Is the chip + popover what you meant by bringing the OmniHand / ConsciousHand tool options out?",
+      "why": "Or did you want more circles directly around the pad? The phone has little room, so I used a menu.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "good",
+        "want circles around the pad"
+      ]
+    },
+    {
+      "id": "v191-dock-row",
+      "question": "Does the OmniDock_Realities row look right above the Dock, with the compass at its left?",
+      "why": "Only seen in software-GL screenshots; the Inspector or other windows can cover it.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "good",
+        "too big",
+        "too small",
+        "overlaps something"
+      ]
+    },
+    {
+      "id": "v191-dock-tap",
+      "question": "On touch: tap once = tip, tap again = open panel. OK?",
+      "why": "",
+      "kind": "yesno",
+      "device": "touch"
+    },
+    {
+      "id": "v191-strictalign",
+      "question": "Does the ` key mode (StrictAlign) feel right: pick one axis, drag / nudge / type?",
+      "why": "Is X the right default axis? Should the terminal also keep ` when nothing is selected?",
+      "kind": "choice",
+      "device": "desktop",
+      "choices": [
+        "good",
+        "change default axis",
+        "other problem"
+      ]
+    },
+    {
+      "id": "v191-floor-panels",
+      "question": "Do the Tetris floor panels work the way you imagined, including picture / GIF / video faces?",
+      "why": "Real GIF and video playback was not seen on a GPU.",
+      "kind": "choice",
+      "device": "gpu",
+      "choices": [
+        "good",
+        "not what I meant",
+        "media problem"
+      ]
+    },
+    {
+      "id": "v191-path-line",
+      "question": "Should a path node's line be a real edge so firing / sequences can follow it?",
+      "why": "Today it is a drawn line plus an ordered list.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "v191-rect-default",
+      "question": "Wallpaper Rectangle: is 'square crop' the right left/right default or should it be 'mirror fill'?",
+      "why": "Plus is the room size right (about sphere size)?",
+      "kind": "choice",
+      "device": "gpu",
+      "choices": [
+        "square crop is fine",
+        "use mirror fill",
+        "wrong size"
+      ]
+    },
+    {
+      "id": "v191-eye",
+      "question": "Keep ◉ as the eye for Perspectives (Visor and Talent use it too) or choose a unique glyph?",
+      "why": "One-line change in utils/OmniGlyphs.js.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "keep ◉",
+        "use ⊙",
+        "other"
+      ]
+    },
     {
       "id": "v190-starlight-rule",
       "question": "Is the StarLight Available / Unavailable rule right (planned items and developer tools count as Unavailable)?",
@@ -57,116 +167,21 @@
         "too big",
         "too small"
       ]
-    },
-    {
-      "id": "v190-shooting-stars",
-      "question": "Do the boot shooting stars feel right?",
-      "why": "Judged only from screenshots; opacity, rate and angle are guesses.",
-      "kind": "choice",
-      "device": "gpu",
-      "choices": [
-        "good",
-        "too faint",
-        "too strong",
-        "too rare",
-        "too frequent"
-      ]
-    },
-    {
-      "id": "v190-session-pos",
-      "question": "Is the session-time readout (left edge under the top-left hand) comfortable?",
-      "why": "New panel inside the OmniMeter.",
-      "kind": "choice",
-      "device": "phone",
-      "choices": [
-        "good",
-        "move it",
-        "make it smaller"
-      ]
-    },
-    {
-      "id": "v190-orbit-release",
-      "question": "Does click-empty-space release the orbit without annoying you when you rotate?",
-      "why": "Drag, long press, right-click and UI clicks are ignored by design.",
-      "kind": "choice",
-      "device": "desktop",
-      "choices": [
-        "good",
-        "releases too easily",
-        "does not release"
-      ]
-    },
-    {
-      "id": "v189-no-regression",
-      "question": "Does the app start and look the same as V188 (boot, ribbon, compass, a panel)?",
-      "why": "V189 adds only a pure module nothing imports yet, so nothing should change; this is a cheap sanity check.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "compass-looks-right",
-      "question": "Does the userCompass look right in its slot under the logo?",
-      "why": "Only judged in screenshots from software-rendered Chromium at six window sizes; line weight, brightness and size are taste. If it is too small, too big or touches something, say what in the message.",
-      "kind": "choice",
-      "choices": [
-        "good",
-        "too small",
-        "too big",
-        "overlaps something"
-      ],
-      "device": "any"
-    },
-    {
-      "id": "compass-alignment",
-      "question": "Is the difference between Left, Center and Right alignment noticeable enough?",
-      "why": "The slot is only as wide as the top-left hand (103 px) and the globe is 44 px, so the globe moves about 26 px between Left and Center. A wider slot is one constant if you want more room.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "compass-spin-speed",
-      "question": "How does the spin speed feel (Normal = 14 s per turn)?",
-      "why": "Speeds are a guess: Slow 28 s, Normal 14 s, Fast 7 s. It rides the app ticker, so on a real GPU it should be smooth; I only saw it at about 1 fps in the software renderer.",
-      "kind": "choice",
-      "choices": [
-        "good",
-        "too fast",
-        "too slow"
-      ],
-      "device": "gpu"
-    },
-    {
-      "id": "compass-click-action",
-      "question": "What should clicking the userCompass do? (today: it opens Admin > UI Settings > userCompass)",
-      "why": "It had to do something, so it opens its own settings. A compass could instead reset the camera heading to north, snap the view to look north, or open the camera idea later. Write what you want.",
-      "kind": "text",
-      "device": "any"
-    },
-    {
-      "id": "compass-hidden-narrow",
-      "question": "On a narrow window or a phone the globe is hidden (the ribbon covers its strip). Do you want it visible there too?",
-      "why": "Below about 1010 px the ribbon runs under the whole bar, so there is no free strip. Showing it would mean giving the ribbon a 103 px left margin (tabs shrink) or putting the globe somewhere else. Say which you prefer in the message.",
-      "kind": "choice",
-      "choices": [
-        "fine, hide it",
-        "show it on phones too",
-        "not sure"
-      ],
-      "device": "phone"
     }
   ],
   "knownIssues": [
+    "V191 was built as four parts merged into one; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
+    "Camera ascend/descend and RH pitch were verified in jsdom only (an open Inspector covered the left pad in the Chromium run).",
+    "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
+    "The Realities dock row can be covered by open windows and the MiniMap corners.",
+    "Phone heights under about 842 px: second-ring pad chips can touch.",
+    "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
+    "Rectangle wallpaper 4:3 and 21:9 letterbox and ceiling/floor orientation were not screenshotted.",
+    "HelpNode (docs in scene) still not built.",
     "V190 was built in two parts and merged (main.js merged cleanly); only software-GL Chromium and jsdom were used. Nothing was judged on a real GPU, phone or touch device.",
     "The in-scene HelpNode is NOT built; Docs is a DOM panel only. Hook: OmniDocsPanel.openDocs.",
     "External controls (OmniPointing) got no session clock: it has no readout area.",
     "Floor textures are still not in export/import (floor-plane is not in KNOWN_NAMESPACES).",
-    "On a phone an open Inspector can cover the ribbon dropdown and the meter gear.",
-    "V189 shipped with an empty utils/DevOmniStoreData.js (my error); fixed in the re-issued V189 zip and in V190.",
-    "The address type letters (C core, B branch, S space) and the eye symbol are PLACEHOLDERS until the owner picks glyphs; nothing in the app uses OmniAddress yet.",
-    "The userCompass was judged only in software-GL Chromium (six window sizes); never on a real GPU, a real phone or with touch.",
-    "The userCompass is free only while the ribbon starts to the right of its strip: windows narrower than about 1010 px, phones, tablets and a floated OmniNotify box hide it (it never overlaps the ribbon).",
-    "The userCompass slot is the top-left hand's width (103 px); the empty space up to the OmniNotify box (x 222) is not used.",
-    "The camera feature is only documented (docs/omniproducts/OMNICAMERA_IDEA.md); seven questions for the owner are still open.",
-    "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only)."
+    "On a phone an open Inspector can cover the ribbon dropdown and the meter gear."
   ]
 }

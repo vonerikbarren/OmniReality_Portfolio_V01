@@ -1,10 +1,10 @@
 # 2. The Four Hands
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V191 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Getting Started](01_Getting_Started.md) · Next: [Nodes and Inspector](03_Nodes_and_Inspector.md)
 
-A **hand** is a group of four small buttons (a 2x2 **cell** matrix) in a screen corner. Each hand has a role. A **pad** is a floating control that a hand can open: a ring of direction buttons with a centre button. A **satellite** is one of the four small buttons around a pad.
+A **hand** is a group of four small buttons (a 2x2 **cell** matrix) in a screen corner. Each hand has a role. A **pad** is a floating control that a hand can open: a ring of direction buttons with a centre button. A **satellite** is one of the four round buttons around a pad. Each pad also has one round **chip** (see below).
 
 ## The hands
 
@@ -40,16 +40,16 @@ Pads start hidden. Open one with its hand's ⚇, the ribbon Hands tab > Pads, or
 
 | Hand | Pad title | Moves |
 |---|---|---|
-| ⟐LogicalHand | MOVE | Camera: FWD, BCK, STR-L, STR-R |
-| ⟐CreativeHand | NAV | Camera: RISE, FALL, ORB-L, ORB-R (orbit around the vertical axis) |
+| ⟐LogicalHand | MOVE | Camera: FWD, BCK, STR-L, STR-R. Corner buttons: ASC / DSC (ascend / descend along world Y) |
+| ⟐CreativeHand | NAV | Camera: RISE, FALL, ORB-L, ORB-R (orbit around the vertical axis). Corner buttons: ORB-U / ORB-D (orbit up / down around the pivot), ASC / DSC (ascend / descend) |
 | ⟐OmniHand | ⟐ AXIS | Steps along its tunnel: Product / Tier ([Tunnels](05_Tunnels_and_Axes.md)) |
-| ⟐ConsciousHand | Δ AXIS | Steps along its tunnel: Perspective / Scale |
+| ⟐ConsciousHand | ◬ AXIS | Steps along its tunnel: Perspective / Scale |
 
-A strip labelled KB shows the keys. The axis pads never move the camera. Pressing steps once; holding repeats (default every 450 ms, divided by speed, never faster than 60 ms).
+The corner buttons (V191) are hold-to-move like the others. ASC / DSC use the same altitude settings and speed as RH Rise / Fall (a camera movement setting: Admin altitude-up / -down step, or the Global speed, times the hand's speed). ORB-U / ORB-D turn the view up or down around the pivot (the selected node, else the scene centre), stopping 5 degrees short of straight up / down, at the Admin vertical orbit step times RH speed. There is no invert option. A strip labelled KB shows the keys. The axis pads never move the camera. Pressing steps once; holding repeats (default every 450 ms, divided by speed, never faster than 60 ms).
 
 Centre button: on LH and RH it is **Fire** ([Firing](04_Firing_and_Payloads.md)). On OmniHand and ConsciousHand it is a label only.
 
-### Satellites (left to right)
+### Satellites (in order along the arc)
 
 | Satellite | Does |
 |---|---|
@@ -59,7 +59,14 @@ Centre button: on LH and RH it is **Fire** ([Firing](04_Firing_and_Payloads.md))
 | ✦ (LH, RH) | Fires the current ammo (a node behaviour) at a target |
 | ⚙ | Opens that hand's settings ([Settings](09_Settings_and_Admin.md)) |
 
-The **ammo chip** (LH, RH) shows the current ammo, or "empty". Click it to cycle, Shift+click to go back, or press [ and ].
+All satellites are circles, large enough to show their label (FREE, ×1.0, FIRE or TUNL, SET), with clear space between each circle and the pad. The **chip** is a larger circle just outside one satellite:
+
+| Pad | Chip shows | Click |
+|---|---|---|
+| LH, RH | The current ammo, or "empty" | Cycle; Shift+click goes back; or press [ and ] |
+| OmniHand, ConsciousHand (V191) | The marker's current node and its position, e.g. "OmniPlayer 2/11" | Opens that hand's **tool options** menu |
+
+The tool options of OmniHand and ConsciousHand (V191) were only at the axis before. The menu holds: TakeMeThere (fly into the marker's node), Root (fly to the root), Back and Forth (primary axis), Υ up and Υ down, Reset marker, Tunnel, Follow pads, Settings. They do what the same actions do at the axis; the axis itself (clicking a node in the tunnel, the readout, ⟐DimensionalAxesSettings) is unchanged.
 
 ### Keys
 
@@ -67,6 +74,8 @@ The **ammo chip** (LH, RH) shows the current ammo, or "empty". Click it to cycle
 |---|---|
 | W A S D | LH pad: forward, left, back, right |
 | R F, Arrow keys | RH pad (Up/Down rise and fall, Left/Right orbit) |
+| E Q | LH pad corner buttons: ascend / descend |
+| Y H | RH pad corner buttons: orbit up / down |
 | Numpad / * - + | OmniHand pad: up, down, left, right |
 | Numpad 7 9 5 6 | ConsciousHand pad: up, down, left, right |
 | [ and ] | Cycle ammo of the last pad you touched |

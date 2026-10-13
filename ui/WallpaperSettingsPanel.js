@@ -22,7 +22,8 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { WALLPAPER_SHAPES, CUBEMAP_SHAPE } from '../modules/WallpaperSphere.js'
+import { WALLPAPER_SHAPES, CUBEMAP_SHAPE, RECT_SHAPE } from '../modules/WallpaperSphere.js'
+import { normalizeRectSettings, applyDimChange, resetTo169, RECT_MIN, RECT_MAX_W, RECT_MAX_H } from '../utils/WallpaperRect.js'
 import { MAX_SLOTS, saveWallpaper, listWallpapers, deleteWallpaper, wallpaperVideoStore } from '../utils/WallpaperStorage.js'
 
 // Video wallpaper now gets the same slot count as the image browser
@@ -231,8 +232,9 @@ function loadSettings () {
   }
   try {
     const raw = localStorage.getItem(STORE_KEY)
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
-  } catch (_) { return defaults }
+    const merged = raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults }
+    return { ...merged, ...normalizeRectSettings(merged) }   // V191: Rectangle room keys validated; an older save gets the defaults
+  } catch (_) { return { ...defaults, ...normalizeRectSettings({}) } }
 }
 function saveSettings (s) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch (_) {}
@@ -368,7 +370,7 @@ export default class WallpaperSettingsPanel {
       <div class="ws-body">
         <div class="ws-section-title">Shape</div>
         <select class="ws-select" id="ws-shape">
-          ${WALLPAPER_SHAPES.map(sh => `<option value="${sh}" ${s.shape === sh ? 'selected' : ''}>${sh === CUBEMAP_SHAPE ? '360° Cubemap (Box)' : sh.replace('Geometry', '')}</option>`).join('')}
+          ${WALLPAPER_SHAPES.map(sh => `<option value="${sh}" ${s.shape === sh ? 'selected' : ''}>${sh === CUBEMAP_SHAPE ? '360° Cubemap (Box)' : sh === RECT_SHAPE ? 'Rectangle (16:9 room)' : sh.replace('Geometry', '')}</option>`).join('')}
         </select>
         <div class="ws-note">
           Only closed shapes you can stand inside are listed — flat
@@ -383,6 +385,43 @@ export default class WallpaperSettingsPanel {
         <div class="ws-note" id="ws-cubemap-note" style="${s.shape === CUBEMAP_SHAPE ? '' : 'display:none'}">
           Cubemap mode is images only — video wallpaper needs the
           shape set to something else first.
+        </div>
+
+        <div id="ws-rect-section" style="${s.shape === RECT_SHAPE ? '' : 'display:none'}">
+          <div class="ws-section-title">Rectangle room</div>
+          <div class="ws-note">
+            A box room: the front and back walls are widescreen panels that show a 1080p video or image at its true shape (no
+            stretching); the left and right walls are square. The ceiling and floor are widescreen panels too.
+          </div>
+          <div class="ws-row"><span class="ws-row-label">Width</span>
+            <input type="number" class="ws-num-input" id="ws-rect-width" min="${RECT_MIN}" max="${RECT_MAX_W}" step="10" value="${s.rectWidth}"
+              data-omni-tip="Rectangle width" data-omni-tip-key="${RECT_MIN}-${RECT_MAX_W}" data-omni-tip-desc="Width of the front and back walls (and the ceiling / floor), in world units. With Aspect lock on, the height follows."></div>
+          <div class="ws-row"><span class="ws-row-label">Height</span>
+            <input type="number" class="ws-num-input" id="ws-rect-height" min="${RECT_MIN}" max="${RECT_MAX_H}" step="10" value="${s.rectHeight}"
+              data-omni-tip="Rectangle height" data-omni-tip-key="${RECT_MIN}-${RECT_MAX_H}" data-omni-tip-desc="Height of every wall. The left and right walls are this wide too (square). With Aspect lock on, the width follows."></div>
+          <div class="ws-row"><span class="ws-row-label">Aspect lock</span>
+            <button class="ws-toggle ${s.rectAspectLock ? 'is-on' : ''}" id="ws-rect-lock" data-omni-tip="Aspect lock" data-omni-tip-desc="On: changing the width or the height moves the other one so the shape of the wall stays the same."></button>
+            <button class="ws-mini-btn" id="ws-rect-169" data-omni-tip="Make it 16:9" data-omni-tip-desc="Sets the width to 16/9 of the height: the shape of a 1080p video.">16:9</button></div>
+          <div class="ws-row"><span class="ws-row-label">Fit</span>
+            <select class="ws-select" id="ws-rect-fit" data-omni-tip="Fit" data-omni-tip-desc="Contain: the whole picture is visible, bars in the bar colour where it does not fill the wall. Cover: the picture fills the wall, the overflow is cropped.">
+              <option value="contain" ${s.rectFit === 'contain' ? 'selected' : ''}>Contain (whole picture, bars)</option>
+              <option value="cover" ${s.rectFit === 'cover' ? 'selected' : ''}>Cover (fill, crop)</option>
+            </select></div>
+          <div class="ws-row"><span class="ws-row-label">Left / right</span>
+            <select class="ws-select" id="ws-rect-sides" data-omni-tip="Left and right walls" data-omni-tip-desc="Square crop: the centre square of the picture. Mirror: the whole picture with the edges mirrored to fill. Solid: the bar colour.">
+              <option value="square" ${s.rectSides === 'square' ? 'selected' : ''}>Square crop</option>
+              <option value="mirror" ${s.rectSides === 'mirror' ? 'selected' : ''}>Mirror fill</option>
+              <option value="solid" ${s.rectSides === 'solid' ? 'selected' : ''}>Solid colour</option>
+            </select></div>
+          <div class="ws-row"><span class="ws-row-label">Top / bottom</span>
+            <select class="ws-select" id="ws-rect-caps" data-omni-tip="Ceiling and floor" data-omni-tip-desc="Media: the same widescreen picture. Solid: the bar colour. None: not drawn.">
+              <option value="media" ${s.rectCaps === 'media' ? 'selected' : ''}>Media (widescreen)</option>
+              <option value="solid" ${s.rectCaps === 'solid' ? 'selected' : ''}>Solid colour</option>
+              <option value="none" ${s.rectCaps === 'none' ? 'selected' : ''}>None</option>
+            </select></div>
+          <div class="ws-row"><span class="ws-row-label">Bar colour</span>
+            <input type="color" class="ws-color-input" id="ws-rect-bar" value="${s.rectBarColor}" data-omni-tip="Bar colour" data-omni-tip-desc="The letterbox bars and every Solid wall."></div>
+          <button class="ws-mini-btn" id="ws-rect-stop" data-omni-tip="Hold still" data-omni-tip-desc="Turns Auto-spin off on all three axes so the widescreen walls stay level (the sphere spins by default).">Hold still (stop auto-spin)</button>
         </div>
 
         <div class="ws-section-title">Position / Rotation / Scale</div>
@@ -465,12 +504,50 @@ export default class WallpaperSettingsPanel {
     return el
   }
 
+  /** V191: the Rectangle room controls. Every change is validated by utils/WallpaperRect.js, saved and dispatched like the others. */
+  _bindRect (el) {
+    const $ = (id) => el.querySelector(id)
+    if (!$('#ws-rect-width')) return
+    const syncDims = () => { $('#ws-rect-width').value = this._state.rectWidth; $('#ws-rect-height').value = this._state.rectHeight }
+    const dims = (change) => {
+      const next = applyDimChange(this._state, change)
+      this._commit({ rectWidth: next.rectWidth, rectHeight: next.rectHeight })
+      syncDims()
+    }
+    $('#ws-rect-width').addEventListener('change', (e) => dims({ rectWidth: e.target.value }))
+    $('#ws-rect-height').addEventListener('change', (e) => dims({ rectHeight: e.target.value }))
+    $('#ws-rect-169').addEventListener('click', () => {
+      const next = resetTo169(this._state)
+      this._commit({ rectWidth: next.rectWidth, rectHeight: next.rectHeight })
+      syncDims()
+    })
+    $('#ws-rect-lock').addEventListener('click', (e) => {
+      const on = !this._state.rectAspectLock
+      e.currentTarget.classList.toggle('is-on', on)
+      this._commit({ rectAspectLock: on })
+    })
+    const sel = (id, key) => $(id).addEventListener('change', (e) => {
+      const next = normalizeRectSettings({ ...this._state, [key]: e.target.value })
+      e.target.value = next[key]
+      this._commit({ [key]: next[key] })
+    })
+    sel('#ws-rect-fit', 'rectFit'); sel('#ws-rect-sides', 'rectSides'); sel('#ws-rect-caps', 'rectCaps')
+    $('#ws-rect-bar').addEventListener('input', (e) => this._commit({ rectBarColor: normalizeRectSettings({ rectBarColor: e.target.value }).rectBarColor }))
+    $('#ws-rect-stop').addEventListener('click', () => {
+      this._commit({ autoSpinX: false, autoSpinY: false, autoSpinZ: false })
+      el.querySelectorAll('[data-spin]').forEach(b => b.classList.remove('is-on'))
+    })
+  }
+
   _bindControls (el) {
     el.querySelector('#ws-shape').addEventListener('change', (e) => {
       this._commit({ shape: e.target.value })
       const note = el.querySelector('#ws-cubemap-note')
       if (note) note.style.display = e.target.value === CUBEMAP_SHAPE ? '' : 'none'
+      const rectSec = el.querySelector('#ws-rect-section')
+      if (rectSec) rectSec.style.display = e.target.value === RECT_SHAPE ? '' : 'none'
     })
+    this._bindRect(el)
 
     el.querySelectorAll('[data-transform]').forEach(input => {
       input.addEventListener('input', () => {

@@ -1330,3 +1330,13 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 5. Phone: open Inspector can cover the ribbon dropdown and the meter gear; X meter can sit behind floating windows.
 6. OmniAlphabet index worksheet written (`docs/omniproducts/OMNIALPHABET_INDEX_V01.md`), waiting for the owner's symbols and indexes.
 7. V189 had an empty DevOmniStoreData.js (my write error); a size-0 file check is now part of verification.
+
+## 81. V191 (four-part batch): what was not verified, follow-ups
+
+1. Software-GL Chromium and jsdom only: no real GPU, phone or touch. Pad ascend / descend / pitch verified in jsdom only; real GIF and video faces and IndexedDB media not seen; touch drag of path rows not seen.
+2. Owner questions: orbit-up direction; chip+popover vs more circles; OmniKeys launcher entry beside Keyboard (kept both); ` also for terminal when nothing is selected; essence / store-item / value nodes have no shape (counted as 'other' in the dock); path line as real edge; per-cell colour and video sound for floor panels; panel cap 400; mirror fill default; eye glyph.
+3. Perspectives: toolbar entry is a Planned notice; ConsciousHand VisualStates list is the future panel.
+4. Dock row can be covered by windows and MiniMap corners; consider moving maximized windows above the row.
+5. `GEO_LABELS` now also lists OmniPathNode and FloorPanelNode (not among the 20 main shapes).
+6. Alphabet index worksheet still waiting for the owner.
+7. After any user-guide edit run `node tools/build-docs-data.mjs`.

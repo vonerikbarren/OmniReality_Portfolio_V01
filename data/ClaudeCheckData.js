@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V190",
+ "version": "V191",
  "date": "2026-10-12",
- "summary": "V190: OmniStar tab (Docs, OmniStarLight Ctrl/Cmd+K), compass as its own draggable panel, OmniNotify under the profile, hands-tab dividers, centre reticle, floor 20 textures, bottom X meter + session clock, click-empty-space releases orbit, smaller boot star with shooting stars + dev intro settings",
+ "summary": "V191: round pad buttons, vertical move + RH pitch buttons, ◬ for ConsciousHand, tool options on OmniHand/ConsciousHand pads, OmniPathNode + OmniNodeOrderPanel, floorPanelNode (Tetris pieces, picture/GIF/video faces) + FloorNodeMakerSettings grid, OmniDock_Realities, OmniState_StrictAlign (` key), wallpaper Rectangle shape, NavMap close, Perspectives entry",
  "checks": [
   {
    "id": "omnistore-v183-storeitemnode-o.pin-a-store-item",
@@ -854,9 +854,443 @@ export default {
    "whatToCheck": "Intro ignores saved dev settings for that load",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.round-pad-buttons",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "Round pad buttons",
+   "howToReach": "Open any pad (⚇) at 1280x900 and at 390x844",
+   "whatToCheck": "The 4 buttons and the chip around each pad are circles with clear space to the pad; labels fully readable; nothing overlaps the ribbon, dock, other hands or the edge",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.chip-text",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "Chip text",
+   "howToReach": "LH pad ⚙ > OmniHands > LogicalHand > Ammo: load Transform and set it current",
+   "whatToCheck": "The chip circle reads Transform completely, no clipping",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.lh-ascend-descend",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "LH ascend / descend",
+   "howToReach": "Open LH pad, hold ASC (top-right corner) then DSC; or hold E / Q",
+   "whatToCheck": "Camera rises / falls along world Y while held and stops on release; speed follows OmniHands LH Speed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.rh-ascend-descend",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "RH ascend / descend",
+   "howToReach": "RH pad right corners",
+   "whatToCheck": "Same motion as RISE / FALL; holding both does not double",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.rh-vertical-orbit",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "RH vertical orbit",
+   "howToReach": "RH pad, hold ORB-U then ORB-D (top-left corner); or keys Y / H",
+   "whatToCheck": "View orbits up / down around the selected node (else the scene centre), stops short of straight up/down, speed follows RH Speed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.symbol",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "◬ symbol",
+   "howToReach": "ConsciousHand pad, ribbon Home > Dim. Axes, Keyboard Shortcuts, OmniHands > ConsciousHand, tunnel labels",
+   "whatToCheck": "◬ everywhere the Conscious Hand was Δ; it renders (not a missing-glyph box) on your OS",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.axis-tool-options-on-omnihand-conscioushand-pads",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "Axis tool options on OmniHand / ConsciousHand pads",
+   "howToReach": "Open the pad and click the round chip",
+   "whatToCheck": "Menu opens with TakeMeThere, Root, Back, Forth, up, down, Reset marker, Tunnel, Follow pads, Settings; each matches the same action at the axis",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.launcher",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "feature": "Launcher",
+   "howToReach": "Click the round ⟐ at the bottom centre",
+   "whatToCheck": "Ring with Keyboard, OmniKeys, OmniDraw; each opens its panel; near a screen edge all three stay on screen",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.path-node-link-mode",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Path node, LINK mode",
+   "howToReach": "Ribbon Home > Create > Path node, Record links, select 3 nodes",
+   "whatToCheck": "List shows them in order, a line joins them, reload keeps it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.path-node-genealogy-mode",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Path node, GENEALOGY mode",
+   "howToReach": "OmniNodeOrder, mode GENEALOGY, select a parent, Use selected as root, Build",
+   "whatToCheck": "Pre-order and breadth-first orders match the tree",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.omninodeorderpanel-reorder",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "OmniNodeOrderPanel reorder",
+   "howToReach": "Drag the handle (mouse and touch), or the up / down buttons",
+   "whatToCheck": "Order changes, Undo restores",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.deleting-a-member-node",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Deleting a member node",
+   "howToReach": "Delete a node that is in a path",
+   "whatToCheck": "It leaves the order and the panel notes it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.floor-panels-place",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Floor panels place",
+   "howToReach": "Admin slot 20 or ribbon Floor panels: pick T, click the grid, Place in scene",
+   "whatToCheck": "Tiles lie on the floor in the right shape; rotate and mirror work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.floor-panel-faces",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Floor panel faces",
+   "howToReach": "Face tool or Inspector: add png, GIF, mp4",
+   "whatToCheck": "Pictures show, GIF animates, video plays muted and loops; with 5+ videos only 4 play",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.remove-one-panel",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Remove one panel",
+   "howToReach": "Inspector Remove panel or click the grid cell",
+   "whatToCheck": "Only that cell goes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.grid-overlay-ghost",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Grid overlay + ghost",
+   "howToReach": "Place with pointer",
+   "whatToCheck": "Ghost follows the pointer, red when blocked, snaps",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.reload",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Reload",
+   "howToReach": "Reload the page",
+   "whatToCheck": "Floor panels, faces and paths return",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.phone",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "feature": "Phone",
+   "howToReach": "390 px",
+   "whatToCheck": "Both windows open as bottom sheets, nothing overflows",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.omnidock-realities-strip",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "OmniDock_Realities strip",
+   "howToReach": "open the app, look above the bottom Dock",
+   "whatToCheck": "a scrollable row of 20 wireframe shapes with count badges; compass at its left end; no overlap with Dock, bottom hands, X meter",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.realities-quicktip",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "Realities quickTip",
+   "howToReach": "hover a shape (desktop) / tap once (phone)",
+   "whatToCheck": "tip shows \"N nodes\"; a second tap on phone opens the panel",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.realitiesinshape-panel",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "RealitiesInShape panel",
+   "howToReach": "click a shape",
+   "whatToCheck": "window lists id / name / kind, live-updates on create/delete, row click selects and flies to the node, resizable/maximizable, same shape again closes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.dock-settings",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "Dock settings",
+   "howToReach": "Admin > OmniDock_Realities rows, or the gear at the row end",
+   "whatToCheck": "S/M/L + slider, opacity, per-shape colour/opacity, hide-empty, show/hide, reset, Dock compass reset; survives reload",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.compass",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "Compass",
+   "howToReach": "drag it away, reload",
+   "whatToCheck": "saved position wins; \"Dock compass\" returns it to the row",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "StrictAlign",
+   "howToReach": "press ` with a node selected",
+   "whatToCheck": "panel with X/Y/Z; one axis active, others locked; ArrowUp/Down, wheel over the node, drag the gizmo, typed value + Enter all move it; Esc or ` exits",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-blocked-nodes",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "StrictAlign blocked nodes",
+   "howToReach": "select a locked / tracking node",
+   "whatToCheck": "panel shows why it cannot move",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-vs-f1",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "StrictAlign vs F1",
+   "howToReach": "press F1",
+   "whatToCheck": "terminal still opens; ` while typing in a field does nothing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-admin",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "StrictAlign Admin",
+   "howToReach": "Admin > StrictAlign rows",
+   "whatToCheck": "step, shift step, axis line, close-after-Enter, snap drag",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.keyboard-panel",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "feature": "Keyboard panel",
+   "howToReach": "open shortcuts",
+   "whatToCheck": "F1 terminal, ` StrictAlign, 1 2 3 / x y z listed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.wallpaper-rectangle-shape",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Wallpaper Rectangle shape",
+   "howToReach": "Admin > Wallpaper Settings > Shape > \"Rectangle (16:9 room)\"",
+   "whatToCheck": "Pick it with a 1080p image (slot) and a 1080p video: front and back walls show it undistorted (circle stays round), left/right walls are square, no stretching. Spin is on by default: press \"Hold still\".",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-left-right-top-bottom-options",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Rectangle: left/right + top/bottom options",
+   "howToReach": "same panel, \"Rectangle room\" section",
+   "whatToCheck": "Left/right: Square crop / Mirror fill / Solid colour; Top/bottom: Media / Solid / None; each updates live and survives reload.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-size-lock-fit",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Rectangle: size + lock + fit",
+   "howToReach": "same section",
+   "whatToCheck": "Width/Height (aspect lock moves the other; 16:9 button), Fit Contain (bars in Bar colour) vs Cover (crop) with a 4:3 and a 21:9 image.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-with-video",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Rectangle with video",
+   "howToReach": "upload a video slot, then Rectangle",
+   "whatToCheck": "video fills front/back, switching shape back to Sphere keeps the video, Deactivate returns to the image, no leftover playing video (check CPU/audio).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.old-wallpaper-save-unaffected",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Old wallpaper save unaffected",
+   "howToReach": "reload with a sphere/cubemap wallpaper saved before V191",
+   "whatToCheck": "looks the same.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.navmap-close",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "NavMap close",
+   "howToReach": "Ribbon Home > NavMap",
+   "whatToCheck": "x in the header closes it; click the panel then press Esc closes it; Esc with the 3D view focused does not; reopen from the ribbon; maximize and x do not overlap; on a phone the whole panel (and x) is on screen.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.perspectives-toolbar-entry",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "Perspectives toolbar entry",
+   "howToReach": "Ribbon > Realities tab > Perspectives (right after Experiences)",
+   "whatToCheck": "glyph is a plain text circle-dot (not a coloured emoji eye); click shows the \"planned\" notice; tab row still fits at 390px.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.omnistarlight",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "feature": "OmniStarLight",
+   "howToReach": "Ctrl/Cmd+K, type \"perspectives\"",
+   "whatToCheck": "listed as Unavailable (Planned) with its reason.",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
+  {
+   "id": "v191-pad-circles",
+   "question": "Do the round option buttons around the pads read well and clear the pads?",
+   "why": "Judged only in software-GL screenshots; below about 842 px phone height the second-ring chips can touch.",
+   "kind": "choice",
+   "device": "phone",
+   "choices": [
+    "good",
+    "too small",
+    "too big",
+    "touching"
+   ]
+  },
+  {
+   "id": "v191-orbit-dir",
+   "question": "Is 'orbit up' (camera goes up) the direction you expect on RH ORB-U / Y?",
+   "why": "I assumed the camera moves up around the target.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "right",
+    "reverse it"
+   ]
+  },
+  {
+   "id": "v191-hand-tools",
+   "question": "Is the chip + popover what you meant by bringing the OmniHand / ConsciousHand tool options out?",
+   "why": "Or did you want more circles directly around the pad? The phone has little room, so I used a menu.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "want circles around the pad"
+   ]
+  },
+  {
+   "id": "v191-dock-row",
+   "question": "Does the OmniDock_Realities row look right above the Dock, with the compass at its left?",
+   "why": "Only seen in software-GL screenshots; the Inspector or other windows can cover it.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "too big",
+    "too small",
+    "overlaps something"
+   ]
+  },
+  {
+   "id": "v191-dock-tap",
+   "question": "On touch: tap once = tip, tap again = open panel. OK?",
+   "why": "",
+   "kind": "yesno",
+   "device": "touch"
+  },
+  {
+   "id": "v191-strictalign",
+   "question": "Does the ` key mode (StrictAlign) feel right: pick one axis, drag / nudge / type?",
+   "why": "Is X the right default axis? Should the terminal also keep ` when nothing is selected?",
+   "kind": "choice",
+   "device": "desktop",
+   "choices": [
+    "good",
+    "change default axis",
+    "other problem"
+   ]
+  },
+  {
+   "id": "v191-floor-panels",
+   "question": "Do the Tetris floor panels work the way you imagined, including picture / GIF / video faces?",
+   "why": "Real GIF and video playback was not seen on a GPU.",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "good",
+    "not what I meant",
+    "media problem"
+   ]
+  },
+  {
+   "id": "v191-path-line",
+   "question": "Should a path node's line be a real edge so firing / sequences can follow it?",
+   "why": "Today it is a drawn line plus an ordered list.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v191-rect-default",
+   "question": "Wallpaper Rectangle: is 'square crop' the right left/right default or should it be 'mirror fill'?",
+   "why": "Plus is the room size right (about sphere size)?",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "square crop is fine",
+    "use mirror fill",
+    "wrong size"
+   ]
+  },
+  {
+   "id": "v191-eye",
+   "question": "Keep ◉ as the eye for Perspectives (Visor and Talent use it too) or choose a unique glyph?",
+   "why": "One-line change in utils/OmniGlyphs.js.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "keep ◉",
+    "use ⊙",
+    "other"
+   ]
+  },
   {
    "id": "v190-starlight-rule",
    "question": "Is the StarLight Available / Unavailable rule right (planned items and developer tools count as Unavailable)?",
@@ -910,116 +1344,21 @@ export default {
     "too big",
     "too small"
    ]
-  },
-  {
-   "id": "v190-shooting-stars",
-   "question": "Do the boot shooting stars feel right?",
-   "why": "Judged only from screenshots; opacity, rate and angle are guesses.",
-   "kind": "choice",
-   "device": "gpu",
-   "choices": [
-    "good",
-    "too faint",
-    "too strong",
-    "too rare",
-    "too frequent"
-   ]
-  },
-  {
-   "id": "v190-session-pos",
-   "question": "Is the session-time readout (left edge under the top-left hand) comfortable?",
-   "why": "New panel inside the OmniMeter.",
-   "kind": "choice",
-   "device": "phone",
-   "choices": [
-    "good",
-    "move it",
-    "make it smaller"
-   ]
-  },
-  {
-   "id": "v190-orbit-release",
-   "question": "Does click-empty-space release the orbit without annoying you when you rotate?",
-   "why": "Drag, long press, right-click and UI clicks are ignored by design.",
-   "kind": "choice",
-   "device": "desktop",
-   "choices": [
-    "good",
-    "releases too easily",
-    "does not release"
-   ]
-  },
-  {
-   "id": "v189-no-regression",
-   "question": "Does the app start and look the same as V188 (boot, ribbon, compass, a panel)?",
-   "why": "V189 adds only a pure module nothing imports yet, so nothing should change; this is a cheap sanity check.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "compass-looks-right",
-   "question": "Does the userCompass look right in its slot under the logo?",
-   "why": "Only judged in screenshots from software-rendered Chromium at six window sizes; line weight, brightness and size are taste. If it is too small, too big or touches something, say what in the message.",
-   "kind": "choice",
-   "choices": [
-    "good",
-    "too small",
-    "too big",
-    "overlaps something"
-   ],
-   "device": "any"
-  },
-  {
-   "id": "compass-alignment",
-   "question": "Is the difference between Left, Center and Right alignment noticeable enough?",
-   "why": "The slot is only as wide as the top-left hand (103 px) and the globe is 44 px, so the globe moves about 26 px between Left and Center. A wider slot is one constant if you want more room.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "compass-spin-speed",
-   "question": "How does the spin speed feel (Normal = 14 s per turn)?",
-   "why": "Speeds are a guess: Slow 28 s, Normal 14 s, Fast 7 s. It rides the app ticker, so on a real GPU it should be smooth; I only saw it at about 1 fps in the software renderer.",
-   "kind": "choice",
-   "choices": [
-    "good",
-    "too fast",
-    "too slow"
-   ],
-   "device": "gpu"
-  },
-  {
-   "id": "compass-click-action",
-   "question": "What should clicking the userCompass do? (today: it opens Admin > UI Settings > userCompass)",
-   "why": "It had to do something, so it opens its own settings. A compass could instead reset the camera heading to north, snap the view to look north, or open the camera idea later. Write what you want.",
-   "kind": "text",
-   "device": "any"
-  },
-  {
-   "id": "compass-hidden-narrow",
-   "question": "On a narrow window or a phone the globe is hidden (the ribbon covers its strip). Do you want it visible there too?",
-   "why": "Below about 1010 px the ribbon runs under the whole bar, so there is no free strip. Showing it would mean giving the ribbon a 103 px left margin (tabs shrink) or putting the globe somewhere else. Say which you prefer in the message.",
-   "kind": "choice",
-   "choices": [
-    "fine, hide it",
-    "show it on phones too",
-    "not sure"
-   ],
-   "device": "phone"
   }
  ],
  "knownIssues": [
+  "V191 was built as four parts merged into one; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
+  "Camera ascend/descend and RH pitch were verified in jsdom only (an open Inspector covered the left pad in the Chromium run).",
+  "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
+  "The Realities dock row can be covered by open windows and the MiniMap corners.",
+  "Phone heights under about 842 px: second-ring pad chips can touch.",
+  "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
+  "Rectangle wallpaper 4:3 and 21:9 letterbox and ceiling/floor orientation were not screenshotted.",
+  "HelpNode (docs in scene) still not built.",
   "V190 was built in two parts and merged (main.js merged cleanly); only software-GL Chromium and jsdom were used. Nothing was judged on a real GPU, phone or touch device.",
   "The in-scene HelpNode is NOT built; Docs is a DOM panel only. Hook: OmniDocsPanel.openDocs.",
   "External controls (OmniPointing) got no session clock: it has no readout area.",
   "Floor textures are still not in export/import (floor-plane is not in KNOWN_NAMESPACES).",
-  "On a phone an open Inspector can cover the ribbon dropdown and the meter gear.",
-  "V189 shipped with an empty utils/DevOmniStoreData.js (my error); fixed in the re-issued V189 zip and in V190.",
-  "The address type letters (C core, B branch, S space) and the eye symbol are PLACEHOLDERS until the owner picks glyphs; nothing in the app uses OmniAddress yet.",
-  "The userCompass was judged only in software-GL Chromium (six window sizes); never on a real GPU, a real phone or with touch.",
-  "The userCompass is free only while the ribbon starts to the right of its strip: windows narrower than about 1010 px, phones, tablets and a floated OmniNotify box hide it (it never overlaps the ribbon).",
-  "The userCompass slot is the top-left hand's width (103 px); the empty space up to the OmniNotify box (x 222) is not used.",
-  "The camera feature is only documented (docs/omniproducts/OMNICAMERA_IDEA.md); seven questions for the owner are still open.",
-  "The boot animation, the shooting star and the window resize / maximize were never judged on a real GPU, a real phone or with touch (software-GL Chromium only)."
+  "On a phone an open Inspector can cover the ribbon dropdown and the meter gear."
  ]
 }

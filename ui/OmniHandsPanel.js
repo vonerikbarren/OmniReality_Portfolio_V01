@@ -59,13 +59,13 @@ export const NAV_TO_HAND = {
 }
 
 export const HAND_META = {
-  lh:        { product: '⟐LogicalHand',   corner: 'bottom-left',  role: 'Process',      keys: 'W A S D' },
-  rh:        { product: '⟐CreativeHand',  corner: 'bottom-right', role: 'Object',        keys: 'R / F altitude, ← → yaw (arrow keys)' },
+  lh:        { product: '⟐LogicalHand',   corner: 'bottom-left',  role: 'Process',      keys: 'W A S D, E / Q ascend / descend' },
+  rh:        { product: '⟐CreativeHand',  corner: 'bottom-right', role: 'Object',        keys: 'R / F altitude, ← → yaw (arrow keys), Y / H orbit up / down' },
   conscious: { product: '⟐ConsciousHand', corner: 'top-right',    role: 'VisualStates', keys: 'Numpad 5 / 6 primary axis, 7 / 9 scale (Υ)' },
   omnihand:  { product: '⟐OmniHand',      corner: 'top-left',     role: 'MetaStates',   keys: 'Numpad − / + primary axis, / and * tier (Υ)' },
 }
 const ORDER = ['lh', 'rh', 'conscious', 'omnihand']
-const SYMBOL = { conscious: 'Δ', omnihand: '⟐', lh: 'Λ', rh: 'Ψ' }   // V166: lh / rh tunnel symbols (data/OmniDimensionalAxesData.js)
+const SYMBOL = { conscious: '◬', omnihand: '⟐', lh: 'Λ', rh: 'Ψ' }   // V166: lh / rh tunnel symbols (data/OmniDimensionalAxesData.js)
 
 const ADMIN_KEY = 'omni:admin:settings'
 const ADMIN_STEP_DEFAULTS = { px: 1, py: 1, pz: 1, altitudeUp: 1, altitudeDown: 1, orbitVertical: 1, orbitHorizontal: 1, globalSpeed: false, globalValue: 1 }

@@ -5,7 +5,7 @@
  * systems/OmniAxinator.js. This module now only
  *   - instantiates ONE OmniAxinator (the "main" channel) with the built-in tunnels
  *     from data/OmniAxinatorData.js: the two hand tunnels the top-hand pads drive
- *       Conscious Hand (Δ)  full-length two-sided 2↔8 tunnel through the origin;
+ *       Conscious Hand (◬)  full-length two-sided 2↔8 tunnel through the origin;
  *                           node 0 = the ⟐ConsciousHand ROOT at 0,0,0, then the perspectives;
  *                           relative (Υ) axis = 10 scale degrees
  *       OmniHand (⟐)        11↔5, node 0 = ⟐OmniHand ROOT at 0,0,0, then the OmniProducts;

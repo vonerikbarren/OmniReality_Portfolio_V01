@@ -86,6 +86,7 @@ export const SITES = [
   P('omnisystemdimensionalizer', 'OmniSystem Dimensionalizer', 'Planned', 'Dimensionalize a system.', 'A "coming soon" panel, not built yet.', ['dimensionalizer']),
   P('omnisystemsettings', 'OmniSystem Settings', 'Planned', 'Settings for OmniSystem.', 'A "coming soon" panel, not built yet.', []),
   P('experiences', 'Experiences', 'Planned', 'The Experiences index.', 'An index panel with empty slots; nothing to open yet.', ['experience']),
+  P('perspectives', 'Perspectives', 'Planned', 'The perspectives (dimensions) of the product the OmniHand selects, listed on the ConsciousHand.', 'Planned: the ribbon button only shows a notice; the ConsciousHand list is not built yet.', ['perspective', 'eye', 'dimensions', 'visualstates']),
   P('realities', 'Realities', 'Planned', 'The Realities index.', 'An index panel with empty slots; nothing to open yet.', ['reality']),
   P('times', 'Times', 'Planned', 'The Times index.', 'An index panel with empty slots; nothing to open yet.', ['time']),
   P('governance', 'Governance', 'Planned', 'The Governance index.', 'An index panel with empty slots; nothing to open yet.', []),

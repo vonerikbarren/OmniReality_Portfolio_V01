@@ -63,8 +63,9 @@ Files: `utils/OmniWindowChrome.js` (new, the whole mechanism), `ui/WindowManager
   - Context menus: excluded.
   - Detached movement pads: excluded (small controls that already remember a position).
   - `HandSpeedPanel`: a transient popover that is deliberately not registered. Excluded.
+  - `HandToolsPanel` (V191, the OmniHand / ConsciousHand tool options opened by the pad chip): a transient popover like HandSpeedPanel, not registered. Excluded.
 
-Counts: **class A 80 panels**, **class B 21 groups** (not windows; V188 added the userCompass, V190 the reticle and OmniStarLight; the V190 Docs panel `#omni-docs-panel` is class A), **class C 6 decisions**.
+Counts: **class A 80 panels**, **class B 21 groups** (not windows; V188 added the userCompass, V190 the reticle and OmniStarLight; the V190 Docs panel `#omni-docs-panel` is class A), **class C 7 decisions** (V191 added HandToolsPanel).
 
 ## Inventory of class A (how each panel is built, header, before V187)
 
