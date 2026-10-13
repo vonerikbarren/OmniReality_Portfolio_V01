@@ -1,6 +1,6 @@
 # 7. Ribbon, OmniNotify and Dock
 
-Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
+Applies to: V194 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Chronos](06_Chronos_Player_and_Timeline.md) · Next: [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md)
 
@@ -11,8 +11,8 @@ The ribbon is the strip of buttons under the top bar. It has five tabs (V190 add
 | Tab | Groups (buttons) |
 |---|---|
 | OmniStar ✧ | Docs (this guide, with search); OmniStarLight (search sites and docs, Ctrl/Cmd+K) |
-| Home ▦ | Dashboard (Dashboard, Start HUD); Navigation (NavMap, MiniMap, Landing); Create (OmniDraw, Static, Dynamic, Behavior); Tools (Mixer, Translator, Presenter, Gallery, Browser); Windows (PanelControl, Panel Tray); Assistance (Shortcuts, Terminal, Fullscreen) |
-| Inspector ◧ | Panel (Inspector); Node, Look & logic, Content (the 12 sections, see [Inspector](03_Nodes_and_Inspector.md)) |
+| Home ▦ | Dashboard (Dashboard, Start HUD); Navigation (NavMap, MiniMap, Landing); Create (OmniDraw, Static, Dynamic, Behavior, Path node, Terminal node, Sound node, Node order, Floor panels); Tools (Mixer, Translator, Presenter, Gallery, Sound settings, Browser); Windows (PanelControl, Panel Tray); Assistance (Shortcuts, Terminal, Fullscreen, Refresh, Reset HUD). Refresh reloads the page; Reset HUD puts window sizes, the OmniNotify box and the userCompass back in their default places without reloading and touches no data |
+| Inspector ◧ | Panel (Inspector); Node, Look & logic, Content (the 13 sections, see [Inspector](03_Nodes_and_Inspector.md)) |
 | Realities ⟐ | Realities (Realities, Experiences, Spaces, Times, Products); Axes (Dim. Axes, Axinator, Tunnels, Domain grid); Scopes (Visor, Select, Floors, User space); Chronos (Chronos, Play, Step ◀, Step ▶, To start, Add node, Marker); Value (Store, Exchange, Wallet, Store Settings, Dev Store); Save (Save nodes) |
 | Hands ⚇ | Pads (LH, RH, OmniHand, Conscious, LH + RH together); Banner (⟐Hands, ⟐Hands LH/RH); Menus (⟐mniMenu, ⟐NavMenu); Tools (the four ⬢ menus); Settings (the four hand settings); Fire & tunnels (LH fire, RH fire, Tunnels, Axinator). Since V190 a thin divider (with a colour cap) separates each hand's buttons (LH, RH, OmniHand, Conscious) in every group |
 

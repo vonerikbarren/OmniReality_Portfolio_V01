@@ -1,9 +1,112 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V192",
+  "version": "V194",
   "date": "2026-10-13",
-  "summary": "V192: RH/LH orbit around the current target with a continuous 360 vertical orbit (LH gets ORB-U/ORB-D), Bind/Pulse chips lifted above the Realities row, StrictAlign single-axis checkmarks + step field, RH no longer fires at deleted nodes, CryptX keyboard buttons work (bottom arrows, left grip), Terminal themed + scene/DOM/both + orientation + TerminalShellTunnel nodes toggled together, TimeData ruler (00:00-24:00, weeks, months, decades)",
+  "summary": "V194: SoundNode (202 sound settings), sound on any node, frequency-driven particles (63 settings, count), SoundViewer + SoundParticleViewer, Admin sound settings",
   "asks": [
+    {
+      "id": "v194-hear",
+      "question": "Press Play on a Sound node (Home > Create > Sound node, then Play in its settings). Do you hear a clean soft A4 tone, with no clicks, pops or distortion?",
+      "why": "Audio was only analysed in a headless browser with no speakers; nobody has heard it.",
+      "kind": "choice",
+      "choices": [
+        "clean",
+        "clicks or pops",
+        "distorted",
+        "no sound",
+        "other (describe in notes)"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v194-dynamics",
+      "question": "Switch dynamic from pppp to ffff. Do the steps rise evenly and ffff is loud but not harsh?",
+      "why": "The dynamic marks map to gain by a table I chose; the loudness balance is unjudged.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "pppp too quiet",
+        "ffff too loud",
+        "uneven steps"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v194-presets",
+      "question": "Try presets (pad, pluck, arp, heartbeat, swell). Which sound wrong or boring?",
+      "why": "15 presets were tuned by numbers, not by ear.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v194-spatial",
+      "question": "Turn positional on and fly around a node. Does it get louder when near and pan left/right?",
+      "why": "Spatial audio built but not heard.",
+      "kind": "choice",
+      "choices": [
+        "works",
+        "too quiet far away",
+        "no panning",
+        "other"
+      ],
+      "device": "desktop"
+    },
+    {
+      "id": "v194-particles",
+      "question": "Do the particles look good and follow the sound? How many particles can you run before it lags?",
+      "why": "Particles were seen only on software GL (about 1 fps); real frame rate unknown. Cap is 4000 per node and 20000 total.",
+      "kind": "number",
+      "device": "gpu"
+    },
+    {
+      "id": "v194-amount",
+      "question": "202 sound settings plus 63 particle settings: right amount, or should some hide under an Advanced fold?",
+      "why": "You asked for almost every setting; I want to know if the panel feels overwhelming.",
+      "kind": "choice",
+      "choices": [
+        "keep all visible",
+        "add an Advanced fold",
+        "too many, cut"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v194-phone",
+      "question": "On a phone, does the first tap enable sound, and are the settings window and viewers usable?",
+      "why": "iOS/Android autoplay unlock and touch were never tested.",
+      "kind": "text",
+      "device": "phone"
+    },
+    {
+      "id": "v194-mixer",
+      "question": "Should the OmniMixer music follow the Sound master volume?",
+      "why": "Now the music keeps its own volume (decision pending).",
+      "kind": "choice",
+      "choices": [
+        "yes",
+        "no, keep separate"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v193-forward-backward",
+      "question": "Do forward and backward word directions look like what you meant?",
+      "why": "Words are screen-space tooltips, so forward = grows toward you and backward = shrinks away (with a small lift). Real 3D motion along the camera axis would need a different word renderer.",
+      "kind": "choice",
+      "choices": [
+        "good",
+        "want real 3D depth motion",
+        "want something else"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v193-resethud",
+      "question": "Does Reset HUD reset what you expected?",
+      "why": "It resets window sizes, re-docks OmniNotify and returns the compass; it does not touch the dock row, hands, or the CryptX keyboard. Tell me what else belongs.",
+      "kind": "text",
+      "device": "any"
+    },
     {
       "id": "v192-orbit-feel",
       "question": "Does the horizontal and vertical orbit now feel continuous around your current target?",

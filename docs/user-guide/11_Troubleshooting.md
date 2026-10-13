@@ -1,6 +1,6 @@
 # 11. Troubleshooting
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V194 · Status: verified against code on 2026-10-11 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
@@ -18,6 +18,19 @@ Hiding hands does not turn off their keys.
 1. Open it first: ribbon Realities > Value > Store. It appears in front of the landing view: press C, then look straight ahead; press ⌖ on the HUD to recentre.
 2. Check a section chip: an Emoji, Images or Videos lens or a section can filter everything out. Click the pager.
 3. Open ⟐OmniStoreSettings > Catalog. If the product list is empty (or after "Delete all products"), add one or import a catalog.
+
+## I hear nothing from a sound node
+
+1. Is the sound on? In the Inspector section **Sound** (or the window ⟐SoundNodeSettings) the Sound switch must be on, and the small sign above the node must be ▶ or ❚❚, not missing.
+2. Press **▶ Play** on the node. A sound does not start by itself unless its Start setting says so.
+3. Press the speaker in the Inspector: if it shows 🔇 Unmute, all sound is muted. On a phone sound starts muted. Press it once.
+4. If a bar with **Enable sound** appears, press it: your browser blocks audio until you tap or press a key once.
+5. Check Admin > UI Settings > Sound: Master volume is not near 0, and "Ask before sound" is off (or you pressed Enable sound).
+6. Turn the volume of your device up, and check the browser tab is not muted (a speaker icon on the tab).
+7. Many sounds at once: only the number set in "Sounds at once" (default 8) play; the oldest stops when a new one starts. Raise it in Admin.
+8. Positional sound is quiet far away. Move closer, or turn **positional** off for that node.
+
+See [Sound nodes](12_Sound_Nodes.md).
 
 ## The Inspector is too tall on a phone
 

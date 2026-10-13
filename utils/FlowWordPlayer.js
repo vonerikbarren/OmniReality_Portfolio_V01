@@ -94,6 +94,19 @@ export function liveWordCount () { return LIVE.length }
 
 // ── Player ───────────────────────────────────────────────────────────────────
 
+/** V193: pure. Where a word ends up relative to where it starts (px) and its scale at start / end, for a payload display direction. */
+export function wordMotion (direction, rise) {
+  const r = Math.max(0, Number.isFinite(rise) ? rise : 0)
+  switch (direction) {
+    case 'down':     return { dx: 0, dy: r, scale0: 1, scale1: 1 }
+    case 'left':     return { dx: -r, dy: 0, scale0: 1, scale1: 1 }
+    case 'right':    return { dx: r, dy: 0, scale0: 1, scale1: 1 }
+    case 'forward':  return { dx: 0, dy: -r * 0.25, scale0: 0.55, scale1: 1.9 }   // comes toward the viewer
+    case 'backward': return { dx: 0, dy: -r * 0.25, scale0: 1.5, scale1: 0.45 }   // recedes into the scene
+    default:         return { dx: 0, dy: -r, scale0: 1, scale1: 1 }               // 'up' (default, also for unknown values)
+  }
+}
+
 export default class FlowWordPlayer {
   /**
    * @param {object} o
@@ -163,13 +176,15 @@ export default class FlowWordPlayer {
       el.appendChild(b)
     }
     this.container.appendChild(el)
-    const dir = d.direction === 'down' ? 1 : -1
+    const direction = d.direction
     const rise = Math.max(0, d.risePx ?? 60)
-    gsap.set(el, { xPercent: -50, yPercent: -100, x: X_PATTERN[i % X_PATTERN.length], y: -START_LIFT, opacity: 0 })
+    // V193: motion per direction. up / down: vertical rise; left / right: sideways drift; forward / backward: depth cue (grow toward the viewer / shrink away) with a small lift
+    const motion = wordMotion(direction, rise)
+    gsap.set(el, { xPercent: -50, yPercent: -100, x: X_PATTERN[i % X_PATTERN.length], y: -START_LIFT, opacity: 0, scale: motion.scale0 })
     const entry = { el, tl: null, owner: this }
     entry.tl = gsap.timeline({ onComplete: () => dropEntry(entry) })
     entry.tl.to(el, { opacity: 1, duration: FADE_IN }, 0)
-      .to(el, { y: dir * rise - START_LIFT, duration: life, ease: 'power1.out' }, 0)
+      .to(el, { y: motion.dy - START_LIFT, x: X_PATTERN[i % X_PATTERN.length] + motion.dx, scale: motion.scale1, duration: life, ease: 'power1.out' }, 0)
       .to(el, { opacity: 0, duration: FADE_OUT, ease: 'power1.in' }, FADE_IN + hold)
     LIVE.push(entry)
     this.mine.push(entry)

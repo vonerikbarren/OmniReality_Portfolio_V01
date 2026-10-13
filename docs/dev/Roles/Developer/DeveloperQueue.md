@@ -1348,3 +1348,17 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 3. Owner questions: LH keys U / V; roll upright vs stay rolled; per-pad speed; anchors deleted with their node; CryptX reopens open; Alt+Arrow keys unused; floor panels may overlap when moved off the grid; F1 outside the DOM input; one shared terminal session; built-in tunnel as a node; WASD captured by a focused scene terminal; OmniChat Terminal tab unification; ruler: nodes as marks, follow-today default, 100-year decade window, week numbering.
 4. TimeData registry stores seconds since app start, not dates: mapping needed before nodes can sit on the ruler.
 5. Run `node tools/build-docs-data.mjs` after any user-guide edit; the nodev main.js-contiguity checks are obsolete.
+
+## 83. V193 (small batch): what was not verified, follow-ups
+
+1. Word directions forward / backward are a scale cue on DOM tooltips, not real depth motion; seen only in jsdom (no browser run for this small build).
+2. Reset HUD does not reset the OmniDock_Realities settings, hand pads, or the CryptX keyboard position; add them if wanted.
+3. SoundNode design discussion open: see the reply of 2026-10-13 (both: a sound property on every node + a SoundNode source; proposal not built).
+
+## 84. V194 (SoundNode): what was not verified, follow-ups
+
+1. Nothing was heard: audio quality, clicks, loudness balance, spatial / Doppler and presets are unjudged (see ClaudeCheckAsk).
+2. Particle frame rate only seen on software GL; verify the 4000 / 20000 caps on a real GPU and phone.
+3. Decide: Advanced fold for 265 settings? Mixer follows Sound master? Muted nodes drive particles (now yes)? Doppler / positional default off.
+4. Stub-based v194b / v194c suites should be rewritten against the real modules (current coverage: real-browser integration run).
+5. OmniMixer got one added line (`window.__omniMixerAudio`) for the analysis bridge.

@@ -161,6 +161,8 @@ export default class OmniNotifyBox {
     window.addEventListener('resize', this._onResizeWin)
     this._onLayout = () => this._layoutSoon()
     window.addEventListener('omni:layout-changed', this._onLayout)
+    this._onHudReset = () => this.dock()   // V193: the ribbon's Reset HUD button
+    window.addEventListener('omni:hud-reset', this._onHudReset)
     this._onPush = () => this._flash()
     window.addEventListener('omni:notify-push', this._onPush)
     this._layout()
@@ -176,6 +178,7 @@ export default class OmniNotifyBox {
     window.removeEventListener('resize', this._onResizeWin)
     window.removeEventListener('omni:layout-changed', this._onLayout)
     window.removeEventListener('omni:notify-push', this._onPush)
+    window.removeEventListener('omni:hud-reset', this._onHudReset)
     this._endDrag()
     clearTimeout(this._flashTimer)
     if (typeof cancelAnimationFrame === 'function' && this._raf) cancelAnimationFrame(this._raf)

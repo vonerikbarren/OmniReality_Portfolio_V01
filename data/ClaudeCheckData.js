@@ -5,855 +5,387 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V192",
+ "version": "V194",
  "date": "2026-10-13",
- "summary": "V192: RH/LH orbit around the current target with a continuous 360 vertical orbit (LH gets ORB-U/ORB-D), Bind/Pulse chips lifted above the Realities row, StrictAlign single-axis checkmarks + step field, RH no longer fires at deleted nodes, CryptX keyboard buttons work (bottom arrows, left grip), Terminal themed + scene/DOM/both + orientation + TerminalShellTunnel nodes toggled together, TimeData ruler (00:00-24:00, weeks, months, decades)",
+ "summary": "V194: SoundNode (202 sound settings), sound on any node, frequency-driven particles (63 settings, count), SoundViewer + SoundParticleViewer, Admin sound settings",
  "checks": [
   {
-   "id": "omnistore-v183-storeitemnode-o.pin-a-store-item",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Pin a store item",
-   "howToReach": "Open the store, click a product, in the Exchange press Pin to my space",
-   "whatToCheck": "A node with the product emoji appears about 6 units in front of you (also at 390px: the chip is fully visible); the message says Pinned <name>; it is not selected; click it to inspect",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.store-item-inspector-block",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Store item Inspector block",
-   "howToReach": "Select a pinned store item node, open Inspector > Appearance",
-   "whatToCheck": "Product, price forms, stock, store name, SANDBOX badge; Window / Wish / Cart add to the lists; Open in store opens the store on the product; Buy... opens the Exchange; strip still 12 icons; geometry select disabled",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.store-item-follows-the-catalog",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Store item follows the catalog",
-   "howToReach": "Edit the product's price / stock / name / emoji in OmniStoreSettings > Catalog",
-   "whatToCheck": "The node label (and the open Inspector block) change within a moment; delete the product and the node turns grey with Missing product, restore it and it recovers",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.pin-a-value-type",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Pin a value type",
-   "howToReach": "Wallet: the pin button on a type row; OmniTalent: Pin this value type",
-   "whatToCheck": "A value node with the emoji and live balance; grant in the Wallet and the label changes",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.value-node-inspector-block",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Value node Inspector block",
-   "howToReach": "Select a value node",
-   "whatToCheck": "Type, tier, balance, remainder; Grant 10 (sandbox), Open in OmniTalent, Open exchange; Missing value type if the type is removed",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.conversion-edge",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Conversion edge",
-   "howToReach": "Join two value nodes with PATH mode in ⟐N",
-   "whatToCheck": "The edge shows both rates (3 Bells -> 1 Credits / 1 Credits -> 3 Bells); two types with no conversion show 'no direct rate'; the Edge Inspector lists the rate both ways and an arbitrage warning if you add a gaining loop in the dev panel",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.picker-entries",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Picker entries",
-   "howToReach": "⟐N geometry picker > Store item / Value type > choose > click in the space",
-   "whatToCheck": "The node is created where you clicked; the OmniDraw mode picker still has 8 modes",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.reload-and-delete",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Reload and delete",
-   "howToReach": "Reload the page; delete the nodes",
-   "whatToCheck": "Nodes and edge labels come back; deleting a node leaves the product and value type untouched; duplicating makes another pointer",
-   "priority": "high",
-   "device": "touch"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.time-behaviors-group-on-kinds",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Time, Behaviors, group on kinds",
-   "howToReach": "Select a store item node: Time > add clip; Behaviors > Oscillate; group two kind nodes",
-   "whatToCheck": "Clip hides / shows it; Oscillate moves it; grouping and duplicating work",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistore-v183-storeitemnode-o.dev-nodes-readout",
-   "category": "OmniStore V183 (StoreItemNode, OmniValueNode)",
-   "feature": "Dev nodes readout",
-   "howToReach": "DevOmniStoreSettings > node readout > Create 50 test nodes / Remove test nodes",
-   "whatToCheck": "Counts and texture numbers change; removing returns textures to the starting number",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-v185.boot-sequence-plays-on-a-normal-load",
-   "category": "OmniStar boot (V185)",
-   "feature": "Boot sequence plays on a normal load",
-   "howToReach": "Open the app in a fresh tab (desktop)",
-   "whatToCheck": "Black screen with the word OmniStar appearing from the left as a white 4-pointed star rolls in along its baseline; the star lands right after the word, snaps to a 5-pointed star, then morphs to a 12-pointed star while spinning up and keeps turning slowly (about 10 s per turn); a small OmniOS subtitle (letter-spaced, fainter) sits under the wordmark; the tab title reads OmniOS",
+   "id": "v194-soundnode-and-sound-setti.sound-engine-plays-a-tone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound engine plays a tone",
+   "howToReach": "open the app, click once, run in the console: `import('/systems/OmniSoundEngine.js').then(m=>m.default.start('t',{sustained:true}))`",
+   "whatToCheck": "you hear a soft steady A4 (440 Hz) after the first click; `m.default.stop('t')` fades it out in about 0.4 s without a click or pop",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.star-lands-in-the-right-place",
-   "category": "OmniStar boot (V185)",
-   "feature": "Star lands in the right place",
-   "howToReach": "Boot screen, any window width",
-   "whatToCheck": "The star sits immediately after the final 'r' of OmniStar with a small gap, vertically centred on the letters; the wordmark + star group is centred; nothing jumps when the star lands or when you resize the window",
+   "id": "v194-soundnode-and-sound-setti.autoplay-unlock",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Autoplay unlock",
+   "howToReach": "reload, do NOT click, trigger a sound start",
+   "whatToCheck": "nothing plays and no console warning; after the first click or key press the queued sound starts",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.star-field-appears-at-landing",
-   "category": "OmniStar boot (V185)",
-   "feature": "Star field appears at landing",
-   "howToReach": "Boot screen after about 2 s",
-   "whatToCheck": "A faint field of small white stars fades in as the star starts spinning; they drift very slowly and twinkle a little; a few very faint thin lines occasionally link nearby stars and fade away; it feels restrained rather than busy",
+   "id": "v194-soundnode-and-sound-setti.dynamics-pppp-ffff",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Dynamics pppp..ffff",
+   "howToReach": "start the sound with `dynamic` pppp, then ffff via `SoundEngine.update`",
+   "whatToCheck": "pppp is almost silent, ffff is clearly the loudest, steps in between rise evenly, no distortion at ffff",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.stars-lean-toward-the-logo-on-mouse-move-hover",
-   "category": "OmniStar boot (V185)",
-   "feature": "Stars lean toward the logo on mouse move / hover",
-   "howToReach": "Move the mouse anywhere, then over the Enter button",
-   "whatToCheck": "Any mouse movement makes the stars drift gently toward the logo star; hovering Enter pulls them more; moving away or stopping lets them relax back; the field never collapses into a dot",
+   "id": "v194-soundnode-and-sound-setti.adsr-and-sustained",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "ADSR and sustained",
+   "howToReach": "play a pluck preset, then a pad preset with sustained",
+   "whatToCheck": "the pluck dies by itself; the pad holds until Stop, then fades by its release",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.enter-click-converge-and-fade",
-   "category": "OmniStar boot (V185)",
-   "feature": "Enter click: converge and fade",
-   "howToReach": "Click Enter",
-   "whatToCheck": "Stars rush into the logo and fade in about half a second while the normal fade into the scene starts; the browser still goes fullscreen (the Enter click is still a genuine gesture) and the fall-in entry animation plays as before",
+   "id": "v194-soundnode-and-sound-setti.crescendo",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Crescendo",
+   "howToReach": "play the swell preset",
+   "whatToCheck": "gets steadily louder and brighter over ~10 s, no steps or zipper noise",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.phone-390px-wide",
-   "category": "OmniStar boot (V185)",
-   "feature": "Phone (390px wide)",
-   "howToReach": "Open on a phone or a 390px window",
-   "whatToCheck": "No sideways scroll; wordmark + star centred and fully visible; OmniOS subtitle readable; about half as many stars; touching the Enter button pulls the stars in; tapping Enter enters the app (still goes fullscreen where the browser allows)",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistar-boot-v185.slow-network-slow-device",
-   "category": "OmniStar boot (V185)",
-   "feature": "Slow network / slow device",
-   "howToReach": "Throttle the network (DevTools Slow 3G) and reload, or use an old phone",
-   "whatToCheck": "The star still rolls in and spins while the page keeps loading (the roll and spin run off the main thread); the Enter button appears when loading ends; the star never freezes for long; report if the animation visibly stutters",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistar-boot-v185.reduced-motion",
-   "category": "OmniStar boot (V185)",
-   "feature": "Reduced motion",
-   "howToReach": "Set the OS or browser to reduce motion, reload",
-   "whatToCheck": "The final state shows at once: OmniStar + a static 12-pointed star + OmniOS, a few still stars, no rolling, no spin, no moving field; Enter still works",
+   "id": "v194-soundnode-and-sound-setti.iterative-play-and-loop",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Iterative play and loop",
+   "howToReach": "play the arp and rain presets, then the heartbeat preset",
+   "whatToCheck": "arp climbs and falls on an even rhythm without drifting, rain is random drops, heartbeat repeats forever until Stop",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.repeated-loads",
-   "category": "OmniStar boot (V185)",
-   "feature": "Repeated loads",
-   "howToReach": "Reload 5 times in a row (soft and hard reload)",
-   "whatToCheck": "The sequence plays every time from the start; no leftover canvas or stuck star; no console errors; after Enter the boot layer is removed",
+   "id": "v194-soundnode-and-sound-setti.vibrato-vs-tremolo",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Vibrato vs tremolo",
+   "howToReach": "play siren (vibrato) then set tremoloDepth to 0.6",
+   "whatToCheck": "vibrato wobbles the pitch, tremolo pulses the loudness",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.keyboard-and-screen-reader",
-   "category": "OmniStar boot (V185)",
-   "feature": "Keyboard and screen reader",
-   "howToReach": "Tab key on the boot screen",
-   "whatToCheck": "Enter button is reachable with Tab and gets the star pull while focused; Space/Enter activates it; a screen reader announces 'OmniStar OmniOS' (the star is hidden from it)",
+   "id": "v194-soundnode-and-sound-setti.filter-and-fx",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Filter and FX",
+   "howToReach": "enable filter, reverb, delay, chorus, distortion one at a time on a saw note",
+   "whatToCheck": "each effect is audible, switching one on or off while playing makes no click",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-v185.branding-strings",
-   "category": "OmniStar boot (V185)",
-   "feature": "Branding strings",
-   "howToReach": "Hover the ⟐ logo in the Global Bar; look at the browser tab; open ⟐Developer > OmniStoreSettings dump",
-   "whatToCheck": "Tooltip title is ⟐OmniOS; tab title is OmniOS; dump app string is 'OmniOS V185'. Spaces are still called Realities and the OmniRealityGrid panels keep their names",
+   "id": "v194-soundnode-and-sound-setti.positional-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Positional sound",
+   "howToReach": "set positional true on a node and fly the camera around it",
+   "whatToCheck": "louder when near, moves left/right with the view, quiet far away; air absorption makes far sound duller",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.final-mark-is-a-spiky-sea-urchin-orb",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Final mark is a spiky sea-urchin orb",
-   "howToReach": "Open the app in a fresh tab (desktop), wait about 3 s on the boot screen",
-   "whatToCheck": "After the landing 5-star the shape rounds into a solid white disc and 16 thin tapered spikes sprout evenly around it (alternating long / short, slightly varied lengths, one spike straight up). It reads as a spiky orb / sea urchin, not a starburst or a gear; white, soft glow like before; about the visual size of the old 12-point star; nothing clipped (spike tips, glow) and a small gap remains between the 'r' of OmniStar and the nearest spike",
+   "id": "v194-soundnode-and-sound-setti.voice-cap",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Voice cap",
+   "howToReach": "start 12 sounds",
+   "whatToCheck": "at most the Admin cap (default 8) play, the oldest is faded out, no crash",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.spin-and-breathing",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Spin and breathing",
-   "howToReach": "Boot screen after about 3 s, watch for 15 s",
-   "whatToCheck": "The mark turns slowly (about 10 s per turn) and the spikes gently extend and retract by about 6% every 3.2 s while the core stays still; the transition from the morph into the breathing shows no pop or flicker",
+   "id": "v194-soundnode-and-sound-setti.mixer-bridge",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Mixer bridge",
+   "howToReach": "open OmniMixer, play a track, run `SoundEngine.getAnalysis('mixer')`",
+   "whatToCheck": "returns spectrum/peakHz that follow the music; the music is not louder/quieter than before and does not stop",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.morph-from-the-5-point-star",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Morph from the 5-point star",
-   "howToReach": "Fresh load, watch 1.7 - 2.7 s",
-   "whatToCheck": "The 5-point star rounds into a disc and the spikes grow out of it (about 0.7 s, while the spin speeds up); smooth, no jumpy or torn frames",
+   "id": "v194-soundnode-and-sound-setti.tab-in-background",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Tab in background",
+   "howToReach": "start an arp and switch tabs for 10 s",
+   "whatToCheck": "the rhythm continues (notes may sound slightly blocky) and nothing piles up when returning",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.phone",
-   "category": "OmniStar boot mark (V186)",
+   "id": "v194-soundnode-and-sound-setti.phone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
    "feature": "Phone",
-   "howToReach": "Boot screen at 390 px wide (real phone)",
-   "whatToCheck": "The mark is small but the spikes are still visible and crisp (no blur or blobs); the word + mark group is centred; no sideways scroll",
+   "howToReach": "open on a phone with Admin \"mute on phones\"",
+   "whatToCheck": "muted until the user unmutes; with it off, sound works after the first tap",
    "priority": "normal",
    "device": "phone"
   },
   {
-   "id": "omnistar-boot-mark-v186.reduced-motion",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Reduced motion",
-   "howToReach": "Turn on the OS reduce-motion setting, reload",
-   "whatToCheck": "The finished urchin is shown at once: no roll, no spin, no breathing; the stars are static; Enter works",
+   "id": "v194-soundnode-and-sound-setti.sound-node-create",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound node create",
+   "howToReach": "Ribbon > Home > Create > Sound node",
+   "whatToCheck": "node appears, bell shape, selected, undo removes it",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.fallback-to-the-12-point-star",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Fallback to the 12-point star",
-   "howToReach": "Open the app with ?bootmark=star12 appended to the address (or set CONFIG.FINAL_MARK = 'star12' at the top of boot/OmniStarBoot.js)",
-   "whatToCheck": "The old 12-pointed star appears after the morph and spins as in V185; an unknown value (?bootmark=abc) shows the urchin",
+   "id": "v194-soundnode-and-sound-setti.sound-node-persists",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound node persists",
+   "howToReach": "create, set a note, reload",
+   "whatToCheck": "node and settings come back",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.node-reacts",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Node reacts",
+   "howToReach": "press Play on a sound node",
+   "whatToCheck": "core/rings move with level, pause bars show",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omnistar-boot-mark-v186.enter-still-works",
-   "category": "OmniStar boot mark (V186)",
-   "feature": "Enter still works",
-   "howToReach": "Click Enter on the boot screen",
-   "whatToCheck": "Stars converge on the mark and fade; fullscreen is requested; the app enters as before",
+   "id": "v194-soundnode-and-sound-setti.sound-on-any-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound on any node",
+   "howToReach": "Inspector > Sound section > switch on",
+   "whatToCheck": "node gets sound; off removes playing voice",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "windows-resize-maximize-v187.every-panel-has-edge-and-corner-handles",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Every panel has edge and corner handles",
-   "howToReach": "Open any panel (ribbon tab, dock drawer, Developer / Admin menus); hover each edge and corner",
-   "whatToCheck": "Eight resize zones (cursor changes) on every panel window; no second old-style grip in the bottom-right corner; a panel that has none is a bug, name it",
+   "id": "v194-soundnode-and-sound-setti.sound-settings-window",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound settings window",
+   "howToReach": "Ribbon > Tools > Sound settings, or Nav ⟐SoundNodeSettings",
+   "whatToCheck": "schema sections, search, presets, Reset, copy/paste JSON, Undo",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "windows-resize-maximize-v187.drag-to-resize",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Drag to resize",
-   "howToReach": "Drag the bottom-right corner, then the left and top edges of a panel",
-   "whatToCheck": "The panel follows the pointer, stops at a minimum of about 220x120 and never goes under the ribbon or the dock; content scrolls, the title bar stays fixed",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.maximize-button",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Maximize button",
-   "howToReach": "Click the square button (⛶) left of the minimize / close buttons",
-   "whatToCheck": "The panel fills the free area (full width, below the ribbon and the top hands, above the dock); the button becomes ❐; clicking it again restores the exact earlier size and place",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.maximize-by-double-click",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Maximize by double-click",
-   "howToReach": "Double-click a panel title bar (not on a button)",
-   "whatToCheck": "Toggles maximize and restore; a click on a header button does not toggle",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.dragging-while-maximized",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Dragging while maximized",
-   "howToReach": "Maximize a panel, try to drag the title bar",
-   "whatToCheck": "The maximized panel stays put; after restore the title bar drags normally again",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.size-is-remembered",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Size is remembered",
-   "howToReach": "Resize a panel, reload the page, reopen it",
-   "whatToCheck": "Same size again (position is not remembered); a maximized panel reopens at its normal size, never maximized",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.reset-window-sizes",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Reset window sizes",
-   "howToReach": "Admin > UI Settings > Window sizes > Reset",
-   "whatToCheck": "Open panels return to their original size, saved sizes are cleared, and a reload shows the defaults",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.charts-and-canvases-follow-the-resize",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Charts and canvases follow the resize",
-   "howToReach": "Resize OmniChronos, the Exchange radial and the value charts; maximize them",
-   "whatToCheck": "The drawing refills the new size without a blank strip or stretching; no lag while dragging",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.phone-bottom-sheets-390-px",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Phone bottom sheets (390 px)",
-   "howToReach": "Open a panel on a phone",
-   "whatToCheck": "The sheet resizes by its top edge (height only), the maximize button is easy to hit (36 px), maximized fills the screen between the ribbon and the dock, restore returns the sheet",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "windows-resize-maximize-v187.opacity-tray-z-order-unchanged",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Opacity, tray, z-order unchanged",
-   "howToReach": "Set panel opacity in Admin; minimize a panel to the tray and restore; click overlapping panels",
-   "whatToCheck": "Opacity still applies live; tray minimize / restore works; the clicked panel comes to the front; Esc closes what it closed before",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "windows-resize-maximize-v187.panel-that-still-cannot-be-resized-or-maximized",
-   "category": "Windows resize + maximize (V187)",
-   "feature": "Panel that still cannot be resized or maximized",
-   "howToReach": "Try every panel you use",
-   "whatToCheck": "Report any exception by name in Claude Check",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.wordmark-is-omni-star",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Wordmark is Omni⟐Star",
-   "howToReach": "Open the app in a fresh tab, watch the first 3 s",
-   "whatToCheck": "The title reads Omni⟐Star in text (⟐ is a real character, same font and size as before) with OmniOS underneath; the tab title stays OmniOS",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.shooting-star-from-the-top-right",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Shooting star from the top right",
-   "howToReach": "Fresh load, watch 0.1 - 1.7 s",
-   "whatToCheck": "A star with a tapered tail flies in on a curve from the top right, slows down, spinning, and lands BEHIND the ⟐ in about 1.5 s",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.same-sequence-after-landing",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Same sequence after landing",
-   "howToReach": "Fresh load, watch 1.7 - 5 s",
-   "whatToCheck": "The star pops to the 5-point shape, morphs into the urchin, spins and breathes as in V186; nothing jumps at the landing",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.the-stays-readable",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "The ⟐ stays readable",
-   "howToReach": "Look at the finished title",
-   "whatToCheck": "The ⟐ in front of the star is clearly legible (dark rim, dimmer star); the star is about twice the glyph height",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.resize-and-font-load",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Resize and font load",
-   "howToReach": "Resize the window during the boot or reload with a slow network",
-   "whatToCheck": "The star stays centred on the ⟐ after a resize or when the font swaps in",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.phone-and-reduced-motion",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Phone and reduced motion",
-   "howToReach": "390 px window; OS reduce-motion on",
-   "whatToCheck": "No sideways scroll on the phone; reduced motion shows the finished title at once with no flight; Enter works in both",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "omnistar-boot-shooting-star-v1.enter-still-works",
-   "category": "OmniStar boot - shooting star (V187)",
-   "feature": "Enter still works",
-   "howToReach": "Click Enter",
-   "whatToCheck": "Stars converge on the glyph and fade, fullscreen is requested, the scene appears",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.pair-icons-next-to-each-other",
-   "category": "Bottom hands summons (V187)",
-   "feature": "Pair icons next to each other",
-   "howToReach": "Look at the dock",
-   "whatToCheck": "⚇ (top hands) and ⚉ (bottom hands) sit side by side and are not covered by the panel tray",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.bottom-pair-icon-toggles-lh-and-rh",
-   "category": "Bottom hands summons (V187)",
-   "feature": "Bottom pair icon toggles LH and RH",
-   "howToReach": "Click ⚉, click again",
-   "whatToCheck": "Both bottom hands hide, then show; the icon shows pressed when both are shown",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.one-hand-at-a-time",
-   "category": "Bottom hands summons (V187)",
-   "feature": "One hand at a time",
-   "howToReach": "Ribbon > Hands > Summon: LH, RH, OH, CH buttons; OmniHands panel rows",
-   "whatToCheck": "Each button shows or hides only its own hand; the pair icon shows a half-filled (mixed) state when exactly one of the pair is shown",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.hidden-hand-keeps-working",
-   "category": "Bottom hands summons (V187)",
-   "feature": "Hidden hand keeps working",
-   "howToReach": "Hide LH, press its key (1-4 / Shift)",
-   "whatToCheck": "Its pad and tunnel still work; hiding never closes a pad",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.remembered-per-hand",
-   "category": "Bottom hands summons (V187)",
-   "feature": "Remembered per hand",
-   "howToReach": "Hide RH and CH, reload",
-   "whatToCheck": "The same hands are hidden after the reload; ribbon, dock and panel agree",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "bottom-hands-summons-v187.phone",
-   "category": "Bottom hands summons (V187)",
-   "feature": "Phone",
-   "howToReach": "Same at 390 px",
-   "whatToCheck": "Summon buttons reachable and not covered",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "usercompass-v188.where-it-sits",
-   "category": "userCompass (V188)",
-   "feature": "Where it sits",
-   "howToReach": "Desktop window at least ~1010 px wide: look under the logo, above the top-left hand's ☰ MENU cell",
-   "whatToCheck": "A small clear spinning globe sits in that strip. It does not touch the Global Bar, the ribbon, the OmniNotify box or the MENU cell.",
+   "id": "v194-soundnode-and-sound-setti.settings-window-on-phone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Settings window on phone",
+   "howToReach": "open at <=700px",
+   "whatToCheck": "bottom sheet, usable by touch",
    "priority": "normal",
    "device": "touch"
   },
   {
-   "id": "usercompass-v188.looks-like-a-globe",
-   "category": "userCompass (V188)",
-   "feature": "Looks like a globe",
-   "howToReach": "Look at it for 20 seconds",
-   "whatToCheck": "6 meridians and 5 parallels, the equator a little brighter, front lines bright and back lines dim, tilted about 23 degrees, turns once in about 14 seconds, no filled background.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.hover-tip",
-   "category": "userCompass (V188)",
-   "feature": "Hover tip",
-   "howToReach": "Hover the globe",
-   "whatToCheck": "The OmniNotify box says userCompass, your orientation globe, click for settings.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.click-opens-settings",
-   "category": "userCompass (V188)",
-   "feature": "Click opens settings",
-   "howToReach": "Click the globe (or right-click it, or Tab to it and press Enter)",
-   "whatToCheck": "Admin opens and scrolls to Admin > UI Settings > userCompass.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.show-on-off",
-   "category": "userCompass (V188)",
-   "feature": "Show on / off",
-   "howToReach": "Admin > UI Settings > userCompass > Show",
-   "whatToCheck": "The globe disappears and comes back at once, no Save needed; it is remembered after a reload.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.alignment-left-center-right",
-   "category": "userCompass (V188)",
-   "feature": "Alignment left / center / right",
-   "howToReach": "Admin > UI Settings > userCompass > Align",
-   "whatToCheck": "The globe moves inside its strip (left edge, middle, right edge) and never goes under the MENU cell or past the strip.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.size-small-medium-large",
-   "category": "userCompass (V188)",
-   "feature": "Size small / medium / large",
-   "howToReach": "Admin > UI Settings > userCompass > Size",
-   "whatToCheck": "32 / 44 / 56 px; with the ribbon folded (strip only 29 px tall) it shrinks to about 25 px instead of overlapping.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.spin-speed",
-   "category": "userCompass (V188)",
-   "feature": "Spin speed",
-   "howToReach": "Admin > UI Settings > userCompass > Spin",
-   "whatToCheck": "Off stops it; Slow about 28 s, Normal 14 s, Fast 7 s per turn. Does the speed feel right? (answer in Claude Check)",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.heading-mode",
-   "category": "userCompass (V188)",
-   "feature": "Heading mode",
-   "howToReach": "Set Mode to Heading, then drag the scene to look around",
-   "whatToCheck": "The globe turns with where the camera faces (turn right: the globe's front moves left); the bright meridian marks north.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.line-colour-and-opacity",
-   "category": "userCompass (V188)",
-   "feature": "Line colour and opacity",
-   "howToReach": "Admin > UI Settings > userCompass > Line colour / Opacity",
-   "whatToCheck": "White, Cyan, Accent (theme colour; change the theme to see it change); opacity 30 to 100 percent.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.reset-usercompass",
-   "category": "userCompass (V188)",
-   "feature": "Reset userCompass",
-   "howToReach": "Admin > UI Settings > userCompass > Reset userCompass",
-   "whatToCheck": "Everything goes back to: shown, centre, medium, normal spin, white, 85 percent.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.reduced-motion",
-   "category": "userCompass (V188)",
-   "feature": "Reduced motion",
-   "howToReach": "Turn on 'reduce motion' in the operating system, reload",
-   "whatToCheck": "The globe starts still (Spin = Off) but tilted; you can still choose a speed.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.hides-when-the-ribbon-covers-its-strip",
-   "category": "userCompass (V188)",
-   "feature": "Hides when the ribbon covers its strip",
-   "howToReach": "Make the window narrower than about 1010 px, or drag the OmniNotify box away from its docked spot",
-   "whatToCheck": "The globe hides itself (no overlap with the ribbon); it returns when you widen the window or double-click the OmniNotify header to dock it.",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.phone-390-px-wide",
-   "category": "userCompass (V188)",
-   "feature": "Phone (390 px wide)",
-   "howToReach": "Open on a phone in portrait",
-   "whatToCheck": "No globe is expected on a phone in portrait (the ribbon covers the strip); nothing else moved, no console error. Tell me if you want a place for it on phones.",
+   "id": "v194-soundnode-and-sound-setti.admin-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Admin sound",
+   "howToReach": "Admin > UI Settings > Sound",
+   "whatToCheck": "master volume, voice cap, mute on phone, ask before sound, particle cap, prompt toggle take effect",
    "priority": "normal",
    "device": "phone"
   },
   {
-   "id": "usercompass-v188.hands-banner-hidden-shown",
-   "category": "userCompass (V188)",
-   "feature": "Hands banner hidden / shown",
-   "howToReach": "Dock ⚇ icon, or ribbon Hands tab: hide and show the top hands",
-   "whatToCheck": "The globe stays exactly where it is under the logo.",
+   "id": "v194-soundnode-and-sound-setti.unlock-prompt",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Unlock prompt",
+   "howToReach": "enable \"ask before sound\", press Play",
+   "whatToCheck": "toast appears; Enable sound unmutes; × hides until reload",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "usercompass-v188.never-blocks-clicks",
-   "category": "userCompass (V188)",
-   "feature": "Never blocks clicks",
-   "howToReach": "Click just beside the globe (inside its strip but off the circle)",
-   "whatToCheck": "The click goes to whatever is underneath (the scene); only the round globe takes clicks.",
+   "id": "v194-soundnode-and-sound-setti.speaker-toggle",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Speaker toggle",
+   "howToReach": "Inspector Sound section speaker",
+   "whatToCheck": "mutes/unmutes all sound",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "usercompass-v188.persistence",
-   "category": "userCompass (V188)",
-   "feature": "Persistence",
-   "howToReach": "Change a few options, reload the page",
-   "whatToCheck": "Options are the same after the reload (stored in omni:user-compass-v1).",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "usercompass-v188.not-a-window",
-   "category": "userCompass (V188)",
-   "feature": "Not a window",
-   "howToReach": "Look for resize handles or a maximize button on the globe",
-   "whatToCheck": "There are none (it is not a panel window).",
+   "id": "v194-soundnode-and-sound-setti.delete-sound-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Delete sound node",
+   "howToReach": "delete then undo",
+   "whatToCheck": "node and its sound return/leave cleanly, no voice left playing",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "omniaddress-v189.address-model-has-no-visible-ui",
-   "category": "OmniAddress (V189)",
-   "feature": "Address model has no visible UI",
-   "howToReach": "Nothing to open: V189 adds only utils/OmniAddress.js (pure module)",
-   "whatToCheck": "Open the app: it should look and behave exactly like V188 (regression only)",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "omniaddress-v189.version-label",
-   "category": "OmniAddress (V189)",
-   "feature": "Version label",
-   "howToReach": "Developer drawer > store dump (app field)",
-   "whatToCheck": "Reads OmniOS V189",
+   "id": "v194-soundnode-and-sound-setti.sound-particles-appear",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Sound particles appear",
+   "howToReach": "Create a sound node (or enable sound on a node), keep soundParticles on, press Play in the sound settings",
+   "whatToCheck": "A cloud of points surrounds the node, in the shape of the chosen formation, and moves with the sound; stop the sound and the cloud settles and stays still",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "v190-ui-omnistar-tab-starlight.omninotify-default-spot",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "OmniNotify default spot",
-   "howToReach": "Hover any button, desktop 1280 wide, fresh profile",
-   "whatToCheck": "Box sits under your profile (top left), ribbon starts to its right; drag it away and reload: it stays; double-click header: returns",
+   "id": "v194-soundnode-and-sound-setti.particle-count-is-live",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Particle count is live",
+   "howToReach": "⟐SoundParticleViewer, drag the Count slider",
+   "whatToCheck": "The Particles readout and the cloud in the scene follow within a quarter of a second; 0 removes the cloud; 4000 is the most; the value is still there after Refresh",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "v190-ui-omnistar-tab-starlight.usercompass-panel-drag",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "userCompass panel drag",
-   "howToReach": "Drag the globe",
-   "whatToCheck": "It follows the pointer, stays below the ribbon, reload keeps the spot; click without dragging opens Admin > UI Settings; Reset position works",
+   "id": "v194-soundnode-and-sound-setti.frequency-drives-the-motion",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Frequency drives the motion",
+   "howToReach": "Play a bass-heavy sound, then a bright one; look at the cloud",
+   "whatToCheck": "Bass makes the cloud breathe (radius), mids lift it, high mids swirl it, the highest band shakes it (defaults); the band strip in ⟐SoundParticleViewer shows each band and what it drives",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "v190-ui-omnistar-tab-starlight.usercompass-on-a-phone",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "userCompass on a phone",
-   "howToReach": "390x844",
-   "whatToCheck": "Globe visible at the right edge under the ribbon, not hidden, does not cover the tabs",
+   "id": "v194-soundnode-and-sound-setti.formations",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Formations",
+   "howToReach": "⟐SoundParticleViewer > Formation, or the sound settings",
+   "whatToCheck": "All 14 formations draw (ring, sphere, spiral, helix, galaxy, lissajous, wave, bars, cube, burst, torus, cloud, disc, funnel); Bars rises and falls with the spectrum, bass on the left",
    "priority": "normal",
    "device": "any"
   },
   {
-   "id": "v190-ui-omnistar-tab-starlight.omnistar-tab",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "OmniStar tab",
-   "howToReach": "Ribbon, leftmost tab",
-   "whatToCheck": "Two buttons: Docs, OmniStarLight; tooltips show; five tabs fit on a phone",
+   "id": "v194-soundnode-and-sound-setti.colour-modes-and-blend",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Colour modes and blend",
+   "howToReach": "Sound settings > Colour & Blend",
+   "whatToCheck": "Solid, by band (rainbow), by pitch (the colour follows the note) and gradient look right; Additive glows, Normal covers; Hide behind objects works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.moving-the-node-moves-the-cloud",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Moving the node moves the cloud",
+   "howToReach": "Drag a sound node, or use StrictAlign (the ` key)",
+   "whatToCheck": "The cloud goes along with the node, also while it plays",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.delete-disable-frees-the-cloud",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Delete / disable frees the cloud",
+   "howToReach": "Delete the node, or turn its sound or particles off",
+   "whatToCheck": "The cloud disappears at once and nothing is left in the scene",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.lod-and-the-shared-cap",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "LOD and the shared cap",
+   "howToReach": "Create 6 sound nodes of 4000 particles each",
+   "whatToCheck": "The nearest five keep 4000, the farthest is thinned or hidden (Particles readout says cap 20000); far nodes show fewer particles; behind you or beyond the hide distance the cloud is hidden",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.silent-costs-nothing",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Silent costs nothing",
+   "howToReach": "Several sound nodes, none playing; watch the frame rate",
+   "whatToCheck": "No difference from a scene without sound nodes",
+   "priority": "normal",
+   "device": "gpu"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.no-new-webgl-context",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "No new WebGL context",
+   "howToReach": "Open both viewers and play sounds",
+   "whatToCheck": "The page still holds the same number of WebGL contexts as before (the viewers are 2D canvas)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-opens",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "SoundViewer opens",
+   "howToReach": "Ribbon Home > Sound > Sound viewer, OmniStarLight \"Sound viewer\", or nav item ⟐SoundViewer",
+   "whatToCheck": "A window with the picker, Freeze, five views, zoom, readout and the canvas; resize and maximize work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-shows-the-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "SoundViewer shows the sound",
+   "howToReach": "Play a sound node, pick it (or select it with Auto)",
+   "whatToCheck": "Spectrum bars and line move, the scope shows the wave, the spectrogram scrolls, the 7 meters move, the peak shows Hz and a note name, the envelope chip lights Att / Dec / Sus / Rel",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-master-and-node-picker",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "SoundViewer master and node picker",
+   "howToReach": "Picker: Auto, Master, a node",
+   "whatToCheck": "Master shows the whole mix; Auto follows the selected node (master when it has no sound); a node set to off is marked (off)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-freeze-and-zoom",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "SoundViewer freeze and zoom",
+   "howToReach": "Freeze, then the − / ＋ buttons or the mouse wheel on the picture",
+   "whatToCheck": "Freeze holds the picture and the readout; zoom goes 20-20k, 20-8k, 20-2k, 20-500, 20-120 Hz; Run lets it go on",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-silence",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "SoundViewer silence",
+   "howToReach": "Open it with nothing playing",
+   "whatToCheck": "An empty grid and a hint, no error; theme colours follow the OmniOS theme",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-opens",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "ParticleViewer opens",
+   "howToReach": "Ribbon Home > Sound > Particle viewer, OmniStarLight \"Particle viewer\", or nav item ⟐SoundParticleViewer",
+   "whatToCheck": "With no node selected: a hint; select a sound node: its formation is drawn, the count reads drawn / count",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-views",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "ParticleViewer views",
+   "howToReach": "Top / Front / Side / Orbit, drag the picture, Spin",
+   "whatToCheck": "Each view projects the formation; Orbit turns by itself (Spin) or by dragging; silent: nothing redraws except the orbit turn",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-edits-the-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "ParticleViewer edits the node",
+   "howToReach": "Formation picker, Count and Size sliders, On / Off",
+   "whatToCheck": "The scene changes at once, the values are saved with the node (Refresh keeps them), a node without particles gets a complete set on the first edit",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.phone-2",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "feature": "Phone",
+   "howToReach": "Both viewers at 390 px width",
+   "whatToCheck": "Bottom sheets, buttons at least 36 px high, the picture readable, no horizontal scroll",
    "priority": "normal",
    "device": "phone"
-  },
-  {
-   "id": "v190-ui-omnistar-tab-starlight.docs-panel",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "Docs panel",
-   "howToReach": "OmniStar > Docs",
-   "whatToCheck": "Contents left, page right, window chrome (resize, maximize), prev/next, PageUp/PageDown, search filters pages and highlights, phone shows as a bottom sheet",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "v190-ui-omnistar-tab-starlight.omnistarlight",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "OmniStarLight",
-   "howToReach": "Ctrl or Cmd+K, or OmniStar > OmniStarLight",
-   "whatToCheck": "Opens near the upper middle, input focused, empty list grouped Available/Unavailable, typing filters, arrows+Enter, Escape/outside click closes; an available site shows its name and description in OmniNotify then opens; an unavailable one shows a reason only; a docs result opens Docs with highlights",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-ui-omnistar-tab-starlight.hands-tab-dividers",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "Hands tab dividers",
-   "howToReach": "Ribbon > Hands, desktop and 390px",
-   "whatToCheck": "A divider between LH, RH, OmniHand and Conscious in every group; all buttons still work",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-ui-omnistar-tab-starlight.centre-reticle",
-   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
-   "feature": "Centre reticle",
-   "howToReach": "Look at the screen centre, then Admin > UI Settings > Reticle",
-   "whatToCheck": "Faint turning circle at about 15% behind panels, never blocks clicks; switch and slider work and persist; reduced-motion stops the turning",
-   "priority": "high",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.floor-20-texture-slots",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Floor: 20 texture slots",
-   "howToReach": "Admin > FloorSettings > Floor Texture",
-   "whatToCheck": "Grid shows Default + 20 numbered slots. Fill slot 17, click it: the floor is textured; slots 1-5 keep older saves; reload keeps the choice",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.floor-removing-the-shown-texture",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Floor: removing the shown texture",
-   "howToReach": "same panel",
-   "whatToCheck": "Pressing x on the shown slot returns the floor to wireframe by itself",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.x-axis-meter-at-the-bottom",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "X axis meter at the bottom",
-   "howToReach": "Admin > OmniMeter(Internal)",
-   "whatToCheck": "Horizontal ruler along the bottom just above the Dock, between the bottom hands; A/D moves the marker; follows dock height; fits on a phone",
-   "priority": "normal",
-   "device": "phone"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.meter-gear-and-depth-line",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Meter gear and depth line",
-   "howToReach": "same",
-   "whatToCheck": "Gear sits under the ribbon left of the top-right hand and opens meter settings; green Depth line starts under the ribbon",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.session-time-readout",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Session time readout",
-   "howToReach": "same, left edge under the top-left hand",
-   "whatToCheck": "NOW is a 24-hour clock ticking each second, STARTED shows session start (refresh keeps it), ELAPSED counts up, bar fills toward the goal (default 2 h) then restarts orange with x2",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.session-goal-setting",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Session goal setting",
-   "howToReach": "OmniMeter gear > Goal (h)",
-   "whatToCheck": "0.25 fills fast; 999 becomes 24; letters give 2; untick Session time hides it; reload keeps both",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.click-empty-space-releases-orbit",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Click empty space releases orbit",
-   "howToReach": "Select a node, then click empty 3D space",
-   "whatToCheck": "Notice 'Orbit released' shows and WASD flies freely",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.dragging-does-not-release",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Dragging does not release",
-   "howToReach": "With a target set, drag to rotate",
-   "whatToCheck": "View rotates around the target, no release; clicking a panel, a node, or right-dragging does not release either",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.esc-releases-orbit",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Esc releases orbit",
-   "howToReach": "With a target set press Esc",
-   "whatToCheck": "Same release; Esc while typing does nothing",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.orbit-release-setting",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Orbit release setting",
-   "howToReach": "Admin > Camera Movement Options > Orbit Target",
-   "whatToCheck": "Unticking stops click and Esc releasing; reload keeps it",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.boot-star-size",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Boot star size",
-   "howToReach": "Reload the page",
-   "whatToCheck": "After landing, the star is only slightly larger than the glyph (about 1.3x) and the glyph stays readable",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.boot-shooting-stars",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Boot shooting stars",
-   "howToReach": "Wait a few seconds on the boot screen after landing",
-   "whatToCheck": "Thin faint streaks cross the background every 1-2 s heading down-left, stop on Enter; none with reduce motion",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.dev-intro-settings",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Dev intro settings",
-   "howToReach": "Developer drawer slot 8 DevOmniStarIntroSettings",
-   "whatToCheck": "Background colour, texture, texture opacity, star colour and opacity, shooting-star colour; Preview intro replays; reload shows the same; Reset restores defaults; custom image up to 200 KB",
-   "priority": "normal",
-   "device": "any"
-  },
-  {
-   "id": "v190-scene-floor-20-slots-mete.boot-escape-hatch",
-   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
-   "feature": "Boot escape hatch",
-   "howToReach": "Open the page with ?bootintro=off",
-   "whatToCheck": "Intro ignores saved dev settings for that load",
-   "priority": "normal",
-   "device": "any"
   },
   {
    "id": "v191-pads-and-hands-round-butt.round-pad-buttons",
@@ -1574,9 +1106,139 @@ export default {
    "whatToCheck": "Window resizes and the ruler redraws crisply at the new size; maximize fills the free area",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.rh-word-directions",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "feature": "RH word directions",
+   "howToReach": "Hand pad RH > Payload panel > Word timing > Direction",
+   "whatToCheck": "Choices up, down, left, right, forward, backward. Fire a payload: left / right words drift sideways, forward grows toward you, backward shrinks away; Preview matches; old payloads still rise",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.refresh-button",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "feature": "Refresh button",
+   "howToReach": "Ribbon Home > Assistance, next to Fullscreen",
+   "whatToCheck": "Reloads the page; nodes and settings come back",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.reset-hud-button",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "feature": "Reset HUD button",
+   "howToReach": "Ribbon Home > Assistance, next to Refresh",
+   "whatToCheck": "Drag a window to resize it, drag the OmniNotify box and the compass away, press Reset HUD: sizes reset, OmniNotify re-docks under the profile, compass returns; nodes and settings untouched",
+   "priority": "normal",
+   "device": "touch"
   }
  ],
  "asks": [
+  {
+   "id": "v194-hear",
+   "question": "Press Play on a Sound node (Home > Create > Sound node, then Play in its settings). Do you hear a clean soft A4 tone, with no clicks, pops or distortion?",
+   "why": "Audio was only analysed in a headless browser with no speakers; nobody has heard it.",
+   "kind": "choice",
+   "choices": [
+    "clean",
+    "clicks or pops",
+    "distorted",
+    "no sound",
+    "other (describe in notes)"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v194-dynamics",
+   "question": "Switch dynamic from pppp to ffff. Do the steps rise evenly and ffff is loud but not harsh?",
+   "why": "The dynamic marks map to gain by a table I chose; the loudness balance is unjudged.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "pppp too quiet",
+    "ffff too loud",
+    "uneven steps"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v194-presets",
+   "question": "Try presets (pad, pluck, arp, heartbeat, swell). Which sound wrong or boring?",
+   "why": "15 presets were tuned by numbers, not by ear.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "v194-spatial",
+   "question": "Turn positional on and fly around a node. Does it get louder when near and pan left/right?",
+   "why": "Spatial audio built but not heard.",
+   "kind": "choice",
+   "choices": [
+    "works",
+    "too quiet far away",
+    "no panning",
+    "other"
+   ],
+   "device": "desktop"
+  },
+  {
+   "id": "v194-particles",
+   "question": "Do the particles look good and follow the sound? How many particles can you run before it lags?",
+   "why": "Particles were seen only on software GL (about 1 fps); real frame rate unknown. Cap is 4000 per node and 20000 total.",
+   "kind": "number",
+   "device": "gpu"
+  },
+  {
+   "id": "v194-amount",
+   "question": "202 sound settings plus 63 particle settings: right amount, or should some hide under an Advanced fold?",
+   "why": "You asked for almost every setting; I want to know if the panel feels overwhelming.",
+   "kind": "choice",
+   "choices": [
+    "keep all visible",
+    "add an Advanced fold",
+    "too many, cut"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v194-phone",
+   "question": "On a phone, does the first tap enable sound, and are the settings window and viewers usable?",
+   "why": "iOS/Android autoplay unlock and touch were never tested.",
+   "kind": "text",
+   "device": "phone"
+  },
+  {
+   "id": "v194-mixer",
+   "question": "Should the OmniMixer music follow the Sound master volume?",
+   "why": "Now the music keeps its own volume (decision pending).",
+   "kind": "choice",
+   "choices": [
+    "yes",
+    "no, keep separate"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v193-forward-backward",
+   "question": "Do forward and backward word directions look like what you meant?",
+   "why": "Words are screen-space tooltips, so forward = grows toward you and backward = shrinks away (with a small lift). Real 3D motion along the camera axis would need a different word renderer.",
+   "kind": "choice",
+   "choices": [
+    "good",
+    "want real 3D depth motion",
+    "want something else"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v193-resethud",
+   "question": "Does Reset HUD reset what you expected?",
+   "why": "It resets window sizes, re-docks OmniNotify and returns the compass; it does not touch the dock row, hands, or the CryptX keyboard. Tell me what else belongs.",
+   "kind": "text",
+   "device": "any"
+  },
   {
    "id": "v192-orbit-feel",
    "question": "Does the horizontal and vertical orbit now feel continuous around your current target?",

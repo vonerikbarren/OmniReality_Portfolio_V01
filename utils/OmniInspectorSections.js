@@ -19,6 +19,7 @@ export const INSPECTOR_SECTIONS = Object.freeze([
   { id: 'time',       label: 'Time',       glyph: '◔', desc: 'Puts the node on the OmniChronos timeline: track, start, duration, loop and keyframes at the playhead.' },
   { id: 'program',    label: 'Program',    glyph: '▶', desc: 'The OmniProgram bound to the node: run mode and auto-persist.' },
   { id: 'media',      label: 'Media',      glyph: '▣', desc: 'Images, sound and other media attached to the node.' },
+  { id: 'sound',      label: 'Sound',      glyph: '♪', desc: 'Gives the node a sound (any node can have one): on / off, a preset, note, dynamics, volume, loop, spatial, and a button to open every sound setting.' },
   { id: 'data',       label: 'Data',       glyph: '≣', desc: 'Internal and external data, GoTo / TravelTo, and the info plane shown in the scene.' },
   { id: 'create',     label: 'Create New', glyph: '＋', desc: 'Create a new node with its own primitive, transform and parent.' },
 ])

@@ -357,8 +357,8 @@ export default class OmniPayloadPanel {
     this._numRow(timing, 'Hold (visible)', 'holdMs', d('holdMs').min, d('holdMs').max, 50, 'ms')
     this._numRow(timing, 'Rise distance', 'risePx', d('risePx').min, d('risePx').max, 5, 'px')
     const dirRow = el('div', 'opl-row'); dirRow.appendChild(el('span', null, 'Direction'))
-    const dirSel = el('select', 'opl-input'); dirSel.id = 'opl-direction'; dirSel.style.width = '90px'
-    ;[['up', 'up'], ['down', 'down']].forEach(([v, t]) => { const o = el('option', null, t); o.value = v; dirSel.appendChild(o) })
+    const dirSel = el('select', 'opl-input'); dirSel.id = 'opl-direction'; dirSel.style.width = '110px'
+    ;[['up', 'up'], ['down', 'down'], ['left', 'left'], ['right', 'right'], ['forward', 'forward'], ['backward', 'backward']].forEach(([v, t]) => { const o = el('option', null, t); o.value = v; dirSel.appendChild(o) })
     dirSel.addEventListener('change', () => { this._setDisplay({ direction: dirSel.value }) })
     dirRow.appendChild(dirSel); timing.appendChild(dirRow)
     const loopRow = el('label', 'opl-row'); loopRow.appendChild(el('span', null, 'Loop'))

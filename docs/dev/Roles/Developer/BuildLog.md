@@ -1,5 +1,22 @@
 # Build Log
 
+## 2026-10-13 — V194: SoundNode (dimensional sound), sound on every node, frequency-driven particles, SoundViewer + SoundParticleViewer
+
+Three parallel parts from V193, merged (git merge-file; main.js, OmniRibbon, StarLightSites additive blocks kept together; no real conflicts besides main.js markers).
+- **Model + engine (`utils/OmniSoundModel.js`, `systems/OmniSoundEngine.js`, `systems/OmniSoundScene.js`):** 202 settings in 14 groups (source, pitch, dynamics pppp..ffff, ADSR, sustained, vibrato / tremolo, loop and iterative play, crescendo, filter, FX, spatial, triggers, analysis, meta), 15 presets. Web Audio graph per node with lookahead scheduler, voice cap with stealing, getAnalysis (7 bands, peak Hz, spectrum, waveform), a deterministic fake engine when no AudioContext, autoplay unlock queue. Scene module: listener from camera, positional voices, auto-start rules, play / stop / toggle events, stop on node delete. OmniMixer publishes `window.__omniMixerAudio` so `getAnalysis('mixer')` works.
+- **Node + UI (`systems/OmniSoundNodes.js`, `utils/OmniSoundNodeMesh.js`, `ui/OmniSoundPanel.js`, `OmniSoundFields.js`, `OmniSoundInspector.js`, `OmniSoundAdminBlock.js`, `OmniSoundUnlockPrompt.js`, `utils/OmniSoundSettings.js`):** soundNode kind (bell mesh that reacts to level / bands), Inspector Sound section for ANY node (13th section), ⟐SoundNodeSettings window generated from both schemas (search, presets, per-section reset, copy / paste JSON, Audition), Admin sound settings (`omni:sound-settings-v1`), Enable sound prompt, ribbon buttons, user guide page 12.
+- **Particles + viewers (`utils/OmniSoundParticleModel.js`, `systems/OmniSoundParticles.js`, `ui/OmniSoundViewerPanel.js`, `ui/OmniSoundParticleViewerPanel.js`):** 63 particle settings, 14 formations, particle COUNT (0..4000 per node, 20000 global, nearest wins), band-to-motion mapping; ⟐SoundViewer (spectrum, line, scope, spectrogram, band meters, peak, freeze, zoom) and ⟐SoundParticleViewer (formation preview, live edit); ribbon group Sound. No new WebGL context.
+- **Integration (lead):** real-browser Chromium run on the merged tree: engine peak 440 Hz, 202+63 = 265 rows in the panel, 5 quick controls in the Inspector, 600 particles drawn while playing, delete stops the voice and removes the cloud, only the known howler CDN console error.
+- **Tests:** model 394, fake engine 106, mock-AudioContext engine 114, scene 34, settings 48, particle model 135, viz math 22, registration 16 all pass on the merged tree. The stub-based suites (v194b nodes / ui, v194c system / viewers) were written against test doubles and are superseded by the real-browser integration run; v194c nodev 22/26 only because of the jsdom harness package resolution.
+- **Not verified:** nothing was heard (no speakers): tone quality, clicks, loudness, spatial audio; real GPU frame rate for particles; phone / touch / iOS unlock; Safari / Firefox; samples from the real IndexedDB path.
+
+## 2026-10-13 — V193: RH word directions, Refresh and Reset HUD buttons
+
+- **RH payload direction:** `utils/OmniPayloads.js` `DIRECTIONS` = up, down, left, right, forward, backward (sanitize falls back to up); `utils/FlowWordPlayer.js` pure `wordMotion()` (left / right drift sideways; forward scales 0.55 -> 1.9, backward 1.5 -> 0.45, both with a small lift); `ui/OmniPayloadPanel.js` select offers all six.
+- **Ribbon (Home > Assistance):** Refresh (reloads the page) and Reset HUD next to Fullscreen. Reset HUD: `WindowManager.resetWindowSizes()`, new event `omni:hud-reset` (OmniNotifyBox re-docks), userCompass `resetPos`, `omni:layout-changed`, an OmniNotify note; no data touched.
+- **Tests:** `v193_test` 33/33 (directions, wordMotion, panel, buttons, reset events, listener removal). No browser run for this small build; `node --check` sweep clean.
+- **Not built:** SoundNode (discussion only).
+
 ## 2026-10-13 — V192: orbit around target + continuous vertical orbit, StrictAlign checkmarks, RH fire-after-delete, CryptX keyboard, Terminal theming + TerminalShellTunnel nodes, TimeData ruler
 
 Four parallel parts from V191, merged with git merge-file (one main.js conflict: both added blocks kept).

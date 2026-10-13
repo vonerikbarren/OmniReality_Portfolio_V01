@@ -7,7 +7,7 @@
  *
  *   {
  *     id, name, type: 'string' | 'number' | 'boolean', value,
- *     display: { mode: 'tooltip', wordDelayMs, risePx, holdMs, direction: 'up'|'down', loop, maxWords },
+ *     display: { mode: 'tooltip', wordDelayMs, risePx, holdMs, direction: 'up'|'down'|'left'|'right'|'forward'|'backward', loop, maxWords },
  *     style:   { color, textureId: string|null, material },
  *     created: ISO string
  *   }
@@ -36,6 +36,9 @@ export const MATERIALS = ['standard', 'basic', 'emissive', 'glass', 'wireframe',
 export const MAX_STRING = 500
 export const MAX_NAME = 40
 export const MAX_PAYLOADS = 200
+
+/** V193: how the words of a payload move away from the anchor (screen space): up / down rise or fall, left / right drift sideways, forward grows the word toward the viewer, backward shrinks it away. */
+export const DIRECTIONS = Object.freeze(['up', 'down', 'left', 'right', 'forward', 'backward'])
 
 export const DISPLAY_LIMITS = {
   wordDelayMs: { min: 50, max: 3000 },
@@ -70,7 +73,7 @@ export function sanitizeDisplay (d) {
       out[k] = clamp(k === 'maxWords' ? Math.round(n) : n, DISPLAY_LIMITS[k].min, DISPLAY_LIMITS[k].max)
     }
   }
-  out.direction = src.direction === 'down' ? 'down' : 'up'
+  out.direction = DIRECTIONS.includes(src.direction) ? src.direction : 'up'   // V193: up / down / left / right / forward / backward
   out.loop = !!src.loop
   out.mode = 'tooltip'            // 'panel' is a documented future switch, not built
   return out

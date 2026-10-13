@@ -1,6 +1,6 @@
 # 4. Firing and Payloads
 
-Applies to: V180 · Status: verified against code on 2026-10-09 · Real devices: not verified.
+Applies to: V193 · Status: verified against code on 2026-10-13 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Nodes and Inspector](03_Nodes_and_Inspector.md) · Next: [Tunnels and Axes](05_Tunnels_and_Axes.md)
 
@@ -32,7 +32,7 @@ Consecutive elements line up along the camera's right side and are joined by edg
 |---|---|
 | 1 · Data type | String, Number or Boolean (Array and Object are disabled, "later") |
 | Value / name | Text up to 500 characters, a number, or true/false. Name up to 40 characters |
-| Word timing | Delay 50–3000 ms, hold, rise, direction, loop, max words. "▶ Preview" tries it |
+| Word timing | Delay 50–3000 ms, hold, rise, loop, max words, and direction: up, down, left, right (the words drift sideways), forward (they grow toward you) or backward (they shrink away). "▶ Preview" tries it |
 | 2 · Color | Swatches |
 | 3 · Texture | Texture choice |
 | 4 · Material | standard, basic, emissive, glass, wireframe, metal |

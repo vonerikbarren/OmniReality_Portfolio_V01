@@ -1,6 +1,6 @@
 # 9. Settings and Admin
 
-Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
+Applies to: V194 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [OmniStore](08_OmniStore_and_OmniValue.md) · Next: [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md)
 
@@ -72,6 +72,10 @@ Keys are in [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md). A node th
 ### Reticle (Admin > UI Settings > Reticle, V190)
 
 A faint decorative technical circle in the middle of the screen, behind every panel. It cannot be clicked. It turns slowly (not when your device asks for reduced motion). Controls apply at once: **Show** (on by default), **Opacity** (5 to 100 %, default 15 %), **Reset reticle**.
+
+### Sound (Admin > UI Settings > Sound, V194)
+
+Global options for every node that makes sound: master volume, the speaker (mute), how many sounds play at once, mute on phones, ask before sound, the Enable sound prompt and the particle limit. They apply at once. The table is in [Sound nodes](12_Sound_Nodes.md). The window that edits one node's sound, ⟐SoundNodeSettings, is also in the ⟐Admin drawer (next free slot after the fixed ones).
 
 **Clear Scene** asks to confirm, then removes every created object. Cannot be undone. **Export Reality** downloads a .zip of all settings plus saved images, audio and video. **Import Reality** restores from such a zip and reloads the page. Export before you clear.
 

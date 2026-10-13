@@ -114,6 +114,7 @@ import { isKindData } from '../utils/OmniNodeKinds.js'                       // 
 import { kindOptionsHTML, wireKindOptions } from '../ui/OmniNodeKindInspector.js'
 import { isExtraKind } from '../utils/OmniExtraKinds.js'                      // V191: OmniPathNode / floorPanelNode keep their block in Appearance too
 import { extraOptionsHTML, wireExtraOptions } from '../ui/OmniExtraKindInspector.js'
+import { soundSectionHTML, wireSoundSection } from '../ui/OmniSoundInspector.js'   // V194: the 'Sound' section every node has
 import { CHANGED_EVENT as STORE_CHANGED } from '../utils/OmniStoreModel.js'
 import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
 import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
@@ -2598,6 +2599,7 @@ export default class OmniInspector {
       ${this._sectionHTML('time',       '▶ Time',       this._timeHTML(data))}
       ${this._sectionHTML('program',    '▶ Program',    this._programHTML(data, ext))}
       ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
+      ${this._sectionHTML('sound',      '▶ Sound',      soundSectionHTML(data))}
       ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
       ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
     `
@@ -2633,6 +2635,7 @@ export default class OmniInspector {
     this._wireTime(body, data)
     this._wireProgram(body, data, ext)
     this._wireMedia(body, ext)
+    wireSoundSection(body, data)
     this._wireData(body, data, ext)
     this._wireCreateSection(body)
 

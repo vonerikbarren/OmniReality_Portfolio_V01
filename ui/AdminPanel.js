@@ -45,6 +45,7 @@ import { createWallpaperStore, KNOWN_NAMESPACES } from '../utils/WallpaperStorag
 import * as UC from '../utils/OmniUserCompassSettings.js'   // V188: userCompass options (user-facing, no Dev import)
 import * as ODR from './OmniDockRealitiesSettingsPanel.js'          // V191: OmniDock_Realities Admin block (user-facing)
 import * as SA from './OmniStateStrictAlignAdminBlock.js'               // V191: OmniState_StrictAlign Admin block (user-facing)
+import * as SND from './OmniSoundAdminBlock.js'                         // V194: global sound options Admin block (user-facing)
 import * as RET from '../utils/OmniReticleSettings.js'      // V190: centre reticle options (user-facing, no Dev import)
 
 const SCHEMA_VERSION = 1
@@ -402,6 +403,7 @@ export default class AdminPanel {
     window.removeEventListener('omni:admin-open', this._onAdminOpen)
     window.removeEventListener(UC.CHANGED_EVENT, this._onUserCompassChanged)
     this._v191Unbind?.()
+    this._sndUnbind?.()
     window.removeEventListener(RET.CHANGED_EVENT, this._onReticleChanged)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('adminpanel')
@@ -566,7 +568,8 @@ export default class AdminPanel {
          <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-window-sizes-status">Drag any window's edges or corners to resize it, or use its maximize button. Sizes are remembered per window.</div>` +
         this._userCompassRows(UC.resolveSettings(UC.loadOverrides())) +
         ODR.adminRowsHtml() + SA.adminRowsHtml() +
-        this._reticleRows(RET.resolveSettings(RET.loadOverrides()))
+        this._reticleRows(RET.resolveSettings(RET.loadOverrides())) +
+        SND.adminRowsHtml()
       ) +
       group('Data Management', 'datamanagement',
         `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
@@ -589,6 +592,7 @@ export default class AdminPanel {
     this._bindUserCompass(body)
     this._bindReticle(body)
     this._v191Unbind?.(); const u1 = ODR.bindAdminRows(body), u2 = SA.bindAdminRows(body); this._v191Unbind = () => { u1(); u2() }   // V191
+    this._sndUnbind?.(); this._sndUnbind = SND.bindAdminRows(body)   // V194
   }
 
   /** V188: the userCompass section of UI Settings. Applies at once (like Reset window sizes), through the omni:user-compass-set event; no staging, no Save. */
@@ -883,7 +887,7 @@ export default class AdminPanel {
     body.querySelectorAll('.ap-color').forEach(input => {
       input.addEventListener('input', () => this._setStaged(input.dataset.key, input.value))
     })
-    body.querySelectorAll('.ap-toggle:not([data-uc]):not([data-ret]):not([data-odr]):not([data-sa])').forEach(btn => {
+    body.querySelectorAll('.ap-toggle:not([data-uc]):not([data-ret]):not([data-odr]):not([data-sa]):not([data-snd])').forEach(btn => {
       btn.addEventListener('click', () => {
         const next = !btn.classList.contains('is-on')
         btn.classList.toggle('is-on', next)

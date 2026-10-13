@@ -59,6 +59,16 @@ const cell = (selector, what) => () => {
   if (b && !b.disabled) b.click()
   else note(what, 'That hand cell is not available right now.')
 }
+/** V193: Reset HUD. Forget the saved window sizes, re-dock the OmniNotify box, put the userCompass back; nothing else is touched. */
+function resetHud () {
+  let n = 0
+  try { n = WindowManager.resetWindowSizes() } catch (_) { /* chrome not ready */ }
+  try { window.dispatchEvent(new CustomEvent('omni:hud-reset', { detail: {} })) } catch (_) { /* no window */ }
+  try { window.dispatchEvent(new CustomEvent('omni:user-compass-set', { detail: { resetPos: true } })) } catch (_) { /* no window */ }
+  try { window.dispatchEvent(new CustomEvent('omni:layout-changed')) } catch (_) { /* no window */ }
+  try { window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: '↺ Reset HUD', desc: `Window sizes reset (${n} open), OmniNotify re-docked, userCompass back in place.` } })) } catch (_) { /* no window */ }
+  return n
+}
 const fakeKey = (key, code) => () => window.dispatchEvent(new KeyboardEvent('keydown', { key, code, bubbles: true }))
 
 // ── The tab table ─────────────────────────────────────────────────────────────
@@ -111,6 +121,7 @@ function buildTabs () {
           b('draw-behavior', '↯', 'Behavior', '—', 'Opens OmniDraw (BehaviorNode): the behaviour-node creation flow.', nav('⟐OmniDrawBehavior'), { name: 'OmniDraw Behavior' }),
           b('path-node', '⤳', 'Path node', '—', 'Creates an OmniPathNode in front of the camera: an ordered path of nodes, attached one to the next (LINK) or built from the hierarchy (GENEALOGY). Opens the node order panel.', () => { ev('omni:path-create-request', { select: true }); nav('⟐OmniNodeOrder')() }, { name: 'New path node' }),
           b('terminal-shell', '›_', 'Terminal node', '—', 'Creates a TerminalShellTunnel node in front of the camera: an in-scene terminal that moves with the node. The Terminal button switches every terminal tunnel on and off together; its settings are in the Inspector and in ⟐TerminalSettings.', () => ev('omni:terminal-shell-create-request', { select: true }), { name: 'New TerminalShellTunnel' }),
+          b('sound-node', '♪', 'Sound node', '—', 'Creates a SoundNode in front of the camera: a speaker you can place. It makes a sound (a note, a pad, a beat), its bell and rings pulse with the sound, and it can send out particles. Its settings are in ⟐SoundNodeSettings and in the Inspector.', () => ev('omni:sound-node-create', { select: true }), { name: 'New sound node' }),
           b('node-order', '⇅', 'Node order', '—', 'Opens ⟐OmniNodeOrder: the nodes of a path in order, drag to reorder, jump to a node, add, remove.', nav('⟐OmniNodeOrder'), { name: 'Node order panel' }),
           b('floor-panels', '▦', 'Floor panels', '—', 'Opens ⟐FloorNodeMakerSettings (Admin): Tetris-piece floor panels, a blueprint grid, pictures / GIFs / videos on the faces, Place in scene.', nav('⟐FloorNodeMakerSettings'), { name: 'Floor panel maker' }),
         ] },
@@ -119,11 +130,16 @@ function buildTabs () {
           b('translator', '⇄', 'Translator', 't', 'Toggles OmniTranslator.', () => ev('omni:translator-toggle')),
           b('presenter', '▤', 'Presenter', 'p', 'Toggles the ⟐p OmniPresenter.', sys('omnipresenter')),
           b('gallery', '▥', 'Gallery', 'g', 'Toggles the ⟐g OmniGallery.', sys('omnigallery')),
+          b('sound-settings', '♬', 'Sound settings', '—', 'Opens ⟐SoundNodeSettings: every setting of the selected node\'s sound and sound particles, presets, Play / Stop / Audition, copy and paste. Global sound options are in Admin > UI Settings.', nav('⟐SoundNodeSettings'), { name: 'Sound node settings' }),
           b('browser', '◫', 'Browser', 'b', 'Opens the OmniBrowser (window 1). The b key toggles it; this button only opens it.', nav('⟐OmniBrowserWindow')),
         ] },
         { caption: 'Windows', btns: [
           b('panelcontrol', '❐', 'PanelControl', '—', 'Opens ⟐PanelControl: the list of panels and their state.', nav('⟐PanelControl')),
           b('tray', '▲', 'Panel Tray', '—', 'Opens or closes the OmniPanelTray, where minimized panels wait.', () => ev('omni:paneltray-toggle', {}), { pressed: (s) => s.tray }),
+        ] },
+        { caption: 'Sound', btns: [
+          b('sound-viewer', '♪', 'Sound viewer', '—', 'Opens ⟐SoundViewer: the frequency picture of a sound node or of the whole mix — spectrum bars and line, scope, scrolling spectrogram, the 7 band meters, peak note, envelope phase, freeze and zoom.', nav('⟐SoundViewer'), { name: 'Sound viewer' }),
+          b('particle-viewer', '✦', 'Particle viewer', '—', 'Opens ⟐SoundParticleViewer: the particle formation of a sound node (top, front, side or orbit) with its live count, plus the formation, count and size controls.', nav('⟐SoundParticleViewer'), { name: 'Particle viewer' }),
         ] },
         { caption: 'Assistance', btns: [
           b('shortcuts', '⌨', 'Shortcuts', '—', 'Opens the list of every real keyboard shortcut.', () => {
@@ -132,6 +148,8 @@ function buildTabs () {
           }, { name: 'Keyboard shortcuts' }),
           b('terminal', '›_', 'Terminal', '` / F1', 'Switches ALL the terminal tunnels on or off together (the built-in one and every TerminalShellTunnel node), like the hand tunnels. F1 switches them on; Escape switches them off.', () => ev('omni:terminal-invoke', { toggle: true }), { name: 'Terminal tunnels', pressed: (s) => !!s.terminal }),
           b('fullscreen', '⛶', 'Fullscreen', 'F4', 'Toggles fullscreen (same handler as F4).', fakeKey('F4', 'F4')),
+          b('refresh', '⟳', 'Refresh', '—', 'Reloads the page. Nodes, settings and panel sizes are saved in this browser and come back.', () => { try { window.location.reload() } catch (_) { /* no window */ } }),
+          b('resethud', '↺', 'Reset HUD', '—', 'Puts the HUD back in its default places without reloading: window sizes, the OmniNotify box (under your profile) and the userCompass. Your data and settings stay.', resetHud, { name: 'Reset HUD' }),
         ] },
       ],
     },

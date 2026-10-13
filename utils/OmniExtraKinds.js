@@ -7,6 +7,9 @@
  *               data = { nodeKind:'floorPanel', pieceId, rot, mirror, gx, gz, ox, oz, cellSize, thickness, panelOpacity, cells:[{ x, z, media? }] }
  *               x, z are LOCAL cells; (gx, gz) is the floor cell of local (0, 0); media is a utils/FloorPanelMedia.js reference.
  *
+ *   soundNode   (V194) a SoundNode: a speaker-bell whose parts react to the sound. data = { nodeKind:'soundNode', sound, soundParticles }; the settings live IN the node
+ *               (models: utils/OmniSoundModel.js, OmniSoundParticleModel.js; geometry: utils/OmniSoundNodeMesh.js; runtime: systems/OmniSoundNodes.js).
+ *
  * Like the V183 kinds these are ordinary OmniNode nodes (systems/OmniNode.js `_nodes`) that carry a kind marker in `data`, so selection, the
  * Inspector, grouping, delete, save / load and the Timeline need no change. systems/OmniNode.js calls extraCreateFields (create request) and
  * buildExtraMesh (create + restore); the mesh carries `userData.omniRelease` which utils/OmniNodeKinds.js releaseKindMesh runs on delete.
@@ -23,21 +26,25 @@ import { sanitizeRef } from './FloorPanelMedia.js'
 import * as Paths from './OmniPathModel.js'
 import { FLOOR_GRID_UNIT, FLOOR_LEVEL } from './FloorNodeMakerSettings.js'
 import * as Shells from './TerminalShells.js'   // V192: the TerminalShellTunnel model (the node carries only the shellId)
+import { buildSoundNodeMesh, releaseSoundMesh } from './OmniSoundNodeMesh.js'   // V194: the SoundNode geometry (reacts to the sound each frame)
 
 export const KIND_PATH = 'omniPath'
 export const KIND_FLOOR_PANEL = 'floorPanel'
 export const KIND_TERMINAL_SHELL = 'terminalShell'   // V192: TerminalShellTunnel — data = { nodeKind:'terminalShell', shellId } (settings in utils/TerminalShells.js)
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL]
+export const KIND_SOUND = 'soundNode'   // V194: SoundNode — data = { nodeKind:'soundNode', sound, soundParticles } (the sound settings live IN the node: utils/OmniSoundModel.js)
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND]
 export const GEO_PATH = 'OmniPathNode'
 export const GEO_FLOOR_PANEL = 'FloorPanelNode'
 export const GEO_TERMINAL_SHELL = 'TerminalShellTunnel'
+export const GEO_SOUND = 'SoundNode'
 export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring panels
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND)
+export const isSoundNodeData = (d) => !!d && d.nodeKind === KIND_SOUND
 export const isTerminalShellData = (d) => !!d && d.nodeKind === KIND_TERMINAL_SHELL
 export const isFloorPanelData = (d) => !!d && d.nodeKind === KIND_FLOOR_PANEL
 export const isPathData = (d) => !!d && d.nodeKind === KIND_PATH
@@ -100,6 +107,12 @@ export function extraCreateFields (spec) {
   if (spec.nodeKind === KIND_TERMINAL_SHELL) {
     if (!Shells.isShellId(spec.shellId)) return null
     return { geometry: GEO_TERMINAL_SHELL, label: clip(Shells.getShell(spec.shellId)?.name || 'TerminalShellTunnel', 40), data: { nodeKind: KIND_TERMINAL_SHELL, shellId: spec.shellId } }
+  }
+  if (spec.nodeKind === KIND_SOUND) {
+    // the settings travel WITH the node (a plain-object copy; the creator sanitizes them with utils/OmniSoundModel.js / OmniSoundParticleModel.js)
+    const plain = (o) => { try { return o && typeof o === 'object' && !Array.isArray(o) ? JSON.parse(JSON.stringify(o)) : null } catch (_) { return null } }
+    const sound = plain(spec.sound); const sp = plain(spec.soundParticles)
+    return { geometry: GEO_SOUND, label: clip(spec.label || 'Sound node', 40), data: { nodeKind: KIND_SOUND, ...(sound ? { sound } : {}), ...(sp ? { soundParticles: sp } : {}) } }
   }
   if (spec.nodeKind === KIND_FLOOR_PANEL) {
     const fp = sanitizeFloorPanel(spec)
@@ -170,6 +183,13 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_SOUND) {
+    const mesh = buildSoundNodeMesh(col)
+    mesh.userData.extraKind = { kind: KIND_SOUND, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   const fp = sanitizeFloorPanel(data)
   let geo
   if (fp) {
@@ -210,6 +230,7 @@ export function releaseExtraMesh (mesh) {
   const ek = mesh?.userData?.extraKind
   if (!ek) return
   try { window.dispatchEvent(new CustomEvent('omni:extra-mesh-released', { detail: { mesh, kind: ek.kind, id: mesh.userData.nodeId } })) } catch (_) { /* no window */ }
+  if (ek.kind === KIND_SOUND) releaseSoundMesh(mesh)
   LIVE.delete(mesh)
   delete mesh.userData.extraKind
   delete mesh.userData.omniRelease

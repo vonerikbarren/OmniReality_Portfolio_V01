@@ -459,6 +459,7 @@ export default class OmniMixerPanel {
 
     this._audioEls[1] = new Audio(); this._audioEls[1].loop = true
     this._audioEls[2] = new Audio(); this._audioEls[2].loop = true
+    try { window.__omniMixerAudio = this._audioEls; window.dispatchEvent(new CustomEvent('omni:mixer-audio-ready')) } catch (_) { /* V194: read-only hook so systems/OmniSoundScene.js can tap the mixer channels with an analyser */ }
     this._videoEls[1] = el.querySelector('#mx-video-preview-1')
     this._videoEls[2] = el.querySelector('#mx-video-preview-2')
 

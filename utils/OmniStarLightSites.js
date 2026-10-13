@@ -49,7 +49,7 @@ export const SITES = [
   // ── Hands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   S('omnihands', 'OmniHands', 'Hands', 'The four hands (LH, RH, OH, CH): speed, pad on start, pad dock, ammo, fire. Opens on the ⟐LogicalHand view.', nav('⟐LogicalHand'), ['hands', 'pads', 'fire', 'ammo', 'logicalhand', 'creativehand']),
   // ── Scene and nodes ─────────────────────────────────────────────────────────────────────────────────────────────────────
-  S('inspector', 'Inspector', 'Scene', 'Opens or closes the OmniInspector: twelve sections for the selected node. It also opens by itself when you select a node.', { type: 'sys', system: 'omniinspector' }, ['node', 'properties', 'edit']),
+  S('inspector', 'Inspector', 'Scene', 'Opens or closes the OmniInspector: thirteen sections for the selected node. It also opens by itself when you select a node.', { type: 'sys', system: 'omniinspector' }, ['node', 'properties', 'edit']),
   S('omnidraw', 'OmniDraw', 'Scene', 'The OmniDraw mode picker: Static, Dynamic, Behavior, Cell, Chat, Log. Make a node.', nav('⟐OmniDraw'), ['create', 'node', 'make', 'new']),
   S('navmap', 'NavMap', 'Scene', 'The ⟐NavMap panel: pick a portal and travel there.', nav('⟐NavMap'), ['map', 'portal', 'travel']),
   S('omnivisor', 'OmniVisor', 'Scene', 'Inspect what you are looking at.', nav('⟐OmniVisor'), ['inspect', 'look']),
@@ -59,7 +59,11 @@ export const SITES = [
   S('dimaxes', 'Dimensional Axes', 'Scene', 'The Dimensional Axes settings.', nav('⟐DimensionalAxesSettings'), ['axes', 'dimensions']),
   S('spaces', 'Spaces', 'Scene', 'Click an empty slot to save the camera position, a saved slot to fly back to it.', nav('⟐Spaces'), ['bookmark', 'camera', 'save']),
   // ── Tools ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  S('soundnode', 'Sound node', 'Tools', 'Creates a SoundNode in front of the camera: a speaker you can place, with notes, dynamics, loops, presets, spatial sound and particles.', { type: 'event', name: 'omni:sound-node-create', detail: { select: true } }, ['sound', 'audio', 'speaker', 'note', 'music', 'create']),
+  S('soundsettings', 'Sound settings', 'Tools', 'The ⟐SoundNodeSettings panel: every setting of the selected node\'s sound and particles, presets, Play / Stop / Audition.', nav('⟐SoundNodeSettings'), ['sound', 'audio', 'note', 'dynamics', 'preset', 'volume']),
   S('omnimixer', 'OmniMixer', 'Tools', 'The sound mixer.', nav('⟐OmniMixer'), ['sound', 'audio', 'volume']),
+  S('soundviewer', 'Sound viewer', 'Tools', 'The frequency viewer of a sound node or the whole mix: spectrum bars and line, scope, spectrogram, 7 band meters, peak note, envelope phase.', nav('⟐SoundViewer'), ['sound', 'audio', 'spectrum', 'frequency', 'fft', 'spectrogram', 'scope', 'waveform', 'meters']),
+  S('soundparticleviewer', 'Particle viewer', 'Tools', 'The particle formation of a sound node (top, front, side, orbit) with its live count; pick the formation, count and size.', nav('⟐SoundParticleViewer'), ['sound', 'particles', 'formation', 'count', 'cloud', 'sphere', 'galaxy']),
   S('omnitranslator', 'OmniTranslator', 'Tools', 'Toggles the OmniTranslator.', { type: 'event', name: 'omni:translator-toggle' }, ['translate', 'language']),
   S('omnipresenter', 'OmniPresenter', 'Tools', 'Toggles the ⟐p OmniPresenter (slides / media).', { type: 'sys', system: 'omnipresenter' }, ['slides', 'present']),
   S('omnigallery', 'OmniGallery', 'Tools', 'Toggles the ⟐g OmniGallery.', { type: 'sys', system: 'omnigallery' }, ['images', 'pictures']),

@@ -2,6 +2,263 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V194 SoundNode and sound (settings; particles; viewers)",
+      "items": [
+        {
+          "feature": "Sound engine plays a tone",
+          "howToReach": "open the app, click once, run in the console: `import('/systems/OmniSoundEngine.js').then(m=>m.default.start('t',{sustained:true}))`",
+          "whatToCheck": "you hear a soft steady A4 (440 Hz) after the first click; `m.default.stop('t')` fades it out in about 0.4 s without a click or pop",
+          "tested": false
+        },
+        {
+          "feature": "Autoplay unlock",
+          "howToReach": "reload, do NOT click, trigger a sound start",
+          "whatToCheck": "nothing plays and no console warning; after the first click or key press the queued sound starts",
+          "tested": false
+        },
+        {
+          "feature": "Dynamics pppp..ffff",
+          "howToReach": "start the sound with `dynamic` pppp, then ffff via `SoundEngine.update`",
+          "whatToCheck": "pppp is almost silent, ffff is clearly the loudest, steps in between rise evenly, no distortion at ffff",
+          "tested": false
+        },
+        {
+          "feature": "ADSR and sustained",
+          "howToReach": "play a pluck preset, then a pad preset with sustained",
+          "whatToCheck": "the pluck dies by itself; the pad holds until Stop, then fades by its release",
+          "tested": false
+        },
+        {
+          "feature": "Crescendo",
+          "howToReach": "play the swell preset",
+          "whatToCheck": "gets steadily louder and brighter over ~10 s, no steps or zipper noise",
+          "tested": false
+        },
+        {
+          "feature": "Iterative play and loop",
+          "howToReach": "play the arp and rain presets, then the heartbeat preset",
+          "whatToCheck": "arp climbs and falls on an even rhythm without drifting, rain is random drops, heartbeat repeats forever until Stop",
+          "tested": false
+        },
+        {
+          "feature": "Vibrato vs tremolo",
+          "howToReach": "play siren (vibrato) then set tremoloDepth to 0.6",
+          "whatToCheck": "vibrato wobbles the pitch, tremolo pulses the loudness",
+          "tested": false
+        },
+        {
+          "feature": "Filter and FX",
+          "howToReach": "enable filter, reverb, delay, chorus, distortion one at a time on a saw note",
+          "whatToCheck": "each effect is audible, switching one on or off while playing makes no click",
+          "tested": false
+        },
+        {
+          "feature": "Positional sound",
+          "howToReach": "set positional true on a node and fly the camera around it",
+          "whatToCheck": "louder when near, moves left/right with the view, quiet far away; air absorption makes far sound duller",
+          "tested": false
+        },
+        {
+          "feature": "Voice cap",
+          "howToReach": "start 12 sounds",
+          "whatToCheck": "at most the Admin cap (default 8) play, the oldest is faded out, no crash",
+          "tested": false
+        },
+        {
+          "feature": "Mixer bridge",
+          "howToReach": "open OmniMixer, play a track, run `SoundEngine.getAnalysis('mixer')`",
+          "whatToCheck": "returns spectrum/peakHz that follow the music; the music is not louder/quieter than before and does not stop",
+          "tested": false
+        },
+        {
+          "feature": "Tab in background",
+          "howToReach": "start an arp and switch tabs for 10 s",
+          "whatToCheck": "the rhythm continues (notes may sound slightly blocky) and nothing piles up when returning",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "open on a phone with Admin \"mute on phones\"",
+          "whatToCheck": "muted until the user unmutes; with it off, sound works after the first tap",
+          "tested": false
+        },
+        {
+          "feature": "Sound node create",
+          "howToReach": "Ribbon > Home > Create > Sound node",
+          "whatToCheck": "node appears, bell shape, selected, undo removes it",
+          "tested": false
+        },
+        {
+          "feature": "Sound node persists",
+          "howToReach": "create, set a note, reload",
+          "whatToCheck": "node and settings come back",
+          "tested": false
+        },
+        {
+          "feature": "Node reacts",
+          "howToReach": "press Play on a sound node",
+          "whatToCheck": "core/rings move with level, pause bars show",
+          "tested": false
+        },
+        {
+          "feature": "Sound on any node",
+          "howToReach": "Inspector > Sound section > switch on",
+          "whatToCheck": "node gets sound; off removes playing voice",
+          "tested": false
+        },
+        {
+          "feature": "Sound settings window",
+          "howToReach": "Ribbon > Tools > Sound settings, or Nav ⟐SoundNodeSettings",
+          "whatToCheck": "schema sections, search, presets, Reset, copy/paste JSON, Undo",
+          "tested": false
+        },
+        {
+          "feature": "Settings window on phone",
+          "howToReach": "open at <=700px",
+          "whatToCheck": "bottom sheet, usable by touch",
+          "tested": false
+        },
+        {
+          "feature": "Admin sound",
+          "howToReach": "Admin > UI Settings > Sound",
+          "whatToCheck": "master volume, voice cap, mute on phone, ask before sound, particle cap, prompt toggle take effect",
+          "tested": false
+        },
+        {
+          "feature": "Unlock prompt",
+          "howToReach": "enable \"ask before sound\", press Play",
+          "whatToCheck": "toast appears; Enable sound unmutes; × hides until reload",
+          "tested": false
+        },
+        {
+          "feature": "Speaker toggle",
+          "howToReach": "Inspector Sound section speaker",
+          "whatToCheck": "mutes/unmutes all sound",
+          "tested": false
+        },
+        {
+          "feature": "Delete sound node",
+          "howToReach": "delete then undo",
+          "whatToCheck": "node and its sound return/leave cleanly, no voice left playing",
+          "tested": false
+        },
+        {
+          "feature": "Sound particles appear",
+          "howToReach": "Create a sound node (or enable sound on a node), keep soundParticles on, press Play in the sound settings",
+          "whatToCheck": "A cloud of points surrounds the node, in the shape of the chosen formation, and moves with the sound; stop the sound and the cloud settles and stays still",
+          "tested": false
+        },
+        {
+          "feature": "Particle count is live",
+          "howToReach": "⟐SoundParticleViewer, drag the Count slider",
+          "whatToCheck": "The Particles readout and the cloud in the scene follow within a quarter of a second; 0 removes the cloud; 4000 is the most; the value is still there after Refresh",
+          "tested": false
+        },
+        {
+          "feature": "Frequency drives the motion",
+          "howToReach": "Play a bass-heavy sound, then a bright one; look at the cloud",
+          "whatToCheck": "Bass makes the cloud breathe (radius), mids lift it, high mids swirl it, the highest band shakes it (defaults); the band strip in ⟐SoundParticleViewer shows each band and what it drives",
+          "tested": false
+        },
+        {
+          "feature": "Formations",
+          "howToReach": "⟐SoundParticleViewer > Formation, or the sound settings",
+          "whatToCheck": "All 14 formations draw (ring, sphere, spiral, helix, galaxy, lissajous, wave, bars, cube, burst, torus, cloud, disc, funnel); Bars rises and falls with the spectrum, bass on the left",
+          "tested": false
+        },
+        {
+          "feature": "Colour modes and blend",
+          "howToReach": "Sound settings > Colour & Blend",
+          "whatToCheck": "Solid, by band (rainbow), by pitch (the colour follows the note) and gradient look right; Additive glows, Normal covers; Hide behind objects works",
+          "tested": false
+        },
+        {
+          "feature": "Moving the node moves the cloud",
+          "howToReach": "Drag a sound node, or use StrictAlign (the ` key)",
+          "whatToCheck": "The cloud goes along with the node, also while it plays",
+          "tested": false
+        },
+        {
+          "feature": "Delete / disable frees the cloud",
+          "howToReach": "Delete the node, or turn its sound or particles off",
+          "whatToCheck": "The cloud disappears at once and nothing is left in the scene",
+          "tested": false
+        },
+        {
+          "feature": "LOD and the shared cap",
+          "howToReach": "Create 6 sound nodes of 4000 particles each",
+          "whatToCheck": "The nearest five keep 4000, the farthest is thinned or hidden (Particles readout says cap 20000); far nodes show fewer particles; behind you or beyond the hide distance the cloud is hidden",
+          "tested": false
+        },
+        {
+          "feature": "Silent costs nothing",
+          "howToReach": "Several sound nodes, none playing; watch the frame rate",
+          "whatToCheck": "No difference from a scene without sound nodes",
+          "tested": false
+        },
+        {
+          "feature": "No new WebGL context",
+          "howToReach": "Open both viewers and play sounds",
+          "whatToCheck": "The page still holds the same number of WebGL contexts as before (the viewers are 2D canvas)",
+          "tested": false
+        },
+        {
+          "feature": "SoundViewer opens",
+          "howToReach": "Ribbon Home > Sound > Sound viewer, OmniStarLight \"Sound viewer\", or nav item ⟐SoundViewer",
+          "whatToCheck": "A window with the picker, Freeze, five views, zoom, readout and the canvas; resize and maximize work",
+          "tested": false
+        },
+        {
+          "feature": "SoundViewer shows the sound",
+          "howToReach": "Play a sound node, pick it (or select it with Auto)",
+          "whatToCheck": "Spectrum bars and line move, the scope shows the wave, the spectrogram scrolls, the 7 meters move, the peak shows Hz and a note name, the envelope chip lights Att / Dec / Sus / Rel",
+          "tested": false
+        },
+        {
+          "feature": "SoundViewer master and node picker",
+          "howToReach": "Picker: Auto, Master, a node",
+          "whatToCheck": "Master shows the whole mix; Auto follows the selected node (master when it has no sound); a node set to off is marked (off)",
+          "tested": false
+        },
+        {
+          "feature": "SoundViewer freeze and zoom",
+          "howToReach": "Freeze, then the − / ＋ buttons or the mouse wheel on the picture",
+          "whatToCheck": "Freeze holds the picture and the readout; zoom goes 20-20k, 20-8k, 20-2k, 20-500, 20-120 Hz; Run lets it go on",
+          "tested": false
+        },
+        {
+          "feature": "SoundViewer silence",
+          "howToReach": "Open it with nothing playing",
+          "whatToCheck": "An empty grid and a hint, no error; theme colours follow the OmniOS theme",
+          "tested": false
+        },
+        {
+          "feature": "ParticleViewer opens",
+          "howToReach": "Ribbon Home > Sound > Particle viewer, OmniStarLight \"Particle viewer\", or nav item ⟐SoundParticleViewer",
+          "whatToCheck": "With no node selected: a hint; select a sound node: its formation is drawn, the count reads drawn / count",
+          "tested": false
+        },
+        {
+          "feature": "ParticleViewer views",
+          "howToReach": "Top / Front / Side / Orbit, drag the picture, Spin",
+          "whatToCheck": "Each view projects the formation; Orbit turns by itself (Spin) or by dragging; silent: nothing redraws except the orbit turn",
+          "tested": false
+        },
+        {
+          "feature": "ParticleViewer edits the node",
+          "howToReach": "Formation picker, Count and Size sliders, On / Off",
+          "whatToCheck": "The scene changes at once, the values are saved with the node (Refresh keeps them), a node without particles gets a complete set on the first edit",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "Both viewers at 390 px width",
+          "whatToCheck": "Bottom sheets, buttons at least 36 px high, the picture readable, no horizontal scroll",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "Core Navigation & UI",
       "items": [
         {
@@ -3698,6 +3955,29 @@
           "feature": "TimeData ruler window",
           "howToReach": "Drag the header, resize edges, maximize ⛶",
           "whatToCheck": "Window resizes and the ruler redraws crisply at the new size; maximize fills the free area",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V193 RH word directions, Refresh, Reset HUD",
+      "items": [
+        {
+          "feature": "RH word directions",
+          "howToReach": "Hand pad RH > Payload panel > Word timing > Direction",
+          "whatToCheck": "Choices up, down, left, right, forward, backward. Fire a payload: left / right words drift sideways, forward grows toward you, backward shrinks away; Preview matches; old payloads still rise",
+          "tested": false
+        },
+        {
+          "feature": "Refresh button",
+          "howToReach": "Ribbon Home > Assistance, next to Fullscreen",
+          "whatToCheck": "Reloads the page; nodes and settings come back",
+          "tested": false
+        },
+        {
+          "feature": "Reset HUD button",
+          "howToReach": "Ribbon Home > Assistance, next to Refresh",
+          "whatToCheck": "Drag a window to resize it, drag the OmniNotify box and the compass away, press Reset HUD: sizes reset, OmniNotify re-docks under the profile, compass returns; nodes and settings untouched",
           "tested": false
         }
       ]

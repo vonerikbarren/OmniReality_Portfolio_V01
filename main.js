@@ -271,6 +271,15 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V192 TimeData ruler (vertical 00:00..24:00 ruler + week / month / year / decade lines; ⟐Times slot, Admin settings) ──
   const { addTimeDataRulerModules } = await import('./ui/OmniTimeDataRulerModules.js')
   addTimeDataRulerModules(base)
+  // ── V194 OmniSound: audio listener from the camera, positional voices, auto-start rules, play / stop requests (engine: systems/OmniSoundEngine.js) ──
+  const { default: OmniSoundScene } = await import('./systems/OmniSoundScene.js')
+  base.addModule(new OmniSoundScene(base.context, omniNode))
+  // ── V194 SoundNode kind + ⟐SoundNodeSettings + the Enable sound prompt (the audio engine / particles / viewers are added by their own blocks) ──
+  const { addSoundModules } = await import('./ui/OmniSoundModules.js')
+  addSoundModules(base, omniNode)
+  // ── V194 sound particles (a THREE.Points cloud per sound node) + the ⟐SoundViewer and ⟐SoundParticleViewer windows ──
+  const { addSoundVizModules } = await import('./ui/OmniSoundVizModules.js')
+  await addSoundVizModules(base, omniNode)
   // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
   base.addModule(new OmniReticle(base.context))
   base.addModule(new OmniDocsPanel())

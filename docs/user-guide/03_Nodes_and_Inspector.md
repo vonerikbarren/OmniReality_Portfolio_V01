@@ -1,6 +1,6 @@
 # 3. Nodes and the Inspector
 
-Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
+Applies to: V194 · Status: verified against code on 2026-10-12 · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [The Four Hands](02_The_Four_Hands.md) · Next: [Firing and Payloads](04_Firing_and_Payloads.md)
 
@@ -31,7 +31,7 @@ The geometry picker has two extra entries under the shapes: **Store item** and *
 - A **Value type** node shows the type's emoji and your live balance.
 - Deleting or duplicating a node never changes the product or the value type. A duplicate is another pointer.
 - Join two Value type nodes with an edge (PATH mode in ⟐N) and the edge shows the rate between the two types, both ways, or "no direct rate". The edge stores no rate; it is read from the OmniValue model every time. Conversion itself is not done here; use the Exchange.
-- Select one and the Inspector shows a Store item or Value block in Appearance (still 12 sections). Store item: Window, Wish, Cart, Open in store, Buy... Value: Grant 10 (sandbox), Open in OmniTalent, Open exchange. All sandbox, all value fake. See [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md).
+- Select one and the Inspector shows a Store item or Value block in Appearance (still 13 sections). Store item: Window, Wish, Cart, Open in store, Buy... Value: Grant 10 (sandbox), Open in OmniTalent, Open exchange. All sandbox, all value fake. See [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md).
 - Time, Behaviors, grouping and duplicate work on them like on any node.
 
 ## The ⟐N panel (OmniNode)
@@ -52,7 +52,7 @@ Header buttons: ✕ close, _ minimize, ⟐ attach, 💾 save, Ξ select the whol
 
 **Delete is immediate: no confirmation and no undo.**
 
-Under the header is an **icon strip** of 12 buttons, one per section. A dim icon means the section does not apply; a lit icon means it is open.
+Under the header is an **icon strip** of 13 buttons, one per section. A dim icon means the section does not apply; a lit icon means it is open.
 
 | Section | Icon | Use |
 |---|---|---|
@@ -66,6 +66,7 @@ Under the header is an **icon strip** of 12 buttons, one per section. A dim icon
 | Time | ◔ | Put the node on the timeline ([Chronos](06_Chronos_Player_and_Timeline.md)) |
 | Program | ▶ | The bound OmniProgram: run mode, auto-persist |
 | Media | ▣ | Images, sound and other media |
+| Sound | ♪ | Gives the node a sound: switch, preset, note, dynamics, volume, loop, spatial ([Sound nodes](12_Sound_Nodes.md)) |
 | Data | ≣ | Internal/external data, GoTo / TravelTo, info plane |
 | Create New | ＋ | Create a node with its own shape, transform, parent |
 
@@ -83,6 +84,10 @@ Desktop: Identity, Location and Appearance start open and sections open independ
 | Keyframe property + ◇ At playhead | Position X/Y/Z, Scale, Rotation Y (deg), Opacity or Colour keyframe now |
 | Keyframe list | Click to jump, edit the value, ✕ to delete (first 60 shown) |
 | Reveal on timeline | Show the clip in the timeline |
+
+## Sound nodes
+
+A **sound node** (a small speaker-shaped bell with rings) makes a sound, and any node can get a sound from its Inspector **Sound** section. Make one with ribbon Home > Create > Sound node. Everything about it is in [Sound nodes](12_Sound_Nodes.md).
 
 ## Path nodes and the OmniNodeOrderPanel
 

@@ -1,6 +1,6 @@
 # OmniOS User Guide
 
-Applies to: V187 · Status: verified against code on 2026-10-11 · Real devices: not verified.
+Applies to: V194 · Status: verified against code on 2026-10-11 (page 12 written in V194 from its code) · Real devices: not verified.
 
 How to use OmniOS (the product from OmniStar, the company), written for a first-time user. Each page takes under 5 minutes.
 
@@ -19,7 +19,8 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | 08 | [OmniStore and OmniValue](08_OmniStore_and_OmniValue.md) | Sandbox stores (several, by type), wallet, and pinning products / values as nodes |
 | 09 | [Settings and Admin](09_Settings_and_Admin.md) | Admin vs Developer, resets |
 | 10 | [Keyboard and touch cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) | Every key in one table |
-| 11 | [Troubleshooting](11_Troubleshooting.md) | Fixes, clearing data, bug reports |
+| 11 | [Troubleshooting](11_Troubleshooting.md) | Fixes, clearing data, bug reports, no sound |
+| 12 | [Sound nodes](12_Sound_Nodes.md) | Place a sound, dynamics ppp to ffff, loops, presets, spatial sound, phone notes |
 
 ## 60-second tour
 
@@ -44,6 +45,7 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | Pin a product or value as a node | Exchange > Pin to my space; ⟐N picker > Store item; [Pin](08_OmniStore_and_OmniValue.md) |
 | Shop in the sandbox | Ribbon Realities > Value > Store; [Store](08_OmniStore_and_OmniValue.md) |
 | Find a key | [Cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) |
+| Make a sound | Ribbon Home > Create > Sound node, or an Inspector node's Sound section; [Sound nodes](12_Sound_Nodes.md) |
 | Fix a problem | [Troubleshooting](11_Troubleshooting.md) |
 
 ## Desktop vs phone
@@ -77,6 +79,7 @@ The break is **700 pixels wide**. At 700px or narrower:
 | OmniNotify | The info box that names what you point at |
 | Payload / ammo | The data or behaviour a hand fires |
 | Primary Time | The app's clock |
+| Sound node | A node that makes a sound; its bell and rings pulse with it and it can send out particles |
 | Sandbox | Fake value; nothing real is spent |
 | Store type | A recipe for a store (Produce, Bakery, Electronics, Blank): look, layout, sections, accepted payment forms, starting products |
 | Active store | The one of your stores the 3D scene shows and the settings edit |

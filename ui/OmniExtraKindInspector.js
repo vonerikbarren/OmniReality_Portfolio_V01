@@ -18,6 +18,7 @@ import * as Media from '../utils/FloorPanelMedia.js'
 import { PIECES } from '../utils/OmniFloorPieces.js'
 import * as Shells from '../utils/TerminalShells.js'
 import { terminalFormHTML, wireTerminalForm } from './TerminalSettingsForm.js'   // V192: TerminalShellTunnel — the Terminal settings section
+import { soundKindBlockHTML, wireSoundKindBlock } from './OmniSoundInspector.js'   // V194: SoundNode — the short sound block (the full 'Sound' section is the Inspector's own)
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const tip = (name, desc) => `data-omni-tip="${esc(name)}" data-omni-tip-key="—" data-omni-tip-desc="${esc(desc)}"`
@@ -134,6 +135,7 @@ function terminalHTML (d) {
 
 /** The whole block (an element with id="oi-custom-extra"). */
 export function extraOptionsHTML (data) {
+  if (data.nodeKind === Extra.KIND_SOUND) return soundKindBlockHTML(data)   // V194
   injectStyles(); bindLiveRefresh()
   if (data.nodeKind === Extra.KIND_TERMINAL_SHELL) {
     return `
@@ -212,6 +214,7 @@ function rerender (root) {
 
 /** Wire the controls of the block that extraOptionsHTML rendered. */
 export function wireExtraOptions (root, data) {
+  if (data.nodeKind === Extra.KIND_SOUND) { wireSoundKindBlock(root, data); return }   // V194
   const sec = root.querySelector?.('#oi-custom-extra')
   if (!sec || sec.dataset.wired === '1') return
   sec.dataset.wired = '1'
