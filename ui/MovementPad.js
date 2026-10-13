@@ -118,6 +118,8 @@ import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/Omn
 import { getCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
 import { getEffectiveSpeed, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
 import HandSpeedPanel, { HAND_NAMES, formatSpeed } from './HandSpeedPanel.js'
+import { orbitYaw, orbitPitch, levelUpStep, settleStep, viewForward, isLevel } from '../utils/OrbitMath.js'   // V192: orbit about the target, continuous
+import { getDockRow, getDockRowInset, DOCK_BASE_H } from '../utils/OmniLayout.js'   // V192: lift the lower clusters above the OmniDock_Realities row
 import HandToolsPanel from './HandToolsPanel.js'   // V191: the dimensional pads' tool options (opened by their data chip)
 import {
   CONSCIOUS_SYMBOL, OMNIHAND_SYMBOL, REL_AXIS_SYMBOL, HOLD_REPEAT_MS,
@@ -166,7 +168,7 @@ const PAD_CONFIGS = {
     movable: true, keyboard: 'wasd',
     dirLabels: { up: 'FWD', down: 'BCK', left: 'STR-L', right: 'STR-R' },
     centerLabel: '⟐LH',
-    corners: { tr: 'ascend', br: 'descend' },   // V191: vertical movement, in the cross's free corner cells
+    corners: { tl: 'pitchUp', bl: 'pitchDown', tr: 'ascend', br: 'descend' },   // V191: vertical movement; V192: + vertical orbit (same grid as rh)
   },
   rh: {
     id: 'rh', corner: 'br', abbr: 'RH', modeLabel: 'NAV',
@@ -183,16 +185,19 @@ const PAD_CONFIGS = {
 // `pitchDown` orbit the camera up / down around the rotation pivot (the selected node, else the scene
 // centre, same pivot as OmniKeys' vertical rotation), clamped at 85 degrees, at YAW_SPEED x the Admin
 // "vertical orbit" step x the hand's speed: the vertical twin of ORB-L / ORB-R.
+// V192: ORB-L / R / U / D (on BOTH lower pads now) orbit the CURRENT TARGET (omni:orbit-target-set, else the point 4 units ahead of
+// the camera at the start of the gesture, never the origin) and ORB-U / ORB-D loop all the way around (utils/OrbitMath.js, no clamp).
 const EXTRA_BUTTONS = {
   ascend:    { glyph: '⇧', label: 'ASC',   name: 'Ascend',   tip: 'Move up along world Y (hold). Same altitude settings and speed as RH Rise.' },
   descend:   { glyph: '⇩', label: 'DSC',   name: 'Descend',  tip: 'Move down along world Y (hold). Same altitude settings and speed as RH Fall.' },
-  pitchUp:   { glyph: '⌃', label: 'ORB-U', name: 'Orbit up', tip: 'Rotate the view up around the pivot (the selected node, else the scene centre), hold. Speed: Admin vertical orbit x RH speed.' },
-  pitchDown: { glyph: '⌄', label: 'ORB-D', name: 'Orbit down', tip: 'Rotate the view down around the pivot (the selected node, else the scene centre), hold. Speed: Admin vertical orbit x RH speed.' },
+  pitchUp:   { glyph: '⌃', label: 'ORB-U', name: 'Orbit up', tip: 'Orbit up and over the current target (the selected node, else the point just ahead of you), hold: it keeps going all the way around, over the top and under the bottom. Speed: Admin vertical orbit x this hand\'s speed.' },
+  pitchDown: { glyph: '⌄', label: 'ORB-D', name: 'Orbit down', tip: 'Orbit down and under the current target (the selected node, else the point just ahead of you), hold: it keeps going all the way around. Speed: Admin vertical orbit x this hand\'s speed.' },
 }
 // V191 keys (free ones: nothing else binds them). Ignored with Ctrl / Cmd / Alt held so browser shortcuts survive.
 const EXTRA_KEYS = {
   KeyE: { handId: 'lh', dir: 'ascend' }, KeyQ: { handId: 'lh', dir: 'descend' },
   KeyY: { handId: 'rh', dir: 'pitchUp' }, KeyH: { handId: 'rh', dir: 'pitchDown' },
+  KeyU: { handId: 'lh', dir: 'pitchUp' }, KeyV: { handId: 'lh', dir: 'pitchDown' },   // V192: LH orbit up / down (not X / Y / Z: StrictAlign axis keys)
 }
 
 const DIRS       = ['up', 'down', 'left', 'right']
@@ -862,6 +867,8 @@ export default class MovementPad {
     this._v3fwd   = new THREE.Vector3()
     this._v3right = new THREE.Vector3()
     this._worldUp = new THREE.Vector3(0, 1, 0)
+    this._v3tmp   = new THREE.Vector3()   // V192
+    this._orbitUp = new THREE.Vector3()   // V192
 
     // WASD speed multiplier, driven by Admin's px/py/pz step setting —
     // "when the number is smaller I move more slowly on all axis, when
@@ -920,6 +927,14 @@ export default class MovementPad {
     this._rotationPivot = new THREE.Vector3(0, 2, 0)
     const ROTATE_STEP = Math.PI / 24   // 7.5° per press — deliberately not a module-level const, kept local to where it's used
     this._rotateStep = ROTATE_STEP
+    // V192: orbit about the CURRENT target. _hasOrbitTarget mirrors main.js's _hasSelectedPivot (set by omni:orbit-target-set,
+    // cleared by node-deselected / orbit-released / return-to-landing); without a target a gesture orbits the point 4 units
+    // ahead of the camera where it started (_gesturePivot), never the origin. _levelHold: a synthetic omni:movement hold that
+    // keeps OrbitControls off while camera.up is rolled and settling back to +Y after a vertical orbit.
+    this._hasOrbitTarget = false
+    this._gesturePivot = null
+    this._levelHold = false
+    this._levelRemaining = Math.PI
     this._pitchLimit = (85 * Math.PI) / 180   // stop just short of straight up/down — avoids the gimbal flip where left/right suddenly invert
 
     this._onPadToggle  = this._handlePadToggle.bind(this)
@@ -960,14 +975,24 @@ export default class MovementPad {
       chip?.setAttribute('aria-expanded', String(!!open)); chip?.classList.toggle('is-active', !!open)
     }
     this._onNodeSelected = this._handleNodeSelected.bind(this)
+    // V192: every orbit-target announcement (node select, TakeMeThere, store fly-to ...) is the pivot the orbit buttons use
+    this._onOrbitTargetSet = (e) => {
+      const d = e.detail ?? {}
+      if (![d.x, d.y, d.z].every(Number.isFinite)) return
+      this._rotationPivot.set(d.x, d.y, d.z)
+      this._hasOrbitTarget = true
+    }
+    this._onOrbitTargetClear = () => { this._hasOrbitTarget = false }
     // V190: omni:orbit-released (click empty space / Escape) -> the keyboard-rotation pivot follows main.js: just ahead of the camera
     this._onOrbitReleased = () => {
+      this._hasOrbitTarget = false   // V192
       const cam = this.ctx?.camera
       if (!cam) return
       cam.getWorldDirection(this._v3right)
       this._rotationPivot.copy(cam.position).addScaledVector(this._v3right, 4)
     }
     this._onOmniKeysRotate = this._handleOmniKeysRotate.bind(this)
+    this._onDockLayout = () => this._applyDockClearance()   // V192
     this._onKeyDown    = this._handleKeyDown.bind(this)
     this._onBlur       = () => this._releaseAllDimensionPresses()
     this._onKeyUp      = this._handleKeyUp.bind(this)
@@ -979,6 +1004,9 @@ export default class MovementPad {
     injectStyles()
     this._buildAllPads()
     this._buildAllSatelliteClusters()
+    this._applyDockClearance()   // V192
+    window.addEventListener('omni:layout-changed', this._onDockLayout)
+    window.addEventListener('resize', this._onDockLayout)
     this._speedPanel.init()
     this._toolsPanel.init()
     this._bindGlobalEvents()
@@ -1013,7 +1041,7 @@ export default class MovementPad {
     // V191: the corner buttons (vertical movement on both lower pads, vertical orbit on RH)
     this._applyVerticalMovement(cam, delta, 'lh')
     this._applyVerticalMovement(cam, delta, 'rh')
-    this._applyPitchRotation(cam, delta, 'rh')
+    this._applyOrbit(cam, delta)   // V192: ORB-L / R / U / D around the current target (replaces the V191 yaw + _applyPitchRotation)
     // omnihand / conscious intentionally absent: they never move the camera.
   }
 
@@ -1047,6 +1075,12 @@ export default class MovementPad {
     window.removeEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.removeEventListener('omni:node-selected', this._onNodeSelected)
     window.removeEventListener('omni:orbit-released', this._onOrbitReleased)
+    window.removeEventListener('omni:layout-changed', this._onDockLayout)
+    window.removeEventListener('resize', this._onDockLayout)
+    window.removeEventListener('omni:orbit-target-set', this._onOrbitTargetSet)
+    window.removeEventListener('omni:node-deselected', this._onOrbitTargetClear)
+    window.removeEventListener('omni:return-to-landing', this._onOrbitTargetClear)
+    this._endLevelHold()
     window.removeEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.removeEventListener('keydown',          this._onKeyDown)
     window.removeEventListener('keyup',            this._onKeyUp)
@@ -1169,6 +1203,38 @@ export default class MovementPad {
     }
     this._refreshSpeed(handId)
     this._refreshChip(handId)
+  }
+
+  // ── OmniDock_Realities clearance (V192) ──────────────────────────────────────
+
+  /** The Realities row (ui/OmniDockRealities.js: fixed, bottom 52 px, left / right inset 112 px) hides whatever sits low and inboard on the
+   *  two lower clusters: the ammo chip (the "Bind" / "Pulse" name) and the settings circle. While the row is shown, any of those whose
+   *  box would touch the row's band is lifted so its bottom edge clears the row's TOP by 6 px (--omni-dock-stack-h = Dock + row, via
+   *  getDockRow()), and the chip also steps outward past the Speed circle so the lift never lands on another circle. With the row hidden (or on a
+   *  phone, where the cluster is already clear of the row's inset) the inline overrides are removed and the V191 geometry is untouched. */
+  _applyDockClearance () {
+    const W = window.innerWidth || 1280
+    const mode = W <= 460 ? 'mobile' : 'desktop'
+    const row = getDockRow()
+    const inset = getDockRowInset(W)
+    const need = DOCK_BASE_H + (row.on ? row.h : 0) + 6
+    const geom = SAT_LAYOUT[mode].geom
+    const satD = SAT_LAYOUT[mode].satHalf * 2
+    ;['lh', 'rh'].forEach(hand => {
+      const g = geom[hand]
+      ;[['settings', satD], ['chip', SAT_LAYOUT[mode].chip.w]].forEach(([role, size]) => {
+        const el = role === 'chip' ? this._chipEls[hand] : this._satEls[hand]?.[role]
+        if (!el) return
+        const slot = g[role]
+        const inRow = slot.d + size > inset   // reach from its own screen edge vs the row's inset (the row is symmetric)
+        const lift = row.on && inRow && slot.v < need
+        el.style.bottom = lift ? `${need}px` : ''
+        if (role === 'chip') {
+          const clearD = g.speed.d + satD + 6   // right of (left pad) / left of (right pad) the Speed circle, so the lifted chip never lands on it
+          el.style[slot.side] = lift && clearD > slot.d ? `${clearD}px` : ''
+        }
+      })
+    })
   }
 
   // ── Satellite behaviour (V165) ───────────────────────────────────────────────
@@ -1587,7 +1653,7 @@ export default class MovementPad {
     // use free Numpad keys, since Numpad1-4 are already the app's
     // hand-menu shortcuts (main.js's HAND_KEY_BINDINGS).
     const HINTS = {
-      wasd:            { keys: ['W', 'A', 'S', 'D', 'E', 'Q'], dirs: ['up', 'left', 'down', 'right', 'ascend', 'descend'] },
+      wasd:            { keys: ['W', 'A', 'S', 'D', 'E', 'Q', 'U', 'V'], dirs: ['up', 'left', 'down', 'right', 'ascend', 'descend', 'pitchUp', 'pitchDown'] },   // V192: U / V = ORB-U / ORB-D
       rf:              { keys: ['R', 'F', 'Y', 'H'],           dirs: ['up', 'down', 'pitchUp', 'pitchDown'] },
       'omnihand-axes': { keys: ['/', '*', '-', '+'],       dirs: ['up', 'down', 'left', 'right'] },
       'conscious-axes': { keys: ['N7', 'N9', 'N5', 'N6'],  dirs: ['up', 'down', 'left', 'right'] },
@@ -1771,16 +1837,7 @@ export default class MovementPad {
     if (p.up)   cam.position.y += MOVE_SPEED * this._altitudeUpMultiplier * hs * delta
     if (p.down) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * hs * delta
 
-    if (p.left || p.right) {
-      const angle = (p.right ? -1 : 1) * YAW_SPEED * this._orbitHorizontalMultiplier * hs * delta
-      const cos   = Math.cos(angle)
-      const sin   = Math.sin(angle)
-      const x     = cam.position.x
-      const z     = cam.position.z
-      cam.position.x = x * cos - z * sin
-      cam.position.z = x * sin + z * cos
-      cam.lookAt(0, cam.position.y, 0)
-    }
+    // V192: ORB-L / ORB-R moved to _applyOrbit() (about the current target, together with ORB-U / ORB-D)
   }
 
   /** V191: ascend / descend corner buttons (lh and rh): world-Y movement through the same altitude
@@ -1794,32 +1851,92 @@ export default class MovementPad {
     if (p.descend && !(handId === 'rh' && p.down)) cam.position.y -= MOVE_SPEED * this._altitudeDownMultiplier * hs * delta
   }
 
-  /** V191: RH vertical rotate (ORB-U / ORB-D), the twin of the horizontal ORB-L / ORB-R. */
-  _applyPitchRotation (cam, delta, handId) {
-    const p = this._pressed[handId]
-    const dir = (p?.pitchUp ? 1 : 0) - (p?.pitchDown ? 1 : 0)
-    if (!dir) return
-    this._pitchBy(cam, dir * YAW_SPEED * this._orbitVerticalMultiplier * getEffectiveSpeed(handId) * delta)
+  /** V192: the pivot the orbit buttons turn around: the announced orbit target (omni:orbit-target-set); with none, the
+   *  point 4 units ahead of the camera where the gesture started (fixed for the whole gesture), never the origin. */
+  _orbitPivot (cam) {
+    if (this._hasOrbitTarget) return this._rotationPivot
+    if (!this._gesturePivot) {
+      this._gesturePivot = new THREE.Vector3()
+      cam.getWorldDirection(this._v3fwd)
+      this._gesturePivot.copy(cam.position).addScaledVector(this._v3fwd, 4)
+    }
+    return this._gesturePivot
   }
 
-  /** Orbit the camera up (angle > 0) / down around the rotation pivot and keep it aimed at the pivot;
-   *  clamped to +-85 degrees so the view never flips over the pole. */
-  _pitchBy (cam, angle) {
-    const offset = cam.position.clone().sub(this._rotationPivot)
-    const radius = offset.length()
-    if (radius < 0.0001) return
-    const current = Math.asin(THREE.MathUtils.clamp(offset.y / radius, -1, 1))
-    const next = THREE.MathUtils.clamp(current + angle, -this._pitchLimit, this._pitchLimit)
-    const actual = next - current
-    if (Math.abs(actual) < 1e-7) return
-    const horizontal = new THREE.Vector3(offset.x, 0, offset.z)
-    const axis = horizontal.lengthSq() > 0.0001
-      ? this._v3right.crossVectors(horizontal, this._worldUp).normalize()   // horizontal x up: a positive angle raises the camera
-      : new THREE.Vector3(-1, 0, 0)
-    offset.applyAxisAngle(axis, actual)
-    cam.position.copy(this._rotationPivot).add(offset)
-    cam.lookAt(this._rotationPivot)
+  /** V192: ORB-L / ORB-R (rh) and ORB-U / ORB-D (lh + rh) in one pass. Horizontal = turn about the vertical axis through the
+   *  target (its y included); vertical = turn about the camera's own right axis, over the top and under the bottom with no
+   *  clamp (utils/OrbitMath.js). Keeps the distance to the target; camera.up is rolled with the orbit and levelled on release. */
+  _applyOrbit (cam, delta) {
+    const rh = this._pressed.rh, lh = this._pressed.lh
+    const hRH = getEffectiveSpeed('rh'), hLH = getEffectiveSpeed('lh')
+    const yaw = (rh.left || rh.right) ? (rh.right ? -1 : 1) * YAW_SPEED * this._orbitHorizontalMultiplier * hRH * delta : 0
+    const pitchOf = (p, hs) => ((p.pitchUp ? 1 : 0) - (p.pitchDown ? 1 : 0)) * YAW_SPEED * this._orbitVerticalMultiplier * hs * delta
+    const pitch = pitchOf(rh, hRH) + pitchOf(lh, hLH)
+    if (!yaw && !pitch) {
+      if (rh.left || rh.right || rh.pitchUp || rh.pitchDown || lh.pitchUp || lh.pitchDown) return   // held but cancelling out: keep the pivot
+      this._gesturePivot = null
+      this._settleUp(cam, delta)
+      return
+    }
+    this._orbitBy(cam, yaw, pitch)
   }
+
+  /** One orbit step about the current pivot (yaw about the vertical axis, then pitch about the camera's right axis). */
+  _orbitBy (cam, yaw, pitch) {
+    const pivot = this._orbitPivot(cam)
+    if (cam.position.distanceToSquared(pivot) < 1e-8) return   // camera AT the pivot: nothing to orbit
+    viewForward(cam.position, pivot, this._v3fwd)
+    // start from the camera's own up (kept rolled during a vertical orbit); face the pivot like the V191 lookAt did
+    const up = this._orbitUp.copy(cam.up)
+    if (Math.abs(up.dot(this._v3fwd)) > 0.9999) up.set(0, 1, 0).applyQuaternion(cam.quaternion)   // straight along +-Y: the camera's real up
+    if (yaw) orbitYaw(cam.position, up, pivot, yaw)
+    if (pitch) orbitPitch(cam.position, up, pivot, pitch)
+    // a vertical orbit stores the real (possibly rolled / tilted) up: after the pole it is NOT +Y and must carry on from there.
+    // A horizontal-only gesture on an upright camera leaves camera.up at +Y so nothing else ever sees a tilted up.
+    if (pitch || !isLevel(cam.up)) cam.up.copy(up)
+    cam.lookAt(pivot)
+    if (pitch) this._beginLevelHold()
+    this._levelRemaining = Math.PI
+  }
+
+  /** V192: after the vertical orbit is released, roll camera.up back to the horizon (+Y) about the view direction (smooth,
+   *  ~0.5 s for a half turn), so OrbitControls (which assumes +Y up) can take over with no jump. OrbitControls is held off meanwhile
+   *  (a synthetic omni:movement hold); with no roll to undo it ends on the next frame. */
+  _settleUp (cam, delta) {
+    if (!this._levelHold && isLevel(cam.up)) return
+    if (!this._levelHold) this._beginLevelHold()
+    cam.getWorldDirection(this._v3fwd)
+    const up = this._orbitUp.copy(cam.up)
+    if (Math.abs(up.dot(this._v3fwd)) > 0.9999) up.set(0, 1, 0).applyQuaternion(cam.quaternion)
+    const r = levelUpStep(up, this._v3fwd, settleStep(this._levelRemaining, delta))
+    if (r.degenerate) {
+      // looking straight down / up the Y axis: no horizon to roll toward; tilt the view a hair so one exists
+      const pivot = this._orbitPivot(cam)
+      orbitPitch(cam.position, up, pivot, 0.004)
+      cam.up.copy(up); cam.lookAt(pivot)
+      return
+    }
+    this._levelRemaining = r.remaining
+    cam.up.copy(r.done ? this._worldUp : up)
+    cam.lookAt(this._v3tmp.copy(cam.position).add(this._v3fwd))
+    if (r.done) this._endLevelHold()
+  }
+
+  _beginLevelHold () {
+    if (this._levelHold) return
+    this._levelHold = true
+    window.dispatchEvent(new CustomEvent('omni:movement', { detail: { hand: 'pad', direction: 'level', active: true, mode: 'nav' } }))
+  }
+
+  _endLevelHold () {
+    if (!this._levelHold) return
+    this._levelHold = false
+    this._levelRemaining = Math.PI
+    window.dispatchEvent(new CustomEvent('omni:movement', { detail: { hand: 'pad', direction: 'level', active: false, mode: 'nav' } }))
+  }
+
+  /** Kept for callers of the V191 name: one vertical orbit step (angle > 0 = up), now unclamped. */
+  _pitchBy (cam, angle) { this._orbitBy(cam, 0, angle) }
 
   // ── Keyboard ────────────────────────────────────────────────────────────────
 
@@ -1899,6 +2016,9 @@ export default class MovementPad {
     window.addEventListener('omni:admin-settings-saved', this._onAdminSteps)
     window.addEventListener('omni:node-selected', this._onNodeSelected)
     window.addEventListener('omni:orbit-released', this._onOrbitReleased)
+    window.addEventListener('omni:orbit-target-set', this._onOrbitTargetSet)
+    window.addEventListener('omni:node-deselected', this._onOrbitTargetClear)
+    window.addEventListener('omni:return-to-landing', this._onOrbitTargetClear)
     window.addEventListener('omni:omnikeys-rotate', this._onOmniKeysRotate)
     window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnelVisible)

@@ -121,10 +121,10 @@ function injectStyles () {
 // guessed. Each entry's own key/description matches its real,
 // current behavior.
 const SHORTCUTS = [
-  { key: 'F1',       desc: 'Invoke the terminal tunnel' },
+  { key: 'F1',       desc: 'Switch the terminal tunnels on (the Terminal button switches them on and off together)' },
   { key: '`',        desc: 'Toggle OmniState_StrictAlign: move the selected node along ONE axis (X, Y or Z) with exact coordinates (V191; the terminal keeps F1)' },
   { key: '1 2 3 / x y z', desc: 'While OmniState_StrictAlign is on: choose the axis. Arrow keys / PageUp / PageDown / mouse wheel on the node = one step (Shift = big step); Enter = type an exact value; Ctrl+Z = undo; Esc = leave' },
-  { key: 'Escape',   desc: 'Dismiss the terminal tunnel' },
+  { key: 'Escape',   desc: 'Switch the terminal tunnels off' },
   { key: 'c',        desc: 'Return to landing point coordinates' },
   { key: 'o',        desc: 'User Space sphere quick toggles' },
   { key: '0 / 9',    desc: "Toggle the domain grid sphere's visibility" },
@@ -146,7 +146,8 @@ const SHORTCUTS = [
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
   // V191: corner buttons of the LH / RH pads (ui/MovementPad.js). Ignored with Ctrl / Cmd / Alt held.
   { key: 'e and q',  desc: 'LH pad: ascend / descend along world Y (hold). Same altitude settings and speed as Rise / Fall' },
-  { key: 'y and h',  desc: 'RH pad: orbit the view up / down around the pivot (hold); the vertical twin of the Arrow Left / Right orbit' },
+  { key: 'y and h',  desc: 'RH pad: orbit up / down around the current target (hold); keeps going all the way around, over the top and under the bottom (V192; the vertical twin of the Arrow Left / Right orbit)' },
+  { key: 'u and v',  desc: 'LH pad: orbit up / down around the current target (hold), the same continuous orbit as y and h (V192)' },
   // OmniHand / Conscious Hand axis pads (V158). These move NO camera — they
   // step the dimensional-axis markers (systems/OmniDimensionalAxes.js). Press
   // = one step, hold = repeat. Compiled from ui/MovementPad.js's _mapKey.

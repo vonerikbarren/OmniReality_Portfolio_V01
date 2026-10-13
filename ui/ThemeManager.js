@@ -40,8 +40,11 @@ function applyTheme (name, theme) {
   root.setProperty('--omni-theme-accent',      theme.accent ?? '')
   root.setProperty('--omni-theme-input-bg',    theme.inputBg ?? '')
   root.setProperty('--omni-theme-input-border', theme.inputBorder ?? '')
+  root.setProperty('--omni-theme-font',        theme.font ?? '')   // V192: optional; no shipped theme defines it yet (the terminal falls back to its monospace)
 
   try { localStorage.setItem(STORE_KEY, name) } catch (_) {}
+  // V192: announce the change so surfaces that draw outside CSS (the in-scene terminal's canvas) can redraw with the new colours.
+  try { window.dispatchEvent(new CustomEvent('omni:theme-changed', { detail: { name, theme } })) } catch (_) { /* no window */ }
 }
 
 /** Loads themes.json (if not already loaded) and returns { name: {label, ...} } */

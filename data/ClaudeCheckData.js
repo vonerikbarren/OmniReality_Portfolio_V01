@@ -5,9 +5,9 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V191",
- "date": "2026-10-12",
- "summary": "V191: round pad buttons, vertical move + RH pitch buttons, ◬ for ConsciousHand, tool options on OmniHand/ConsciousHand pads, OmniPathNode + OmniNodeOrderPanel, floorPanelNode (Tetris pieces, picture/GIF/video faces) + FloorNodeMakerSettings grid, OmniDock_Realities, OmniState_StrictAlign (` key), wallpaper Rectangle shape, NavMap close, Perspectives entry",
+ "version": "V192",
+ "date": "2026-10-13",
+ "summary": "V192: RH/LH orbit around the current target with a continuous 360 vertical orbit (LH gets ORB-U/ORB-D), Bind/Pulse chips lifted above the Realities row, StrictAlign single-axis checkmarks + step field, RH no longer fires at deleted nodes, CryptX keyboard buttons work (bottom arrows, left grip), Terminal themed + scene/DOM/both + orientation + TerminalShellTunnel nodes toggled together, TimeData ruler (00:00-24:00, weeks, months, decades)",
  "checks": [
   {
    "id": "omnistore-v183-storeitemnode-o.pin-a-store-item",
@@ -1178,9 +1178,522 @@ export default {
    "whatToCheck": "listed as Unavailable (Planned) with its reason.",
    "priority": "normal",
    "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.lh-orb-u",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "LH: `ORB-U",
+   "howToReach": "FWD",
+   "whatToCheck": "ASC` / `STR-L | centre (Fire) | STR-R` / `ORB-D | BCK | DSC`",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-u",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "RH: `ORB-U",
+   "howToReach": "RISE",
+   "whatToCheck": "ASC` / `ORB-L | centre (Fire) | ORB-R` / `ORB-D | FALL | DSC` (unchanged)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-l-orb-r-around-the-target",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "RH ORB-L / ORB-R around the target",
+   "howToReach": "Hands > turn the RH pad on, select a node (or Take Me There), hold ORB-L / ORB-R (or arrow left / right)",
+   "whatToCheck": "the camera circles THAT node at constant distance and constant height relative to it, the node stays in view (not the scene origin); click empty space (release) then orbit: it circles the point just ahead of you",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-u-orb-d-continuous",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "RH ORB-U / ORB-D continuous",
+   "howToReach": "RH pad, hold ORB-U (or Y) / ORB-D (or H) for 10 s with a node selected",
+   "whatToCheck": "the camera goes over the top and under the bottom and keeps looping with no stop or flip; on release the view rolls upright smoothly (about half a second if upside down), then the mouse orbit works with no jump",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.lh-orb-u-orb-d",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "LH ORB-U / ORB-D",
+   "howToReach": "LH pad (bottom-left): top-left and bottom-left corner buttons, or keys U / V",
+   "whatToCheck": "same continuous vertical orbit as the RH; tooltips show \"LogicalHand Orbit up / Orbit down\" with key U / V; ASC / DSC still in the right corners",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.shortcuts-panel",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "Shortcuts panel",
+   "howToReach": "Assistance > Keyboard Shortcuts",
+   "whatToCheck": "rows \"y and h\" and \"u and v\" are listed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.ammo-chips-above-the-realities-row",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "Ammo chips above the Realities row",
+   "howToReach": "Turn both lower pads on at 1280x720 (the OmniDock_Realities row visible)",
+   "whatToCheck": "the LH / RH ammo name circles (e.g. Bind, Pulse) and the settings circles sit above the row, none touching another circle; change the row size in OmniDock_Realities settings: they follow the row height; hide the row: they drop back",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.ammo-chips-on-a-phone",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "feature": "Ammo chips on a phone",
+   "howToReach": "390x844, both pads on",
+   "whatToCheck": "chips unchanged and visible (the row does not reach them)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-checkmarks",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign checkmarks",
+   "howToReach": "select a node, press `",
+   "whatToCheck": "X/Y/Z each have a checkmark; checking one unchecks the others; clicking the checked one does nothing; keys 1/2/3 move the checkmark; only that field is editable",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-arrows-step",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign arrows + step",
+   "howToReach": "in the panel press - / +",
+   "whatToCheck": "the node moves by the Step along the checked axis; hold repeats; Shift = 10 x, Alt = /10; Ctrl+Z undoes the whole hold in one go",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-step-field",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign step field",
+   "howToReach": "type 0.25 + Enter, tap chips 0.01/0.1/1/10, reload",
+   "whatToCheck": "step applies and survives a reload; junk is marked red and the old value returns",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-exact-values",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign exact values",
+   "howToReach": "step 0.1 from 0, 100 presses; type 1.23456 with Decimals 2",
+   "whatToCheck": "lands exactly on 10 / 1.23; Inspector Location fields and the saved node agree",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-pick-node",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign pick node",
+   "howToReach": "with the mode on, click another node (also with Path/Place mode)",
+   "whatToCheck": "the target switches; nothing is connected or placed; dragging the camera does not switch it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-node-kinds",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "StrictAlign node kinds",
+   "howToReach": "try a group member, a label (text) node, a floor panel, a path node, a tracking node",
+   "whatToCheck": "world position shown; floor panel keeps working with snap afterwards; tracking node says why it cannot move",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.rh-fire-after-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "RH fire after delete",
+   "howToReach": "select a node, give the RH a looping payload, fire, delete the node",
+   "whatToCheck": "the anchor and its words disappear at once and never come back; the next fire goes to the selected node / nearest / ahead of the camera, not the deleted one",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.rh-tracer-on-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "RH tracer on delete",
+   "howToReach": "fire, delete the target immediately",
+   "whatToCheck": "no anchor appears afterwards, no tracer line stays",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.tooltips-after-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "Tooltips after delete",
+   "howToReach": "hover a node row in a list (Realities in shape / dock), delete the node",
+   "whatToCheck": "the OmniNotify box no longer shows its tip",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-keyboard-keys",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "CryptX keyboard keys",
+   "howToReach": "launcher > Keyboard, pull a column out, click keys",
+   "whatToCheck": "every key responds (try q, Space, Backspace; with a text box focused the letters appear in it)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-drawer-arrows",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "CryptX drawer arrows",
+   "howToReach": "bottom bar ◂ / ▸",
+   "whatToCheck": "◂ slides the next column out, ▸ pushes it in; nothing at the top",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-drag-grip",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "CryptX drag grip",
+   "howToReach": "drag the strip on the left edge of the panel (mouse and finger), then reload",
+   "whatToCheck": "it moves anywhere inside the window, never presses a key, and returns to the same place and drawer state",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-wheel",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "feature": "CryptX wheel",
+   "howToReach": "wheel away from the panel with the keyboard open",
+   "whatToCheck": "the 3D view zooms again",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-button-toggles-all-tunnels",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Terminal button toggles all tunnels",
+   "howToReach": "Ribbon > Terminal, click twice",
+   "whatToCheck": "First click shows every terminal tunnel, second hides all, button pressed state follows",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.toggle-state-persists",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Toggle state persists",
+   "howToReach": "Terminal on, reload",
+   "whatToCheck": "Tunnels come back in the same on/off state",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-node-create",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Terminal node create",
+   "howToReach": "Ribbon > Create > Terminal node (click 2-3 times)",
+   "whatToCheck": "Each makes a selectable TerminalShellTunnel node; Terminal button toggles all together",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-node-delete",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Terminal node delete",
+   "howToReach": "Select node, delete",
+   "whatToCheck": "Only that tunnel disappears, others stay",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.inspector-terminal-section",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Inspector Terminal section",
+   "howToReach": "Select a TerminalShellTunnel node, open Inspector",
+   "whatToCheck": "Terminal settings show; name edit renames the node; \"same as default\" checkbox",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.follow-omnios-theme",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Follow OmniOS theme",
+   "howToReach": "Settings > Terminal, switch OmniOS theme dark/light",
+   "whatToCheck": "Scene tunnel and DOM panel recolour live; untick Follow and pick custom colours",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.where-you-type",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Where you type",
+   "howToReach": "Settings > Terminal > Where you type: Scene / DOM / Both",
+   "whatToCheck": "Scene: type in scene; DOM: DOM panel opens and takes focus; Both: draft mirrors in both",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.orientation-presets",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Orientation presets",
+   "howToReach": "Settings > Terminal > Front/Left/Right/Top/Flat on floor",
+   "whatToCheck": "Panel turns live; out-of-range angles are rejected",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.yaw-pitch-roll-and-billboard",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Yaw/pitch/roll and billboard",
+   "howToReach": "Settings > Terminal > angles, billboard off",
+   "whatToCheck": "Panel holds fixed angle; billboard on faces camera",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.per-node-orientation-override",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Per-node orientation override",
+   "howToReach": "Inspector on a terminal node, untick \"same as default\"",
+   "whatToCheck": "Only that node changes orientation",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.f1-and-escape",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "F1 and Escape",
+   "howToReach": "Press F1 with DOM panel focused, then Escape",
+   "whatToCheck": "No desync with the ribbon button; Escape dismisses all",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.omnichat-terminal-tab",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "OmniChat Terminal tab",
+   "howToReach": "Open OmniChat > Terminal tab, switch to another tab",
+   "whatToCheck": "Terminal tunnels hide only when leaving the Terminal tab",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.landing-point-panel",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Landing point panel",
+   "howToReach": "Terminals on while camera on the centre axis",
+   "whatToCheck": "Built-in panel visible 4.5 units ahead, not hidden",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.phone-dom-panel",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "feature": "Phone DOM panel",
+   "howToReach": "390x844, DOM mode",
+   "whatToCheck": "Panel fits the viewport, does not overlap off-screen",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler",
+   "howToReach": "Ribbon Realities > Chronos > Time ruler, or ⟐Times slot 1",
+   "whatToCheck": "Window opens at the right edge under the ribbon; 00:00 at the top, 24:00 at the bottom, 25 hour labels, minor ticks, no overlapping text; Elapsed / Remaining count up / down once a second",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-baseline",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler baseline",
+   "howToReach": "⟐Admin slot 21 TimeDataRulerSettings > Date + Time > Set",
+   "whatToCheck": "The ruler's 00:00:00 moves to that moment (bottom line shows \"Baseline ...\"); an impossible date (30 Feb) or empty time is refused with a message and nothing changes; Now / Session start / Today 00:00 buttons work; survives a reload",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-consumption",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler consumption",
+   "howToReach": "Open the ruler, wait",
+   "whatToCheck": "Past part of the day is dimmed with a bar along the spine and a marker line + time chip moving down; a ring pulses at the hour boundary; with the OS \"reduce motion\" on (or Animation off) no pulse and the marker steps once a minute",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-after-24-00",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler after 24:00",
+   "howToReach": "Settings > After 24:00",
+   "whatToCheck": "Move on: the window becomes the next day (\"Day +1\"); Stay: the bar stays full (Day complete); with the automatic baseline the ruler resets to 00:00:00 at midnight",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-hierarchy",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler hierarchy",
+   "howToReach": "Ruler toolbar W / M / Y / X (or − ＋, mouse wheel over the canvas, pinch on a phone)",
+   "whatToCheck": "Day lines, week lines (W42), month lines (Nov 2026), year lines and decade years (2030, 2040 in the accent colour, longest line) appear with increasing length / weight; labels never overlap",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-week-start",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler week start",
+   "howToReach": "Settings > Week start ISO / Monday / Sunday, week / month toggles",
+   "whatToCheck": "Week lines move to Mondays / Sundays; unticking Week lines / Month lines / Year lines / Decade years removes those lines live",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-paging",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler paging",
+   "howToReach": "Ruler ▲ ▼ ⌖ ⊤",
+   "whatToCheck": "▲/▼ move one day (week, month ...) back/forward and stop following; ⌖ follows now again; ⊤ shows the window that starts at the baseline",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-phone",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler phone",
+   "howToReach": "390 px wide",
+   "whatToCheck": "Ruler is a tall panel on the right edge above the dock; all 25 hour labels readable; buttons >= 34 px; pinch zooms",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-window",
+   "category": "V192 TimeData ruler",
+   "feature": "TimeData ruler window",
+   "howToReach": "Drag the header, resize edges, maximize ⛶",
+   "whatToCheck": "Window resizes and the ruler redraws crisply at the new size; maximize fills the free area",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
+  {
+   "id": "v192-orbit-feel",
+   "question": "Does the horizontal and vertical orbit now feel continuous around your current target?",
+   "why": "Verified by unit tests and a slow software-GL run only; feel was not judged.",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "good",
+    "jerky",
+    "wrong centre",
+    "upside-down problems"
+   ]
+  },
+  {
+   "id": "v192-orbit-roll",
+   "question": "After a vertical orbit that ends upside down, the view rolls upright on release. OK, or should it stay rolled?",
+   "why": "Staying rolled would need a mouse-orbit rewrite.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "roll upright is fine",
+    "stay rolled"
+   ]
+  },
+  {
+   "id": "v192-lh-keys",
+   "question": "Are U / V the right keys for the LH vertical orbit?",
+   "why": "X/Y/Z are StrictAlign, WASDEQ taken.",
+   "kind": "yesno",
+   "device": "any"
+  },
+  {
+   "id": "v192-bindpulse",
+   "question": "Which buttons were 'Bind' and 'Pulse'?",
+   "why": "I found no button with those names; I lifted the LH/RH ammo-name chips and settings circles above the Realities row. If you meant something else, tell me where it is.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign2",
+   "question": "Does StrictAlign now give you exact placement (axis checkmark, arrows, step field)?",
+   "why": "Alt+Arrow keys are unused (browser back/forward); Alt works on the buttons and wheel.",
+   "kind": "choice",
+   "device": "desktop",
+   "choices": [
+    "good",
+    "not exact",
+    "confusing"
+   ]
+  },
+  {
+   "id": "v192-fire-delete",
+   "question": "Do RH words / tooltips stop when you delete the node? Should anchors be deleted with their node?",
+   "why": "Proven in jsdom; the browser check only confirmed the anchor record is removed.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "fixed",
+    "still fires",
+    "keep anchors"
+   ]
+  },
+  {
+   "id": "v192-cryptx",
+   "question": "Do the CryptX keyboard keys work now, with arrows at the bottom and the grip on the left?",
+   "why": "Real finger touch unchecked.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "key problem",
+    "drag problem"
+   ]
+  },
+  {
+   "id": "v192-terminal",
+   "question": "Does the terminal match your theme in the scene and in the DOM, and does Both mode work?",
+   "why": "On a phone a canvas panel cannot raise the keyboard; use the DOM panel.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "theme mismatch",
+    "typing problem"
+   ]
+  },
+  {
+   "id": "v192-terminal-toggle",
+   "question": "Does the Terminal button now toggle all TerminalShellTunnels together (like the hand tunnels)?",
+   "why": "In the slow browser run the meshes seemed to stay visible for 6 s after switching off (probably the hide animation at 1 fps).",
+   "kind": "choice",
+   "device": "gpu",
+   "choices": [
+    "good",
+    "some stay",
+    "none appear"
+   ]
+  },
+  {
+   "id": "v192-ruler",
+   "question": "Is the TimeData ruler what you meant (baseline 00:00:00, 25 notches, time consumed, week / month / decade lines)?",
+   "why": "Marker motion and hour pulse were not seen live.",
+   "kind": "choice",
+   "device": "any",
+   "choices": [
+    "good",
+    "not what I meant",
+    "needs changes"
+   ]
+  },
+  {
+   "id": "v192-ruler-nodes",
+   "question": "Should nodes appear as marks on the TimeData ruler?",
+   "why": "The registry stores seconds since app start, not dates.",
+   "kind": "yesno",
+   "device": "any"
+  },
   {
    "id": "v191-pad-circles",
    "question": "Do the round option buttons around the pads read well and clear the pads?",
@@ -1235,130 +1748,20 @@ export default {
    "why": "",
    "kind": "yesno",
    "device": "touch"
-  },
-  {
-   "id": "v191-strictalign",
-   "question": "Does the ` key mode (StrictAlign) feel right: pick one axis, drag / nudge / type?",
-   "why": "Is X the right default axis? Should the terminal also keep ` when nothing is selected?",
-   "kind": "choice",
-   "device": "desktop",
-   "choices": [
-    "good",
-    "change default axis",
-    "other problem"
-   ]
-  },
-  {
-   "id": "v191-floor-panels",
-   "question": "Do the Tetris floor panels work the way you imagined, including picture / GIF / video faces?",
-   "why": "Real GIF and video playback was not seen on a GPU.",
-   "kind": "choice",
-   "device": "gpu",
-   "choices": [
-    "good",
-    "not what I meant",
-    "media problem"
-   ]
-  },
-  {
-   "id": "v191-path-line",
-   "question": "Should a path node's line be a real edge so firing / sequences can follow it?",
-   "why": "Today it is a drawn line plus an ordered list.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "v191-rect-default",
-   "question": "Wallpaper Rectangle: is 'square crop' the right left/right default or should it be 'mirror fill'?",
-   "why": "Plus is the room size right (about sphere size)?",
-   "kind": "choice",
-   "device": "gpu",
-   "choices": [
-    "square crop is fine",
-    "use mirror fill",
-    "wrong size"
-   ]
-  },
-  {
-   "id": "v191-eye",
-   "question": "Keep ◉ as the eye for Perspectives (Visor and Talent use it too) or choose a unique glyph?",
-   "why": "One-line change in utils/OmniGlyphs.js.",
-   "kind": "choice",
-   "device": "any",
-   "choices": [
-    "keep ◉",
-    "use ⊙",
-    "other"
-   ]
-  },
-  {
-   "id": "v190-starlight-rule",
-   "question": "Is the StarLight Available / Unavailable rule right (planned items and developer tools count as Unavailable)?",
-   "why": "There is no role system yet, so I used: not built = Unavailable, dev tools Unavailable unless dev mode.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "v190-starlight-key",
-   "question": "Is Ctrl/Cmd+K OK for OmniStarLight?",
-   "why": "Browsers use it for the address bar; I block that only inside the app.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "v190-reticle-look",
-   "question": "Is the centre reticle what you imagined at 15% opacity?",
-   "why": "Five thin rings with ticks, arcs and cross marks, slowly turning; 'multi tech circle' was my reading.",
-   "kind": "choice",
-   "device": "gpu",
-   "choices": [
-    "good",
-    "too busy",
-    "too faint",
-    "too strong",
-    "not what I meant"
-   ]
-  },
-  {
-   "id": "v190-compass-spot",
-   "question": "Is the compass panel's default spot OK (free spot, draggable)?",
-   "why": "It no longer sits under the logo; position is saved when you drag it.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "v190-notify-spot",
-   "question": "Is OmniNotify now where you wanted (under your profile)?",
-   "why": "I used the profile column's x.",
-   "kind": "yesno",
-   "device": "any"
-  },
-  {
-   "id": "v190-boot-star",
-   "question": "Is the landed star about the right size (about 1.3x the glyph)?",
-   "why": "One number to change (CONFIG.STAR_EM).",
-   "kind": "choice",
-   "device": "any",
-   "choices": [
-    "good",
-    "too big",
-    "too small"
-   ]
   }
  ],
  "knownIssues": [
+  "V192 was built as four parts merged; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
+  "The full 360-degree vertical orbit loop was verified by unit tests only (1 fps in the browser).",
+  "RH words stopping on delete is proven in jsdom; Chromium only confirmed the anchor record is removed.",
+  "On a phone, in Both mode, the DOM terminal panel can sit partly behind the settings panel; OmniChat Terminal tab is still its own echo box.",
+  "TimeData ruler marker motion, hour pulse, DST and high-DPI sharpness not seen on real hardware.",
+  "The main.js block checks in two older nodev tests fail only because several V19x blocks now interleave (merge artifact).",
   "V191 was built as four parts merged into one; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
   "Camera ascend/descend and RH pitch were verified in jsdom only (an open Inspector covered the left pad in the Chromium run).",
   "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
   "The Realities dock row can be covered by open windows and the MiniMap corners.",
   "Phone heights under about 842 px: second-ring pad chips can touch.",
-  "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
-  "Rectangle wallpaper 4:3 and 21:9 letterbox and ceiling/floor orientation were not screenshotted.",
-  "HelpNode (docs in scene) still not built.",
-  "V190 was built in two parts and merged (main.js merged cleanly); only software-GL Chromium and jsdom were used. Nothing was judged on a real GPU, phone or touch device.",
-  "The in-scene HelpNode is NOT built; Docs is a DOM panel only. Hook: OmniDocsPanel.openDocs.",
-  "External controls (OmniPointing) got no session clock: it has no readout area.",
-  "Floor textures are still not in export/import (floor-plane is not in KNOWN_NAMESPACES).",
-  "On a phone an open Inspector can cover the ribbon dropdown and the meter gear."
+  "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet."
  ]
 }

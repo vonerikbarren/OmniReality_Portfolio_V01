@@ -264,6 +264,13 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V191 OmniDock_Realities (wireframe geometry strip above the Dock, its window + settings) and OmniState_StrictAlign (the ` key) ──
   const { addV191Modules } = await import('./ui/OmniV191Modules.js')
   addV191Modules(base, omniNode)
+  // ── V192 TerminalShellTunnel nodes (several in-scene terminals; the Terminal button switches them all together) ──
+  const { addTerminalModules } = await import('./ui/OmniTerminalModules.js')
+  addTerminalModules(base, omniNode)
+
+  // ── V192 TimeData ruler (vertical 00:00..24:00 ruler + week / month / year / decade lines; ⟐Times slot, Admin settings) ──
+  const { addTimeDataRulerModules } = await import('./ui/OmniTimeDataRulerModules.js')
+  addTimeDataRulerModules(base)
   // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
   base.addModule(new OmniReticle(base.context))
   base.addModule(new OmniDocsPanel())

@@ -45,6 +45,12 @@
  *   omni:hand-fire {hand} · omni:tool-select (lh, page ⟐1: sets the element kind) · omni:flow-replay {nodeId} · omni:flow-end-chain {hand} · omni:flow-clear {hand?}
  *   omni:flow-fire-master-set {enabled} · omni:flow-state-request
  *   omni:node-selected / -deselected / -created / -restored / -deleted, omni:nodes-updated, omni:scene-clear-request
+ *
+ * Deleted nodes (V192): omni:node-deleted is the single cleanup point. The id goes on a small tombstone list (OmniNode keeps a deleted mesh in the
+ * scene for ~0.2 s while it shrinks, so "is it in the scene" is not enough) that the target search, the scene scan and the selection all honour;
+ * the stale selection is dropped; the fired element's display stops; RH anchors that were fired AT the node are removed with it (they only exist
+ * to show words for that node); shots still in flight towards it are cancelled; the chain that targeted it ends. A shot at a deleted target
+ * therefore falls back to the normal rules: selected node, nearest in 25 degrees, else ahead of the camera.
  *   omni:hands-settings-changed, omni:payload-changed, omni:payload-current
  * Events dispatched (window):
  *   omni:flow-fired {hand, kind, nodeId, targetId|null, payloadId}
@@ -134,6 +140,7 @@ export default class OmniFlowFire {
     this._projectiles = new Set()
     this._pending = []                    // chain bookkeeping: positions of shots in flight { id, pos }
     this._chain = null                    // { id, key, lastId, lastPos, firstPos, dir:Vector3, length }
+    this._gone = new Set()                // V192: ids of deleted nodes (tombstones; a re-created / restored id is removed again)
     this._selected = null
     this._seq = 1
     this._texCache = new Map()
@@ -168,9 +175,9 @@ export default class OmniFlowFire {
       if (node?.flowElement && this._records.has(node.id)) this.play(node.id)
     })
     on('omni:node-deselected', () => { this._selected = null })
-    on('omni:node-created', (e) => this._onNode(e.detail?.node, e.detail?.mesh))
-    on('omni:node-restored', (e) => this._onNode(e.detail?.node, e.detail?.mesh))
-    on('omni:node-deleted', (e) => { if (e.detail?.id) this._forget(e.detail.id) })
+    on('omni:node-created', (e) => { this._gone.delete(e.detail?.node?.id); this._onNode(e.detail?.node, e.detail?.mesh) })
+    on('omni:node-restored', (e) => { this._gone.delete(e.detail?.node?.id); this._onNode(e.detail?.node, e.detail?.mesh) })
+    on('omni:node-deleted', (e) => { if (e.detail?.id) this._onDeleted(e.detail.id) })
     on('omni:nodes-updated', (e) => (e.detail?.nodes ?? []).forEach(n => { if (n?.flowElement && !this._records.has(n.id)) this._onNode(n, this._meshFor(n.id)) }))
     on('omni:scene-clear-request', () => this._forgetAll())
     on(CHANGE_EVENT, (e) => { if (FLOW_HANDS.includes(e.detail?.hand)) this._emitState(e.detail.hand) })
@@ -189,6 +196,8 @@ export default class OmniFlowFire {
     this._texCache.forEach(t => t.dispose())
     this._texCache.clear()
     this._records.clear()
+    this._pending.length = 0
+    this._gone.clear()
     this._alive = { lh: [], rh: [] }
   }
 
@@ -263,7 +272,7 @@ export default class OmniFlowFire {
       targetId: target?.id ?? null, payload: payload ? snapshot(payload) : null, style,
     }
     const spec = { id, hand, kind, pos, flow, parentId: prevId }
-    this._launch(hand, pos, style.color, id, () => this._arrive(spec, target?.id ?? null))
+    this._launch(hand, pos, style.color, id, () => this._arrive(spec, target?.id ?? null), target?.id ?? null)
     this._feedback(hand, 'fired', { nodeId: id })
     return 'fired'
   }
@@ -296,13 +305,13 @@ export default class OmniFlowFire {
   _resolveTarget () {
     // Fired elements / anchors are skipped by the screen-centre search (they would otherwise become the next
     // shot's target, so a second shot at the HUD centre could never continue its chain); selecting one still targets it.
-    const skip = this._skipOwn ?? (this._skipOwn = (m) => this._records.has(m.userData?.nodeId))
+    const skip = this._skipOwn ?? (this._skipOwn = (m) => this._records.has(m.userData?.nodeId) || this._gone.has(m.userData?.nodeId))
     if (this._ammo?.resolveTarget) {
       const t = this._ammo.resolveTarget(skip)
-      return t?.mesh?.parent ? t : null
+      return t?.mesh?.parent && !this._gone.has(t.id) ? t : this._centerNode(skip)
     }
     const sel = this._selected
-    if (sel?.mesh?.parent) return sel
+    if (sel?.mesh?.parent && !this._gone.has(sel.id)) return sel
     return this._centerNode(skip)
   }
 
@@ -313,7 +322,7 @@ export default class OmniFlowFire {
     let best = null, bestCos = Math.cos(CENTER_CONE_DEG * Math.PI / 180)
     for (let i = 0; i < kids.length; i++) {
       const m = kids[i], id = m.userData?.nodeId
-      if (!id || m.visible === false || (skip && skip(m))) continue
+      if (!id || m.visible === false || this._gone.has(id) || (skip && skip(m))) continue
       m.getWorldPosition(_wp).sub(cam.position)
       const len = _wp.length()
       if (len < 1e-6) continue
@@ -325,15 +334,16 @@ export default class OmniFlowFire {
 
   _meshFor (id) {
     const kids = this.ctx?.scene?.children ?? []
+    if (this._gone.has(id)) return null
     for (let i = 0; i < kids.length; i++) if (kids[i].userData?.nodeId === id) return kids[i]
     return null
   }
 
   // ── Shot (tracer + head bead) ───────────────────────────────────────────────
 
-  _launch (hand, dest, colorHex, id, onArrive) {
+  _launch (hand, dest, colorHex, id, onArrive, targetId = null) {
     const cam = this.ctx?.camera, scene = this.ctx?.scene
-    this._pending.push({ id, hand, pos: dest.clone() })
+    this._pending.push({ id, hand, pos: dest.clone(), targetId })
     const pend = this._pending[this._pending.length - 1]
     const done = () => { const i = this._pending.indexOf(pend); if (i >= 0) this._pending.splice(i, 1); onArrive() }
     if (!cam || !scene) { done(); return }
@@ -352,6 +362,7 @@ export default class OmniFlowFire {
     head.frustumCulled = false; head.renderOrder = 1000; head.position.copy(start)
     scene.add(line); scene.add(head)
     const shot = { line, geo, mat, head, headGeo, headMat, tl: null, u: 0, arrived: false, done }
+    pend.shot = shot
     this._projectiles.add(shot)
     shot.tl = gsap.timeline()
     shot.tl.to(shot, {
@@ -389,11 +400,13 @@ export default class OmniFlowFire {
     const cam = this.ctx?.camera
     const yaw = cam ? Math.atan2(cam.position.x - pos.x, cam.position.z - pos.z) : 0
     const label = hand === 'lh' ? `⟐${kind} ${flow.seq}` : `⟐${flow.payload?.name ?? 'Display'}`
+    if (targetId && this._gone.has(targetId)) return                                   // the target was deleted while the shot flew: nothing arrives
+    const chainParent = parentId && this._records.has(parentId) && !this._gone.has(parentId) ? parentId : null   // a deleted previous element is not linked to
     window.dispatchEvent(new CustomEvent('omni:node-create-request', {
       detail: {
         id, label, geometry: BASE_GEOMETRY[kind] ?? 'BoxGeometry', primitive: 'objective',
         color: flow.style.color, position: [pos.x, pos.y, pos.z], rotation: [0, yaw, 0], scale: [1, 1, 1],
-        parentId, skipAutoSelect: true, flowElement: flow,
+        parentId: chainParent, skipAutoSelect: true, flowElement: flow,
       },
     }))
     const rec = this._records.get(id)
@@ -452,6 +465,24 @@ export default class OmniFlowFire {
         mat.map = tex.clone(); mat.map.needsUpdate = true; mat.needsUpdate = true
       }, undefined, () => {})
     } catch (_) { /* no image support (headless): the colour still applies */ }
+  }
+
+  /** omni:node-deleted: forget the node everywhere (see the header). */
+  _onDeleted (id) {
+    this._gone.add(id)
+    while (this._gone.size > 256) this._gone.delete(this._gone.values().next().value)
+    if (this._selected?.id === id) this._selected = null
+    // shots in flight at the deleted node never arrive
+    for (const p of this._pending.slice()) {
+      if (p.targetId !== id) continue
+      this._pending.splice(this._pending.indexOf(p), 1)
+      if (p.shot) { p.shot.arrived = true; this._disposeShot(p.shot) }
+    }
+    // RH anchors fired at this node only existed to show words for it: remove them with it
+    const orphans = this._alive.rh.filter(r => r.flow?.targetId === id)
+    this._forget(id)
+    orphans.forEach(r => this._remove(r))
+    if (this._chain && (this._chain.key === id || this._chain.lastId === id)) this._chain = null
   }
 
   _forget (id) {
@@ -543,7 +574,7 @@ export default class OmniFlowFire {
     if (!this._playing.size) return
     this._playing.forEach((entry, id) => {
       const rec = this._records.get(id)
-      if (!rec) return
+      if (!rec) { this._stopDisplay(id); return }          // a display whose element is gone must not outlive it
       this._project(rec, entry)
     })
   }

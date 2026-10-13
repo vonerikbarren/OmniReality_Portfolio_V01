@@ -65,6 +65,7 @@ export default class OmniHandAmmo {
     this._known = new Map()               // nodeId -> last behaviour seen (fallback when no engine is wired)
     this._selected = null                 // { id, mesh, data }
     this._tracers = new Set()
+    this._gone = new Set()                // V192: ids of deleted nodes (OmniNode keeps a deleted mesh in the scene for ~0.2 s while it shrinks)
     this._bound = []
     this._v = new THREE.Vector3()
     this._f = new THREE.Vector3()
@@ -95,8 +96,9 @@ export default class OmniHandAmmo {
       if (behavior) this._known.set(nodeId, behavior); else this._known.delete(nodeId)
       this._reconcile(nodeId, behavior)
     })
-    on('omni:node-deleted', (e) => { const id = e.detail?.id; if (id) { this._known.delete(id); this._drop(id) } })
-    on('omni:node-restored', (e) => { const n = e.detail?.node; if (n?.id) this._adopt(n.id, n.behavior) })
+    on('omni:node-deleted', (e) => { const id = e.detail?.id; if (id) this._onDeleted(id) })
+    on('omni:node-created', (e) => { const id = e.detail?.node?.id; if (id) this._gone.delete(id) })
+    on('omni:node-restored', (e) => { const n = e.detail?.node; if (n?.id) { this._gone.delete(n.id); this._adopt(n.id, n.behavior) } })
     on('omni:nodes-updated', (e) => { (e.detail?.nodes ?? []).forEach(n => { if (n?.id) this._adopt(n.id, n.behavior) }) })
     on(CHANGE_EVENT, (e) => {
       const { hand, key } = e.detail ?? {}
@@ -171,7 +173,7 @@ export default class OmniHandAmmo {
     this._setBehavior(target.id, cfg)       // the engine's omni:node-behavior-changed may already have adopted it
     if (!this._active[hand].some(a => a.nodeId === target.id)) this._active[hand].push({ nodeId: target.id, type: ammo })
     this._enforceMax(hand)
-    this._trace(hand, target.mesh, ammo)
+    this._trace(hand, target.mesh, ammo, target.id)
     this._emitState(hand)
     return this._feedback(hand, 'fired', { type: ammo, nodeId: target.id })
   }
@@ -196,6 +198,16 @@ export default class OmniHandAmmo {
   }
 
   // ── Registry upkeep ─────────────────────────────────────────────────────────
+
+  /** omni:node-deleted: the node is no longer a target, an anchor candidate or a tracer end; its hand-fired behaviour entry goes. */
+  _onDeleted (id) {
+    this._gone.add(id)
+    while (this._gone.size > 256) this._gone.delete(this._gone.values().next().value)
+    this._known.delete(id)
+    if (this._selected?.id === id) this._selected = null
+    for (const t of [...this._tracers]) if (t.nodeId === id) this._disposeTracer(t)
+    this._drop(id)
+  }
 
   _drop (nodeId) {
     AMMO_HANDS.forEach(h => {
@@ -239,7 +251,7 @@ export default class OmniHandAmmo {
    *  never skipped): OmniFlowFire uses it so its own fired elements do not become the next shot's target. */
   resolveTarget (skip) {
     const sel = this._selected
-    if (sel?.mesh?.parent) return sel
+    if (sel?.mesh?.parent && !this._gone.has(sel.id)) return sel
     return this._centerNode(skip)
   }
 
@@ -249,7 +261,7 @@ export default class OmniHandAmmo {
     for (let i = 0; i < kids.length; i++) {
       const m = kids[i]
       const id = m.userData?.nodeId
-      if (id && id !== exclude && m.visible !== false && !(skip && skip(m))) out.push({ id, mesh: m, data: null })
+      if (id && id !== exclude && m.visible !== false && !this._gone.has(id) && !(skip && skip(m))) out.push({ id, mesh: m, data: null })
     }
     return out
   }
@@ -288,7 +300,7 @@ export default class OmniHandAmmo {
 
   // ── Tracer (cheap, self-cleaning) ───────────────────────────────────────────
 
-  _trace (hand, mesh, type) {
+  _trace (hand, mesh, type, nodeId = null) {
     const cam = this.ctx?.camera, scene = this.ctx?.scene
     if (!cam || !scene || !mesh) return
     while (this._tracers.size >= MAX_TRACERS) this._disposeTracer(this._tracers.values().next().value)
@@ -304,7 +316,7 @@ export default class OmniHandAmmo {
     line.frustumCulled = false
     line.renderOrder = 999
     scene.add(line)
-    const tr = { line, geo, mat, tl: null, u: 0 }
+    const tr = { line, geo, mat, tl: null, u: 0, nodeId }
     this._tracers.add(tr)
     tr.tl = gsap.timeline({ onComplete: () => { this._disposeTracer(tr) } })
     tr.tl.to(tr, {

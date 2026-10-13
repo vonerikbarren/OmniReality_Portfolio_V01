@@ -3398,6 +3398,9 @@ export default class OmniNode {
       entry.mesh.material?.dispose()
       unlockFromRuler(id)
       this._nodes.delete(id)
+      if (this._selected === id)  this._selected  = null   // V192: same stale-id cleanup as _deleteNode
+      if (this._pathStart === id) this._pathStart = null
+      if (this._hovered === id)   this._hovered   = null
 
       this._save()
       this._updateNodeList()

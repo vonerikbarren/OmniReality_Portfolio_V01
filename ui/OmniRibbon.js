@@ -40,6 +40,7 @@ import {
 } from '../utils/OmniLayout.js'
 import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
 import * as PrimaryTime from '../utils/PrimaryTime.js'
+import * as TerminalShells from '../utils/TerminalShells.js'   // V192: the terminals' master on / off (pressed state of the Terminal button)
 import * as TL from '../utils/OmniTimeline.js'
 import { EYE_GLYPH } from '../utils/OmniGlyphs.js'
 
@@ -109,6 +110,7 @@ function buildTabs () {
           b('draw-dynamic', '◇', 'Dynamic', '—', 'Opens OmniDraw (Dynamic): spawn a node in front of the camera.', nav('⟐OmniDrawDynamic'), { name: 'OmniDraw Dynamic' }),
           b('draw-behavior', '↯', 'Behavior', '—', 'Opens OmniDraw (BehaviorNode): the behaviour-node creation flow.', nav('⟐OmniDrawBehavior'), { name: 'OmniDraw Behavior' }),
           b('path-node', '⤳', 'Path node', '—', 'Creates an OmniPathNode in front of the camera: an ordered path of nodes, attached one to the next (LINK) or built from the hierarchy (GENEALOGY). Opens the node order panel.', () => { ev('omni:path-create-request', { select: true }); nav('⟐OmniNodeOrder')() }, { name: 'New path node' }),
+          b('terminal-shell', '›_', 'Terminal node', '—', 'Creates a TerminalShellTunnel node in front of the camera: an in-scene terminal that moves with the node. The Terminal button switches every terminal tunnel on and off together; its settings are in the Inspector and in ⟐TerminalSettings.', () => ev('omni:terminal-shell-create-request', { select: true }), { name: 'New TerminalShellTunnel' }),
           b('node-order', '⇅', 'Node order', '—', 'Opens ⟐OmniNodeOrder: the nodes of a path in order, drag to reorder, jump to a node, add, remove.', nav('⟐OmniNodeOrder'), { name: 'Node order panel' }),
           b('floor-panels', '▦', 'Floor panels', '—', 'Opens ⟐FloorNodeMakerSettings (Admin): Tetris-piece floor panels, a blueprint grid, pictures / GIFs / videos on the faces, Place in scene.', nav('⟐FloorNodeMakerSettings'), { name: 'Floor panel maker' }),
         ] },
@@ -128,7 +130,7 @@ function buildTabs () {
             const item = (WindowManager.getContextMenu(null).Assistance ?? []).find(i => /shortcut/i.test(i.label))
             if (item) item.action(); else note('Shortcuts', 'The keyboard shortcuts panel is not registered yet.')
           }, { name: 'Keyboard shortcuts' }),
-          b('terminal', '›_', 'Terminal', '` / F1', 'Invokes the terminal tunnel (Escape dismisses it).', () => ev('omni:terminal-invoke')),
+          b('terminal', '›_', 'Terminal', '` / F1', 'Switches ALL the terminal tunnels on or off together (the built-in one and every TerminalShellTunnel node), like the hand tunnels. F1 switches them on; Escape switches them off.', () => ev('omni:terminal-invoke', { toggle: true }), { name: 'Terminal tunnels', pressed: (s) => !!s.terminal }),
           b('fullscreen', '⛶', 'Fullscreen', 'F4', 'Toggles fullscreen (same handler as F4).', fakeKey('F4', 'F4')),
         ] },
       ],
@@ -177,6 +179,7 @@ function buildTabs () {
           b('chronos-start', '⇤', 'To start', '—', 'Moves the playhead to the work-area in point, or to 0. (Home while the pointer is over the Chronos window.)', () => ev('omni:timeline-seek', { t: TL.getState().workArea.in ?? 0 }), { name: 'Chronos to start' }),
           b('chronos-add', '＋', 'Add node', '—', 'Adds the node selected in the scene to the timeline as a 5-second clip at the playhead (first unlocked track).', () => ev('omni:timeline-add-selected'), { name: 'Add selected node to timeline' }),
           b('chronos-marker', '⚑', 'Marker', '—', 'Adds a marker at the playhead. (M while the pointer is over the Chronos window; M elsewhere still toggles the minimap.)', () => ev('omni:timeline-marker-add', { t: TL.getT() }), { name: 'Chronos add marker' }),
+          b('time-ruler', '⇕', 'Time ruler', '—', 'Opens the TimeData ruler: a vertical 00:00 to 24:00 ruler with the time already used, and week, month, year and decade lines. Its baseline and lines are set in ⟐TimeDataRulerSettings (Admin).', nav('⟐TimeDataRuler'), { name: 'TimeData ruler' }),
         ] },
         { caption: 'Value', btns: [
           b('store', '⟐', 'Store', '—', 'SANDBOX. Opens the ⟐OmniStore shelf (fruit and veg test store) in the scene: sections, media lenses, click a product for its exchange.', nav('⟐OmniStore'), { name: 'OmniStore (sandbox)' }),
@@ -361,6 +364,7 @@ export default class OmniRibbon {
     this.state = {
       minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), bannerMixed: HandBanner.getPairState('top').mixed, bannerBottomMixed: HandBanner.getPairState('bottom').mixed, handShown: HandBanner.getHandStates(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
+      terminal: TerminalShells.isOn(),
       timeline: { playing: PrimaryTime.isPlaying() },
       inspector: { open: false, loaded: false, sections: [], openSections: {} },
     }
@@ -509,6 +513,7 @@ export default class OmniRibbon {
     on('omni:hand-visible-state', d => { if (d.hand) st.handShown = { ...st.handShown, [d.hand]: !!d.visible } })
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
+    on(TerminalShells.STATE_EVENT, d => { st.terminal = !!d.on })   // V192
     on('omni:primarytime-state', d => { st.timeline = { playing: !!d.playing } })
     on('omni:inspector-state', d => {
       st.inspector = { open: !!d.open, loaded: !!d.loaded, sections: Array.isArray(d.sections) ? d.sections : [], openSections: d.openSections ?? {} }

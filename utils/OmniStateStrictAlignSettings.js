@@ -3,7 +3,9 @@
  * User-facing (Admin > UI Settings block): no Dev* import, no DOM beyond localStorage / window events.
  *
  *   step            0.001..100   0.1    the nudge / typing / drag-snap step (world units)
- *   shiftStep       0.001..1000  1      the step while Shift is held
+ *   shiftStep       0.001..1000  1      the step while Shift is held (only used when shiftAuto is false; an old save that has it keeps working)
+ *   shiftAuto       true | false true   Shift = 10 x step, Alt = step / 10 (V192). Off: Shift uses the fixed shiftStep
+ *   precision       0..6         4      decimals a move is rounded to (an absolute set, no float drift) and the fields show
  *   showAxisLine    true | false true   draw the axis line + arrow through the node
  *   closeAfterEnter true | false false  leave the mode after an exact value is typed and Enter is pressed
  *   snapDrag        true | false true   a mouse drag along the axis snaps to the step (off = free, still exact once you type)
@@ -25,7 +27,10 @@ export const STATE_NAME = 'OmniState_StrictAlign'
 export const STEP_MIN = 0.001, STEP_MAX = 100
 export const SHIFT_STEP_MIN = 0.001, SHIFT_STEP_MAX = 1000
 
-export const DEFAULTS = Object.freeze({ step: 0.1, shiftStep: 1, showAxisLine: true, closeAfterEnter: false, snapDrag: true })
+export const PRECISION_MIN = 0, PRECISION_MAX = 6
+export const STEP_PRESETS = Object.freeze([0.01, 0.1, 1, 10])
+
+export const DEFAULTS = Object.freeze({ step: 0.1, shiftStep: 1, shiftAuto: true, precision: 4, showAxisLine: true, closeAfterEnter: false, snapDrag: true })
 export const KEYS = Object.keys(DEFAULTS)
 
 const toBool = (v) => (typeof v === 'boolean' ? v : (v === 1 || v === 0) ? v === 1 : (v === 'true' || v === 'false') ? v === 'true' : undefined)
@@ -40,7 +45,8 @@ export function cleanValue (key, v) {
   switch (key) {
     case 'step': return toNum(v, STEP_MIN, STEP_MAX)
     case 'shiftStep': return toNum(v, SHIFT_STEP_MIN, SHIFT_STEP_MAX)
-    case 'showAxisLine': case 'closeAfterEnter': case 'snapDrag': return toBool(v)
+    case 'precision': { const n = toNum(v, PRECISION_MIN, PRECISION_MAX); return n === undefined ? undefined : Math.round(n) }
+    case 'showAxisLine': case 'closeAfterEnter': case 'snapDrag': case 'shiftAuto': return toBool(v)
     default: return undefined
   }
 }
@@ -70,7 +76,12 @@ export function saveOverrides (o) {
     return true
   } catch (_) { return false }
 }
-export const resolveSettings = (overrides = {}) => ({ ...DEFAULTS, ...sanitizePatch(overrides) })
+export function resolveSettings (overrides = {}) {
+  const o = sanitizePatch(overrides)
+  const s = { ...DEFAULTS, ...o }
+  if ('shiftStep' in o && !('shiftAuto' in o)) s.shiftAuto = false   // a V191 save that chose its own Shift step keeps using it
+  return s
+}
 
 /** Pure: apply one event detail to an overrides object -> { overrides, changed }. */
 export function applyChange (overrides, detail) {

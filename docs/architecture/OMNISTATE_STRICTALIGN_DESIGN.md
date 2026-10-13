@@ -1,6 +1,6 @@
 # OmniState_StrictAlign: move a node along ONE axis with exact coordinates (V191)
 
-Applies to: V191 · Status: verified in jsdom and software-GL Chromium · Real devices, real GPU, touch: not verified.
+Applies to: V191, upgraded in V192 (see the last section) · Status: verified in jsdom and software-GL Chromium · Real devices, real GPU, touch: not verified.
 
 ## The ask
 
@@ -40,6 +40,24 @@ There is no persistent multi-selection in the code (OmniNode has none; a group i
 ## Files
 
 New: `utils/StrictAlign.js` (pure math), `utils/OmniStateStrictAlignSettings.js`, `ui/OmniStateStrictAlign.js`, `ui/OmniStateStrictAlignAdminBlock.js`, registered through `ui/OmniV191Modules.js`. Edited: `ui/AdminPanel.js`, `ui/OmniKeyboardShortcutsPanel.js` (`` ` `` / F1 split + axis keys), `main.js` (one block).
+
+## V192: all nodes, axis checkmarks, step field, arrow buttons
+
+The owner: "I would like the OmniStrict Align to be with all nodes that way precision of where the node is located vs where the user might want it to be will be true. and the x , y , z axis should have a single focus checkmark to check for the axis ( one at a time ) to focus on. so the drag with some arrows with the space iterator defined in a field. That way they can get to the exact and precise location of the node that they want."
+
+**Precision.** The displayed X / Y / Z are `mesh.getWorldPosition` (parents' rotation / scale included) formatted to the **precision** setting (`precision`, 0..6, default 4; `formatCoord(v, decimals)`). Every move is an **absolute set**: the target coordinate is computed once (`nudge` on the step grid, the typed value, or `dragCoord` from the grab offset), rounded with `roundTo(v, precision)` (decimal rounding: 1.005 -> 1.01), and the primary node is written to exactly that value; extras ("together" nodes) shift by the same delta (6-decimal clean) so their spacing is kept. 100 steps of 0.1 land on exactly 10 (no 9.999999999999998). World -> local conversion keeps the numbers untouched when the parent is the scene or has an identity matrix (`_toLocal`); under a rotated / scaled parent the local value is matrix-derived (error below 1e-6, below the displayed 4 decimals).
+
+**Audit of node kinds.** Plain, group, essence, store item / value, path node, label sprite (Dimensional Text, a `Sprite` mesh: the world position and the drag hit test now include sprites), nodes inside a group (world / local), nodes with edges (`omni:node-pos-set` rebuilds the tapered edges), nodes under a behaviour (`restPosition` shifted). **Floor panel nodes** keep their grid in their own data (`gx, gz, ox, oz`, `cellSize`): after a move the module recomputes `gx = round(x / cellSize - 0.5)` and `ox = x - (gx + 0.5) * cellSize` (clamped to half a cell, as `sanitizeFloorPanel` does) and emits `omni:floorpanel-changed`, so snap / rotate / move later start from the precise place (their Y stays free). Cannot move, with the reason in the panel and the arrow buttons dimmed: nothing selected, tracking nodes, non-OmniNode objects, behaviour-locked, structural, not in the scene.
+
+**Pick any node.** While the mode is on, a plain click on the canvas (not an orbit drag: more than 6 px between press and release is ignored) raycasts every registry node (`omniNode.getAllMeshes()`, minus structural `skipAutoSelect` ones, as OmniNode's own selection does) and asks for `omni:node-select-by-id`; OmniNode answers with the usual `omni:node-selected`, so every other panel follows. That click is swallowed so Path mode does not connect and Place mode does not place; a click on empty space in those two modes is swallowed too; in Select mode it passes through (deselect, as before).
+
+**Axis checkmarks.** Each coordinate has a real checkbox: exactly one is checked (checking one unchecks the others, unchecking the last one is refused and re-checked). The checked axis is the focused axis: only its field is editable (typed exact value + Enter), the other two are read-only. The keys 1 2 3 / x y z toggle it as before. This replaces the V191 X / Y / Z button row.
+
+**Step field and arrow buttons.** A numeric **Step** box (the "space iterator"; 0.001..100, default 0.1; Enter or blur applies, junk is marked and the saved step comes back), four preset chips 0.01 / 0.1 / 1 / 10, and **-** / **+** buttons that move by one step along the checked axis. Hold repeats (380 ms delay, then every 70 ms; one undo entry for the whole hold; throttled position events, one flush at release; pointerleave / cancel / leaving the mode / a node that cannot move stop it). Shift = 10 x step, Alt = step / 10 on the buttons and the wheel; the keyboard arrows keep Shift (Alt+arrow is left to the browser). The step is `step` in `omni:strictalign-v1` (the same setting Admin edits; they follow each other through `omni:strictalign-changed`).
+
+**Settings added** (`utils/OmniStateStrictAlignSettings.js`): `precision` (int 0..6, 4) and `shiftAuto` (true: Shift = 10 x step; false: the fixed `shiftStep`). An older save that has `shiftStep` but no `shiftAuto` resolves to `shiftAuto: false`, so it keeps working unchanged. Admin block: Decimals, Shift = 10 x step.
+
+**Open.** Only the primary node is rounded to the precision; with "together" nodes the others keep their own fractions. A floor panel moved off the grid can overlap a neighbour (no collision check, by design: exact placement wins). Real GPU, finger drag and the real OmniNode edge rebuild during a long hold are not verified.
 
 ## Not verified / open
 

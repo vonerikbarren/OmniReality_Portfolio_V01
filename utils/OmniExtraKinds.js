@@ -22,19 +22,23 @@ import { isPieceId, PIECES, transformPiece, clampSize, LIMITS as PL } from './Om
 import { sanitizeRef } from './FloorPanelMedia.js'
 import * as Paths from './OmniPathModel.js'
 import { FLOOR_GRID_UNIT, FLOOR_LEVEL } from './FloorNodeMakerSettings.js'
+import * as Shells from './TerminalShells.js'   // V192: the TerminalShellTunnel model (the node carries only the shellId)
 
 export const KIND_PATH = 'omniPath'
 export const KIND_FLOOR_PANEL = 'floorPanel'
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL]
+export const KIND_TERMINAL_SHELL = 'terminalShell'   // V192: TerminalShellTunnel — data = { nodeKind:'terminalShell', shellId } (settings in utils/TerminalShells.js)
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL]
 export const GEO_PATH = 'OmniPathNode'
 export const GEO_FLOOR_PANEL = 'FloorPanelNode'
+export const GEO_TERMINAL_SHELL = 'TerminalShellTunnel'
 export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring panels
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null }
+export const SERVICES = { paths: null, panels: null, shells: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL)
+export const isTerminalShellData = (d) => !!d && d.nodeKind === KIND_TERMINAL_SHELL
 export const isFloorPanelData = (d) => !!d && d.nodeKind === KIND_FLOOR_PANEL
 export const isPathData = (d) => !!d && d.nodeKind === KIND_PATH
 
@@ -93,6 +97,10 @@ export function extraCreateFields (spec) {
     const p = Paths.getPath(spec.pathId)
     return { geometry: GEO_PATH, label: clip(p?.name || 'Path', 40), data: { nodeKind: KIND_PATH, pathId: spec.pathId } }
   }
+  if (spec.nodeKind === KIND_TERMINAL_SHELL) {
+    if (!Shells.isShellId(spec.shellId)) return null
+    return { geometry: GEO_TERMINAL_SHELL, label: clip(Shells.getShell(spec.shellId)?.name || 'TerminalShellTunnel', 40), data: { nodeKind: KIND_TERMINAL_SHELL, shellId: spec.shellId } }
+  }
   if (spec.nodeKind === KIND_FLOOR_PANEL) {
     const fp = sanitizeFloorPanel(spec)
     if (!fp) return null
@@ -137,6 +145,9 @@ export function buildPanelGeometry (cells, cellSize, thickness) {
 let SHARED_MARKER = null
 const markerGeometry = () => (SHARED_MARKER ??= new THREE.OctahedronGeometry(0.45, 0))
 
+let SHARED_TERMINAL = null
+const terminalMarkerGeometry = () => (SHARED_TERMINAL ??= new THREE.CylinderGeometry(0.4, 0.4, 0.9, 16, 1, true))
+
 const LIVE = new Set()
 export const liveFloorPanelMeshes = () => [...LIVE].filter(m => m.userData?.extraKind?.kind === KIND_FLOOR_PANEL)
 export const liveExtraMeshes = () => [...LIVE]
@@ -147,6 +158,14 @@ export function buildExtraMesh (data, color) {
   if (data.nodeKind === KIND_PATH) {
     const mesh = new THREE.Mesh(markerGeometry(), new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.2, emissive: 0x111111 }))
     mesh.userData.extraKind = { kind: KIND_PATH, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_TERMINAL_SHELL) {
+    // a small open tube (a tunnel seen from outside) in the shell's colour; the big tunnel itself is drawn by modules/TerminalShellTunnel.js
+    const mesh = new THREE.Mesh(terminalMarkerGeometry(), new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.3, emissive: 0x112211, side: THREE.DoubleSide }))
+    mesh.userData.extraKind = { kind: KIND_TERMINAL_SHELL, data }
     mesh.userData.omniRelease = releaseExtraMesh
     LIVE.add(mesh)
     return mesh

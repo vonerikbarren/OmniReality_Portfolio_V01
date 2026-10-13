@@ -25,6 +25,17 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 
+// V192: other modules may add an entry to a drawer panel without editing main.js: registerExtraSlot('admin', { label, onClick }, 21).
+// The entry takes the preferred index when it is free, else the next free one; the grid grows when the index is past `count`.
+const EXTRA_SLOTS = new Map()   // panel id -> [{ label, onClick, preferred }]
+export function registerExtraSlot (panelId, def, preferred = 1) {
+  if (typeof panelId !== 'string' || !def || typeof def.label !== 'string' || typeof def.onClick !== 'function') return false
+  const list = EXTRA_SLOTS.get(panelId) ?? []
+  if (!list.some(x => x.label === def.label)) list.push({ label: def.label, onClick: def.onClick, preferred: Math.max(1, Math.min(60, Math.trunc(preferred) || 1)) })
+  EXTRA_SLOTS.set(panelId, list)
+  return true
+}
+
 const STYLES = /* css */`
 
 .omni-indexed-panel {
@@ -236,7 +247,8 @@ export default class IndexedPanel {
     const el = document.createElement('div')
     el.className = 'omni-indexed-panel'
     if (this.config.width) el.style.width = this.config.width
-    const { title, prefix, count, specialSlots } = this.config
+    const { title, prefix } = this.config
+    const { count, specialSlots } = this._slots()
 
     const buttons = []
     for (let i = 1; i <= count; i++) {
@@ -274,10 +286,24 @@ export default class IndexedPanel {
     return el
   }
 
+  /** The config's slots plus the entries other modules registered (V192), and the grid size they need. */
+  _slots () {
+    const specialSlots = { ...this.config.specialSlots }
+    let count = this.config.count
+    for (const x of EXTRA_SLOTS.get(this.config.id) ?? []) {
+      let i = x.preferred
+      while (specialSlots[i]) i++
+      specialSlots[i] = { label: x.label, onClick: x.onClick }
+      if (i > count) count = i
+    }
+    return { count: Math.min(count, 80), specialSlots }
+  }
+
   _bindGrid (el) {
+    const { specialSlots } = this._slots()
     el.querySelectorAll('[data-index]').forEach(btn => {
       const index = Number(btn.dataset.index)
-      const special = this.config.specialSlots[index]
+      const special = specialSlots[index]
       btn.addEventListener('click', () => {
         if (this.config.getSlotAction) {
           this.config.getSlotAction(index)?.()

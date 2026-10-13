@@ -75,7 +75,7 @@ export const SITES = [
   S('admin', 'Admin', 'App', 'The Admin settings: theme, wallpaper, floor, UI settings, data management.', nav('⟐mniAdminSettings'), ['settings', 'options', 'preferences', 'theme']),
   S('panelcontrol', 'PanelControl', 'App', 'The list of panels and their state.', nav('⟐PanelControl'), ['windows', 'panels']),
   S('shortcuts', 'Keyboard Shortcuts', 'App', 'The list of keyboard shortcuts.', { type: 'shortcuts' }, ['keys', 'hotkeys', 'keyboard']),
-  S('terminal', 'Terminal', 'App', 'Invokes the terminal tunnel (Escape dismisses it).', { type: 'event', name: 'omni:terminal-invoke' }, ['console', 'command']),
+  S('terminal', 'Terminal', 'App', 'Switches all the terminal tunnels on or off together (Escape switches them off).', { type: 'event', name: 'omni:terminal-invoke', detail: { toggle: true } }, ['console', 'command']),
   S('account', 'Account', 'App', 'Your account profile.', nav('Profile', '⟐Account'), ['profile', 'login', 'user']),
   S('aboutme', 'About Me', 'App', 'The About-Me section carousel.', nav('About-Me', '⟐About'), ['about', 'bio']),
   // ── Not built yet ──────────────────────────────────────────────────────────────────────────────────────────────────────

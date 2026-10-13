@@ -1,9 +1,126 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V191",
-  "date": "2026-10-12",
-  "summary": "V191: round pad buttons, vertical move + RH pitch buttons, ◬ for ConsciousHand, tool options on OmniHand/ConsciousHand pads, OmniPathNode + OmniNodeOrderPanel, floorPanelNode (Tetris pieces, picture/GIF/video faces) + FloorNodeMakerSettings grid, OmniDock_Realities, OmniState_StrictAlign (` key), wallpaper Rectangle shape, NavMap close, Perspectives entry",
+  "version": "V192",
+  "date": "2026-10-13",
+  "summary": "V192: RH/LH orbit around the current target with a continuous 360 vertical orbit (LH gets ORB-U/ORB-D), Bind/Pulse chips lifted above the Realities row, StrictAlign single-axis checkmarks + step field, RH no longer fires at deleted nodes, CryptX keyboard buttons work (bottom arrows, left grip), Terminal themed + scene/DOM/both + orientation + TerminalShellTunnel nodes toggled together, TimeData ruler (00:00-24:00, weeks, months, decades)",
   "asks": [
+    {
+      "id": "v192-orbit-feel",
+      "question": "Does the horizontal and vertical orbit now feel continuous around your current target?",
+      "why": "Verified by unit tests and a slow software-GL run only; feel was not judged.",
+      "kind": "choice",
+      "device": "gpu",
+      "choices": [
+        "good",
+        "jerky",
+        "wrong centre",
+        "upside-down problems"
+      ]
+    },
+    {
+      "id": "v192-orbit-roll",
+      "question": "After a vertical orbit that ends upside down, the view rolls upright on release. OK, or should it stay rolled?",
+      "why": "Staying rolled would need a mouse-orbit rewrite.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "roll upright is fine",
+        "stay rolled"
+      ]
+    },
+    {
+      "id": "v192-lh-keys",
+      "question": "Are U / V the right keys for the LH vertical orbit?",
+      "why": "X/Y/Z are StrictAlign, WASDEQ taken.",
+      "kind": "yesno",
+      "device": "any"
+    },
+    {
+      "id": "v192-bindpulse",
+      "question": "Which buttons were 'Bind' and 'Pulse'?",
+      "why": "I found no button with those names; I lifted the LH/RH ammo-name chips and settings circles above the Realities row. If you meant something else, tell me where it is.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v192-strictalign2",
+      "question": "Does StrictAlign now give you exact placement (axis checkmark, arrows, step field)?",
+      "why": "Alt+Arrow keys are unused (browser back/forward); Alt works on the buttons and wheel.",
+      "kind": "choice",
+      "device": "desktop",
+      "choices": [
+        "good",
+        "not exact",
+        "confusing"
+      ]
+    },
+    {
+      "id": "v192-fire-delete",
+      "question": "Do RH words / tooltips stop when you delete the node? Should anchors be deleted with their node?",
+      "why": "Proven in jsdom; the browser check only confirmed the anchor record is removed.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "fixed",
+        "still fires",
+        "keep anchors"
+      ]
+    },
+    {
+      "id": "v192-cryptx",
+      "question": "Do the CryptX keyboard keys work now, with arrows at the bottom and the grip on the left?",
+      "why": "Real finger touch unchecked.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "good",
+        "key problem",
+        "drag problem"
+      ]
+    },
+    {
+      "id": "v192-terminal",
+      "question": "Does the terminal match your theme in the scene and in the DOM, and does Both mode work?",
+      "why": "On a phone a canvas panel cannot raise the keyboard; use the DOM panel.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "good",
+        "theme mismatch",
+        "typing problem"
+      ]
+    },
+    {
+      "id": "v192-terminal-toggle",
+      "question": "Does the Terminal button now toggle all TerminalShellTunnels together (like the hand tunnels)?",
+      "why": "In the slow browser run the meshes seemed to stay visible for 6 s after switching off (probably the hide animation at 1 fps).",
+      "kind": "choice",
+      "device": "gpu",
+      "choices": [
+        "good",
+        "some stay",
+        "none appear"
+      ]
+    },
+    {
+      "id": "v192-ruler",
+      "question": "Is the TimeData ruler what you meant (baseline 00:00:00, 25 notches, time consumed, week / month / decade lines)?",
+      "why": "Marker motion and hour pulse were not seen live.",
+      "kind": "choice",
+      "device": "any",
+      "choices": [
+        "good",
+        "not what I meant",
+        "needs changes"
+      ]
+    },
+    {
+      "id": "v192-ruler-nodes",
+      "question": "Should nodes appear as marks on the TimeData ruler?",
+      "why": "The registry stores seconds since app start, not dates.",
+      "kind": "yesno",
+      "device": "any"
+    },
     {
       "id": "v191-pad-circles",
       "question": "Do the round option buttons around the pads read well and clear the pads?",
@@ -58,130 +175,20 @@
       "why": "",
       "kind": "yesno",
       "device": "touch"
-    },
-    {
-      "id": "v191-strictalign",
-      "question": "Does the ` key mode (StrictAlign) feel right: pick one axis, drag / nudge / type?",
-      "why": "Is X the right default axis? Should the terminal also keep ` when nothing is selected?",
-      "kind": "choice",
-      "device": "desktop",
-      "choices": [
-        "good",
-        "change default axis",
-        "other problem"
-      ]
-    },
-    {
-      "id": "v191-floor-panels",
-      "question": "Do the Tetris floor panels work the way you imagined, including picture / GIF / video faces?",
-      "why": "Real GIF and video playback was not seen on a GPU.",
-      "kind": "choice",
-      "device": "gpu",
-      "choices": [
-        "good",
-        "not what I meant",
-        "media problem"
-      ]
-    },
-    {
-      "id": "v191-path-line",
-      "question": "Should a path node's line be a real edge so firing / sequences can follow it?",
-      "why": "Today it is a drawn line plus an ordered list.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "v191-rect-default",
-      "question": "Wallpaper Rectangle: is 'square crop' the right left/right default or should it be 'mirror fill'?",
-      "why": "Plus is the room size right (about sphere size)?",
-      "kind": "choice",
-      "device": "gpu",
-      "choices": [
-        "square crop is fine",
-        "use mirror fill",
-        "wrong size"
-      ]
-    },
-    {
-      "id": "v191-eye",
-      "question": "Keep ◉ as the eye for Perspectives (Visor and Talent use it too) or choose a unique glyph?",
-      "why": "One-line change in utils/OmniGlyphs.js.",
-      "kind": "choice",
-      "device": "any",
-      "choices": [
-        "keep ◉",
-        "use ⊙",
-        "other"
-      ]
-    },
-    {
-      "id": "v190-starlight-rule",
-      "question": "Is the StarLight Available / Unavailable rule right (planned items and developer tools count as Unavailable)?",
-      "why": "There is no role system yet, so I used: not built = Unavailable, dev tools Unavailable unless dev mode.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "v190-starlight-key",
-      "question": "Is Ctrl/Cmd+K OK for OmniStarLight?",
-      "why": "Browsers use it for the address bar; I block that only inside the app.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "v190-reticle-look",
-      "question": "Is the centre reticle what you imagined at 15% opacity?",
-      "why": "Five thin rings with ticks, arcs and cross marks, slowly turning; 'multi tech circle' was my reading.",
-      "kind": "choice",
-      "device": "gpu",
-      "choices": [
-        "good",
-        "too busy",
-        "too faint",
-        "too strong",
-        "not what I meant"
-      ]
-    },
-    {
-      "id": "v190-compass-spot",
-      "question": "Is the compass panel's default spot OK (free spot, draggable)?",
-      "why": "It no longer sits under the logo; position is saved when you drag it.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "v190-notify-spot",
-      "question": "Is OmniNotify now where you wanted (under your profile)?",
-      "why": "I used the profile column's x.",
-      "kind": "yesno",
-      "device": "any"
-    },
-    {
-      "id": "v190-boot-star",
-      "question": "Is the landed star about the right size (about 1.3x the glyph)?",
-      "why": "One number to change (CONFIG.STAR_EM).",
-      "kind": "choice",
-      "device": "any",
-      "choices": [
-        "good",
-        "too big",
-        "too small"
-      ]
     }
   ],
   "knownIssues": [
+    "V192 was built as four parts merged; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
+    "The full 360-degree vertical orbit loop was verified by unit tests only (1 fps in the browser).",
+    "RH words stopping on delete is proven in jsdom; Chromium only confirmed the anchor record is removed.",
+    "On a phone, in Both mode, the DOM terminal panel can sit partly behind the settings panel; OmniChat Terminal tab is still its own echo box.",
+    "TimeData ruler marker motion, hour pulse, DST and high-DPI sharpness not seen on real hardware.",
+    "The main.js block checks in two older nodev tests fail only because several V19x blocks now interleave (merge artifact).",
     "V191 was built as four parts merged into one; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
     "Camera ascend/descend and RH pitch were verified in jsdom only (an open Inspector covered the left pad in the Chromium run).",
     "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
     "The Realities dock row can be covered by open windows and the MiniMap corners.",
     "Phone heights under about 842 px: second-ring pad chips can touch.",
-    "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
-    "Rectangle wallpaper 4:3 and 21:9 letterbox and ceiling/floor orientation were not screenshotted.",
-    "HelpNode (docs in scene) still not built.",
-    "V190 was built in two parts and merged (main.js merged cleanly); only software-GL Chromium and jsdom were used. Nothing was judged on a real GPU, phone or touch device.",
-    "The in-scene HelpNode is NOT built; Docs is a DOM panel only. Hook: OmniDocsPanel.openDocs.",
-    "External controls (OmniPointing) got no session clock: it has no readout area.",
-    "Floor textures are still not in export/import (floor-plane is not in KNOWN_NAMESPACES).",
-    "On a phone an open Inspector can cover the ribbon dropdown and the meter gear."
+    "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet."
   ]
 }

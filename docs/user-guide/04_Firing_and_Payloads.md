@@ -48,6 +48,8 @@ Consecutive elements line up along the camera's right side and are joined by edg
 | Flying tracers at once | 8 |
 | Words on screen | 24 total |
 
-Clear them in the hand's settings: "Remove all fired elements" (LH) or "Remove all fired displays" (RH). Deleting the node in the Inspector also works. Settings are in [Settings](09_Settings_and_Admin.md).
+Clear them in the hand's settings: "Remove all fired elements" (LH) or "Remove all fired displays" (RH). Deleting the node in the Inspector also works.
+
+**Deleting the node you fired at (V192):** the RH anchors fired at that node are removed with it, their words stop at once, a shot still in the air towards it is cancelled, and the next shot no longer aims at it: it goes to the selected node, else the node nearest the screen centre, else the spot ahead of the camera. The same goes for the behaviour tracers of the Activation button. An OmniNotify tip about a deleted node is dropped too. Settings are in [Settings](09_Settings_and_Admin.md).
 
 Planned (not available yet): array and object payloads, running flowcharts, Fire on OmniHand and ConsciousHand. See [DeveloperQueue](../dev/Roles/Developer/DeveloperQueue.md).

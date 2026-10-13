@@ -15,6 +15,10 @@
  *  2. NOTIFICATIONS — `omni:notify-push {text}` (the same event ui/OmniNotifyPanel.js turns into
  *     its drop-down feed). The hub only remembers the latest one so the box can show it.
  *
+ * 3. FORGETTING (V192) — info can name the node it is about (`nodeId` in setInfo / omni:notify-info / data-omni-tip-node). When that node is
+ *    deleted (`omni:node-deleted {id}`) the hub drops the info and any pending hover for it, and a hovered / shown element that has been
+ *    removed from the document (a list row that was rebuilt) can no longer keep a tip alive: forgetNode(id) / forgetDetached().
+ *
  * State: { mode: 'info' | 'idle', info: {name,key,desc,source}|null, note: {text,time}|null }
  * Timers are looked up on globalThis at call time, so tests can swap in fake timers.
  */
@@ -30,6 +34,7 @@ const state = { mode: 'idle', info: null, note: null }
 const subs  = new Set()
 let showTimer = null, revertTimer = null, pressTimer = null
 let hoverEl = null
+let infoEl = null                  // the element whose info is showing (null for info set by code / event)
 let installed = false
 let handlers = null
 
@@ -60,17 +65,19 @@ function clean (info) {
     key:    String(info?.key ?? '').trim(),
     desc:   String(info?.desc ?? '').trim(),
     source: String(info?.source ?? '').trim(),
+    ...(info?.nodeId ? { nodeId: String(info.nodeId) } : {}),
   }
 }
 
 /** Show info now. holdMs > 0 schedules the revert to idle; 0 leaves it until clearInfo(). */
-export function setInfo (info, { holdMs = 0 } = {}) {
+export function setInfo (info, { holdMs = 0, el = null } = {}) {
   const next = clean(info)
   if (!next) return
+  infoEl = el
   T.clear(revertTimer); revertTimer = null
   const prev = state.info
   const same = state.mode === 'info' && prev && prev.name === next.name && prev.key === next.key &&
-               prev.desc === next.desc && prev.source === next.source
+               prev.desc === next.desc && prev.source === next.source && prev.nodeId === next.nodeId
   state.mode = 'info'
   state.info = next
   if (!same) emit()
@@ -80,6 +87,7 @@ export function setInfo (info, { holdMs = 0 } = {}) {
 export function clearInfo () {
   T.clear(showTimer); showTimer = null
   T.clear(revertTimer); revertTimer = null
+  infoEl = null
   if (state.mode === 'idle' && !state.info) return
   state.mode = 'idle'
   state.info = null
@@ -99,11 +107,29 @@ function scheduleRevert (ms = REVERT_MS) {
   revertTimer = T.set(() => clearInfo(), ms)
 }
 
+/** A deleted node leaves no tip behind: the shown info about it goes, a pending hover over its element is cancelled. */
+export function forgetNode (id) {
+  if (!id) return false
+  let did = false
+  if (state.info?.nodeId === id) { clearInfo(); did = true }
+  const owns = (el) => el && (el.dataset?.omniTipNode === id || el.closest?.(`[data-omni-tip-node="${String(id).replace(/"/g, '')}"]`))
+  if (owns(hoverEl)) { hoverEl = null; T.clear(showTimer); showTimer = null; did = true }
+  return forgetDetached() || did
+}
+
+/** Drops a hover / shown tip whose element is no longer in the document (it was removed without a mouseout). */
+export function forgetDetached () {
+  let did = false
+  if (hoverEl && hoverEl.isConnected === false) { hoverEl = null; T.clear(showTimer); showTimer = null; did = true }
+  if (infoEl && infoEl.isConnected === false) { clearInfo(); did = true }
+  return did
+}
+
 export function infoFromElement (el) {
   if (!el) return null
   const d = el.dataset ?? {}
   return clean({
-    name: d.omniTip, key: d.omniTipKey, desc: d.omniTipDesc,
+    name: d.omniTip, key: d.omniTipKey, desc: d.omniTipDesc, nodeId: d.omniTipNode ?? el.closest?.('[data-omni-tip-node]')?.dataset?.omniTipNode,
     source: d.omniTipSource ?? el.closest?.('[data-omni-tip-source]')?.dataset?.omniTipSource,
   })
 }
@@ -125,7 +151,7 @@ export function install () {
     // (When info is already showing, the swap to the next button is also delayed the same ~120 ms.)
     showTimer = T.set(() => {
       showTimer = null
-      if (hoverEl === el) setInfo(infoFromElement(el))
+      if (hoverEl === el && el.isConnected !== false) setInfo(infoFromElement(el), { el })
     }, INTENT_MS)
   }
   const onOut = (e) => {
@@ -139,7 +165,7 @@ export function install () {
   }
   const onFocusIn = (e) => {
     const el = tipOf(e.target)
-    if (el) setInfo(infoFromElement(el))
+    if (el) setInfo(infoFromElement(el), { el })
   }
   const onFocusOut = (e) => {
     if (tipOf(e.target)) scheduleRevert()
@@ -150,7 +176,7 @@ export function install () {
     T.clear(pressTimer)
     pressTimer = T.set(() => {
       pressTimer = null
-      setInfo(infoFromElement(el), { holdMs: TOUCH_HOLD_MS })
+      if (el.isConnected !== false) setInfo(infoFromElement(el), { holdMs: TOUCH_HOLD_MS, el })
     }, LONGPRESS_MS)
   }
   const onTouchEnd = () => {
@@ -161,8 +187,9 @@ export function install () {
     setInfo(d, { holdMs: Number(d.holdMs) > 0 ? Number(d.holdMs) : EVENT_HOLD_MS })
   }
   const onPush = (e) => pushNote(e.detail?.text)
+  const onNodeDeleted = (e) => forgetNode(e.detail?.id)
 
-  handlers = { onOver, onOut, onFocusIn, onFocusOut, onTouchStart, onTouchEnd, onInfoEvent, onPush }
+  handlers = { onOver, onOut, onFocusIn, onFocusOut, onTouchStart, onTouchEnd, onInfoEvent, onPush, onNodeDeleted }
   document.addEventListener('mouseover',  onOver,  true)
   document.addEventListener('mouseout',   onOut,   true)
   document.addEventListener('focusin',    onFocusIn,  true)
@@ -172,6 +199,7 @@ export function install () {
   document.addEventListener('touchcancel', onTouchEnd,  true)
   window.addEventListener('omni:notify-info', onInfoEvent)
   window.addEventListener('omni:notify-push', onPush)
+  window.addEventListener('omni:node-deleted', onNodeDeleted)
 }
 
 export function uninstall () {
@@ -187,19 +215,20 @@ export function uninstall () {
   document.removeEventListener('touchcancel', h.onTouchEnd,  true)
   window.removeEventListener('omni:notify-info', h.onInfoEvent)
   window.removeEventListener('omni:notify-push', h.onPush)
+  window.removeEventListener('omni:node-deleted', h.onNodeDeleted)
   T.clear(showTimer); T.clear(revertTimer); T.clear(pressTimer)
   showTimer = revertTimer = pressTimer = null
-  hoverEl = null
+  hoverEl = null; infoEl = null
 }
 
 /** Test hook: back to a clean slate (keeps listeners installed state as is). */
 export function _reset () {
   T.clear(showTimer); T.clear(revertTimer); T.clear(pressTimer)
   showTimer = revertTimer = pressTimer = null
-  hoverEl = null
+  hoverEl = null; infoEl = null
   state.mode = 'idle'; state.info = null; state.note = null
   subs.clear()
 }
 
-const OmniNotifyHub = { install, uninstall, setInfo, clearInfo, pushNote, getState, subscribe, infoFromElement }
+const OmniNotifyHub = { install, uninstall, setInfo, clearInfo, pushNote, getState, subscribe, infoFromElement, forgetNode, forgetDetached }
 export default OmniNotifyHub

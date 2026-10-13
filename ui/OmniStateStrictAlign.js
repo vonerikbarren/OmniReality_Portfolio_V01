@@ -5,9 +5,13 @@
  *
  *   panel      bottom centre, above the OmniDock_Realities row: three coordinate fields X / Y / Z (the node's exact WORLD coordinates).
  *              The chosen axis is editable; the other two are locked (read-only) and show their exact values underneath.
- *   axis       pick one: the X / Y / Z buttons, or the keys 1 2 3 / x y z while the mode is on.
+ *   axis       (V192) a CHECKMARK beside each coordinate: exactly one is checked (checking one unchecks the others, the last one cannot be
+ *              unchecked); the checked axis is the focused axis. The keys 1 2 3 / x y z toggle it too.
+ *   target     (V192) click any node in the scene while the mode is on to switch the target to it (omni:node-select-by-id); the displayed X / Y / Z
+ *              are the node's real WORLD position; every move is an ABSOLUTE set rounded to the "precision" setting (default 4 decimals).
  *   move       - drag the coloured axis line / arrow (or the node itself) with the mouse or a finger: the node follows along the line only
- *              - arrow keys (Up / Right = +, Down / Left = -), PageUp / PageDown, or the mouse wheel over the node / line: one step (Shift = the big step)
+ *              - the panel's arrow buttons (- / +, hold to repeat) move by the STEP FIELD (any number; chips 0.01 / 0.1 / 1 / 10; persisted)
+ *              - arrow keys (Up / Right = +, Down / Left = -), PageUp / PageDown, or the mouse wheel over the node / line: one step (Shift = x10, Alt = /10)
  *              - type an exact value in the field and press Enter
  *              - Ctrl+Z undoes the last move made in the mode (this session)
  *   leave      Esc, the "`" key again, or the close button.
@@ -31,12 +35,15 @@
 import * as THREE from 'three'
 import * as SA from '../utils/StrictAlign.js'
 import * as S from '../utils/OmniStateStrictAlignSettings.js'
+import * as Extra from '../utils/OmniExtraKinds.js'
 
 export const ROOT_ID = 'omni-state-strictalign'
 const STYLE_ID = 'omni-state-strictalign-styles'
 const LEN = 5                       // gizmo half-length in gizmo units (the group is scaled with the camera distance)
 const COMMIT_MS = 100
 const HISTORY_MAX = 100
+const HOLD_DELAY_MS = 380, HOLD_REPEAT_MS = 70   // arrow buttons: hold to repeat
+const CLICK_SLOP_PX = 6
 
 const STYLES = /* css */`
 #${ROOT_ID} {
@@ -54,13 +61,21 @@ const STYLES = /* css */`
 #${ROOT_ID} button, #${ROOT_ID} input { font: inherit; color: inherit; box-sizing: border-box; min-height: 30px; border-radius: 7px; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.22)); background: rgba(255,255,255,.07); }
 #${ROOT_ID} button { cursor: pointer; padding: 0 10px; -webkit-tap-highlight-color: transparent; } #${ROOT_ID} button:hover { background: rgba(255,255,255,.17); }
 #${ROOT_ID} .osa-close { min-width: 30px; padding: 0; }
-#${ROOT_ID} .osa-axes { display: flex; gap: 6px; align-items: center; }
-#${ROOT_ID} .osa-axes span { opacity: .7; margin-right: 2px; }
-#${ROOT_ID} .osa-axis[aria-pressed="true"] { color: #111; font-weight: bold; }
-#${ROOT_ID} .osa-axis[data-axis="x"][aria-pressed="true"] { background: ${SA.AXIS_COLORS.x}; } #${ROOT_ID} .osa-axis[data-axis="y"][aria-pressed="true"] { background: ${SA.AXIS_COLORS.y}; } #${ROOT_ID} .osa-axis[data-axis="z"][aria-pressed="true"] { background: ${SA.AXIS_COLORS.z}; }
+#${ROOT_ID} .osa-chk { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-weight: bold; min-height: 24px; }
+#${ROOT_ID} input.osa-axis { appearance: auto; -webkit-appearance: checkbox; width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0; cursor: pointer; accent-color: var(--osa-c, #fff); }
+#${ROOT_ID} .osa-f[data-f="x"] { --osa-c: ${SA.AXIS_COLORS.x}; } #${ROOT_ID} .osa-f[data-f="y"] { --osa-c: ${SA.AXIS_COLORS.y}; } #${ROOT_ID} .osa-f[data-f="z"] { --osa-c: ${SA.AXIS_COLORS.z}; }
+#${ROOT_ID} .osa-f[data-active="true"] .osa-chk { color: var(--osa-c); }
+#${ROOT_ID} .osa-move { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#${ROOT_ID} .osa-arrow { min-width: 44px; font-size: 15px; font-weight: bold; touch-action: none; }
+#${ROOT_ID} .osa-arrow[data-dir="-1"] { color: #ffb0b0; } #${ROOT_ID} .osa-arrow[data-dir="1"] { color: #b0ffc4; }
+#${ROOT_ID} .osa-steplab { opacity: .75; } #${ROOT_ID} .osa-step { width: 74px; text-align: right; padding: 0 8px; user-select: text; -webkit-user-select: text; }
+#${ROOT_ID} .osa-step.is-bad { border-color: #ff6b6b; box-shadow: 0 0 0 1px #ff6b6b; }
+#${ROOT_ID} .osa-chips { display: flex; gap: 4px; margin-left: auto; } #${ROOT_ID} .osa-chip { min-height: 26px; padding: 0 7px; border-radius: 13px; font-size: 10.5px; }
+#${ROOT_ID} .osa-chip[aria-pressed="true"] { background: rgba(255,255,255,.85); color: #111; font-weight: bold; }
+#${ROOT_ID}[data-blocked="true"] .osa-move { opacity: .5; }
 #${ROOT_ID} .osa-coords { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 #${ROOT_ID} .osa-f { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-#${ROOT_ID} .osa-f label { display: flex; justify-content: space-between; opacity: .85; }
+#${ROOT_ID} .osa-flab { display: flex; justify-content: space-between; align-items: center; opacity: .95; }
 #${ROOT_ID} .osa-f input { width: 100%; padding: 0 8px; text-align: right; user-select: text; -webkit-user-select: text; }
 #${ROOT_ID} .osa-f input[readonly] { opacity: .65; background: rgba(255,255,255,.03); border-style: dashed; cursor: default; }
 #${ROOT_ID} .osa-f[data-active="true"] input { border-color: var(--osa-axis, #fff); box-shadow: 0 0 0 1px var(--osa-axis, #fff); }
@@ -69,7 +84,7 @@ const STYLES = /* css */`
 #${ROOT_ID} .osa-hint { font-size: 10px; opacity: .6; line-height: 1.35; }
 #${ROOT_ID} .osa-more { display: none; align-items: center; gap: 6px; } #${ROOT_ID} .osa-more[data-n] { display: flex; }
 #${ROOT_ID}[data-blocked="true"] .osa-coords input { opacity: .5; }
-@media (max-width: 700px) { #${ROOT_ID} button, #${ROOT_ID} input { min-height: 40px; } #${ROOT_ID} .osa-hint { display: none; } }
+@media (max-width: 700px) { #${ROOT_ID} button, #${ROOT_ID} input:not(.osa-axis) { min-height: 40px; } #${ROOT_ID} .osa-chip { min-height: 34px; } #${ROOT_ID} input.osa-axis { width: 24px; height: 24px; } #${ROOT_ID} .osa-hint { display: none; } }
 `
 
 function injectStyles () {
@@ -78,6 +93,7 @@ function injectStyles () {
 }
 
 const v3 = (v) => [v.x, v.y, v.z]
+const IDENT = new THREE.Matrix4()
 
 export default class OmniStateStrictAlign {
   constructor (context, omniNode = null) {
@@ -96,6 +112,8 @@ export default class OmniStateStrictAlign {
     this._history = []
     this._commitTimer = null; this._commitDirty = null
     this._swallowClick = false
+    this._downAt = null
+    this._hold = null
     this._lastShown = ''
     this._ray = new THREE.Raycaster()
     this._tmp = new THREE.Vector3()
@@ -122,7 +140,7 @@ export default class OmniStateStrictAlign {
     on.toggle = () => this.toggle()
     on.axis = (e) => this.setAxis(e?.detail?.axis)
     on.down = (e) => this._pointerDown(e)
-    on.click = (e) => { if (this._swallowClick) { this._swallowClick = false; e.stopImmediatePropagation(); e.preventDefault() } }
+    on.click = (e) => { if (this._swallowClick) { this._swallowClick = false; e.stopImmediatePropagation(); e.preventDefault(); return } this._pickClick(e) }
     on.wheel = (e) => this._wheel(e)
     on.move = (e) => this._pointerMove(e)
     on.up = (e) => this._pointerUp(e)
@@ -203,23 +221,41 @@ export default class OmniStateStrictAlign {
     const items = this._snapshot(); if (!items.length) return null
     const cur = items[0].startWorld[SA.axisIndex(this._axis)]
     this._pushHistory(items)
-    const d = this._applyDelta(items, SA.clampToWorld(this._axis, v) - cur)
+    const d = this._applyDelta(items, SA.roundTo(SA.clampToWorld(this._axis, v), this._settings.precision) - cur)
     this._commit(true)
     this._refreshPanel(true)
-    return cur + d
+    return SA.roundTo(cur + d, 6)
   }
 
-  /** One step up (dir > 0) or down. */
-  step (dir, shift = false) {
+  /** One step up (dir > 0) or down. Shift = 10 x step (or the legacy fixed Shift step), Alt = step / 10. The new coordinate is an absolute value on the step grid. */
+  step (dir, shift = false, alt = false) {
+    return this._stepCore(dir, shift, alt, true, true)
+  }
+
+  _stepCore (dir, shift, alt, history, force) {
     if (this._blockReason()) return null
     const items = this._snapshot(); if (!items.length) return null
     const i = SA.axisIndex(this._axis), cur = items[0].startWorld[i]
-    const target = SA.nudge(cur, dir, SA.stepFor(this._settings, shift))
-    this._pushHistory(items)
+    const target = SA.roundTo(SA.nudge(cur, dir, SA.stepFor(this._settings, shift, alt)), this._settings.precision)
+    if (history) this._pushHistory(items)
     const d = this._applyDelta(items, target - cur)
-    this._commit(true)
+    this._commit(force)
     this._refreshPanel(true)
-    return cur + d
+    return SA.roundTo(cur + d, 6)
+  }
+
+  /** The step distance per arrow press (the "space iterator"): validated, saved in omni:strictalign-v1. Returns the step in force. */
+  setStep (v) {
+    const n = S.cleanValue('step', v); if (n === undefined) return this._settings.step
+    this._handleSet({ patch: { step: n } })
+    return this._settings.step
+  }
+
+  /** The target node by id (the same selection every other panel follows: omni:node-select-by-id). */
+  selectNode (id) {
+    if (typeof id !== 'string' || !this.omniNode?.getNodeData?.(id)) return false
+    window.dispatchEvent(new CustomEvent('omni:node-select-by-id', { detail: { id } }))
+    return true
   }
 
   undo () {
@@ -242,20 +278,27 @@ export default class OmniStateStrictAlign {
     el.id = ROOT_ID
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'OmniState_StrictAlign: move along one axis')
     el.dataset.open = '0'
-    const field = (a) => `<div class="osa-f" data-f="${a}"><label for="osa-${a}"><span>${a.toUpperCase()}</span><span class="osa-lock" aria-hidden="true"></span></label><input id="osa-${a}" data-axis="${a}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="${a.toUpperCase()} coordinate"></div>`
+    const field = (a, i) => `<div class="osa-f" data-f="${a}"><div class="osa-flab"><label class="osa-chk" data-omni-tip="Focus ${a.toUpperCase()}" data-omni-tip-key="${i + 1} / ${a}" data-omni-tip-desc="Check ${a.toUpperCase()} to move along it. One axis at a time: checking one unchecks the others."><input type="checkbox" class="osa-axis" data-axis="${a}" aria-label="Focus the ${a.toUpperCase()} axis"><span>${a.toUpperCase()}</span></label><span class="osa-lock" aria-hidden="true"></span></div><input id="osa-${a}" class="osa-coord" data-axis="${a}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="${a.toUpperCase()} coordinate"></div>`
+    const arrow = (d) => `<button type="button" class="osa-arrow" data-dir="${d}" aria-label="${d < 0 ? 'Move in the negative direction' : 'Move in the positive direction'}" data-omni-tip="${d < 0 ? 'Move negative' : 'Move positive'}" data-omni-tip-key="Hold" data-omni-tip-desc="One step along the focused axis. Hold to repeat. Shift = 10 x step, Alt = step / 10.">${d < 0 ? '◀ −' : '+ ▶'}</button>`
     el.innerHTML = `
-      <div class="osa-head"><span class="osa-title" data-omni-tip="OmniState_StrictAlign" data-omni-tip-key="\`" data-omni-tip-desc="Move the selected node along ONE axis with exact coordinates. Esc or \` leaves the mode.">OmniState_StrictAlign</span><span class="osa-node"></span><button type="button" class="osa-close" aria-label="Close StrictAlign" data-omni-tip="Close StrictAlign" data-omni-tip-key="Esc" data-omni-tip-desc="Leaves the mode (the \` key does the same).">×</button></div>
-      <div class="osa-axes" role="group" aria-label="Axis"><span>Axis</span>${['x', 'y', 'z'].map((a, i) => `<button type="button" class="osa-axis" data-axis="${a}" aria-pressed="false" data-omni-tip="Move along ${a.toUpperCase()}" data-omni-tip-key="${i + 1} / ${a}" data-omni-tip-desc="Only the ${a.toUpperCase()} coordinate changes; the other two stay locked.">${a.toUpperCase()}</button>`).join('')}</div>
-      <div class="osa-coords">${field('x')}${field('y')}${field('z')}</div>
-      <div class="osa-more"><span class="osa-more-t"></span><button type="button" class="osa-more-use" hidden></button><button type="button" class="osa-more-clear" hidden>Clear</button></div>
+      <div class="osa-head"><span class="osa-title" data-omni-tip="OmniState_StrictAlign" data-omni-tip-key="\`" data-omni-tip-desc="Move any node along ONE axis with exact coordinates. Click a node to switch target. Esc or \` leaves the mode.">OmniState_StrictAlign</span><span class="osa-node"></span><button type="button" class="osa-close" aria-label="Close StrictAlign" data-omni-tip="Close StrictAlign" data-omni-tip-key="Esc" data-omni-tip-desc="Leaves the mode (the \` key does the same).">×</button></div>
+      <div class="osa-coords">${field('x', 0)}${field('y', 1)}${field('z', 2)}</div>
+      <div class="osa-move">${arrow(-1)}<label class="osa-steplab" for="osa-step">Step</label><input id="osa-step" class="osa-step" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Step distance per arrow press" data-omni-tip="Step (space iterator)" data-omni-tip-key="Enter" data-omni-tip-desc="How far one arrow press moves the node, in world units. Saved for next time.">${arrow(1)}<span class="osa-chips" role="group" aria-label="Step presets">${S.STEP_PRESETS.map(v => `<button type="button" class="osa-chip" data-step="${v}" aria-pressed="false" data-omni-tip="Step ${v}" data-omni-tip-key="—" data-omni-tip-desc="Set the step to ${v}.">${v}</button>`).join('')}</span></div>
+      <div class="osa-more"><span class="osa-more-t"></span><button type="button" class="osa-more-use" hidden data-omni-tip="Include the grouped nodes" data-omni-tip-key="—" data-omni-tip-desc="Moves the nodes grouped by the selector volume together with the target."></button><button type="button" class="osa-more-clear" hidden data-omni-tip="Clear the together set" data-omni-tip-key="—" data-omni-tip-desc="Only the target node moves again.">Clear</button></div>
       <div class="osa-msg" role="status" aria-live="polite"></div>
-      <div class="osa-hint">Drag the line · arrows or wheel = 1 step (Shift = big step) · type a value + Enter · Ctrl+Z undo · Esc or \` leaves</div>`
+      <div class="osa-hint">Click any node to switch · check one axis · drag the line, press the arrows (hold = repeat) or type a value + Enter · Shift = 10 x step, Alt = step / 10 · Ctrl+Z undo · Esc or \` leaves</div>`
     this._el = el
     el.querySelector('.osa-close').addEventListener('click', () => this._exit())
-    el.querySelectorAll('.osa-axis').forEach(b => b.addEventListener('click', () => this.setAxis(b.dataset.axis)))
+    el.querySelectorAll('input.osa-axis').forEach(b => b.addEventListener('change', () => { if (b.checked) this.setAxis(b.dataset.axis); else this._refreshPanel(true) /* the last checkmark cannot be removed */ }))
+    el.querySelectorAll('.osa-arrow').forEach(b => this._bindArrow(b))
+    el.querySelectorAll('.osa-chip').forEach(b => b.addEventListener('click', () => this.setStep(Number(b.dataset.step))))
+    const st = el.querySelector('.osa-step')
+    st.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); this._commitStepField() } else if (e.key === 'Escape') { e.preventDefault(); st.classList.remove('is-bad'); st.value = SA.formatCoord(this._settings.step, 6); st.blur() } })
+    st.addEventListener('input', () => st.classList.remove('is-bad'))
+    st.addEventListener('blur', () => this._commitStepField(true))
     el.querySelector('.osa-more-clear').addEventListener('click', () => { this.setExtra([]) })
     el.querySelector('.osa-more-use').addEventListener('click', () => { this.setExtra(this._volumeIds) })
-    el.querySelectorAll('.osa-f input').forEach(inp => {
+    el.querySelectorAll('.osa-f input.osa-coord').forEach(inp => {
       inp.addEventListener('keydown', (e) => this._fieldKey(e, inp))
       inp.addEventListener('input', () => inp.classList.remove('is-bad'))
       inp.addEventListener('blur', () => { inp.classList.remove('is-bad'); this._refreshPanel(true) })
@@ -347,6 +390,7 @@ export default class OmniStateStrictAlign {
   _exit (silent = false) {
     if (!this._active) return false
     this._endDrag(true)
+    this._holdStop()
     this._flushCommit()
     this._active = false
     const gz = this._gizmo; if (gz) gz.group.parent?.remove(gz.group)
@@ -424,9 +468,11 @@ export default class OmniStateStrictAlign {
     const axis = this._axis
     const d = SA.clampDelta(items.map(it => it.startWorld), axis, delta)
     const moved = SA.applyDelta(items.map(it => it.startWorld), axis, d)
+    const ai = SA.axisIndex(axis)
+    if (moved[0]) moved[0][ai] = SA.roundTo(moved[0][ai], this._settings.precision)   // the primary node lands EXACTLY on the rounded value (absolute set, not a sum of deltas)
     items.forEach((it, k) => {
       const w = new THREE.Vector3(moved[k][0], moved[k][1], moved[k][2])
-      const local = it.mesh.parent ? it.mesh.parent.worldToLocal(w) : w
+      const local = this._toLocal(it.mesh, w)
       it.mesh.position.copy(local)
       const rest = it.mesh.userData?.restPosition
       if (rest?.isVector3 && it.startRest) rest.set(it.startRest[0] + (local.x - it.startLocal[0]), it.startRest[1] + (local.y - it.startLocal[1]), it.startRest[2] + (local.z - it.startLocal[2]))
@@ -436,7 +482,28 @@ export default class OmniStateStrictAlign {
     return d
   }
 
+  /** World -> the mesh's parent space. A parent whose world matrix is the identity (the scene) keeps the numbers untouched (no matrix noise). */
+  _toLocal (mesh, w) {
+    const p = mesh.parent; if (!p) return w
+    p.updateWorldMatrix?.(true, false)
+    if (p === this.ctx?.scene || p.matrixWorld.equals(IDENT)) return w
+    return p.worldToLocal(w)
+  }
+
+  /** A floor panel node's grid fields (gx, gz, ox, oz) follow its new position, so its own data and the position agree (snap / rotate / move later start from here). */
+  _syncFloorPanel (id, mesh) {
+    const d = this.omniNode?.getNodeData?.(id)
+    if (!Extra.isFloorPanelData(d) || !Number.isFinite(d.cellSize) || !(d.cellSize > 0)) return
+    const cs = d.cellSize, lim = 64
+    const gx = Math.max(-lim, Math.min(lim, Math.round(mesh.position.x / cs - 0.5))), gz = Math.max(-lim, Math.min(lim, Math.round(mesh.position.z / cs - 0.5)))
+    d.gx = gx; d.gz = gz
+    d.ox = SA.cleanNumber(Math.max(-cs / 2, Math.min(cs / 2, mesh.position.x - (gx + 0.5) * cs)))
+    d.oz = SA.cleanNumber(Math.max(-cs / 2, Math.min(cs / 2, mesh.position.z - (gz + 0.5) * cs)))
+    window.dispatchEvent(new CustomEvent('omni:floorpanel-changed', { detail: { id } }))
+  }
+
   _dispatchPos (id, mesh) {
+    this._syncFloorPanel(id, mesh)
     window.dispatchEvent(new CustomEvent('omni:node-pos-set', { detail: { id, position: [SA.cleanNumber(mesh.position.x), SA.cleanNumber(mesh.position.y), SA.cleanNumber(mesh.position.z)] } }))
   }
 
@@ -488,11 +555,12 @@ export default class OmniStateStrictAlign {
     if (!p?.mesh || !gz) return false
     this._ray.setFromCamera(this._ndc(e), this.ctx.camera)
     gz.group.updateMatrixWorld(true)
-    const list = [gz.hit]; if (p.mesh.isMesh) list.push(p.mesh)
+    const list = [gz.hit]; if (p.mesh.isMesh || p.mesh.isSprite) list.push(p.mesh)
     return this._ray.intersectObjects(list, false).length > 0
   }
 
   _pointerDown (e) {
+    this._downAt = e.button > 0 ? null : { x: e.clientX, y: e.clientY }
     if (!this._active || e.button > 0 || this._drag || this._blockReason() || !this._canvas) return
     this._swallowClick = false
     if (!this._hitsHandle(e)) return
@@ -515,7 +583,7 @@ export default class OmniStateStrictAlign {
     const ray = this._rayAt(e)
     const hit = SA.projectRayOnAxis(v3(ray.origin), v3(ray.direction), d.items[0].startWorld, this._axis)
     if (!hit) return
-    const coord = SA.dragCoord({ startCoord: d.startCoord, startRayCoord: d.startRayCoord, nowRayCoord: hit.coord, step: this._settings.step, snap: this._settings.snapDrag, axis: this._axis })
+    const coord = SA.dragCoord({ startCoord: d.startCoord, startRayCoord: d.startRayCoord, nowRayCoord: hit.coord, step: this._settings.step, snap: this._settings.snapDrag, axis: this._axis, precision: this._settings.precision })
     d.moved = true
     this._applyDelta(d.items, coord - d.startCoord)
     this._commit(false)
@@ -535,11 +603,32 @@ export default class OmniStateStrictAlign {
     if (!silent) this._refreshPanel(true)
   }
 
+  /** A plain click on the canvas while the mode is on: the node under the pointer becomes the target (any registry node). Drags (orbit) are ignored. */
+  _pickClick (e) {
+    if (!this._active || !this._canvas || !this.omniNode) return
+    const d = this._downAt; this._downAt = null
+    if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > CLICK_SLOP_PX) return
+    const list = (this.omniNode.getAllMeshes?.() ?? []).filter(m => m && !this.omniNode.getNodeData?.(m.userData?.nodeId)?.skipAutoSelect)
+    let id = null
+    if (list.length) {
+      this._ray.setFromCamera(this._ndc(e), this.ctx.camera)
+      this.ctx.scene?.updateMatrixWorld?.(true)
+      const hit = this._ray.intersectObjects(list, false)[0]
+      id = hit?.object?.userData?.nodeId ?? null
+    }
+    if (id) {
+      e.stopImmediatePropagation(); e.preventDefault()               // the node's own modes (path / place) must not also act on this click
+      if (id !== this._primary?.id) { this.selectNode(id); this._msg('') }
+      return
+    }
+    if (this.omniNode._mode && this.omniNode._mode !== 'select') { e.stopImmediatePropagation(); e.preventDefault() }   // empty space in place / path mode must not place or connect anything
+  }
+
   _wheel (e) {
     if (!this._active || this._blockReason() || !this._canvas || !e.deltaY) return
     if (!this._hitsHandle(e)) return                               // away from the node / line the wheel zooms as usual
     e.preventDefault(); e.stopImmediatePropagation()
-    this.step(e.deltaY < 0 ? 1 : -1, e.shiftKey)
+    this.step(e.deltaY < 0 ? 1 : -1, e.shiftKey, e.altKey)
   }
 
   // ── keyboard ────────────────────────────────────────────────────────────────
@@ -562,23 +651,24 @@ export default class OmniStateStrictAlign {
     if (e.ctrlKey || e.metaKey || e.altKey) return
     const dir = { ArrowUp: 1, ArrowRight: 1, PageUp: 1, ArrowDown: -1, ArrowLeft: -1, PageDown: -1 }[e.key]
     if (dir) { stop(); this.step(dir, e.shiftKey); return }
-    if (e.key === 'Enter') { stop(); const f = this._el?.querySelector(`.osa-f input[data-axis="${this._axis}"]`); f?.focus(); f?.select?.() }
+    if (e.key === 'Enter') { stop(); const f = this._el?.querySelector(`.osa-f input.osa-coord[data-axis="${this._axis}"]`); f?.focus(); f?.select?.() }
   }
 
   _fieldKey (e, inp) {
     e.stopPropagation()
     if (e.key === 'Escape') { e.preventDefault(); inp.blur(); this._exit(); return }
     if (inp.readOnly) { if (e.key === 'Tab') return; return }
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); this.step(e.key === 'ArrowUp' ? 1 : -1, e.shiftKey); return }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); this.step(e.key === 'ArrowUp' ? 1 : -1, e.shiftKey, e.altKey); return }
     if (e.key !== 'Enter') return
     e.preventDefault()
     const v = SA.parseCoord(inp.value)
     if (v === null) { inp.classList.add('is-bad'); this._msg('Type a number, for example 12.5', true); return }
-    const clamped = SA.clampToWorld(this._axis, v)
+    const clamped = SA.roundTo(SA.clampToWorld(this._axis, v), this._settings.precision)
     const got = this.moveTo(v)
     if (got === null) { this._msg(this._blockReason() || 'Nothing to move.', true); return }
     inp.classList.remove('is-bad')
-    this._msg(clamped !== v ? `Limited to the edge of the world: ${SA.formatCoord(clamped)}` : '', clamped !== v)
+    const edge = SA.clampToWorld(this._axis, v) !== v
+    this._msg(edge ? `Limited to the edge of the world: ${SA.formatCoord(clamped, this._settings.precision)}` : '', edge)
     if (this._settings.closeAfterEnter) this._exit()
   }
 
@@ -606,19 +696,24 @@ export default class OmniStateStrictAlign {
     const p = this._primary
     let pos = null
     if (p?.mesh && !reason) { p.mesh.getWorldPosition(this._tmp); pos = v3(this._tmp) }
-    const key = `${reason}|${p?.id ?? ''}|${this._axis}|${pos ? pos.map(SA.formatCoord).join(',') : ''}|${this._extra.length}`
+    const dec = this._settings.precision
+    const key = `${reason}|${p?.id ?? ''}|${this._axis}|${pos ? pos.map(x => SA.formatCoord(x, dec)).join(',') : ''}|${this._extra.length}|${this._settings.step}|${dec}`
     if (!force && key === this._lastShown) return
     this._lastShown = key
     el.dataset.blocked = String(!!reason)
     el.querySelector('.osa-node').textContent = p ? `${p.node?.label ?? p.mesh?.userData?.label ?? ''} · ${p.id}` : 'no node selected'
-    el.querySelectorAll('.osa-axis').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.axis === this._axis)))
+    el.querySelectorAll('input.osa-axis').forEach(b => { b.checked = b.dataset.axis === this._axis; b.setAttribute('aria-checked', String(b.checked)) })
+    const stepInp = el.querySelector('.osa-step'); if (stepInp && document.activeElement !== stepInp) { stepInp.value = SA.formatCoord(this._settings.step, 6); stepInp.classList.remove('is-bad') }
+    el.querySelectorAll('.osa-chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.step) === this._settings.step)))
+    const ax = this._axis.toUpperCase(), st = SA.formatCoord(this._settings.step, 6)
+    el.querySelectorAll('.osa-arrow').forEach(b => { const neg = b.dataset.dir === '-1'; b.setAttribute('data-omni-tip', `${neg ? '−' : '+'}${st} on ${ax}`); b.disabled = !!reason })
     el.querySelectorAll('.osa-f').forEach(f => {
-      const a = f.dataset.f, inp = f.querySelector('input'), act = a === this._axis
+      const a = f.dataset.f, inp = f.querySelector('input.osa-coord'), act = a === this._axis
       f.dataset.active = String(act)
       inp.readOnly = !act || !!reason
       inp.tabIndex = act && !reason ? 0 : -1
       f.querySelector('.osa-lock').textContent = act ? '' : '🔒'
-      if (document.activeElement !== inp || inp.readOnly) inp.value = pos ? SA.formatCoord(pos[SA.axisIndex(a)]) : ''
+      if (document.activeElement !== inp || inp.readOnly) inp.value = pos ? SA.formatCoord(pos[SA.axisIndex(a)], dec) : ''
       inp.setAttribute('aria-label', `${a.toUpperCase()} coordinate${act ? '' : ' (locked)'}`)
     })
     if (reason) this._msg(reason, !!p)
@@ -637,7 +732,56 @@ export default class OmniStateStrictAlign {
     this._settings = S.resolveSettings(overrides)
     this._applyAxisToGizmo()
     this._announceSettings()
+    this._refreshPanel(true)
     return true
+  }
+
+  // ── arrow buttons (hold to repeat) + the step field ─────────────────────────
+
+  _bindArrow (b) {
+    const dir = Number(b.dataset.dir)
+    b.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || b.disabled) return
+      e.preventDefault()
+      this._holdStart(dir, e.shiftKey, e.altKey)
+    })
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, () => this._holdStop())
+    b.addEventListener('contextmenu', (e) => e.preventDefault())
+    b.addEventListener('click', (e) => { if (e.detail === 0 && !b.disabled) this.step(dir, e.shiftKey, e.altKey) })   // keyboard Enter / Space on the focused button (a pointer press already stepped)
+  }
+
+  _holdStart (dir, shift, alt) {
+    this._holdStop()
+    if (this._blockReason()) { this._msg(this._blockReason(), true); return }
+    const items = this._snapshot(); if (!items.length) return
+    this._pushHistory(items)                                        // one undo for the whole press / hold
+    this._stepCore(dir, shift, alt, false, true)
+    const h = this._hold = { dir, shift, alt, timer: null, n: 1 }
+    const tick = () => {
+      if (this._hold !== h) return
+      if (this._stepCore(dir, shift, alt, false, false) === null) { this._holdStop(); return }
+      h.n++; h.timer = setTimeout(tick, HOLD_REPEAT_MS)
+    }
+    h.timer = setTimeout(tick, HOLD_DELAY_MS)
+  }
+
+  _holdStop () {
+    const h = this._hold; if (!h) return
+    clearTimeout(h.timer); this._hold = null
+    this._flushCommit(); this._refreshPanel(true)
+  }
+
+  _commitStepField (quiet = false) {
+    const inp = this._el?.querySelector('.osa-step'); if (!inp) return
+    const v = SA.parseCoord(inp.value)
+    const ok = v !== null ? S.cleanValue('step', v) : undefined
+    if (ok === undefined) {
+      if (quiet) { inp.classList.remove('is-bad'); inp.value = SA.formatCoord(this._settings.step, 6); return }
+      inp.classList.add('is-bad'); this._msg(`The step must be a number from ${S.STEP_MIN} to ${S.STEP_MAX}`, true); return
+    }
+    inp.classList.remove('is-bad')
+    this._handleSet({ patch: { step: ok } })
+    inp.value = SA.formatCoord(this._settings.step, 6)
   }
 
   _announceSettings () {

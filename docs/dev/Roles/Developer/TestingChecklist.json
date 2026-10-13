@@ -3417,6 +3417,290 @@
           "tested": false
         }
       ]
+    },
+    {
+      "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+      "items": [
+        {
+          "feature": "LH: `ORB-U",
+          "howToReach": "FWD",
+          "whatToCheck": "ASC` / `STR-L | centre (Fire) | STR-R` / `ORB-D | BCK | DSC`",
+          "tested": false
+        },
+        {
+          "feature": "RH: `ORB-U",
+          "howToReach": "RISE",
+          "whatToCheck": "ASC` / `ORB-L | centre (Fire) | ORB-R` / `ORB-D | FALL | DSC` (unchanged)",
+          "tested": false
+        },
+        {
+          "feature": "RH ORB-L / ORB-R around the target",
+          "howToReach": "Hands > turn the RH pad on, select a node (or Take Me There), hold ORB-L / ORB-R (or arrow left / right)",
+          "whatToCheck": "the camera circles THAT node at constant distance and constant height relative to it, the node stays in view (not the scene origin); click empty space (release) then orbit: it circles the point just ahead of you",
+          "tested": false
+        },
+        {
+          "feature": "RH ORB-U / ORB-D continuous",
+          "howToReach": "RH pad, hold ORB-U (or Y) / ORB-D (or H) for 10 s with a node selected",
+          "whatToCheck": "the camera goes over the top and under the bottom and keeps looping with no stop or flip; on release the view rolls upright smoothly (about half a second if upside down), then the mouse orbit works with no jump",
+          "tested": false
+        },
+        {
+          "feature": "LH ORB-U / ORB-D",
+          "howToReach": "LH pad (bottom-left): top-left and bottom-left corner buttons, or keys U / V",
+          "whatToCheck": "same continuous vertical orbit as the RH; tooltips show \"LogicalHand Orbit up / Orbit down\" with key U / V; ASC / DSC still in the right corners",
+          "tested": false
+        },
+        {
+          "feature": "Shortcuts panel",
+          "howToReach": "Assistance > Keyboard Shortcuts",
+          "whatToCheck": "rows \"y and h\" and \"u and v\" are listed",
+          "tested": false
+        },
+        {
+          "feature": "Ammo chips above the Realities row",
+          "howToReach": "Turn both lower pads on at 1280x720 (the OmniDock_Realities row visible)",
+          "whatToCheck": "the LH / RH ammo name circles (e.g. Bind, Pulse) and the settings circles sit above the row, none touching another circle; change the row size in OmniDock_Realities settings: they follow the row height; hide the row: they drop back",
+          "tested": false
+        },
+        {
+          "feature": "Ammo chips on a phone",
+          "howToReach": "390x844, both pads on",
+          "whatToCheck": "chips unchanged and visible (the row does not reach them)",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+      "items": [
+        {
+          "feature": "StrictAlign checkmarks",
+          "howToReach": "select a node, press `",
+          "whatToCheck": "X/Y/Z each have a checkmark; checking one unchecks the others; clicking the checked one does nothing; keys 1/2/3 move the checkmark; only that field is editable",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign arrows + step",
+          "howToReach": "in the panel press - / +",
+          "whatToCheck": "the node moves by the Step along the checked axis; hold repeats; Shift = 10 x, Alt = /10; Ctrl+Z undoes the whole hold in one go",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign step field",
+          "howToReach": "type 0.25 + Enter, tap chips 0.01/0.1/1/10, reload",
+          "whatToCheck": "step applies and survives a reload; junk is marked red and the old value returns",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign exact values",
+          "howToReach": "step 0.1 from 0, 100 presses; type 1.23456 with Decimals 2",
+          "whatToCheck": "lands exactly on 10 / 1.23; Inspector Location fields and the saved node agree",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign pick node",
+          "howToReach": "with the mode on, click another node (also with Path/Place mode)",
+          "whatToCheck": "the target switches; nothing is connected or placed; dragging the camera does not switch it",
+          "tested": false
+        },
+        {
+          "feature": "StrictAlign node kinds",
+          "howToReach": "try a group member, a label (text) node, a floor panel, a path node, a tracking node",
+          "whatToCheck": "world position shown; floor panel keeps working with snap afterwards; tracking node says why it cannot move",
+          "tested": false
+        },
+        {
+          "feature": "RH fire after delete",
+          "howToReach": "select a node, give the RH a looping payload, fire, delete the node",
+          "whatToCheck": "the anchor and its words disappear at once and never come back; the next fire goes to the selected node / nearest / ahead of the camera, not the deleted one",
+          "tested": false
+        },
+        {
+          "feature": "RH tracer on delete",
+          "howToReach": "fire, delete the target immediately",
+          "whatToCheck": "no anchor appears afterwards, no tracer line stays",
+          "tested": false
+        },
+        {
+          "feature": "Tooltips after delete",
+          "howToReach": "hover a node row in a list (Realities in shape / dock), delete the node",
+          "whatToCheck": "the OmniNotify box no longer shows its tip",
+          "tested": false
+        },
+        {
+          "feature": "CryptX keyboard keys",
+          "howToReach": "launcher > Keyboard, pull a column out, click keys",
+          "whatToCheck": "every key responds (try q, Space, Backspace; with a text box focused the letters appear in it)",
+          "tested": false
+        },
+        {
+          "feature": "CryptX drawer arrows",
+          "howToReach": "bottom bar ◂ / ▸",
+          "whatToCheck": "◂ slides the next column out, ▸ pushes it in; nothing at the top",
+          "tested": false
+        },
+        {
+          "feature": "CryptX drag grip",
+          "howToReach": "drag the strip on the left edge of the panel (mouse and finger), then reload",
+          "whatToCheck": "it moves anywhere inside the window, never presses a key, and returns to the same place and drawer state",
+          "tested": false
+        },
+        {
+          "feature": "CryptX wheel",
+          "howToReach": "wheel away from the panel with the keyboard open",
+          "whatToCheck": "the 3D view zooms again",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+      "items": [
+        {
+          "feature": "Terminal button toggles all tunnels",
+          "howToReach": "Ribbon > Terminal, click twice",
+          "whatToCheck": "First click shows every terminal tunnel, second hides all, button pressed state follows",
+          "tested": false
+        },
+        {
+          "feature": "Toggle state persists",
+          "howToReach": "Terminal on, reload",
+          "whatToCheck": "Tunnels come back in the same on/off state",
+          "tested": false
+        },
+        {
+          "feature": "Terminal node create",
+          "howToReach": "Ribbon > Create > Terminal node (click 2-3 times)",
+          "whatToCheck": "Each makes a selectable TerminalShellTunnel node; Terminal button toggles all together",
+          "tested": false
+        },
+        {
+          "feature": "Terminal node delete",
+          "howToReach": "Select node, delete",
+          "whatToCheck": "Only that tunnel disappears, others stay",
+          "tested": false
+        },
+        {
+          "feature": "Inspector Terminal section",
+          "howToReach": "Select a TerminalShellTunnel node, open Inspector",
+          "whatToCheck": "Terminal settings show; name edit renames the node; \"same as default\" checkbox",
+          "tested": false
+        },
+        {
+          "feature": "Follow OmniOS theme",
+          "howToReach": "Settings > Terminal, switch OmniOS theme dark/light",
+          "whatToCheck": "Scene tunnel and DOM panel recolour live; untick Follow and pick custom colours",
+          "tested": false
+        },
+        {
+          "feature": "Where you type",
+          "howToReach": "Settings > Terminal > Where you type: Scene / DOM / Both",
+          "whatToCheck": "Scene: type in scene; DOM: DOM panel opens and takes focus; Both: draft mirrors in both",
+          "tested": false
+        },
+        {
+          "feature": "Orientation presets",
+          "howToReach": "Settings > Terminal > Front/Left/Right/Top/Flat on floor",
+          "whatToCheck": "Panel turns live; out-of-range angles are rejected",
+          "tested": false
+        },
+        {
+          "feature": "Yaw/pitch/roll and billboard",
+          "howToReach": "Settings > Terminal > angles, billboard off",
+          "whatToCheck": "Panel holds fixed angle; billboard on faces camera",
+          "tested": false
+        },
+        {
+          "feature": "Per-node orientation override",
+          "howToReach": "Inspector on a terminal node, untick \"same as default\"",
+          "whatToCheck": "Only that node changes orientation",
+          "tested": false
+        },
+        {
+          "feature": "F1 and Escape",
+          "howToReach": "Press F1 with DOM panel focused, then Escape",
+          "whatToCheck": "No desync with the ribbon button; Escape dismisses all",
+          "tested": false
+        },
+        {
+          "feature": "OmniChat Terminal tab",
+          "howToReach": "Open OmniChat > Terminal tab, switch to another tab",
+          "whatToCheck": "Terminal tunnels hide only when leaving the Terminal tab",
+          "tested": false
+        },
+        {
+          "feature": "Landing point panel",
+          "howToReach": "Terminals on while camera on the centre axis",
+          "whatToCheck": "Built-in panel visible 4.5 units ahead, not hidden",
+          "tested": false
+        },
+        {
+          "feature": "Phone DOM panel",
+          "howToReach": "390x844, DOM mode",
+          "whatToCheck": "Panel fits the viewport, does not overlap off-screen",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V192 TimeData ruler",
+      "items": [
+        {
+          "feature": "TimeData ruler",
+          "howToReach": "Ribbon Realities > Chronos > Time ruler, or ⟐Times slot 1",
+          "whatToCheck": "Window opens at the right edge under the ribbon; 00:00 at the top, 24:00 at the bottom, 25 hour labels, minor ticks, no overlapping text; Elapsed / Remaining count up / down once a second",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler baseline",
+          "howToReach": "⟐Admin slot 21 TimeDataRulerSettings > Date + Time > Set",
+          "whatToCheck": "The ruler's 00:00:00 moves to that moment (bottom line shows \"Baseline ...\"); an impossible date (30 Feb) or empty time is refused with a message and nothing changes; Now / Session start / Today 00:00 buttons work; survives a reload",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler consumption",
+          "howToReach": "Open the ruler, wait",
+          "whatToCheck": "Past part of the day is dimmed with a bar along the spine and a marker line + time chip moving down; a ring pulses at the hour boundary; with the OS \"reduce motion\" on (or Animation off) no pulse and the marker steps once a minute",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler after 24:00",
+          "howToReach": "Settings > After 24:00",
+          "whatToCheck": "Move on: the window becomes the next day (\"Day +1\"); Stay: the bar stays full (Day complete); with the automatic baseline the ruler resets to 00:00:00 at midnight",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler hierarchy",
+          "howToReach": "Ruler toolbar W / M / Y / X (or − ＋, mouse wheel over the canvas, pinch on a phone)",
+          "whatToCheck": "Day lines, week lines (W42), month lines (Nov 2026), year lines and decade years (2030, 2040 in the accent colour, longest line) appear with increasing length / weight; labels never overlap",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler week start",
+          "howToReach": "Settings > Week start ISO / Monday / Sunday, week / month toggles",
+          "whatToCheck": "Week lines move to Mondays / Sundays; unticking Week lines / Month lines / Year lines / Decade years removes those lines live",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler paging",
+          "howToReach": "Ruler ▲ ▼ ⌖ ⊤",
+          "whatToCheck": "▲/▼ move one day (week, month ...) back/forward and stop following; ⌖ follows now again; ⊤ shows the window that starts at the baseline",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler phone",
+          "howToReach": "390 px wide",
+          "whatToCheck": "Ruler is a tall panel on the right edge above the dock; all 25 hour labels readable; buttons >= 34 px; pinch zooms",
+          "tested": false
+        },
+        {
+          "feature": "TimeData ruler window",
+          "howToReach": "Drag the header, resize edges, maximize ⛶",
+          "whatToCheck": "Window resizes and the ruler redraws crisply at the new size; maximize fills the free area",
+          "tested": false
+        }
+      ]
     }
   ]
 }

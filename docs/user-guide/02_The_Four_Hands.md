@@ -40,12 +40,12 @@ Pads start hidden. Open one with its hand's ⚇, the ribbon Hands tab > Pads, or
 
 | Hand | Pad title | Moves |
 |---|---|---|
-| ⟐LogicalHand | MOVE | Camera: FWD, BCK, STR-L, STR-R. Corner buttons: ASC / DSC (ascend / descend along world Y) |
-| ⟐CreativeHand | NAV | Camera: RISE, FALL, ORB-L, ORB-R (orbit around the vertical axis). Corner buttons: ORB-U / ORB-D (orbit up / down around the pivot), ASC / DSC (ascend / descend) |
+| ⟐LogicalHand | MOVE | Camera: FWD, BCK, STR-L, STR-R. Corner buttons: ORB-U / ORB-D (orbit up / down around the current target, V192), ASC / DSC (ascend / descend along world Y) |
+| ⟐CreativeHand | NAV | Camera: RISE, FALL, ORB-L, ORB-R (orbit around the vertical axis through the current target). Corner buttons: ORB-U / ORB-D (orbit up / down around the current target), ASC / DSC (ascend / descend) |
 | ⟐OmniHand | ⟐ AXIS | Steps along its tunnel: Product / Tier ([Tunnels](05_Tunnels_and_Axes.md)) |
 | ⟐ConsciousHand | ◬ AXIS | Steps along its tunnel: Perspective / Scale |
 
-The corner buttons (V191) are hold-to-move like the others. ASC / DSC use the same altitude settings and speed as RH Rise / Fall (a camera movement setting: Admin altitude-up / -down step, or the Global speed, times the hand's speed). ORB-U / ORB-D turn the view up or down around the pivot (the selected node, else the scene centre), stopping 5 degrees short of straight up / down, at the Admin vertical orbit step times RH speed. There is no invert option. A strip labelled KB shows the keys. The axis pads never move the camera. Pressing steps once; holding repeats (default every 450 ms, divided by speed, never faster than 60 ms).
+The corner buttons (V191) are hold-to-move like the others. ASC / DSC use the same altitude settings and speed as RH Rise / Fall (a camera movement setting: Admin altitude-up / -down step, or the Global speed, times the hand's speed). ORB-L / ORB-R / ORB-U / ORB-D (V192: ORB-U / ORB-D are on both lower pads) orbit the current target: the node you selected or flew to, else the point 4 units ahead of you when you start (never the scene origin). They keep your distance and height relative to the target. ORB-U / ORB-D now loop all the way around, over the top and under the bottom, with no stop at straight up / down (V191 stopped 5 degrees short); when you let go the view rolls back upright over about half a second. Speed is the Admin vertical orbit step times the speed of the hand whose button you hold. There is no invert option. A strip labelled KB shows the keys. The axis pads never move the camera. Pressing steps once; holding repeats (default every 450 ms, divided by speed, never faster than 60 ms).
 
 Centre button: on LH and RH it is **Fire** ([Firing](04_Firing_and_Payloads.md)). On OmniHand and ConsciousHand it is a label only.
 
@@ -75,6 +75,7 @@ The tool options of OmniHand and ConsciousHand (V191) were only at the axis befo
 | W A S D | LH pad: forward, left, back, right |
 | R F, Arrow keys | RH pad (Up/Down rise and fall, Left/Right orbit) |
 | E Q | LH pad corner buttons: ascend / descend |
+| U V | LH pad corner buttons: orbit up / down (V192) |
 | Y H | RH pad corner buttons: orbit up / down |
 | Numpad / * - + | OmniHand pad: up, down, left, right |
 | Numpad 7 9 5 6 | ConsciousHand pad: up, down, left, right |

@@ -5,11 +5,16 @@
  * background opacity (TerminalTunnel's 3D visual, and OmniChat's
  * Terminal tab) — matches ToolTipSettingsPanel's exact, proven
  * pattern.
+ *
+ * V192: the body is the shared form (ui/TerminalSettingsForm.js): where you type (Scene panel / DOM panel / Both), follow the OmniOS theme
+ * (default ON) or custom colours, the rotation orientation of the in-scene terminal (presets, yaw / pitch / roll, face the camera), the built-in
+ * panel position, a button that adds a TerminalShellTunnel node, and Reset. User-facing (Admin); no Dev* import.
  */
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
-import { getSettings, setSettings, applyToRoot } from '../utils/TerminalSettings.js'
+import { applyToRoot, startThemeLive, stopThemeLive } from '../utils/TerminalSettings.js'
+import { terminalFormHTML, wireTerminalForm } from './TerminalSettingsForm.js'
 
 const STYLES = `
 
@@ -24,10 +29,10 @@ const STYLES = `
 
   position         : fixed;
   top              : 110px;
-  left             : 110px;
-  width            : 280px;
+  left             : max(8px, min(110px, calc(100vw - 356px)));
+  width            : min(348px, calc(100vw - 16px));
   min-width        : 240px;
-  height           : 260px;
+  height           : min(600px, calc(100vh - var(--omni-top-offset, 48px) - 40px));
   min-height       : 220px;
 
   display          : flex;
@@ -101,6 +106,7 @@ export default class TerminalSettingsPanel {
   init () {
     injectStyles()
     applyToRoot()   // real, live application on boot — whatever was saved last session is already correct before this panel is ever opened
+    startThemeLive()   // V192: the --terminal-* colours follow the OmniOS theme live
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐TerminalSettings') return
       this.open()
@@ -112,6 +118,8 @@ export default class TerminalSettingsPanel {
   onResize () {}
 
   destroy () {
+    stopThemeLive()
+    this._disposeForm?.()
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('terminalsettings')
@@ -124,6 +132,7 @@ export default class TerminalSettingsPanel {
     this._el.style.visibility = 'visible'
     gsap.to(this._el, { opacity: WindowManager.getPanelOpacity(), duration: 0.25 })
     this._isOpen = true
+    WindowManager.bringToFront('terminalsettings')   // V192: opening it puts it on top of the other windows (it used to open underneath them)
   }
 
   close () {
@@ -146,7 +155,6 @@ export default class TerminalSettingsPanel {
   _buildDOM () {
     const el = document.createElement('div')
     el.className = 'terminal-settings-panel'
-    const s = getSettings()
 
     el.innerHTML = `
       <div class="tms-header">
@@ -156,42 +164,12 @@ export default class TerminalSettingsPanel {
           <button class="tms-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="tms-body">
-        <div>
-          <div class="tms-field-label">Accent</div>
-          <div class="tms-row">
-            <input type="color" id="tms-accent" value="${s.accent}" />
-            <span class="tms-swatch-label">Terminal accent color</span>
-          </div>
-        </div>
-        <div>
-          <div class="tms-field-label">Background opacity</div>
-          <div class="tms-row">
-            <input type="range" id="tms-opacity" min="0" max="1" step="0.02" value="${s.backgroundOpacity}" />
-            <span class="tms-swatch-label" id="tms-opacity-val">${Math.round(s.backgroundOpacity * 100)}%</span>
-          </div>
-        </div>
-        <div>
-          <div class="tms-field-label">Panel position</div>
-          <select id="tms-panel-position" class="tms-select">
-            <option value="center" ${s.panelPosition === 'center' ? 'selected' : ''}>Center of the cylinder</option>
-            <option value="circumference" ${s.panelPosition === 'circumference' ? 'selected' : ''}>Outer circumference</option>
-          </select>
-        </div>
-        <div class="tms-note">Applies to both TerminalTunnel's own 3D visual and OmniChat's Terminal tab — one, real, shared default for both surfaces.</div>
-      </div>
+      <div class="tms-body">${terminalFormHTML({ scope: 'global' })}</div>
     `
 
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
-
-    el.querySelector('#tms-accent').addEventListener('input', (e) => setSettings({ accent: e.target.value }))
-    el.querySelector('#tms-opacity').addEventListener('input', (e) => {
-      const val = Number(e.target.value)
-      setSettings({ backgroundOpacity: val })
-      el.querySelector('#tms-opacity-val').textContent = `${Math.round(val * 100)}%`
-    })
-    el.querySelector('#tms-panel-position').addEventListener('change', (e) => setSettings({ panelPosition: e.target.value }))
+    this._disposeForm = wireTerminalForm(el.querySelector('.tms-body'), { scope: 'global' })
 
     this._bindHeader(el)
     el.dataset.winId = 'terminalsettings'

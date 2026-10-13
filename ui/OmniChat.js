@@ -295,7 +295,8 @@ const STYLES = /* css */`
   flex           : 1;
   display        : flex;
   flex-direction : column;
-  background     : rgba(0, 0, 0, var(--terminal-bg-opacity, 0.78));
+  background     : var(--terminal-bg, rgba(0, 0, 0, var(--terminal-bg-opacity, 0.78)));   /* V192: the OmniOS theme / custom colours (utils/TerminalSettings.js) */
+  font-family    : var(--terminal-font, inherit);
   min-height     : 0;
 }
 .oc-terminal-output {
@@ -303,16 +304,16 @@ const STYLES = /* css */`
   overflow-y  : auto;
   padding     : 10px 12px;
   font-size   : 12px;
-  color       : var(--terminal-accent, #00ff88);
+  color       : var(--terminal-text, var(--terminal-accent, #00ff88));
   line-height : 1.6;
 }
-.oc-terminal-row { display: flex; align-items: center; padding: 6px 8px; gap: 6px; border-top: 1px solid rgba(0, 255, 136, 0.15); }
-.oc-terminal-prompt { color: var(--terminal-accent, #00ff88); font-size: 12px; }
+.oc-terminal-row { display: flex; align-items: center; padding: 6px 8px; gap: 6px; border-top: 1px solid var(--terminal-rule, rgba(0, 255, 136, 0.15)); }
+.oc-terminal-prompt { color: var(--terminal-prompt, var(--terminal-accent, #00ff88)); font-size: 12px; }
 .oc-terminal-input {
   flex        : 1;
   background  : none;
   border      : none;
-  color       : var(--terminal-accent, #00ff88);
+  color       : var(--terminal-text, var(--terminal-accent, #00ff88));
   font-family : inherit;
   font-size   : 12px;
   outline     : none;
@@ -626,6 +627,7 @@ export default class OmniChat {
   }
 
   _switchTab (tabName) {
+    const previousTab = this._activeTab   // V192: only LEAVING the Terminal tab dismisses the terminals (every other tab switch used to switch them off, even when a Terminal button had just turned them on)
     this._activeTab = tabName
     this._el.querySelectorAll('.oc-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName))
     this._el.querySelectorAll('.oc-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tabName))
@@ -634,7 +636,7 @@ export default class OmniChat {
     // TerminalTunnel 3D visual rather than existing only as a
     // disconnected 2D tab.
     if (tabName === 'terminal') window.dispatchEvent(new CustomEvent('omni:terminal-invoke'))
-    else window.dispatchEvent(new CustomEvent('omni:terminal-dismiss'))
+    else if (previousTab === 'terminal') window.dispatchEvent(new CustomEvent('omni:terminal-dismiss'))
   }
 
   _sendMessage (text) {

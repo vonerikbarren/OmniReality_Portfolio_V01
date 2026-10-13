@@ -1340,3 +1340,11 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 5. `GEO_LABELS` now also lists OmniPathNode and FloorPanelNode (not among the 20 main shapes).
 6. Alphabet index worksheet still waiting for the owner.
 7. After any user-guide edit run `node tools/build-docs-data.mjs`.
+
+## 82. V192 (four-part fix batch): what was not verified, follow-ups
+
+1. Software-GL Chromium and jsdom only. Orbit feel, the full vertical loop, hold-to-repeat, drag feel, touch, marker motion on the ruler, and real GIF/video are unjudged.
+2. 'Bind' and 'Pulse' were not found by name; the ammo chips were lifted (ask 'v192-bindpulse').
+3. Owner questions: LH keys U / V; roll upright vs stay rolled; per-pad speed; anchors deleted with their node; CryptX reopens open; Alt+Arrow keys unused; floor panels may overlap when moved off the grid; F1 outside the DOM input; one shared terminal session; built-in tunnel as a node; WASD captured by a focused scene terminal; OmniChat Terminal tab unification; ruler: nodes as marks, follow-today default, 100-year decade window, week numbering.
+4. TimeData registry stores seconds since app start, not dates: mapping needed before nodes can sit on the ruler.
+5. Run `node tools/build-docs-data.mjs` after any user-guide edit; the nodev main.js-contiguity checks are obsolete.

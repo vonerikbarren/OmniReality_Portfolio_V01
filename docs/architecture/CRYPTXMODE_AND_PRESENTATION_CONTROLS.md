@@ -140,6 +140,21 @@ instead of relying on this direct-read path. Worth confirming live on
 the classroom TV setup specifically, since that's the real target
 environment.
 
+### V192: working buttons, bottom drawer arrows, left drag grip
+
+**Root cause of "the buttons do not work":** `#omni-ui` is `pointer-events: none` (so the canvas stays interactive) and children inherit it; `.ocx-panel` never set `pointer-events: auto`, so no key, close or nudge button ever got a click (the same bug the V190 compass had). Fixed in the panel's own CSS.
+
+Changes in `ui/OmniKeyCryptxReveal.js`:
+
+- **Drawer arrows on the bottom edge.** A bottom bar holds ◂ (pull the next column out, with a short slide-in) and ▸ (push the last column back in) and a `n/6` count. The old ◂ / ▸ nudge buttons at the top are gone.
+- **Drag grip on the left edge.** A vertical strip (the last child of the row-reverse body = the leftmost) drags the panel with mouse or finger (pointer capture, `touch-action: none`; its arrow keys move it 24 px). It never presses a key. Position is clamped to the viewport (`_bounds()`) and re-clamped on resize and when a column opens.
+- **Persistence.** `omni:cryptx-keyboard:pos-v1` = `{ v: 1, x, y, revealed, open }`, validated field by field (`parseState`, exported): bad JSON, wrong types, prototype keys and huge numbers fall back to defaults; `revealed` is clamped 0..6. The V191 `omni:cryptx-keyboard:offset` key still seeds `x` once. A keyboard left open comes back open with the same columns out.
+- **Typing.** A key click dispatches `keydown` / `keyup` on the focused text field (else `<body>`; before: `window`, which never reached `document` listeners) and, when nothing prevented the keydown and a text field has the focus, inserts the character there (Backspace, Enter in a textarea, `maxlength` respected). `mousedown` on a key is prevented so the field keeps its focus. Number / date inputs are not typed into.
+- **Wheel** moves the selection only while the pointer is over the panel (before, it was taken everywhere while the keyboard was open, which killed the camera zoom).
+- A click on a key no longer rebuilds all columns (it only moves the highlight), so a scrolled column keeps its place.
+
+Unchanged: the column order, lowercase only, right-click retracts, middle-click closes, the MX Ergo back / forward mapping.
+
 ## Status
 
 All four pieces are real, built code as of this pass. Nothing here is

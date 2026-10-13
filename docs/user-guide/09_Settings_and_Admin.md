@@ -54,12 +54,14 @@ Show or hide the row of wireframe shapes above the dock, **Open settings** (icon
 
 ### OmniState_StrictAlign (Admin > UI Settings > OmniState_StrictAlign, V191)
 
-The ` key moves the selected node along one axis with exact numbers. Controls apply at once and are remembered on this device (`omni:strictalign-v1`).
+The ` key moves any node along one axis (the checked one) with exact numbers. Controls apply at once and are remembered on this device (`omni:strictalign-v1`).
 
 | Option | Choices | Default |
 |---|---|---|
-| Step | 0.001 to 100 | 0.1 |
-| Shift step | 0.001 to 1000 | 1 |
+| Step | 0.001 to 100 (also set in the panel's Step box and chips) | 0.1 |
+| Decimals (precision) | 0 to 6: every move is rounded to this many decimals and set as an exact value (V192) | 4 |
+| Shift = 10 x step | on: Shift multiplies the step by 10, Alt divides it by 10. Off: Shift uses the fixed Shift step below (V192) | on |
+| Shift step | 0.001 to 1000 (used when Shift = 10 x step is off; an older save that chose its own keeps using it) | 1 |
 | Show axis line | on / off | on |
 | Close after Enter | on / off | off |
 | Snap drag to step | on / off | on |

@@ -16,6 +16,8 @@ import * as Paths from '../utils/OmniPathModel.js'
 import * as Extra from '../utils/OmniExtraKinds.js'
 import * as Media from '../utils/FloorPanelMedia.js'
 import { PIECES } from '../utils/OmniFloorPieces.js'
+import * as Shells from '../utils/TerminalShells.js'
+import { terminalFormHTML, wireTerminalForm } from './TerminalSettingsForm.js'   // V192: TerminalShellTunnel — the Terminal settings section
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const tip = (name, desc) => `data-omni-tip="${esc(name)}" data-omni-tip-key="—" data-omni-tip-desc="${esc(desc)}"`
@@ -118,9 +120,30 @@ function panelHTML (d) {
     </div>`
 }
 
+// ── TerminalShellTunnel (V192) ────────────────────────────────────────────────
+
+function terminalHTML (d) {
+  const sh = Shells.getShell(d.shellId)
+  const on = Shells.isOn()
+  return `
+    <div class="oix-row"><span class="oi-label">Terminals</span><span class="oix-val" data-testid="ts-state">${on ? 'ON' : 'OFF'} · ${Shells.shellCount()} shell node${Shells.shellCount() === 1 ? '' : 's'} + the built-in tunnel</span>
+      <button class="oi-btn-small" data-xact="ts-toggle" aria-pressed="${on}" ${tip('Switch all terminals', 'The same as the Terminal button: switches the built-in tunnel and every TerminalShellTunnel node on or off together.')}>${on ? 'Switch all off' : 'Switch all on'}</button></div>
+    ${sh ? '' : '<div class="oik-missing" data-testid="ts-missing">The settings of this shell were not found; they are created again when the node is next used.</div>'}
+    <div data-ref="ts-form">${terminalFormHTML({ scope: 'shell', shellId: d.shellId })}</div>`
+}
+
 /** The whole block (an element with id="oi-custom-extra"). */
 export function extraOptionsHTML (data) {
   injectStyles(); bindLiveRefresh()
+  if (data.nodeKind === Extra.KIND_TERMINAL_SHELL) {
+    return `
+    <div class="oi-custom-section" id="oi-custom-extra" data-kind="${esc(data.nodeKind)}" data-node-id="${esc(data.id)}">
+      <div class="oi-custom-title">›_ Terminal settings</div>
+      ${terminalHTML(data)}
+      <div class="oix-msg" role="status" aria-live="polite" data-ref="extra-msg"></div>
+      <div class="oix-note">A TerminalShellTunnel node is an in-scene terminal that moves with the node. It is a reference: the settings are kept in ⟐TerminalSettings' shell list, not copied into the node. You can have several.</div>
+    </div>`
+  }
   const isPath = data.nodeKind === Extra.KIND_PATH
   const msg = MSG.id === data.id ? MSG.text : ''
   return `
@@ -138,6 +161,10 @@ const ev = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail
 export async function runExtraAction (data, act, ctx = {}) {
   const out = (ok, text) => ({ ok: !!ok, text })
   const res = (r, okText) => (r.ok ? out(true, okText) : out(false, r.error || 'Not possible.'))
+  if (data.nodeKind === Extra.KIND_TERMINAL_SHELL) {
+    if (act === 'ts-toggle') { ev('omni:terminal-invoke', { toggle: true }); return out(true, Shells.isOn() ? 'All terminals are on.' : 'All terminals are off.') }
+    return out(true, '')
+  }
   if (data.nodeKind === Extra.KIND_PATH) {
     const svc = Extra.SERVICES.paths
     const p = Paths.getPath(data.pathId)
@@ -175,7 +202,7 @@ function rerender (root) {
   const sec = root.querySelector?.('#oi-custom-extra') ?? document.getElementById('oi-custom-extra')
   if (!sec) return
   const id = sec.dataset.nodeId
-  const data = Extra.SERVICES.panels?.getSection(id) ?? Extra.SERVICES.paths?.omniNode?.getNodeData?.(id)
+  const data = Extra.SERVICES.panels?.getSection(id) ?? Extra.SERVICES.paths?.omniNode?.getNodeData?.(id) ?? Extra.SERVICES.shells?.omniNode?.getNodeData?.(id)
   if (!data) return
   const tmp = document.createElement('div'); tmp.innerHTML = extraOptionsHTML(data)
   const fresh = tmp.firstElementChild
@@ -188,6 +215,18 @@ export function wireExtraOptions (root, data) {
   const sec = root.querySelector?.('#oi-custom-extra')
   if (!sec || sec.dataset.wired === '1') return
   sec.dataset.wired = '1'
+  if (data.nodeKind === Extra.KIND_TERMINAL_SHELL) {
+    const host = sec.querySelector('[data-ref="ts-form"]')
+    if (host) wireTerminalForm(host, { scope: 'shell', shellId: data.shellId })
+    sec.addEventListener('click', async (e) => {
+      const b = e.target.closest?.('[data-xact]')
+      if (!b || b.disabled) return
+      const r = await runExtraAction(data, b.dataset.xact)
+      say(data.id, r.text, !r.ok)
+      const m = sec.querySelector('[data-ref="extra-msg"]'); if (m) m.textContent = r.text
+    })
+    return
+  }
   const finish = (text, err) => { say(data.id, text, !!err); const m = sec.querySelector('[data-ref="extra-msg"]'); if (m) { m.textContent = text; m.classList.toggle('is-err', !!err) } rerender(sec.parentElement ?? document) }
   const fileIn = sec.querySelector('[data-f="file"]')
   let allFiles = false
@@ -221,4 +260,6 @@ export function bindLiveRefresh () {
   window.addEventListener('omni:floorpanel-changed', h)
   window.addEventListener(Paths.CHANGED_EVENT, h)
   window.addEventListener('omni:path-recording-changed', h)
+  // V192: the Terminal block re-renders for the on / off state of the terminals (the form inside it keeps itself in sync)
+  window.addEventListener(Shells.STATE_EVENT, () => { const sec = typeof document !== 'undefined' ? document.getElementById('oi-custom-extra') : null; if (sec?.dataset.kind === Extra.KIND_TERMINAL_SHELL) rerender(document) })
 }

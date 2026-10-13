@@ -5,10 +5,11 @@
  *
  *   isAxis / axisIndex / axisVector     'x' | 'y' | 'z'
  *   WORLD_LIMITS, clampToWorld          the world box a node may be moved inside (the wallpaper sphere's extent, as ui/OmniMeter.js uses)
+ *   roundTo(v, decimals)                V192: round to the configurable precision (0..6, default 4) without float dust (1.005 -> 1.01 at 2)
  *   cleanNumber / formatCoord / parseCoord   exact numbers: no -0, no float dust (1.2000000000000002 -> 1.2), typed text -> number | null
  *   snapToStep(v, step)                 the nearest multiple of step (float-clean)
  *   nudge(v, dir, step)                 one step up / down from v, ending ON a multiple of step (from 0.35 with step 0.1: 0.4, then 0.5)
- *   stepFor(settings, shift)            settings.step, or settings.shiftStep while Shift is held
+ *   stepFor(settings, shift, alt)       settings.step; Shift = x10 (or the legacy settings.shiftStep when shiftAuto is off); Alt = /10
  *   projectRayOnAxis(origin, dir, point, axis)   where along the axis line through `point` the pointer ray comes closest -> { coord, s, t } | null
  *   dragCoord({ startCoord, startRayCoord, nowRayCoord, step, snap, axis })   a drag keeps the grab offset (the node does not jump under the pointer)
  *   clampDelta(positions, axis, delta)  the largest part of delta that keeps EVERY position inside the world (a group moves rigidly)
@@ -37,10 +38,20 @@ export function cleanNumber (v) {
   return r === 0 ? 0 : r
 }
 
-/** Up to 4 decimals, trailing zeros trimmed: 1.5 -> "1.5", 2 -> "2", -0.00001 -> "0". */
-export function formatCoord (v) {
-  const n = cleanNumber(v)
-  return String(Math.round(n * 1e4) / 1e4 === 0 ? 0 : Math.round(n * 1e4) / 1e4)
+export const PRECISION_DEFAULT = 4
+
+/** Round to `decimals` (0..6, default 4) the decimal way: 1.005 -> 1.01 at 2 places (not 1 because of binary dust); no -0. */
+export function roundTo (v, decimals = PRECISION_DEFAULT) {
+  const n = Number(v); if (!Number.isFinite(n)) return 0
+  const d = Math.min(6, Math.max(0, Math.round(Number(decimals)))) || 0
+  if (/e/i.test(String(n))) { const f = 10 ** d; const r = Math.round(n * f) / f; return r === 0 ? 0 : r }
+  const r = Number(Math.round(Number(`${n}e${d}`)) + `e-${d}`)
+  return Number.isFinite(r) && r !== 0 ? r : 0
+}
+
+/** Up to `decimals` (default 4) decimals, trailing zeros trimmed: 1.5 -> "1.5", 2 -> "2", -0.00001 -> "0". */
+export function formatCoord (v, decimals = PRECISION_DEFAULT) {
+  return String(roundTo(cleanNumber(v), decimals))
 }
 
 /** "1.25" / " -3 " / "1e2" / "2,5" -> number; anything else (empty, NaN, Infinity, "1.2.3") -> null. */
@@ -69,7 +80,12 @@ export function nudge (v, dir, step) {
   return cleanNumber(target * st)
 }
 
-export const stepFor = (settings, shift) => validStep(shift ? settings?.shiftStep ?? 1 : settings?.step ?? 0.1)
+/** The step for one press: settings.step; Shift = 10 x step (or the old fixed settings.shiftStep when shiftAuto is off); Alt = step / 10. */
+export function stepFor (settings, shift, alt = false) {
+  const base = validStep(settings?.step ?? 0.1)
+  if (shift) return settings?.shiftAuto !== true && Number.isFinite(Number(settings?.shiftStep)) && settings?.shiftStep !== null ? validStep(settings.shiftStep) : cleanNumber(Math.min(1000, base * 10))   // resolved settings always carry shiftAuto; a bare { step, shiftStep } keeps the V191 meaning
+  return alt ? cleanNumber(base / 10) : base
+}
 
 /**
  * Closest point between the pointer ray (origin + t*dir, t >= 0) and the axis line through `point`.
@@ -93,10 +109,10 @@ export function projectRayOnAxis (origin, dir, point, axis) {
   return { coord: point[i] + s, s, t }
 }
 
-export function dragCoord ({ startCoord, startRayCoord, nowRayCoord, step = 0.1, snap = true, axis = 'x' } = {}) {
+export function dragCoord ({ startCoord, startRayCoord, nowRayCoord, step = 0.1, snap = true, axis = 'x', precision = PRECISION_DEFAULT } = {}) {
   const raw = Number(startCoord) + (Number(nowRayCoord) - Number(startRayCoord))
   const v = snap ? snapToStep(raw, step) : cleanNumber(raw)
-  return cleanNumber(clampToWorld(axis, v))
+  return roundTo(clampToWorld(axis, v), precision)
 }
 
 /** Largest |delta| (same sign) so every position stays inside the world on `axis`. */
