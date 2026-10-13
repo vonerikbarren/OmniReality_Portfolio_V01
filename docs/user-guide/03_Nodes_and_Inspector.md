@@ -89,6 +89,10 @@ Desktop: Identity, Location and Appearance start open and sections open independ
 
 A **sound node** (a small speaker-shaped bell with rings) makes a sound, and any node can get a sound from its Inspector **Sound** section. Make one with ribbon Home > Create > Sound node. Everything about it is in [Sound nodes](12_Sound_Nodes.md).
 
+## Song nodes
+
+A **song node** (a flat record disc) arranges music nodes and audio clips on a timeline with a mixer, sections, tempo changes and automation. Make one with ribbon Home > Create > Song node (it opens **⟐OmniSong**; Home > Tools > Song editor opens it for the selected one). The Inspector shows its transport, tempo and length. Everything about it is in [Song nodes](17_Song_Nodes.md).
+
 ## Path nodes and the OmniNodeOrderPanel
 
 A **path node** (an octahedron) stands for one ordered list of your nodes, such as a tour or a reading order. Make one with ribbon Home > Create > Path node; it opens the **⟐OmniNodeOrder** window. The Inspector shows the same controls for a selected path node.

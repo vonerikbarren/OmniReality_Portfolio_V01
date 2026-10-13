@@ -5,10 +5,424 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V197",
+ "version": "V198",
  "date": "2026-10-13",
- "summary": "V197: Path node, Terminal node and Floor panels added to the OmniDraw menu (with Sound and Music from V196)",
+ "summary": "V198: SongNode (timeline arrangement + mixer), Audio library (import any audio file), piano roll, Song tile in the OmniDraw menu",
  "checks": [
+  {
+   "id": "v198-omnisongnode-audio-librar.song-transport-play-two-pattern-lanes",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song transport: play two pattern lanes",
+   "howToReach": "Create a Song node, add two music node patterns on two pattern lanes, press Play (or dispatch omni:song-transport-request {action:'play'})",
+   "whatToCheck": "both patterns sound together at the song tempo, the playhead moves, Stop silences everything (no hanging note)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-tempo-map",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song tempo map",
+   "howToReach": "In the song panel add a tempo point at bar 3 (e.g. 60 bpm) while playing",
+   "whatToCheck": "the beat changes at bar 3, the playhead does not jump, notes stay in time",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-loop-region",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song loop region",
+   "howToReach": "Turn Loop on with bars 2-4, press Play",
+   "whatToCheck": "playback wraps from bar 4 back to bar 2 without a gap or a doubled note; loop count increases",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-seek-and-pause",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song seek and pause",
+   "howToReach": "Click the ruler while playing; press Pause then Play",
+   "whatToCheck": "the playhead jumps and the music continues from there; pause keeps the bar, Stop returns to bar 1",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-mixer-mute-solo-volume",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song mixer mute / solo / volume",
+   "howToReach": "Lane header: M, S and the volume slider while playing",
+   "whatToCheck": "muting a pattern lane silences its notes within about a tenth of a second; solo keeps only the solo lanes; volume lowers the loudness",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-audio-clip-lane",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song audio clip lane",
+   "howToReach": "Import a WAV in the audio library, drop it on an audio lane, press Play",
+   "whatToCheck": "the clip sounds in time, the lane meter moves, lane mute silences it, lane pan/reverb send change the sound",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-master-limiter-and-sends",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song master limiter and sends",
+   "howToReach": "Master strip: limiter threshold, reverb mix/size, delay time/feedback/mix",
+   "whatToCheck": "loud audio is held under the threshold; the reverb and delay returns are audible on audio lanes only",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-automation",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song automation",
+   "howToReach": "Draw a volume automation on a lane",
+   "whatToCheck": "the lane volume follows the line while playing (pattern lanes: loudness steps with the line)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.only-one-song-plays",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Only one song plays",
+   "howToReach": "Start song A, then press Play on song B",
+   "whatToCheck": "A stops (stop event) and only B sounds",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-deleted-while-playing",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song deleted while playing",
+   "howToReach": "Delete the playing song node",
+   "whatToCheck": "playback stops, no error",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-missing-pattern-warning",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song missing pattern warning",
+   "howToReach": "Delete a MusicNode used by a clip, press Play",
+   "whatToCheck": "the clip stays visible, the rest plays, the panel shows a warning (no crash)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-node-create",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song node create",
+   "howToReach": "Ribbon Home > Create > Song node",
+   "whatToCheck": "A record disc appears, the ⟐OmniSong window opens on it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.song-editor-open",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Song editor open",
+   "howToReach": "Ribbon Home > Tools > Song editor, or Ctrl+K \"Song editor\"",
+   "whatToCheck": "Window opens on the selected song node",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.draw-picker-song-tile",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Draw picker Song tile",
+   "howToReach": "OmniDraw picker > Song",
+   "whatToCheck": "Creates a song node and opens the editor",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.lanes-and-clips",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Lanes and clips",
+   "howToReach": "Song window > Pattern lane, library Add / drag",
+   "whatToCheck": "Clip appears, drag moves, edges resize, snaps to grid",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.lane-mixer",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Lane mixer",
+   "howToReach": "Lane header faders and knobs, M, S",
+   "whatToCheck": "Values change, meters move while playing, mute/solo dim the lane",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.sections-and-markers",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Sections and markers",
+   "howToReach": "Click ruler section band, marker button",
+   "whatToCheck": "Box edits name/start/length/colour; markers rename/delete",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.tempo-track",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Tempo track",
+   "howToReach": "Click/drag on the tempo row",
+   "whatToCheck": "Points add, move, delete; first point is base bpm",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.automation",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Automation",
+   "howToReach": "Lane header ∿",
+   "whatToCheck": "Points add/drag/remove; param menu switches curve",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.make-unique",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Make unique",
+   "howToReach": "Select pattern clip > Make unique",
+   "whatToCheck": "New music node; editing it leaves other clips alone",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.audio-import",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Audio import",
+   "howToReach": "Library Import… or file drop",
+   "whatToCheck": "Waveform clip; friendly error for bad files",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.undo-redo",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Undo/redo",
+   "howToReach": "Ctrl+Z / Ctrl+Shift+Z with window focus",
+   "whatToCheck": "Steps back, up to 100; a drag is one step",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.delete-cleanup",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Delete cleanup",
+   "howToReach": "Delete the song node",
+   "whatToCheck": "Window shows empty state, playback stops",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.phone-sheet",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Phone sheet",
+   "howToReach": "390 px wide: ⟐OmniSong",
+   "whatToCheck": "Lane cards, tap expands mixer, play works",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.audio-library-window",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Audio library window",
+   "howToReach": "Ribbon Home > Tools > Audio library (or OmniStarLight: audio)",
+   "whatToCheck": "Window `⟐OmniAudioLibrary` opens, shows the empty-state text, the storage meter (\"0 B of 300 MB used ... saved in this browser\") and an Import audio button",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.import-by-button",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Import by button",
+   "howToReach": "Audio library > Import audio, pick a WAV and an MP3 (and an OGG / FLAC / M4A if you have them)",
+   "whatToCheck": "Each valid file appears as a row (name, length, format, size, date, waveform); a toast per file; a file your browser cannot open gives a red line with the reason",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.reject-non-audio",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Reject non-audio",
+   "howToReach": "Import a PNG renamed to .wav, a 0-byte file, a text file",
+   "whatToCheck": "Red message each (\"looks like an image\", \"is empty\", \"could not be decoded\"); nothing is added",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.drag-and-drop-import",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Drag and drop import",
+   "howToReach": "Drag a sound file from the desktop over the browser while the library is open",
+   "whatToCheck": "Full-screen drop zone appears; dropping adds the file; dragging plain text does not show the zone",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.preview",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Preview",
+   "howToReach": "Press the play button on a row; click on the waveform",
+   "whatToCheck": "Sound plays (nothing sounds before you press); button turns to stop; playhead moves; stops when you close the window or press again",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.rename-delete",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Rename / delete",
+   "howToReach": "Rename a row (Enter / Esc); Delete asks first",
+   "whatToCheck": "New name sticks after a reload; duplicates become \"Name (2)\"; delete removes it; if a song uses it the confirm says how many songs",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.persistence",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Persistence",
+   "howToReach": "Import a file, reload the page, open Audio library",
+   "whatToCheck": "The file is still there (meter says \"saved in this browser\")",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.private-mode",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Private mode",
+   "howToReach": "Open the app in a private / incognito window, import a file",
+   "whatToCheck": "Yellow warning \"Private mode or blocked storage\" and meter \"NOT saved (memory only)\"; the file is gone after closing the tab",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.limits",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Limits",
+   "howToReach": "Import a file over 40 MB; fill the library past 300 MB",
+   "whatToCheck": "\"too large\" / \"library is full\" messages, nothing added, meter shows usage",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.audio-picker",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Audio picker",
+   "howToReach": "From the song panel, add an audio clip (agent 2)",
+   "whatToCheck": "A modal list of the library with Import; picking a row returns the file; Esc closes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.phone-layout",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Phone layout",
+   "howToReach": "Open Audio library at 390 px width",
+   "whatToCheck": "Bottom sheet, buttons at least 40 px high, list scrolls, waveform fits",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.piano-roll-switch",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Piano roll switch",
+   "howToReach": "Ribbon Home > Sound > Sequencer (or select a music node and open the Inspector's Open sequencer), a track row, press Roll next to the name",
+   "whatToCheck": "The track's step lane is replaced by a piano roll (keys, rows, velocity lane); Grid brings the lane back; reopen the window: the choice is remembered",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.draw-and-lengthen-notes",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Draw and lengthen notes",
+   "howToReach": "In the roll press an empty cell, drag sideways",
+   "whatToCheck": "A note appears (you hear the pitch), drag sets its length in steps, up to the whole pattern; one Undo removes the whole gesture",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.move-and-resize-notes",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Move and resize notes",
+   "howToReach": "Drag a note body, drag its right edge, drag its left edge",
+   "whatToCheck": "The note moves in steps and pitch, the length changes, a same-pitch neighbour is shortened (not deleted) and comes back when you drag away",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.select-copy-duplicate",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Select, copy, duplicate",
+   "howToReach": "Select tool: drag a rectangle, Shift+click; Ctrl/Cmd+C, +V, +D, Delete, arrows",
+   "whatToCheck": "The selection moves / transposes with the arrows (Shift = bar / octave), paste lands at the last click, duplicate sits right behind the selection",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.velocity-lane",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Velocity lane",
+   "howToReach": "Drag a bar under the grid, sweep across several bars",
+   "whatToCheck": "The note's velocity changes, a selected group follows; one Undo step per drag",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.scale-and-snap",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Scale and snap",
+   "howToReach": "Key / Scale / Snap selects and the ♯ Scale button",
+   "whatToCheck": "Rows outside the scale are dimmed, new and moved notes snap to scale notes, snap step / half / bar / off changes where notes start",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.zoom-and-scroll",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Zoom and scroll",
+   "howToReach": "Ctrl/Cmd+wheel, wheel, Shift+wheel, +/-/Fit buttons",
+   "whatToCheck": "The roll zooms about the pointer, scrolls both ways, Fit shows the whole pattern",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.playhead",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Playhead",
+   "howToReach": "Press Play with the roll open",
+   "whatToCheck": "A line runs over the roll in time (not choppy), Follow scrolls with it, it hides on Stop",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.touch-editing-on-a-phone",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Touch editing on a phone",
+   "howToReach": "Open the sequencer on a phone (bottom sheet), Roll",
+   "whatToCheck": "Bigger rows and buttons, one finger draws, two fingers scroll and pinch-zoom, long press on a note deletes it, Pan tool scrolls",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.duplicate-a-music-node",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Duplicate a music node",
+   "howToReach": "Dispatch `omni:music-node-duplicate {nodeId, select:true}` (the song node's Make unique)",
+   "whatToCheck": "A \"... copy\" music node appears next to the original with the same notes, edits to it do not change the original, Delete removes it, an unknown / non-music id answers an error code",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v198-omnisongnode-audio-librar.long-notes-play",
+   "category": "V198 OmniSongNode, audio library, piano roll",
+   "feature": "Long notes play",
+   "howToReach": "Draw a note 16 steps long, press Play, Loop on and off",
+   "whatToCheck": "The note sounds for the whole bar; with Loop off it ends with the pattern; an old (V195) pattern sounds exactly as before",
+   "priority": "normal",
+   "device": "any"
+  },
   {
    "id": "v197-omnidraw-picker-path-term.path-terminal-and-floor-panels-tiles-in-the-omnidr",
    "category": "V197 OmniDraw picker: Path, Terminal, Floor panels",
@@ -462,10 +876,55 @@ export default {
  ],
  "asks": [
   {
-   "id": "v197-picker",
-   "question": "Is the OmniDraw menu (now 13 tiles) still easy to scan, on desktop and on a phone? Should anything be grouped or reordered?",
-   "why": "It grew from 8 to 13 tiles; layout only checked in jsdom.",
+   "id": "v198-song",
+   "question": "Create a Song node (OmniDraw > Song), add a lane, drop in a pattern and an audio clip, press Play. Does the arrangement play in time and does the mixer (volume, pan, mute, solo) do what you expect?",
+   "why": "Timing was verified with clocks and meters on software-rendered Chromium; nobody listened.",
    "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "v198-import",
+   "question": "Import your own WAV and MP3 (and anything else you have) in the Audio library. Which formats work, and does it keep them after a reload?",
+   "why": "The browser decides what it can decode; AAC/M4A could not be tested here.",
+   "kind": "text",
+   "device": "desktop"
+  },
+  {
+   "id": "v198-roll",
+   "question": "Open a Music node sequencer, switch a track to Roll and draw some notes. Is the piano roll comfortable (mouse and touch)?",
+   "why": "Only synthetic pointer events were used.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "v198-layout",
+   "question": "Is the song timeline too cramped at your screen size (it opened about 393 px tall at 720 px)? What would you move or hide?",
+   "why": "The toolbar and clip bar take several rows on small windows.",
+   "kind": "text",
+   "device": "any"
+  },
+  {
+   "id": "v198-pan",
+   "question": "Pattern lanes only get volume, mute and solo (no pan, filter or sends) until the engine can route each instrument to a lane. Do you want that engine change next?",
+   "why": "Audio lanes have full pan / filter / sends; pattern lanes do not yet.",
+   "kind": "choice",
+   "choices": [
+    "yes, next",
+    "later",
+    "fine as is"
+   ],
+   "device": "any"
+  },
+  {
+   "id": "v198-voices",
+   "question": "A song with more than 8 instruments cuts the oldest voices (engine cap 8). Should playing a song raise the cap to 16?",
+   "why": "The player only warns today.",
+   "kind": "choice",
+   "choices": [
+    "raise to 16 while a song plays",
+    "keep 8",
+    "make it a setting"
+   ],
    "device": "any"
   },
   {

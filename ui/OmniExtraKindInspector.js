@@ -19,6 +19,7 @@ import { PIECES } from '../utils/OmniFloorPieces.js'
 import * as Shells from '../utils/TerminalShells.js'
 import { terminalFormHTML, wireTerminalForm } from './TerminalSettingsForm.js'   // V192: TerminalShellTunnel — the Terminal settings section
 import { soundKindBlockHTML, wireSoundKindBlock } from './OmniSoundInspector.js'   // V194: SoundNode — the short sound block (the full 'Sound' section is the Inspector's own)
+import { songKindBlockHTML, wireSongKindBlock } from './OmniSongInspector.js'   // V198: SongNode — tempo, length, Play / Pause / Stop, Open song editor
 import { musicKindBlockHTML, wireMusicKindBlock } from './OmniMusicInspector.js'   // V195: MusicNode — tempo, Play / Stop / Record, Open sequencer
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -138,6 +139,7 @@ function terminalHTML (d) {
 export function extraOptionsHTML (data) {
   if (data.nodeKind === Extra.KIND_SOUND) return soundKindBlockHTML(data)   // V194
   if (data.nodeKind === Extra.KIND_MUSIC) return musicKindBlockHTML(data)   // V195
+  if (data.nodeKind === Extra.KIND_SONG) return songKindBlockHTML(data)   // V198
   injectStyles(); bindLiveRefresh()
   if (data.nodeKind === Extra.KIND_TERMINAL_SHELL) {
     return `
@@ -218,6 +220,7 @@ function rerender (root) {
 export function wireExtraOptions (root, data) {
   if (data.nodeKind === Extra.KIND_SOUND) { wireSoundKindBlock(root, data); return }   // V194
   if (data.nodeKind === Extra.KIND_MUSIC) { wireMusicKindBlock(root, data); return }   // V195
+  if (data.nodeKind === Extra.KIND_SONG) { wireSongKindBlock(root, data); return }   // V198
   const sec = root.querySelector?.('#oi-custom-extra')
   if (!sec || sec.dataset.wired === '1') return
   sec.dataset.wired = '1'

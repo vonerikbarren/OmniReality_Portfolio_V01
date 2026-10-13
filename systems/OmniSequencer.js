@@ -396,7 +396,7 @@ export default class OmniSequencer {
           if (sent++ >= MAX_EVENTS_PER_TICK) break
           if (ev.prob < 1 && this._rng() >= ev.prob) continue
           const when = Math.max(now, this._timeOf(baseBeats + ev.offset * sb))
-          this._playEvent(m, tr, ev, i, when, dur)
+          this._playEvent(m, tr, ev, i, when, dur, m.loop ? Infinity : Math.max(0.02, (total - i - ev.offset) * dur))
         }
       }
     }
@@ -419,12 +419,12 @@ export default class OmniSequencer {
     try { const d = this.omniNode?.getNodeData?.(instrumentId); return !!(d && d.sound && d.sound.enabled !== false) } catch (_) { return false }
   }
 
-  _playEvent (m, tr, ev, step, when, dur) {
+  _playEvent (m, tr, ev, step, when, dur, maxDur = Infinity) {
     const inst = tr.instrumentNodeId && this._instrumentExists(tr.instrumentNodeId) ? tr.instrumentNodeId : null
     const id = inst ?? this._nodeId
     const midi = clamp(ev.midi + tr.transpose, 0, 127)
     const velocity = clamp(ev.velocity * tr.volume * m.gain, 0.01, 1)
-    const o = { velocity, when, duration: Math.max(0.02, ev.gate * dur), pan: tr.pan }
+    const o = { velocity, when, duration: Math.max(0.02, Math.min(ev.gate * dur, maxDur)), pan: tr.pan }   // V198: a long note (up to the whole pattern) of a non-looping pattern ends with it; a looping one wraps like V195
     const sound = inst ? this._soundOf(inst) : undefined
     if (sound) o.sound = sound
     this._used.add(id)
@@ -521,7 +521,7 @@ export default class OmniSequencer {
   _closeHeld (h) {
     const m = this._music(h.nodeId); if (!m) return
     const sb = MM.stepBeats(m)
-    const gate = clamp(Math.round(((this._beatsAt(this.now()) - h.pos0) / sb) * 1000) / 1000, MM.LIMITS.gateMin, MM.LIMITS.gateMax)
+    const gate = clamp(Math.round(((this._beatsAt(this.now()) - h.pos0) / sb) * 1000) / 1000, MM.LIMITS.gateMin, MM.gateMaxFor(m))
     this._editTrack(h.nodeId, h.trackId, (x) => { const ev = x.steps.find(s => s.step === h.step && s.midi === h.midi); if (ev) ev.gate = gate }, 'record')
   }
 

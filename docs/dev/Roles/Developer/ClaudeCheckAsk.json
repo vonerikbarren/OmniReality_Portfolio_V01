@@ -1,14 +1,59 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V197",
+  "version": "V198",
   "date": "2026-10-13",
-  "summary": "V197: Path node, Terminal node and Floor panels added to the OmniDraw menu (with Sound and Music from V196)",
+  "summary": "V198: SongNode (timeline arrangement + mixer), Audio library (import any audio file), piano roll, Song tile in the OmniDraw menu",
   "asks": [
     {
-      "id": "v197-picker",
-      "question": "Is the OmniDraw menu (now 13 tiles) still easy to scan, on desktop and on a phone? Should anything be grouped or reordered?",
-      "why": "It grew from 8 to 13 tiles; layout only checked in jsdom.",
+      "id": "v198-song",
+      "question": "Create a Song node (OmniDraw > Song), add a lane, drop in a pattern and an audio clip, press Play. Does the arrangement play in time and does the mixer (volume, pan, mute, solo) do what you expect?",
+      "why": "Timing was verified with clocks and meters on software-rendered Chromium; nobody listened.",
       "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v198-import",
+      "question": "Import your own WAV and MP3 (and anything else you have) in the Audio library. Which formats work, and does it keep them after a reload?",
+      "why": "The browser decides what it can decode; AAC/M4A could not be tested here.",
+      "kind": "text",
+      "device": "desktop"
+    },
+    {
+      "id": "v198-roll",
+      "question": "Open a Music node sequencer, switch a track to Roll and draw some notes. Is the piano roll comfortable (mouse and touch)?",
+      "why": "Only synthetic pointer events were used.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v198-layout",
+      "question": "Is the song timeline too cramped at your screen size (it opened about 393 px tall at 720 px)? What would you move or hide?",
+      "why": "The toolbar and clip bar take several rows on small windows.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v198-pan",
+      "question": "Pattern lanes only get volume, mute and solo (no pan, filter or sends) until the engine can route each instrument to a lane. Do you want that engine change next?",
+      "why": "Audio lanes have full pan / filter / sends; pattern lanes do not yet.",
+      "kind": "choice",
+      "choices": [
+        "yes, next",
+        "later",
+        "fine as is"
+      ],
+      "device": "any"
+    },
+    {
+      "id": "v198-voices",
+      "question": "A song with more than 8 instruments cuts the oldest voices (engine cap 8). Should playing a song raise the cap to 16?",
+      "why": "The player only warns today.",
+      "kind": "choice",
+      "choices": [
+        "raise to 16 while a song plays",
+        "keep 8",
+        "make it a setting"
+      ],
       "device": "any"
     },
     {

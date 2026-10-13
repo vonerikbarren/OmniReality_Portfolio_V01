@@ -1381,3 +1381,14 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 3. Picker not checked in a real browser.
 
 ## 87. V197: OmniDraw picker has 13 tiles; layout not checked in a browser; the V183 nodes test (8 modes) needs updating to 13.
+
+## 88. V198: what was not verified, follow-ups
+
+1. Nothing heard. Pattern lanes: pan / filter / sends need per-instrument routing in the engine (optional `dest` per voice).
+2. Voice cap 8 cuts a song's oldest instruments; decide to raise it while a song plays.
+3. Stop returns to bar 1; consider returning to loop start when looping. Tempo ramps and tempo-synced delay not built.
+4. Audio: AAC / M4A untested; library is per browser (no export / import yet); deleting an asset used by songs warns but allows.
+5. Piano roll: old compact roll lane still exists next to the new Grid | Roll switch; remove later. Duplicate places the copy 1.4 units behind the original (contract said in front of the camera).
+6. Song timeline is cramped at 720 px high; consider collapsing the toolbar.
+7. The V197 draw-picker test expects 13 tiles (now 14).
+8. Next: lyrics + markers + metadata UI, MIDI export, real-time WAV export, mic recording, 3D experience.

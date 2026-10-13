@@ -2,6 +2,287 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V198 OmniSongNode, audio library, piano roll",
+      "items": [
+        {
+          "feature": "Song transport: play two pattern lanes",
+          "howToReach": "Create a Song node, add two music node patterns on two pattern lanes, press Play (or dispatch omni:song-transport-request {action:'play'})",
+          "whatToCheck": "both patterns sound together at the song tempo, the playhead moves, Stop silences everything (no hanging note)",
+          "tested": false
+        },
+        {
+          "feature": "Song tempo map",
+          "howToReach": "In the song panel add a tempo point at bar 3 (e.g. 60 bpm) while playing",
+          "whatToCheck": "the beat changes at bar 3, the playhead does not jump, notes stay in time",
+          "tested": false
+        },
+        {
+          "feature": "Song loop region",
+          "howToReach": "Turn Loop on with bars 2-4, press Play",
+          "whatToCheck": "playback wraps from bar 4 back to bar 2 without a gap or a doubled note; loop count increases",
+          "tested": false
+        },
+        {
+          "feature": "Song seek and pause",
+          "howToReach": "Click the ruler while playing; press Pause then Play",
+          "whatToCheck": "the playhead jumps and the music continues from there; pause keeps the bar, Stop returns to bar 1",
+          "tested": false
+        },
+        {
+          "feature": "Song mixer mute / solo / volume",
+          "howToReach": "Lane header: M, S and the volume slider while playing",
+          "whatToCheck": "muting a pattern lane silences its notes within about a tenth of a second; solo keeps only the solo lanes; volume lowers the loudness",
+          "tested": false
+        },
+        {
+          "feature": "Song audio clip lane",
+          "howToReach": "Import a WAV in the audio library, drop it on an audio lane, press Play",
+          "whatToCheck": "the clip sounds in time, the lane meter moves, lane mute silences it, lane pan/reverb send change the sound",
+          "tested": false
+        },
+        {
+          "feature": "Song master limiter and sends",
+          "howToReach": "Master strip: limiter threshold, reverb mix/size, delay time/feedback/mix",
+          "whatToCheck": "loud audio is held under the threshold; the reverb and delay returns are audible on audio lanes only",
+          "tested": false
+        },
+        {
+          "feature": "Song automation",
+          "howToReach": "Draw a volume automation on a lane",
+          "whatToCheck": "the lane volume follows the line while playing (pattern lanes: loudness steps with the line)",
+          "tested": false
+        },
+        {
+          "feature": "Only one song plays",
+          "howToReach": "Start song A, then press Play on song B",
+          "whatToCheck": "A stops (stop event) and only B sounds",
+          "tested": false
+        },
+        {
+          "feature": "Song deleted while playing",
+          "howToReach": "Delete the playing song node",
+          "whatToCheck": "playback stops, no error",
+          "tested": false
+        },
+        {
+          "feature": "Song missing pattern warning",
+          "howToReach": "Delete a MusicNode used by a clip, press Play",
+          "whatToCheck": "the clip stays visible, the rest plays, the panel shows a warning (no crash)",
+          "tested": false
+        },
+        {
+          "feature": "Song node create",
+          "howToReach": "Ribbon Home > Create > Song node",
+          "whatToCheck": "A record disc appears, the ⟐OmniSong window opens on it",
+          "tested": false
+        },
+        {
+          "feature": "Song editor open",
+          "howToReach": "Ribbon Home > Tools > Song editor, or Ctrl+K \"Song editor\"",
+          "whatToCheck": "Window opens on the selected song node",
+          "tested": false
+        },
+        {
+          "feature": "Draw picker Song tile",
+          "howToReach": "OmniDraw picker > Song",
+          "whatToCheck": "Creates a song node and opens the editor",
+          "tested": false
+        },
+        {
+          "feature": "Lanes and clips",
+          "howToReach": "Song window > Pattern lane, library Add / drag",
+          "whatToCheck": "Clip appears, drag moves, edges resize, snaps to grid",
+          "tested": false
+        },
+        {
+          "feature": "Lane mixer",
+          "howToReach": "Lane header faders and knobs, M, S",
+          "whatToCheck": "Values change, meters move while playing, mute/solo dim the lane",
+          "tested": false
+        },
+        {
+          "feature": "Sections and markers",
+          "howToReach": "Click ruler section band, marker button",
+          "whatToCheck": "Box edits name/start/length/colour; markers rename/delete",
+          "tested": false
+        },
+        {
+          "feature": "Tempo track",
+          "howToReach": "Click/drag on the tempo row",
+          "whatToCheck": "Points add, move, delete; first point is base bpm",
+          "tested": false
+        },
+        {
+          "feature": "Automation",
+          "howToReach": "Lane header ∿",
+          "whatToCheck": "Points add/drag/remove; param menu switches curve",
+          "tested": false
+        },
+        {
+          "feature": "Make unique",
+          "howToReach": "Select pattern clip > Make unique",
+          "whatToCheck": "New music node; editing it leaves other clips alone",
+          "tested": false
+        },
+        {
+          "feature": "Audio import",
+          "howToReach": "Library Import… or file drop",
+          "whatToCheck": "Waveform clip; friendly error for bad files",
+          "tested": false
+        },
+        {
+          "feature": "Undo/redo",
+          "howToReach": "Ctrl+Z / Ctrl+Shift+Z with window focus",
+          "whatToCheck": "Steps back, up to 100; a drag is one step",
+          "tested": false
+        },
+        {
+          "feature": "Delete cleanup",
+          "howToReach": "Delete the song node",
+          "whatToCheck": "Window shows empty state, playback stops",
+          "tested": false
+        },
+        {
+          "feature": "Phone sheet",
+          "howToReach": "390 px wide: ⟐OmniSong",
+          "whatToCheck": "Lane cards, tap expands mixer, play works",
+          "tested": false
+        },
+        {
+          "feature": "Audio library window",
+          "howToReach": "Ribbon Home > Tools > Audio library (or OmniStarLight: audio)",
+          "whatToCheck": "Window `⟐OmniAudioLibrary` opens, shows the empty-state text, the storage meter (\"0 B of 300 MB used ... saved in this browser\") and an Import audio button",
+          "tested": false
+        },
+        {
+          "feature": "Import by button",
+          "howToReach": "Audio library > Import audio, pick a WAV and an MP3 (and an OGG / FLAC / M4A if you have them)",
+          "whatToCheck": "Each valid file appears as a row (name, length, format, size, date, waveform); a toast per file; a file your browser cannot open gives a red line with the reason",
+          "tested": false
+        },
+        {
+          "feature": "Reject non-audio",
+          "howToReach": "Import a PNG renamed to .wav, a 0-byte file, a text file",
+          "whatToCheck": "Red message each (\"looks like an image\", \"is empty\", \"could not be decoded\"); nothing is added",
+          "tested": false
+        },
+        {
+          "feature": "Drag and drop import",
+          "howToReach": "Drag a sound file from the desktop over the browser while the library is open",
+          "whatToCheck": "Full-screen drop zone appears; dropping adds the file; dragging plain text does not show the zone",
+          "tested": false
+        },
+        {
+          "feature": "Preview",
+          "howToReach": "Press the play button on a row; click on the waveform",
+          "whatToCheck": "Sound plays (nothing sounds before you press); button turns to stop; playhead moves; stops when you close the window or press again",
+          "tested": false
+        },
+        {
+          "feature": "Rename / delete",
+          "howToReach": "Rename a row (Enter / Esc); Delete asks first",
+          "whatToCheck": "New name sticks after a reload; duplicates become \"Name (2)\"; delete removes it; if a song uses it the confirm says how many songs",
+          "tested": false
+        },
+        {
+          "feature": "Persistence",
+          "howToReach": "Import a file, reload the page, open Audio library",
+          "whatToCheck": "The file is still there (meter says \"saved in this browser\")",
+          "tested": false
+        },
+        {
+          "feature": "Private mode",
+          "howToReach": "Open the app in a private / incognito window, import a file",
+          "whatToCheck": "Yellow warning \"Private mode or blocked storage\" and meter \"NOT saved (memory only)\"; the file is gone after closing the tab",
+          "tested": false
+        },
+        {
+          "feature": "Limits",
+          "howToReach": "Import a file over 40 MB; fill the library past 300 MB",
+          "whatToCheck": "\"too large\" / \"library is full\" messages, nothing added, meter shows usage",
+          "tested": false
+        },
+        {
+          "feature": "Audio picker",
+          "howToReach": "From the song panel, add an audio clip (agent 2)",
+          "whatToCheck": "A modal list of the library with Import; picking a row returns the file; Esc closes",
+          "tested": false
+        },
+        {
+          "feature": "Phone layout",
+          "howToReach": "Open Audio library at 390 px width",
+          "whatToCheck": "Bottom sheet, buttons at least 40 px high, list scrolls, waveform fits",
+          "tested": false
+        },
+        {
+          "feature": "Piano roll switch",
+          "howToReach": "Ribbon Home > Sound > Sequencer (or select a music node and open the Inspector's Open sequencer), a track row, press Roll next to the name",
+          "whatToCheck": "The track's step lane is replaced by a piano roll (keys, rows, velocity lane); Grid brings the lane back; reopen the window: the choice is remembered",
+          "tested": false
+        },
+        {
+          "feature": "Draw and lengthen notes",
+          "howToReach": "In the roll press an empty cell, drag sideways",
+          "whatToCheck": "A note appears (you hear the pitch), drag sets its length in steps, up to the whole pattern; one Undo removes the whole gesture",
+          "tested": false
+        },
+        {
+          "feature": "Move and resize notes",
+          "howToReach": "Drag a note body, drag its right edge, drag its left edge",
+          "whatToCheck": "The note moves in steps and pitch, the length changes, a same-pitch neighbour is shortened (not deleted) and comes back when you drag away",
+          "tested": false
+        },
+        {
+          "feature": "Select, copy, duplicate",
+          "howToReach": "Select tool: drag a rectangle, Shift+click; Ctrl/Cmd+C, +V, +D, Delete, arrows",
+          "whatToCheck": "The selection moves / transposes with the arrows (Shift = bar / octave), paste lands at the last click, duplicate sits right behind the selection",
+          "tested": false
+        },
+        {
+          "feature": "Velocity lane",
+          "howToReach": "Drag a bar under the grid, sweep across several bars",
+          "whatToCheck": "The note's velocity changes, a selected group follows; one Undo step per drag",
+          "tested": false
+        },
+        {
+          "feature": "Scale and snap",
+          "howToReach": "Key / Scale / Snap selects and the ♯ Scale button",
+          "whatToCheck": "Rows outside the scale are dimmed, new and moved notes snap to scale notes, snap step / half / bar / off changes where notes start",
+          "tested": false
+        },
+        {
+          "feature": "Zoom and scroll",
+          "howToReach": "Ctrl/Cmd+wheel, wheel, Shift+wheel, +/-/Fit buttons",
+          "whatToCheck": "The roll zooms about the pointer, scrolls both ways, Fit shows the whole pattern",
+          "tested": false
+        },
+        {
+          "feature": "Playhead",
+          "howToReach": "Press Play with the roll open",
+          "whatToCheck": "A line runs over the roll in time (not choppy), Follow scrolls with it, it hides on Stop",
+          "tested": false
+        },
+        {
+          "feature": "Touch editing on a phone",
+          "howToReach": "Open the sequencer on a phone (bottom sheet), Roll",
+          "whatToCheck": "Bigger rows and buttons, one finger draws, two fingers scroll and pinch-zoom, long press on a note deletes it, Pan tool scrolls",
+          "tested": false
+        },
+        {
+          "feature": "Duplicate a music node",
+          "howToReach": "Dispatch `omni:music-node-duplicate {nodeId, select:true}` (the song node's Make unique)",
+          "whatToCheck": "A \"... copy\" music node appears next to the original with the same notes, edits to it do not change the original, Delete removes it, an unknown / non-music id answers an error code",
+          "tested": false
+        },
+        {
+          "feature": "Long notes play",
+          "howToReach": "Draw a note 16 steps long, press Play, Loop on and off",
+          "whatToCheck": "The note sounds for the whole bar; with Loop off it ends with the pattern; an old (V195) pattern sounds exactly as before",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "V197 OmniDraw picker: Path, Terminal, Floor panels",
       "items": [
         {

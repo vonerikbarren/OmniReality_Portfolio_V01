@@ -292,6 +292,15 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V195 MusicNode kind + step sequencer (transport, record) + the ⟐OmniSequencer window and the 'sequencer' quadrant content ──
   const { addMusicModules } = await import('./ui/OmniMusicModules.js')
   addMusicModules(base, omniNode)
+  // ── V198 SongNode core: the song player (arrangement transport, lookahead scheduler, lane buses, master limiter, send FX) ──
+  const { addSongCoreModules } = await import('./ui/OmniSongCoreModules.js')
+  addSongCoreModules(base, omniNode)
+  // ── V198 SongNode kind + the ⟐OmniSong timeline window and the 'song' quadrant content ──
+  const { addSongModules } = await import('./ui/OmniSongModules.js')
+  addSongModules(base, omniNode)
+  // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──
+  const { addAudioModules } = await import('./ui/OmniAudioModules.js')
+  addAudioModules(base, omniNode)
   // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
   base.addModule(new OmniReticle(base.context))
   base.addModule(new OmniDocsPanel())

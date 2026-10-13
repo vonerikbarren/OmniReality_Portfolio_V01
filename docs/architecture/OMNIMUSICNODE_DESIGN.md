@@ -1,6 +1,6 @@
 # OmniMusicNode and the step sequencer (V195)
 
-Applies to: V195 · Status: first stage built (pattern + live record), later stages are a roadmap · Real devices: not verified.
+Applies to: V198 · Status: first stage built (pattern + live record), V198 added the piano roll, long notes and duplicate; later stages are a roadmap · Real devices: not verified.
 
 ## Purpose
 A MusicNode is a node that holds a pattern (tempo, length, tracks of notes) and plays it through the SoundNodes already in the reality. It is the first stage of a DAW-like feature: edit a loop, play it, record into it from the keyboard / MIDI / pads, undo the take. Everything stays a "digital space of logic": the pattern is plain data on the node (`data.music`), saved and loaded with the node like any other.
@@ -17,7 +17,7 @@ A MusicNode is a node that holds a pattern (tempo, length, tracks of notes) and 
 
 ## Data (`node.data.music`, sanitized on every write)
 `{ v, tempo 20..300, stepsPerBar 4..32, bars 1..8, resolution (1/4 1/8 1/16 1/32), swing 0..0.75, loop, metronome, countIn, tracks[] }`.
-A track: `{ id, name, instrument, view 'grid'|'roll', volume, pan, mute, solo, transpose, steps[] }`. A step event: `{ step, midi, velocity, gate, offset, prob }` (`gate` and `offset` are fractions of a step). Limits: 16 tracks, 4096 events per track, 256 total steps. `sanitizeMusic` is idempotent, never throws and is `__proto__`-safe. Stored patterns are never mutated: each edit makes a new object (this is what makes undo cheap and the 3D plate re-read only when the reference changes).
+A track: `{ id, name, instrument, view 'grid'|'roll', volume, pan, mute, solo, transpose, steps[] }`. A step event: `{ step, midi, velocity, gate, offset, prob }` (`gate` is the length in STEPS, `offset` a fraction of a step). V198: `gate` may be as long as the whole pattern (it was 4 up to V197); V195 data sanitizes identically. Limits: 16 tracks, 4096 events per track, 256 total steps, 64 music nodes. `sanitizeMusic` is idempotent, never throws and is `__proto__`-safe. Stored patterns are never mutated: each edit makes a new object (this is what makes undo cheap and the 3D plate re-read only when the reference changes).
 
 ## Files
 | File | Role |
@@ -26,7 +26,8 @@ A track: `{ id, name, instrument, view 'grid'|'roll', volume, pan, mute, solo, t
 | `systems/OmniMusicNodes.js` | module: kind creation, store (commit, undo / redo, coalescing, strokes), all edit verbs, mesh driving |
 | `systems/OmniSequencer.js` | module: transport, lookahead scheduler, metronome, count-in, recording, take undo |
 | `utils/OmniMusicNodeMesh.js` | the plate: one InstancedMesh of 4x16 cells, glyphs, flash; allocation-free per frame |
-| `ui/OmniSequencerView.js` | 2D editor (grid + piano roll lanes, instrument picker, note editor, playhead) |
+| `ui/OmniSequencerView.js` | 2D editor (grid + compact roll lanes, per-track Grid or Roll switch, instrument picker, note editor, playhead) |
+| `ui/OmniPianoRoll.js` + `utils/OmniPianoRollMath.js` | V198: the full piano roll of one track (see `OMNIPIANOROLL_DESIGN.md`) |
 | `ui/OmniSequencerPanel.js` | class-A window `OmniSequencer`, quadrant content `sequencer` |
 | `ui/OmniMusicInspector.js` | Inspector section (tempo, play / stop / record, loop, metronome, Open sequencer) |
 | `ui/OmniMusicModules.js` | `addMusicModules(base, omniNode)`: the one add-only block main.js calls |
@@ -42,12 +43,15 @@ One anchor maps engine time to beats (`_t0`, `_b0`, `_beatSec`); a tempo change 
 | `omni:music-transport` | out | `{ state, nodeId, countIn, mode }` |
 | `omni:music-step` | out | `{ nodeId, trackId, step, midi, velocity }`, fired when the note is audible; drives the visuals |
 | `omni:music-recorded` / `omni:music-armed` / `omni:music-data-changed` | out | take finished / armed track changed / pattern edited |
+| `omni:music-node-duplicate` | in | V198: `{ nodeId, select? }`, answers in `detail.out { ok, nodeId }` or `{ ok:false, code: no-node / not-music / node-cap }` |
 The sequencer deliberately does NOT echo played notes on the InputBus: the live instrument would play them a second time.
 
 ## Recording
 Bus notes with source keys / midi / touch / pad are taken (seq and pedal are ignored). Live mode quantizes (or not) at the chosen resolution, swing aware, after an optional count-in; notes in the count-in are ignored; positions wrap around the loop. Step mode has a cursor, a 60 ms chord window, rest and back. A take is one undo step. Overdub off clears the armed track when the take starts. Stored pitch = played pitch minus the track transpose.
 
 ## Roadmap
+Done in V198: piano roll (draw, move, resize, select, copy, transpose, velocity lane, scale, zoom, touch), long notes, `omni:music-node-duplicate`, `patternLengthSteps` / `patternLengthBars` for the song node. The song node (arrangement of several patterns, lanes, audio clips) is in `OMNISONGNODE_DESIGN.md` and takes over roadmap items 2 and 3 below.
+
 1. Tracks (next): per-track length / loop points, per-track instrument chain and effects send, mixer strip in the quadrant host, automation lanes for volume / pan / bend.
 2. Arrangement: several patterns per music node, a song timeline of pattern blocks, markers, tempo changes.
 3. Audio clips: record or drop audio (OmniMusicPlayer sources, the DJ decks) as clips on tracks, time-stretch to tempo.

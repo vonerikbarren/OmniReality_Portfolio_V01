@@ -1,6 +1,6 @@
 # 16. Music nodes
 
-Applies to: V195 · Status: written from the V195 music-node code (the node, the sequencer window, recording, the Inspector block); tested with the browser-less test suite and one desktop and one phone-sized browser run with a stand-in for the note engine · Real devices: not verified.
+Applies to: V198 · Status: written from the V198 music-node code (the node, the sequencer window, the piano roll, long notes, duplicate, recording, the Inspector block); tested with the browser-less test suite and one desktop and one phone-sized browser run with a stand-in for the note engine · Real devices: not verified.
 
 [Guide index](README.md) · Related: [Sound nodes](12_Sound_Nodes.md)
 
@@ -28,9 +28,39 @@ Each track is a row: **steps are the columns** (16 by default, one bar).
 
 The **note editor** shows the selected note's **velocity**, **length** (in steps), **chance** (the probability that it plays on each pass) and **offset** (a little early or late). Keyboard: focus a lane, arrows move, **Enter** or **Space** toggles a note, **Delete** removes the selected note.
 
-### Piano roll
+### Compact roll lane
 
-Press **♪ Roll** (under the gear ⚙) to turn a track into a compact **piano roll**: one row per semitone with a key column, scrolling up and down. Tap an empty cell to paint a note (it sounds once so you hear the pitch), tap a note to select it, drag sideways on a note to set its length, **Delete** to remove it. Painting across cells paints a run.
+Press **♪ Roll** (under the gear ⚙) to turn a track's lane into a compact **roll lane**: one row per semitone with a key column, scrolling up and down. Tap an empty cell to paint a note (it sounds once so you hear the pitch), tap a note to select it, drag sideways on a note to set its length, **Delete** to remove it. For real editing use the piano roll below.
+
+## The piano roll (V198)
+
+Every track has a small **Grid | Roll** switch next to its name. **Roll** replaces the track's step lane with the full **piano roll**; **Grid** brings the lane back. The choice is remembered for each track (in this browser). It works in the window, in the `sequencer` quadrant of the OmniExpression panel and in the phone bottom sheet.
+
+The roll shows a **keyboard** on the left (the Cs are named; press a key to hear it with the track's instrument, slide for a glissando), **pitch rows** (white and black keys) and **step columns** with bar and beat lines. Under the grid is the **velocity lane**.
+
+| Tool (toolbar) | What it does |
+|---|---|
+| **✎ Draw** | Click an empty cell: a note (one grid cell long). Drag sideways to give it a length; a note can be as long as the **whole pattern**. Drag a note to move it (steps and pitch together). Drag its **right edge** to resize it, its **left edge** to move its start |
+| **Paint** (button) | With Draw: dragging paints one note per cell, so you can sketch a melody in one stroke |
+| **▭ Select** | Drag a rectangle around notes; **Shift** adds / removes. Dragging a selected note moves the whole group |
+| **⌫ Erase** | Click or drag over notes to delete them |
+| **✋ Pan** | Dragging scrolls the roll (handy on a phone) |
+
+In every tool: **right click** or a **long press** (touch) on a note deletes it; the **wheel** scrolls (Shift = sideways), **Ctrl/Cmd + wheel** or a trackpad pinch zooms, two fingers scroll and pinch. **Snap** chooses what starts and lengths snap to: a step, half a step, a bar, or off. **Key** and **Scale** (major, minor, pentatonic, minor pentatonic, chromatic) dim the rows outside the scale; **♯ Scale** makes new and moved notes snap to the nearest scale note. **− / + / Fit** zoom, **↕** changes the row height, **Follow** scrolls with the playhead while the pattern plays.
+
+**Velocity lane**: each note has a bar; drag a bar up or down, or sweep across several bars to set them all (a selected group follows the bar you drag).
+
+Keyboard (click the roll first): **Delete** removes the selection; **← →** move it by the snap (Shift = a bar); **↑ ↓** transpose it (Shift = an octave); **Ctrl/Cmd + A** select all; **+ C** copy; **+ V** paste where you last clicked; **+ D** duplicate right after the selection; **+ Z / Y** undo / redo; **Esc** deselect. The toolbar has the same actions. The roll uses the **same Undo and Redo** as the grid; a whole drag is one step.
+
+While the pattern plays a **playhead** runs over the roll.
+
+### Long notes
+
+A note's length (its **gate**) is counted in steps and can now be as long as the whole pattern (up to 256 steps; V195 allowed 4). Old patterns open exactly as they were. A long note of a pattern that **loops** keeps playing across the loop point; with **Loop off** it ends with the pattern. Two notes of the **same pitch** never overlap: when you place one inside another, the earlier one is shortened to end where the new one starts. Notes of different pitches can overlap freely (chords).
+
+## Duplicate a music node
+
+To copy a whole music node (its tracks, notes, instruments and settings) send the request `omni:music-node-duplicate` with `{ nodeId, select? }` (the song node's **Make unique** does this). The copy is named `<name> copy`, sits next to the original and has its own Undo history; the original is not touched. It answers `{ ok, nodeId }`, or an error code: `no-node` (it does not exist), `not-music` (the node is not a music node), `node-cap` (a reality holds at most 64 music nodes). Deleting the copy removes it like any node.
 
 ## Tracks and instruments
 
@@ -76,17 +106,17 @@ With the OmniExpression typing mode on, **Enter** plays / stops the transport an
 
 ## Phone
 
-The window is a bottom sheet. Steps are at least 26 px wide with 44 px tall rows; a long pattern scrolls sideways in its lane, the piano roll scrolls up and down. Sound starts muted on phones: the window shows an **Enable sound** button when sound is muted.
+The window is a bottom sheet. Steps are at least 26 px wide with 44 px tall rows; a long pattern scrolls sideways in its lane. The piano roll has bigger rows (22 px), edges and buttons (40 px), a taller velocity lane and a smaller height; one finger draws, **two fingers scroll and zoom**, or use the **✋ Pan** tool. Sound starts muted on phones: the window shows an **Enable sound** button when sound is muted.
 
 ## Limits
 
-16 tracks, 4096 notes per track, 256 steps, tempo 20 to 300, one transport at a time. A hidden browser tab slows its timers, so the sequencer looks 1.5 seconds ahead then (a tempo change can lag by that much). Pan is passed to the sound engine; whether it is heard depends on the engine.
+16 tracks, 4096 notes per track, 256 steps, notes up to the pattern length, 64 music nodes, tempo 20 to 300, one transport at a time. A hidden browser tab slows its timers, so the sequencer looks 1.5 seconds ahead then (a tempo change can lag by that much). Pan is passed to the sound engine; whether it is heard depends on the engine.
 
 ## Planned (not available yet)
 
 | Idea | State |
 |---|---|
-| Deeper piano roll editing (select several notes, move, copy, scale, draw velocity lanes) | not built; the roll paints, selects one note and sets its length |
+| Chord tools, quantize-selected, ghost notes of other tracks in the roll | not built |
 | **Audio clips** (record or drop a sound and place it on a track) | not built |
 | **MIDI file export** (.mid) | not built |
 | **Arrangement** (several patterns in a song order, sections) | not built |
@@ -94,4 +124,4 @@ The window is a bottom sheet. Steps are at least 26 px wide with 44 px tall rows
 
 ## Not verified
 
-The real audio engine's note playback with a music node (it is built to the shared engine contract and was tested with a stand-in), timing accuracy and glitches on real phones and speakers, recording latency from real keyboards and MIDI devices, the frame rate with many music nodes.
+The real audio engine's note playback with a music node (it is built to the shared engine contract and was tested with a stand-in), long notes on the real engine (voice release at the end of a long gate), timing accuracy and glitches on real phones and speakers, two-finger gestures and long press on a real touch screen, recording latency from real keyboards and MIDI devices, the frame rate with many music nodes.

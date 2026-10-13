@@ -25,6 +25,8 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | 14 | [Expression panel](14_Expression_Panel.md) | On-screen keyboards, four quadrants, Split / Join, BeatPad, OmniMixer is now OmniMusicPlayer |
 | 15 | [OmniDJ](15_OmniDJ.md) | Six jog-wheel circles, six decks, EQ, crossfader, rearrangeable grid |
 | 16 | [Music nodes](16_Music_Nodes.md) | Step sequencer: grid, piano roll, tracks, instruments, recording, presets |
+| 17 | [Song nodes](17_Song_Nodes.md) | Timeline: lanes as a mixer, clips, sections, tempo track, automation, audio clips, Make unique |
+| 18 | [Audio library](18_Audio_Library.md) | Import WAV / MP3 / any format your browser opens, waveform, preview, limits, private mode |
 
 ## 60-second tour
 

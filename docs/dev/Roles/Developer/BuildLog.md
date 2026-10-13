@@ -1,5 +1,16 @@
 # Build Log
 
+## 2026-10-13 — V198: OmniSongNode (timeline arrangement + mixer), Audio library, piano roll, Song tile in the OmniDraw menu
+
+Four parallel parts from V197 (contract `docs/architecture/OMNISONG_CONTRACT.md`, design `OMNISONGNODE_DESIGN.md`), merged with git merge-file (main.js, ribbon, README: additive blocks kept).
+- **Song core (agent 1):** `utils/OmniSongModel.js` (pure: lanes, clips, sections, tempo map with exact bar<->seconds inverse, automation, markers, loop, 30+ immutable edit ops, hostile-input safe) and `systems/OmniSongPlayer.js` (multi-pattern + audio-clip playback, lookahead scheduler on the engine clock, tempo map, loop, seek, lane buses + send FX + master limiter for audio lanes, levels, one song at a time, stops on node delete). Limit: pattern lanes get volume / mute / solo as velocity only (pan, filter, sends need an engine routing change).
+- **Song node + UI (agent 2):** `songNode` kind (record-disc mesh), Inspector section, `⟐OmniSong` timeline editor (ruler, sections, tempo track, lanes with mixer headers + meters, clips drag / resize / split / duplicate, clip library, automation view, master strip, undo / redo, phone layout), quadrant content 'song', ribbon Create 'Song node' + Tools 'Song editor', StarLight sites, OmniDraw tile 'Song' (14 tiles).
+- **Audio assets (agent 3):** `utils/OmniAudioAssets.js` (IndexedDB `omni-audio-assets-v1`, import any file `decodeAudioData` accepts, caps 40 MB per file / 300 MB total, peaks, `playClip`, memory fallback), `⟐OmniAudioLibrary` window (import, drag and drop, waveform, preview, rename, delete with usage count), `openAudioPicker`. Chromium proved WAV, MP3, OGG, FLAC import; AAC / M4A not decodable in the test Chromium.
+- **Piano roll (agent 4):** `ui/OmniPianoRoll.js` + `utils/OmniPianoRollMath.js` (paint / move / resize / select / velocity lane / scale snap), Grid | Roll toggle per track, note gate cap raised to the pattern length (V195 data unchanged), `omni:music-node-duplicate` (Make unique), 64 music-node cap.
+- **Integration (lead):** real Chromium on the merged tree: music nodes created, a generated WAV imported through the real AudioAssets, a song node created with 2 pattern lanes + 1 audio lane, played through the real SongPlayer and engine: audio lane level 0.26 and master 0.32 (the audio clip plays through its lane bus), stop silences, node delete stops playback, panels open, only the known howler CDN console error. The page runs at about 1 fps on software GL, so timing numbers are not meaningful.
+- **Tests:** v198a 218, v198b 355, v198c 135, v198d 268 checks pass in their parts; older suites compared against V197 (identical except intended: draw picker 14 tiles, gate cap 16).
+- **Not verified:** nothing heard; AAC / M4A; real phones / touch; huge songs; the merged panel with real data at small window sizes (timeline opens ~393 px tall at 720 px).
+
 ## 2026-10-13 — V197: Path node, Terminal node and Floor panels in the OmniDraw menu
 
 - `ui/OmniDrawModePicker.js`: three more tiles (Path ⤳, Terminal ›_, Floor panels ▦) that do what the ribbon Create buttons do (`omni:path-create-request` + open ⟐OmniNodeOrder; `omni:terminal-shell-create-request`; open ⟐FloorNodeMakerSettings). The picker now has 13 tiles.

@@ -8,7 +8,7 @@
  *     recordQuantize:true, recordResolution:'1/16', overdub:true,
  *     tracks:[ { id, name, instrumentNodeId (a SoundNode id | null = the default soft sine), mute, solo, volume 0..1, pan -1..1, transpose -48..48,
  *                note (0..127: what a click on the grid writes), view:'grid'|'roll',
- *                steps:[ { step, midi, velocity 0..1, gate (fraction of a step 0.05..4), prob 0..1, offset (-0.5..0.5 of a step) } ] } ] }   (max 16 tracks, 4096 events each)
+ *                steps:[ { step, midi, velocity 0..1, gate (length in STEPS 0.05..the pattern length, V198; V195 stored at most 4), prob 0..1, offset (-0.5..0.5 of a step) } ] } ] }   (max 16 tracks, 4096 events each)
  *
  * `steps` is SPARSE (only the steps that sound). One event per (step, midi). Sorted by step, then midi. Everything is hostile-input safe: sanitizeMusic never
  * throws, drops unknown keys (also __proto__ / constructor), clamps numbers and is idempotent (sanitize(sanitize(x)) equals sanitize(x)).
@@ -26,7 +26,7 @@ export const RESOLUTIONS = Object.freeze(['1/4', '1/8', '1/16', '1/32'])
 export const RES_BEATS = Object.freeze({ '1/4': 1, '1/8': 0.5, '1/16': 0.25, '1/32': 0.125 })
 export const LIMITS = Object.freeze({
   tempoMin: 20, tempoMax: 300, stepsMin: 4, stepsMax: 32, barsMin: 1, barsMax: 8, swingMax: 0.75, tracksMax: 16, eventsMax: 4096,
-  countInMax: 4, gateMin: 0.05, gateMax: 4, offsetMax: 0.5, transposeMax: 48, nameMax: 24, totalStepsMax: 256, idMax: 24,
+  countInMax: 4, gateMin: 0.05, gateMax: 256, gateLegacyMax: 4, offsetMax: 0.5, transposeMax: 48, nameMax: 24, totalStepsMax: 256, idMax: 24,
 })
 export const VIEWS = Object.freeze(['grid', 'roll'])
 
@@ -68,6 +68,11 @@ export const stepsPerBar = (m) => intIn(get(m, 'stepsPerBar'), 16, LIMITS.stepsM
 export const barCount = (m) => intIn(get(m, 'bars'), 1, LIMITS.barsMin, LIMITS.barsMax)
 /** Steps in the whole pattern (one loop). */
 export const totalSteps = (m) => stepsPerBar(m) * barCount(m)
+/** V198 aliases for the piano roll / the song: the length of ONE loop of the pattern in steps / in bars (a music node pattern is `bars` bars of `stepsPerBar` steps). */
+export const patternLengthSteps = (m) => Math.min(LIMITS.totalStepsMax, totalSteps(m))
+export const patternLengthBars = (m) => barCount(m)
+/** The longest gate (in steps) a note of this pattern can have: the whole pattern. */
+export const gateMaxFor = (m) => Math.max(LIMITS.gateMin, Math.min(LIMITS.gateMax, patternLengthSteps(m)))
 /** Seconds of one bar / one loop. */
 export const barSeconds = (m) => stepsPerBar(m) * stepSeconds(m)
 export const loopSeconds = (m) => totalSteps(m) * stepSeconds(m)
@@ -140,7 +145,7 @@ function sanitizeEvent (raw, total) {
   return {
     step, midi,
     velocity: r3(numIn(get(raw, 'velocity'), 0.8, 0.01, 1)),
-    gate: r3(numIn(get(raw, 'gate'), 0.9, LIMITS.gateMin, LIMITS.gateMax)),
+    gate: r3(numIn(get(raw, 'gate'), 0.9, LIMITS.gateMin, Math.max(LIMITS.gateMin, Math.min(LIMITS.gateMax, total)))),
     prob: r3(numIn(get(raw, 'prob'), 1, 0, 1)),
     offset: r3(numIn(get(raw, 'offset'), 0, -LIMITS.offsetMax, LIMITS.offsetMax)),
   }
@@ -286,6 +291,114 @@ export function removeEvent (track, step, midi = null) {
   return before - track.steps.length
 }
 
+// ── Notes for the piano roll (V198): events <-> notes, ranges, transposing, snapping. All PURE, none mutates its input ─────────────────────────────────────
+//
+// A NOTE is the roll's view of an event: { start (steps, float = step + offset), length (steps = gate), midi, velocity, prob }. A track keeps EVENTS (integer step +
+// offset of -0.5..0.5 of a step). eventsToNotes -> notesToEvents round-trips every event of a sanitized track exactly (the only exception: an offset of exactly
+// +/-0.5 may come back as the neighbouring step with the opposite offset, which sounds identical).
+// OVERLAP POLICY (documented, "trim"): in the stored events two notes of the SAME pitch never overlap. When a later note starts inside an earlier one, the earlier
+// note is SHORTENED so it ends where the later one starts (a later note on the very same step + pitch replaces it; one that would shrink under the minimum gate is
+// dropped). Notes of different pitches overlap freely (chords). A note may run past the end of the pattern (it wraps when the pattern loops), unless `clipEnd`.
+// The event cap per track stays LIMITS.eventsMax (4096): notesToEvents keeps the first 4096 by time.
+
+const noteStart = (n) => (Number.isFinite(n?.start) ? n.start : toNum(n?.step, 0) + toNum(n?.offset, 0))
+const noteLen = (n) => (Number.isFinite(n?.length) ? n.length : toNum(n?.gate, 0.9))
+
+/** The notes of a track (or of an array of events), sorted by start then pitch. */
+export function eventsToNotes (trackOrEvents) {
+  const src = Array.isArray(trackOrEvents) ? trackOrEvents : (Array.isArray(trackOrEvents?.steps) ? trackOrEvents.steps : [])
+  const out = []
+  for (const e of src) {
+    if (!e || !Number.isFinite(e.step) || !Number.isFinite(e.midi)) continue
+    out.push({ start: r3(e.step + (e.offset || 0)), length: e.gate ?? 0.9, midi: e.midi, velocity: e.velocity ?? 0.8, prob: e.prob ?? 1 })
+  }
+  return out.sort((a, b) => a.start - b.start || a.midi - b.midi)
+}
+
+/** step + offset of a start time in steps (clamped into a pattern of `total` steps). */
+export function startToStepOffset (start, total = LIMITS.totalStepsMax) {
+  const t = Math.max(1, Math.round(toNum(total, 16)))
+  const s = clamp(toNum(start, 0), 0, t - 0.5)
+  const step = Math.min(t - 1, Math.round(s - 1e-9))
+  const off = clamp(s - step, -LIMITS.offsetMax, LIMITS.offsetMax)
+  return { step, offset: Math.abs(off) < 1e-6 ? 0 : r3(off) }
+}
+
+/**
+ * Notes -> sanitized-shape events (sorted by step then midi), the overlap policy above applied. opts: { total (steps of the pattern, default 256), clipEnd (shorten
+ * notes at the pattern end), maxEvents }. Invalid notes are skipped. Never throws.
+ */
+export function notesToEvents (notes, opts = {}) {
+  const total = Math.max(1, Math.round(toNum(opts.total, LIMITS.totalStepsMax)))
+  const cap = Math.min(LIMITS.eventsMax, Math.max(0, Math.round(toNum(opts.maxEvents, LIMITS.eventsMax))))
+  const byPitch = new Map()
+  const src = Array.isArray(notes) ? notes : []
+  for (let i = 0; i < src.length && i < LIMITS.eventsMax * 2; i++) {
+    const n = src[i]
+    if (!isObj(n) || (has(n, 'start') && !Number.isFinite(n.start))) continue
+    const midi = Math.round(toNum(n.midi, NaN)); const st = noteStart(n)
+    if (!Number.isFinite(midi) || !Number.isFinite(st) || midi < 0 || midi > 127) continue
+    const so = startToStepOffset(st, total)
+    const start = so.step + so.offset
+    let length = numIn(noteLen(n), 0.9, LIMITS.gateMin, Math.min(LIMITS.gateMax, total))
+    if (opts.clipEnd) length = Math.max(LIMITS.gateMin, Math.min(length, total - start))
+    const a = byPitch.get(midi) ?? []; a.push({ ...so, start, length, midi, velocity: numIn(n.velocity, 0.8, 0.01, 1), prob: numIn(n.prob, 1, 0, 1) }); byPitch.set(midi, a)
+  }
+  const out = []
+  for (const a of byPitch.values()) {
+    a.sort((x, y) => x.start - y.start)   // stable: of equal starts the later input wins below
+    const kept = []
+    for (const n of a) {
+      while (kept.length && n.start - kept[kept.length - 1].start < LIMITS.gateMin) kept.pop()   // same place: the later note replaces the earlier
+      const prev = kept[kept.length - 1]
+      if (prev && prev.start + prev.length > n.start + 1e-9) prev.length = r3(n.start - prev.start)   // trim the earlier note
+      kept.push(n)
+    }
+    for (const n of kept) out.push({ step: n.step, midi: n.midi, velocity: r3(n.velocity), gate: r3(clamp(n.length, LIMITS.gateMin, LIMITS.gateMax)), prob: r3(n.prob), offset: n.offset })
+  }
+  // two starts that round to the same (step, midi) cannot both be stored: keep the later one
+  const seen = new Map()
+  for (const e of out) seen.set(e.step * 128 + e.midi, e)
+  return [...seen.values()].sort((a, b) => a.step - b.step || a.midi - b.midi || a.offset - b.offset).slice(0, cap)
+}
+
+/** The notes (or events) that overlap the time range [from, to) in steps and the pitch range lo..hi (inclusive). A new array, same objects. */
+export function notesInRange (notes, from, to, lo = 0, hi = 127) {
+  const a = Array.isArray(notes) ? notes : []
+  const f = toNum(from, 0); const t = toNum(to, f)
+  const lo2 = Math.min(lo, hi); const hi2 = Math.max(lo, hi)
+  const out = []
+  for (const n of a) {
+    if (!n || !Number.isFinite(n.midi) || n.midi < lo2 || n.midi > hi2) continue
+    const s = noteStart(n); const e = s + Math.max(0, noteLen(n))
+    if (s < t && (e > f || (e === s && s >= f))) out.push(n)
+  }
+  return out
+}
+
+/** Moves the pitch of events or notes by `semis` (clamped to 0..127; notes that collide after the clamp keep the later one). A new array of copies. */
+export function transposeEvents (items, semis) {
+  const d = Math.round(toNum(semis, 0))
+  const a = Array.isArray(items) ? items : []
+  const out = new Map(); const order = []
+  for (const n of a) {
+    if (!n || !Number.isFinite(n.midi)) continue
+    const c = { ...n, midi: clamp(Math.round(n.midi) + d, 0, 127) }
+    const key = (Number.isFinite(c.start) ? c.start : (c.step ?? 0) + (c.offset ?? 0)) + ':' + c.midi
+    if (!out.has(key)) order.push(key)
+    out.set(key, c)
+  }
+  return order.map(k => out.get(k))
+}
+
+/** Snap a position in steps to a grid of `grid` steps ('nearest' | 'floor' | 'ceil'). grid <= 0 returns the value unchanged. */
+export function snapStep (value, grid = 1, mode = 'nearest') {
+  const v = toNum(value, 0); const g = toNum(grid, 1)
+  if (!(g > 0)) return v
+  const k = mode === 'floor' ? Math.floor(v / g + 1e-9) : mode === 'ceil' ? Math.ceil(v / g - 1e-9) : Math.round(v / g)
+  return Math.round(k * g * 1e6) / 1e6 + 0
+}
+
 // ── Pattern presets ─────────────────────────────────────────────────────────────
 
 const scaleStep = (p16, spb) => Math.round(p16 * spb / 16)
@@ -338,4 +451,4 @@ export function describeMusic (m) {
   return `${Math.round(tempoOf(m))} bpm · ${spb} steps × ${b} bar${b === 1 ? '' : 's'} (${get(m, 'resolution') ?? '1/16'}) · ${trackCount(m)} track${trackCount(m) === 1 ? '' : 's'} · ${countEvents(m)} note${countEvents(m) === 1 ? '' : 's'}`
 }
 
-export default { MUSIC_VERSION, RESOLUTIONS, LIMITS, defaultMusic, sanitizeMusic, stepTime, quantize, eventsAtStep, PATTERNS, patternEvents }
+export default { MUSIC_VERSION, RESOLUTIONS, LIMITS, defaultMusic, sanitizeMusic, stepTime, quantize, eventsAtStep, PATTERNS, patternEvents, patternLengthSteps, patternLengthBars, eventsToNotes, notesToEvents, notesInRange, transposeEvents, snapStep }

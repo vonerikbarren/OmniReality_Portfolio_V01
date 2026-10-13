@@ -32,6 +32,8 @@ const PERSIST_MS = 300
 const UNDO_MAX = 60
 const COALESCE_MS = 900
 const NODE_COLOR = '#ffb86b'
+export const MUSIC_NODES_MAX = 64   // V198: how many music nodes a reality may hold (create and duplicate refuse beyond it, code 'node-cap')
+const DUP_STEP_Z = 1.4
 export const FIELD_KEYS = Object.freeze(['tempo', 'stepsPerBar', 'bars', 'resolution', 'swing', 'gain', 'loop', 'countIn', 'metronome', 'recordQuantize', 'recordResolution', 'overdub'])
 export const TRACK_KEYS = Object.freeze(['name', 'instrumentNodeId', 'mute', 'solo', 'volume', 'pan', 'transpose', 'note', 'view'])
 const newId = () => 'omni_' + Math.random().toString(36).slice(2, 8)
@@ -58,6 +60,7 @@ export default class OmniMusicNodes {
     if (this._inited > 1) return
     const on = (name, fn) => { const h = (e) => fn(e.detail ?? {}, e); window.addEventListener(name, h); this._bound.push([name, h]) }
     on('omni:music-node-create', (d, e) => { const out = this.createMusicNode(d); if (e.detail && typeof e.detail === 'object') e.detail.out = out })
+    on('omni:music-node-duplicate', (d, e) => { const out = this.duplicateMusicNode(d); if (e.detail && typeof e.detail === 'object') e.detail.out = out })
     on('omni:node-selected', (d) => { this._selectedId = d.node?.id ?? null })
     on('omni:node-deselected', () => { this._selectedId = null })
     on('omni:node-created', (d) => this._fixNode(d.node))
@@ -153,6 +156,7 @@ export default class OmniMusicNodes {
   /** New MusicNode. Returns { ok, nodeId } or { ok:false, error }. */
   createMusicNode (opts = {}) {
     try {
+      if (this.listMusicNodes().length >= MUSIC_NODES_MAX) return { ok: false, code: 'node-cap', error: `A reality can hold at most ${MUSIC_NODES_MAX} music nodes.` }
       const music = MM.sanitizeMusic(opts.music && typeof opts.music === 'object' ? opts.music : MM.defaultMusic())
       const nodeId = typeof opts.id === 'string' && /^[\w-]{1,64}$/.test(opts.id) ? opts.id : newId()
       window.dispatchEvent(new CustomEvent('omni:node-create-request', { detail: {
@@ -162,6 +166,41 @@ export default class OmniMusicNodes {
       if (this.omniNode && !this.omniNode.getNodeData?.(nodeId)) return { ok: false, error: 'The music node could not be created.' }
       return { ok: true, nodeId }
     } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
+  }
+
+  /**
+   * V198: omni:music-node-duplicate { nodeId, select? } -> detail.out { ok, nodeId, sourceId } or { ok:false, code, error } with code 'no-node' (missing / no id),
+   * 'not-music' (the node is not a music node), 'node-cap' (MUSIC_NODES_MAX reached) or 'failed'. The copy is a deep SANITIZED clone of data.music (same tracks,
+   * notes and instruments), its label gets ' copy', it is placed next to the original (one plate depth further, further again when taken) and has its own undo stack.
+   * The original is not touched, so a duplicate never changes what Undo does for it.
+   */
+  duplicateMusicNode (opts = {}) {
+    try {
+      const src = typeof opts?.nodeId === 'string' ? opts.nodeId : null
+      const d = src ? this.getNodeData(src) : null
+      if (!d) return { ok: false, code: 'no-node', error: 'That music node does not exist.' }
+      if (d.nodeKind !== KIND_MUSIC) return { ok: false, code: 'not-music', error: 'That node is not a music node.' }
+      if (this.listMusicNodes().length >= MUSIC_NODES_MAX) return { ok: false, code: 'node-cap', error: `A reality can hold at most ${MUSIC_NODES_MAX} music nodes.` }
+      const music = MM.sanitizeMusic(JSON.parse(JSON.stringify(this.getMusic(src))))
+      const mesh = this.omniNode?.getMeshById?.(src)
+      let position = null; let rotation = [0, 0, 0]; let scale = [1, 1, 1]
+      if (mesh) {
+        const v = new THREE.Vector3(); mesh.getWorldPosition(v)
+        const taken = this.listMusicNodes().map(id => this.omniNode?.getMeshById?.(id)).filter(Boolean).map(m => { const w = new THREE.Vector3(); m.getWorldPosition(w); return w })
+        let z = DUP_STEP_Z
+        for (let i = 0; i < 12; i++, z += DUP_STEP_Z) if (!taken.some(w => Math.abs(w.x - v.x) < 0.5 && Math.abs(w.y - v.y) < 0.5 && Math.abs(w.z - (v.z + z)) < 0.5)) break
+        position = [v.x, v.y, v.z + z]
+        if (mesh.rotation) rotation = [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z]
+        if (mesh.scale) scale = [mesh.scale.x, mesh.scale.y, mesh.scale.z]
+      }
+      const nodeId = newId()
+      window.dispatchEvent(new CustomEvent('omni:node-create-request', { detail: {
+        nodeKind: KIND_MUSIC, music, id: nodeId, label: (String(d.label || 'Music node') + ' copy').slice(0, 40), geometry: GEO_MUSIC, primitive: 'objective', color: d.color || NODE_COLOR,
+        position: position ?? this._frontOfCamera(), rotation, scale, noParent: true, noSelect: opts.select !== true,
+      } }))
+      if (this.omniNode && !this.omniNode.getNodeData?.(nodeId)) return { ok: false, code: 'failed', error: 'The music node could not be duplicated.' }
+      return { ok: true, nodeId, sourceId: src }
+    } catch (err) { return { ok: false, code: 'failed', error: String(err?.message ?? err) } }
   }
 
   /** A loaded or created music node without a usable data.music gets the default pattern (old saves, hand-edited data). Saved once. */
@@ -349,6 +388,14 @@ export default class OmniMusicNodes {
     return this._edit(id, 'steps', (m) => {
       const t = this._track(m, trackId); if (!t) return { error: 'No such track.' }
       if (!MM.upsertEvent(t, ev, MM.totalSteps(m))) return { error: 'That note could not be set.' }
+    }, coalesce)
+  }
+  /** V198 (piano roll): replace ALL the events of a track at once (sanitized by the commit: clamps, one event per step + pitch, sorted, 4096 max). `coalesce` / a stroke share one undo step. */
+  replaceEvents (id, trackId, events, coalesce = null) {
+    if (!Array.isArray(events)) return { ok: false, error: 'No notes given.' }
+    return this._edit(id, 'steps', (m) => {
+      const t = this._track(m, trackId); if (!t) return { error: 'No such track.' }
+      t.steps = events.slice(0, MM.LIMITS.eventsMax * 2).map(e => ({ ...e }))
     }, coalesce)
   }
   removeEvent (id, trackId, step, midi = null) {

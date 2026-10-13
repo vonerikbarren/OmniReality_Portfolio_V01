@@ -29,26 +29,31 @@ import * as Shells from './TerminalShells.js'   // V192: the TerminalShellTunnel
 import { buildSoundNodeMesh, releaseSoundMesh } from './OmniSoundNodeMesh.js'   // V194: the SoundNode geometry (reacts to the sound each frame)
 import { buildMusicNodeMesh, releaseMusicMesh } from './OmniMusicNodeMesh.js'   // V195: the MusicNode geometry (a drum-machine plate whose lit cells follow the step)
 import { sanitizeMusic, defaultMusic } from './OmniMusicModel.js'               // V195: data.music (the step sequencer pattern, saved with the node)
+import { buildSongNodeMesh, releaseSongMesh } from './OmniSongNodeMesh.js'        // V198: the SongNode geometry (a record disc whose rings are the lanes; the lit segment follows the song position)
+import { sanitizeSong, defaultSong } from './OmniSongModel.js'                    // V198: data.song (the arrangement, saved with the node)
 
 export const KIND_PATH = 'omniPath'
 export const KIND_FLOOR_PANEL = 'floorPanel'
 export const KIND_TERMINAL_SHELL = 'terminalShell'   // V192: TerminalShellTunnel — data = { nodeKind:'terminalShell', shellId } (settings in utils/TerminalShells.js)
 export const KIND_SOUND = 'soundNode'   // V194: SoundNode — data = { nodeKind:'soundNode', sound, soundParticles } (the sound settings live IN the node: utils/OmniSoundModel.js)
 export const KIND_MUSIC = 'musicNode'   // V195: MusicNode — data = { nodeKind:'musicNode', music } (the step sequencer pattern lives IN the node: utils/OmniMusicModel.js)
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC]
+export const KIND_SONG = 'songNode'     // V198: SongNode — data = { nodeKind:'songNode', song } (the arrangement lives IN the node: utils/OmniSongModel.js)
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG]
 export const GEO_PATH = 'OmniPathNode'
 export const GEO_FLOOR_PANEL = 'FloorPanelNode'
 export const GEO_TERMINAL_SHELL = 'TerminalShellTunnel'
 export const GEO_SOUND = 'SoundNode'
 export const GEO_MUSIC = 'MusicNode'
+export const GEO_SONG = 'SongNode'
 export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring panels
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG)
 export const isMusicNodeData = (d) => !!d && d.nodeKind === KIND_MUSIC
+export const isSongNodeData = (d) => !!d && d.nodeKind === KIND_SONG
 export const isSoundNodeData = (d) => !!d && d.nodeKind === KIND_SOUND
 export const isTerminalShellData = (d) => !!d && d.nodeKind === KIND_TERMINAL_SHELL
 export const isFloorPanelData = (d) => !!d && d.nodeKind === KIND_FLOOR_PANEL
@@ -122,6 +127,10 @@ export function extraCreateFields (spec) {
   if (spec.nodeKind === KIND_MUSIC) {
     // the pattern travels WITH the node (a sanitized copy; a missing / hostile one becomes the default pattern)
     return { geometry: GEO_MUSIC, label: clip(spec.label || 'Music node', 40), data: { nodeKind: KIND_MUSIC, music: spec.music && typeof spec.music === 'object' ? sanitizeMusic(spec.music) : defaultMusic() } }
+  }
+  if (spec.nodeKind === KIND_SONG) {
+    // the arrangement travels WITH the node (a sanitized copy; a missing / hostile one becomes the default song)
+    return { geometry: GEO_SONG, label: clip(spec.label || 'Song node', 40), data: { nodeKind: KIND_SONG, song: spec.song && typeof spec.song === 'object' ? sanitizeSong(spec.song) : defaultSong() } }
   }
   if (spec.nodeKind === KIND_FLOOR_PANEL) {
     const fp = sanitizeFloorPanel(spec)
@@ -206,6 +215,13 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_SONG) {
+    const mesh = buildSongNodeMesh(col)
+    mesh.userData.extraKind = { kind: KIND_SONG, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   const fp = sanitizeFloorPanel(data)
   let geo
   if (fp) {
@@ -248,6 +264,7 @@ export function releaseExtraMesh (mesh) {
   try { window.dispatchEvent(new CustomEvent('omni:extra-mesh-released', { detail: { mesh, kind: ek.kind, id: mesh.userData.nodeId } })) } catch (_) { /* no window */ }
   if (ek.kind === KIND_SOUND) releaseSoundMesh(mesh)
   if (ek.kind === KIND_MUSIC) releaseMusicMesh(mesh)
+  if (ek.kind === KIND_SONG) releaseSongMesh(mesh)
   LIVE.delete(mesh)
   delete mesh.userData.extraKind
   delete mesh.userData.omniRelease

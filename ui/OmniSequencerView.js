@@ -10,6 +10,8 @@
  * Per track: arm (the red dot = where recording goes AND where a preset / clear / copy / paste acts), name, instrument (the scene's SoundNodes or the default sine), mute,
  * solo, and under the gear: note, grid / roll, volume, pan, transpose, move up / down, duplicate, remove. Whole pattern: tempo, swing, steps per bar, bars, step length
  * (resolution), master gain, count-in, record quantize + resolution, overdub, loop, metronome; presets, clear / copy / paste track; undo / redo; undo last recording.
+ * V198: every track also has a 'Grid | Roll' switch: Roll shows the full piano roll (ui/OmniPianoRoll.js: long notes, move / resize / select, velocity lane, zoom, scale) in place of the
+ * lane; the choice is kept in the panel prefs (localStorage 'omni:sequencer-view-v1'). The older compact 'roll' lane (the track's own `view`, under the gear) still exists.
  * The playhead is a thin overlay moved with a transform while the sequencer runs (the canvases are redrawn only when the data changes).
  *
  * Everything is read and written through systems/OmniMusicNodes.js (Extra.SERVICES.music) and the transport through systems/OmniSequencer.js (SERVICES.sequencer): this
@@ -23,9 +25,11 @@ import { SERVICES, KIND_MUSIC } from '../utils/OmniExtraKinds.js'
 import * as Settings from '../utils/OmniSoundSettings.js'
 import { getSoundNodes } from '../systems/OmniSoundScene.js'
 import { esc, tip } from './OmniSoundFields.js'
+import OmniPianoRoll from './OmniPianoRoll.js'
 
 const NAV_ITEM = '⟐OmniSequencer'
 const LONG_PRESS_MS = 450
+const PREFS_KEY = 'omni:sequencer-view-v1'   // V198: { roll: { 'nodeId|trackId': true }, pr: piano roll settings }
 const ROLL_KEY_W = 34
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v)
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
@@ -63,6 +67,8 @@ export const STYLES = `
 .osq .osq-head { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: #ffb86b; box-shadow: 0 0 6px #ffb86b; pointer-events: none; display: none; will-change: transform; }
 .osq .osq-noteed { padding: 4px 6px; margin: 6px 0; border: 1px solid rgba(255,184,107,.5); border-radius: 8px; }
 .osq .osq-msg { min-height: 14px; margin-top: 4px; } .osq .osq-msg.is-err { color: #ff8a8a; } .osq .osq-msg.is-ok { color: #8fe3a2; }
+.osq .osq-mode { display: inline-flex; gap: 0; } .osq .osq-modeb { border-radius: 0; padding: 2px 8px; } .osq .osq-modeb:first-child { border-radius: 6px 0 0 6px; } .osq .osq-modeb:last-child { border-radius: 0 6px 6px 0; }
+.osq .osq-prhost { margin-top: 4px; }
 .osq.is-compact .osq-full { display: none; }
 @media (max-width: 700px) { .osq .osq-btn, .osq .osq-in, .osq .osq-sel { min-height: 40px; } .osq .osq-arm { width: 36px; min-height: 36px; } .osq .osq-ms { width: 40px; } .osq .osq-range { min-height: 34px; } .osq .osq-name { width: 80px; } }
 `
@@ -88,6 +94,9 @@ export default class OmniSequencerView {
     this._sel = null
     this._msg = { text: '', err: false }
     this._ranges = new Map()
+    this._rolls = new Map()      // trackId -> OmniPianoRoll (V198)
+    this._rollView = new Map()   // trackId -> last view of a destroyed roll (kept over a rebuild)
+    this._pref = this._loadPrefs()
     this._lanes = new Map()      // trackId -> { canvas, head, wrap, kind, cellW, rowH, keyW, lo, hi }
     this._drag = null
     this._raf = 0
@@ -131,12 +140,13 @@ export default class OmniSequencerView {
     clearTimeout(this._drag?.timer); this._drag = null
     if (this._rq && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._rq)
     this._rq = 0
+    this._destroyRolls()
     this._lanes.clear()
     if (this.host) { this.host.innerHTML = ''; this.host.classList.remove('osq', 'is-compact') }
   }
 
   /** Called when the host is shown / resized: redraw the lanes. */
-  onResize () { this._drawAll() }
+  onResize () { this._drawAll(); for (const r of this._rolls.values()) r.onResize() }
 
   get nodeId () { return this._nodeId }
   setNode (id) { this._nodeId = id ?? null; this._sel = null; if (this._built) this.refresh() }
@@ -158,17 +168,65 @@ export default class OmniSequencerView {
   _music () { try { return this._nodeId ? svcOf(this)?.getMusic(this._nodeId) ?? null : null } catch (_) { return null } }
   _name (id) { try { return svcOf(this)?.getNodeData(id)?.label ?? id } catch (_) { return id } }
 
+  // ── Piano rolls (V198) ──────────────────────────────────────────────────────
+
+  _loadPrefs () {
+    let p = null
+    try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null') } catch (_) { p = null }
+    const roll = {}; const src = p && typeof p === 'object' && p.roll && typeof p.roll === 'object' ? p.roll : {}
+    for (const k of Object.keys(src)) { if (src[k] === true && /^[\w-]{1,64}\|[\w-]{1,24}$/.test(k) && !k.startsWith('__')) roll[k] = true }
+    const pr = p && typeof p === 'object' && p.pr && typeof p.pr === 'object' ? p.pr : {}
+    const safe = {}
+    for (const k of ['snap', 'key', 'scale', 'snapScale', 'tool', 'paint', 'follow', 'zx', 'zy']) if (Object.prototype.hasOwnProperty.call(pr, k)) safe[k] = pr[k]
+    return { roll, pr: safe }
+  }
+  _savePrefs () { try { localStorage.setItem(PREFS_KEY, JSON.stringify(this._pref)) } catch (_) { /* private mode: the choice lasts this session */ } }
+  _rollKey (trackId) { return this._nodeId + '|' + trackId }
+  /** Is this track edited with the piano roll? (public: the tests) */
+  isRoll (trackId) { return !!this._pref.roll[this._rollKey(trackId)] }
+  setRollMode (trackId, on) {
+    const k = this._rollKey(trackId)
+    if (on) this._pref.roll[k] = true; else delete this._pref.roll[k]
+    this._savePrefs()
+    if (this._built) this.refresh()
+    return { ok: true, roll: !!on }
+  }
+  roll (trackId) { return this._rolls.get(trackId) ?? null }
+
+  _destroyRolls () {
+    for (const [tid, r] of this._rolls) { try { this._rollView.set(tid, { ...r.view }) } catch (_) { /* ignore */ } try { r.destroy() } catch (_) { /* ignore */ } }
+    this._rolls.clear()
+  }
+
+  _mountRolls (m) {
+    this.host.querySelectorAll('[data-pr]').forEach((el) => {
+      const tid = el.dataset.pr; const idx = m.tracks.findIndex(t => t.id === tid); if (idx < 0) return
+      const v = this._rollView.get(tid)
+      const roll = new OmniPianoRoll(el, {
+        nodeId: this._nodeId, trackId: tid, svc: this.opts.svc, seq: this.opts.seq, color: trackColor(idx), prefs: this._pref.pr, view: v,
+        onPrefs: (p) => { this._pref.pr = { ...p }; this._savePrefs() }, say: (t, err) => this.say(t, err), phone: this._isPhone(), active: this.opts.active,
+        height: this.compact ? 240 : undefined,
+      })
+      roll.mount()
+      this._rolls.set(tid, roll)
+    })
+  }
+
   // ── Following the data ──────────────────────────────────────────────────────
 
   _onData (d) {
     if (d.nodeId !== this._nodeId) return
     const r = d.reason
-    if (r === 'steps' || r === 'record') this._later('draw', () => { this._drawAll(); this._syncNoteEd() })
+    if (r === 'steps' || r === 'record') this._later('draw', () => { this._drawAll(); this._syncNoteEd(); this._syncTransport() })   // V198: Undo / Redo enabled state follows every edit
+    else if ((r === 'undo' || r === 'redo') && this._rolls.size && this._sig && this._sig === this._sigOf(this._music())) this._later('values', () => { this._drawAll(); this._syncNoteEd(); this._syncValues(); this._syncTransport() })   // V198: a roll keeps its selection and scroll over an undo
     else if (r === 'field') this._later('values', () => { this._syncValues(); this._relayoutIfNeeded() })
     else this._later('refresh', () => this.refresh())
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  /** What the DOM of the tracks depends on (a change rebuilds it; a change of notes only redraws). */
+  _sigOf (m) { return m ? [MM.totalSteps(m), ...m.tracks.map(t => [t.id, t.name, t.instrumentNodeId, t.view, t.note, t.mute, t.solo, t.volume, t.pan, t.transpose].join('~'))].join('|') : '' }
 
   _musicNodeIds () { try { return svcOf(this)?.listMusicNodes() ?? [] } catch (_) { return [] } }
 
@@ -186,12 +244,15 @@ export default class OmniSequencerView {
     if (!m) {
       top.innerHTML = `<div class="osq-notice" data-testid="osq-nonode">No music node is selected. Select a music node to edit its pattern, or create one.</div>
         <div class="osq-row"><button type="button" class="osq-btn is-on" data-act="create" ${tip('Create a music node', '—', 'Creates a MusicNode in front of the camera: a step sequencer you can place, with four tracks to start from. It is selected and opens here.')}>＋ Create a music node</button></div>`
-      main.innerHTML = ''; this._lanes.clear(); this.say('', false); return
+      this._destroyRolls(); main.innerHTML = ''; this._lanes.clear(); this.say('', false); return
     }
     const scroll = this.host.parentElement?.scrollTop ?? 0
     top.innerHTML = this._topHTML(ids)
+    this._destroyRolls()
     main.innerHTML = this._mainHTML(m)
     this._layoutLanes(m)
+    this._mountRolls(m)
+    this._sig = this._sigOf(m)
     this._syncTransport(); this._syncValues(); this._syncArmed(); this._syncNoteEd()
     if (this.host.parentElement) this.host.parentElement.scrollTop = scroll
   }
@@ -254,6 +315,7 @@ export default class OmniSequencerView {
 
   _trackHTML (m, t, i) {
     const open = this._expanded.has(t.id)
+    const rollMode = this.isRoll(t.id)
     const notes = []; for (let n = 127; n >= 0; n--) notes.push(`<option value="${n}" ${n === t.note ? 'selected' : ''}>${esc(MM.midiToName(n))}</option>`)
     return `<div class="osq-track ${open ? 'is-open' : ''}" data-track="${esc(t.id)}" data-testid="osq-track">
       <div class="osq-row">
@@ -262,6 +324,7 @@ export default class OmniSequencerView {
         <select class="osq-sel" data-tf="instrumentNodeId" aria-label="Instrument" ${tip('Instrument', '—', 'What plays this track: the Default sine, or one of the SoundNodes in the scene (its sound settings are the instrument).')}>${this._instrumentOptions(t.instrumentNodeId)}</select>
         <button type="button" class="osq-btn osq-ms is-mute" data-act="mute" aria-pressed="${t.mute}" ${tip('Mute', '—', 'Silences this track.')}>M</button>
         <button type="button" class="osq-btn osq-ms is-solo" data-act="solo" aria-pressed="${t.solo}" ${tip('Solo', '—', 'Only the solo tracks sound.')}>S</button>
+        <span class="osq-mode" role="group" aria-label="Editor" ${tip('Editor', '—', 'Grid: the step lane. Roll: the full piano roll with long notes, move / resize / select, a velocity lane, zoom and scales.')}><button type="button" class="osq-btn osq-modeb ${rollMode ? '' : 'is-on'}" data-act="mode-grid" aria-pressed="${!rollMode}" ${tip('Grid', '—', 'Edit this track in the step grid lane.')}>Grid</button><button type="button" class="osq-btn osq-modeb ${rollMode ? 'is-on' : ''}" data-act="mode-roll" aria-pressed="${rollMode}" ${tip('Roll', '—', 'Edit this track in the piano roll: draw, move and resize notes, long notes, select, velocity lane, zoom, scale.')}>Roll</button></span>
         <button type="button" class="osq-btn osq-ms osq-full" data-act="more" aria-expanded="${open}" ${tip('Track settings', '—', 'Shows the note, view, volume, pan, transpose and the move / duplicate / remove buttons of this track.')}>⚙</button>
       </div>
       <div class="osq-row osq-more osq-full">
@@ -275,7 +338,7 @@ export default class OmniSequencerView {
         <button type="button" class="osq-btn" data-act="dup" ${tip('Duplicate track', '—', 'Copies the track with its notes.')}>⧉</button>
         <button type="button" class="osq-btn is-danger" data-act="remove" ${tip('Remove track', '—', 'Deletes the track and its notes (Undo brings it back).')}>✕</button>
       </div>
-      <div class="osq-lane ${t.view === 'roll' ? 'is-roll' : ''}" data-lane="${esc(t.id)}"><div class="osq-lane-in"><canvas data-track="${esc(t.id)}" tabindex="0" role="application" aria-label="${esc(t.name)} steps: arrow keys move, Enter or Space toggles a note" ${tip(t.name + (t.view === 'roll' ? ' piano roll' : ' steps'), '—', t.view === 'roll' ? 'Tap an empty cell to paint a note, tap a note to select it, drag sideways on a note to set its length, Delete removes it.' : 'Tap a step to switch a note on or off, drag across steps to paint, drag a note up or down (or hold it) to set its velocity.')}></canvas><div class="osq-head"></div></div></div>
+      ${rollMode ? `<div class="osq-prhost" data-pr="${esc(t.id)}"></div>` : `<div class="osq-lane ${t.view === 'roll' ? 'is-roll' : ''}" data-lane="${esc(t.id)}"><div class="osq-lane-in"><canvas data-track="${esc(t.id)}" tabindex="0" role="application" aria-label="${esc(t.name)} steps: arrow keys move, Enter or Space toggles a note" ${tip(t.name + (t.view === 'roll' ? ' piano roll' : ' steps'), '—', t.view === 'roll' ? 'Tap an empty cell to paint a note, tap a note to select it, drag sideways on a note to set its length, Delete removes it.' : 'Tap a step to switch a note on or off, drag across steps to paint, drag a note up or down (or hold it) to set its velocity.')}></canvas><div class="osq-head"></div></div></div>`}
     </div>`
   }
 
@@ -453,7 +516,7 @@ export default class OmniSequencerView {
       <button type="button" class="osq-btn" data-act="ne-play" ${tip('Hear the note', '—', 'Plays this note once with the track instrument.')}>▶</button>
       <button type="button" class="osq-btn is-danger" data-act="ne-delete" ${tip('Delete note', '—', 'Removes this note.')}>Delete</button>
       <button type="button" class="osq-btn" data-act="ne-close" ${tip('Close', '—', 'Deselects the note.')}>✕</button></div>
-      <div class="osq-row">${f('velocity', 'Velocity', 0.01, 1, 0.01, 'How hard the note is played (louder and a bit brighter).')}${f('gate', 'Length', 0.05, 4, 0.05, 'How long the note is held, in steps.')}</div>
+      <div class="osq-row">${f('velocity', 'Velocity', 0.01, 1, 0.01, 'How hard the note is played (louder and a bit brighter).')}${f('gate', 'Length', 0.05, MM.gateMaxFor(m), 0.05, 'How long the note is held, in steps (up to the whole pattern).')}</div>
       <div class="osq-row">${f('prob', 'Chance', 0, 1, 0.05, 'The probability that the note plays on each pass (1 = always).')}${f('offset', 'Offset', -0.5, 0.5, 0.01, 'Plays the note a little early (-) or late (+), as a fraction of a step.')}</div></div>`
   }
 
@@ -473,7 +536,12 @@ export default class OmniSequencerView {
 
   /** Move the playhead overlays (public: tests call it). */
   _frame () {
-    if (!this.host || !this.host.isConnected || !this._lanes.size || (this.opts.active && !this.opts.active())) return
+    if (!this.host || !this.host.isConnected || (this.opts.active && !this.opts.active())) return
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const dt = this._tPrev ? Math.min(0.25, (now - this._tPrev) / 1000) : 0
+    this._tPrev = now
+    for (const r of this._rolls.values()) { try { r.update(dt) } catch (_) { /* a roll never stops the others */ } }
+    if (!this._lanes.size) return
     const seq = seqOf(this); const m = this._music()
     const live = !!(seq && m && seq.nodeId === this._nodeId && seq.state !== 'stop')
     for (const L of this._lanes.values()) {
@@ -523,6 +591,8 @@ export default class OmniSequencerView {
       case 'arm': { const ok = seq?.setArmed(id, trackId); this._syncArmed(); return { ok } }
       case 'mute': case 'solo': { const t = MM.findTrack(this._music(), trackId); return res(svc?.setTrackField(id, trackId, act, !t?.[act])) }
       case 'more': { if (this._expanded.has(trackId)) this._expanded.delete(trackId); else this._expanded.add(trackId); const row = this._rowOf(trackId); row?.classList.toggle('is-open', this._expanded.has(trackId)); el?.setAttribute('aria-expanded', String(this._expanded.has(trackId))); return null }
+      case 'mode-grid': return this.setRollMode(trackId, false)
+      case 'mode-roll': return this.setRollMode(trackId, true)
       case 'view': { const t = MM.findTrack(this._music(), trackId); return res(svc?.setTrackField(id, trackId, 'view', t?.view === 'roll' ? 'grid' : 'roll')) }
       case 'up': case 'down': return res(svc?.moveTrack(id, trackId, act === 'up' ? -1 : 1))
       case 'dup': return res(svc?.duplicateTrack(id, trackId), 'Track duplicated.')
@@ -646,7 +716,7 @@ export default class OmniSequencerView {
     }
     if (d.mode === 'gate') {
       if (!hit) return
-      const g = clamp(Math.round(((hit.x - d.L.keyW) / d.L.cellW - d.step0) * 4) / 4, 0.25, 4)
+      const g = clamp(Math.round(((hit.x - d.L.keyW) / d.L.cellW - d.step0) * 4) / 4, 0.25, MM.gateMaxFor(this._music()))
       const ev = t.steps.find(x => x.step === d.step0 && x.midi === d.midi0)
       if (ev && Math.abs(ev.gate - g) > 1e-6) { d.moved = true; svc.beginStroke(id); svc.setEvent(id, d.tid, { ...ev, gate: g }) }
       return
