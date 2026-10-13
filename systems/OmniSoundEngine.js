@@ -7,12 +7,20 @@
  * Notes are scheduled ahead of time against ctx.currentTime by a 25 ms timer (lookahead 0.12 s; 1.5 s when the tab is hidden), anchored on a time
  * grid so repeats never drift. Without AudioContext (jsdom / Node) the engine is a deterministic FAKE with the same API and synthetic analysis
  * (`SoundEngine._fake === true`). Nothing here touches WebGL or the DOM except window events and one-time unlock listeners.
+ *
+ * V195 POLYPHONIC NOTES (docs/architecture/OMNIEXPRESSION_CONTRACT.md): noteOn / noteOff / allNotesOff / playNote / now / setPitchBend / setModulation /
+ * getPolyState. A node's live notes share ONE extra "poly voice" (key 'poly:<nodeId>' in the voice map) that reuses the whole voice graph (note builder,
+ * ADSR, FX chain, analyser): a note = the instrument's sound at the played MIDI pitch, velocity scaled by `velocityGain`. 16 notes per instrument (the oldest
+ * is stolen), the global voice cap counts a poly voice as one voice. Pitch bend = a cents source into the voice pitch bus, modulation = vibrato depth.
  */
-import { sanitizeSound, dynamicToGain, gainToDynamic, dbToGain, soundFrequency, diffSound, SOUND_LIMITS } from '../utils/OmniSoundModel.js'
+import { sanitizeSound, defaultSound, dynamicToGain, gainToDynamic, dbToGain, soundFrequency, diffSound, midiToFreq, SOUND_LIMITS } from '../utils/OmniSoundModel.js'
 
 export const LOOKAHEAD_S = 0.12
 export const HIDDEN_LOOKAHEAD_S = 1.5
 export const TICK_MS = 25
+export const POLY_MAX = 16
+export const POLY_NOTE_ARRAY_MAX = 40
+export const MOD_CENTS = 60
 export const BAND_NAMES = ['sub', 'bass', 'lowMid', 'mid', 'highMid', 'presence', 'brilliance']
 export const BAND_EDGES = [0, 60, 250, 500, 2000, 4000, 6000, Infinity]
 
@@ -93,6 +101,13 @@ export function dynamicsGainAt (s, t) {
   const g0 = dynamicToGain(s.crescendoFrom); const g1 = dynamicToGain(s.crescendoTo)
   return g0 * Math.pow(g1 / g0, crescendoProgress(s, t)) * trim
 }
+/** V195: key / MIDI velocity 0..1 -> linear note gain (relative to the instrument's own dynamics). Monotonic, 0.8 (the default key velocity) = 1, max 1.3. */
+export function velocityGain (vel) {
+  const v = clamp(num(vel, 0.8), 0, 1)
+  return Math.min(1.3, Math.pow(v, 1.5) / Math.pow(0.8, 1.5))
+}
+/** V195: the frequency of a MIDI note for a sound: the instrument's tuning (a4, transpose, fineTune) is kept, its own base note / octave shift are replaced by the key. */
+export function noteFrequency (s, midi) { return midiToFreq(clamp(num(midi, 69), 0, 127) + num(s?.transpose, 0) + num(s?.fineTune, 0) / 100, s?.a4) }
 /** deterministic pseudo random generator (mulberry32). */
 export function makeRng (seed) { let a = (seed >>> 0) || 1; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
 const hashStr = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
@@ -254,6 +269,9 @@ export class OmniSoundEngine {
     this._buffers = new Map()
     this._samples = new Map()
     this._irCache = new Map()
+    this._handles = new Map()
+    this._handleSeq = 0
+    this._ctl = new Map()
     this._master = null
     this._mixer = null
     this._masterTap = null
@@ -360,8 +378,8 @@ export class OmniSoundEngine {
   isMuted () { return this._muted }
 
   // ── queries ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-  isPlaying (nodeId) { const v = this._voices.get(nodeId); return !!(v && !v.stopping && !v.finished) }
-  playing () { return [...this._voices.values()].filter(v => !v.stopping && !v.finished).map(v => v.id) }
+  isPlaying (nodeId) { const v = this._voices.get(nodeId); return !!(v && !v.stopping && !v.finished && !v.poly) }
+  playing () { return [...this._voices.values()].filter(v => !v.stopping && !v.finished && !v.poly).map(v => v.id) }
   voiceCount () { return this._voices.size }
 
   // ── start / update / stop ───────────────────────────────────────────────────────────────────────────────────────────
@@ -482,6 +500,7 @@ export class OmniSoundEngine {
     return { semi: semi + drift / 100, gainDb, pan, filterOct: it ? i * s.iterFilterStep : 0, held, gate, iter: i }
   }
   _tickVoice (v, now) {
+    if (v.poly) return this._tickPoly(v, now)
     const s = v.sound
     const ahead = this._ahead()
     if (!v.stopping && s.maxPlayTime > 0 && now - v.t0 >= s.maxPlayTime) { this.stop(v.id); return }
@@ -575,6 +594,7 @@ export class OmniSoundEngine {
   }
   _retireNote (v, n) { const i = v.notes.indexOf(n); if (i >= 0) v.notes.splice(i, 1); this._disposeNote(n) }
   _disposeNote (n) {
+    if (n.handle) this._handles.delete(n.handle)
     if (!n.nodes) return
     for (const src of n.sources || []) try { src.stop(0) } catch (_) {}
     for (const x of n.nodes) try { x.disconnect() } catch (_) {}
@@ -582,7 +602,7 @@ export class OmniSoundEngine {
   }
   _retuneNote (v, n, spec, at) {
     const s = v.sound
-    n.spec = spec; n.freq = soundFrequency(s) * Math.pow(2, spec.semi / 12)
+    n.spec = spec; n.freq = n.midi != null ? noteFrequency(s, n.midi) : soundFrequency(s) * Math.pow(2, spec.semi / 12)
     if (this._isFake()) return
     const tc = Math.max(0.01, (s.glide || 20) / 3000)
     for (const t of n.tune) try { t.param.setTargetAtTime(n.freq * t.mult, at, tc) } catch (_) {}
@@ -591,7 +611,7 @@ export class OmniSoundEngine {
   _kickSample (v, n) {
     const key = this._sampleKey(v.sound)
     if (!key) return
-    if (!this._samples.has(key)) this._loadSample(v.sound).then(() => { if (this._voices.get(v.id) === v && !v.stopping && !v.finished) { const sp = this._noteSpec(v); this._playNote(v, sp, this._now() + 0.02) } })
+    if (!this._samples.has(key)) this._loadSample(v.sound).then(() => { if (!v.poly && this._voices.get(v.id) === v && !v.stopping && !v.finished) { const sp = this._noteSpec(v); this._playNote(v, sp, this._now() + 0.02) } })
     void n
   }
   _sampleKey (s) { return s.sampleUrl ? 'u:' + s.sampleUrl : (s.sampleSlot > 0 ? 's:' + s.sampleSlot : '') }
@@ -663,6 +683,10 @@ export class OmniSoundEngine {
     g.cresPitch = mk(c.createConstantSource()); g.cresPitch.offset.value = 0; g.cresPitch.connect(g.pitchBus); g.cresPitch.start()
     g.doppler = mk(c.createConstantSource()); g.doppler.offset.value = 0; g.doppler.connect(g.pitchBus); g.doppler.start()
     g.cresBright = mk(c.createConstantSource()); g.cresBright.offset.value = 0; g.cresBright.connect(g.detuneBus); g.cresBright.start()
+    if (v.poly) {   // V195 live notes: pitch wheel (cents into the pitch bus) and modulation wheel (the vibrato LFO at a chosen depth)
+      g.bend = mk(c.createConstantSource()); g.bend.offset.value = (v.bend || 0) * 100; g.bend.connect(g.pitchBus); g.bend.start()
+      g.modG = mk(c.createGain()); g.modG.gain.value = (v.mod || 0) * MOD_CENTS; g.vib.out.connect(g.modG); g.modG.connect(g.pitchBus)
+    }
     // filter wobble
     g.fLfo = makeLfo(c, s.filterLfoShape, s.filterLfoRate, () => this._randBuf()); g.fLfoAmt = mk(c.createGain()); g.fLfoAmt.gain.value = s.filterLfoDepth * 1200
     g.fLfo.out.connect(g.fLfoAmt); g.fLfoAmt.connect(g.detuneBus); g.fLfo.start()
@@ -677,6 +701,7 @@ export class OmniSoundEngine {
     g.lfos = [g.vib, g.tremLfo, g.fLfo, g.dA, g.dB]
     // outputs: voice out -> master
     g.an = mk(c.createAnalyser()); this._configAnalyser(g.an, s)
+    if (v.poly) g.out.gain.value = s.muted ? 0 : (v.expr ?? 1)
     g.tap = this._makeTap(g.an, g.an.fftSize)
     g.out.connect(this._master.gain)
     this._buildChain(v, true)
@@ -839,7 +864,7 @@ export class OmniSoundEngine {
     ch.sideW = sideW; sideW.gain.value = s.stereoWidth
     ch.nodes.push(wIn, sp, mid, side, sideW, sideInv, mg, lm, rm, ls, rs)
     // pan + auto pan
-    ch.pan = c.createStereoPanner(); ch.pan.pan.value = s.positional ? 0 : s.pan
+    ch.pan = c.createStereoPanner(); ch.pan.pan.value = clamp((s.positional ? 0 : s.pan) + (v.panX || 0), -1, 1)
     ch.panLfo = makeLfo(c, 'sine', s.panLfoRate, () => this._randBuf()); ch.panAmt = c.createGain(); ch.panAmt.gain.value = s.panLfoDepth; ch.panLfo.out.connect(ch.panAmt); ch.panAmt.connect(ch.pan.pan); ch.panLfo.start()
     mg.connect(ch.pan); ch.nodes.push(ch.pan, ch.panAmt)
     ch.fxOut = ch.pan
@@ -1039,7 +1064,7 @@ export class OmniSoundEngine {
       const ch = g.chain
       for (const st of ch.stages) st.apply(s, t, false)
       ch.sideW.gain.setTargetAtTime(s.stereoWidth, t, 0.02)
-      ch.pan.pan.setTargetAtTime(s.positional ? 0 : s.pan, t, 0.02)
+      ch.pan.pan.setTargetAtTime(clamp((s.positional ? 0 : s.pan) + (v.panX || 0), -1, 1), t, 0.02)
       ch.panAmt.gain.setTargetAtTime(s.panLfoDepth, t, 0.02); ch.panLfo.setRate(s.panLfoRate, t)
       if (ch.panner) this._applyPanner(ch.panner, s, v, t, false)
     }
@@ -1061,20 +1086,197 @@ export class OmniSoundEngine {
     if (changed.some(k => k.startsWith('sustainDrift') || k === 'sustainBrightDrift')) { g.dA.setRate(s.sustainDriftRate, t); g.dB.setRate(s.sustainDriftRate * 1.618, t); g.drift.gain.setTargetAtTime(1 - 0.3 * s.sustainDrift, t, 0.05); g.dAmp.gain.setTargetAtTime(0.3 * s.sustainDrift, t, 0.05); g.dBright.gain.setTargetAtTime(s.sustainBrightDrift * 1200, t, 0.05) }
     if (changed.some(k => k === 'fftSize' || k === 'smoothing' || k === 'minDb' || k === 'maxDb')) { this._configAnalyser(g.an, s); g.tap = this._makeTap(g.an, g.an.fftSize) }
     if (changed.includes('muted')) { /* muted is applied in the voice-out gain below */ }
-    g.out.gain.setTargetAtTime(s.muted ? 0 : 1, t, 0.02)
+    g.out.gain.setTargetAtTime(s.muted ? 0 : (v.expr ?? 1), t, 0.02)
     // currently sounding notes
     const restart = has(SRC_KEYS)
     for (const n of [...v.notes]) {
       if (n.dead) continue
       if (restart && n.tRel == null && n.tOn <= t) {
         const spec = n.spec; this._releaseNote(v, n, t)
-        const nn = this._playNote(v, spec, t + 0.005); void nn
+        if (n.midi != null) { const h = n.handle; const nn = this._polyMake(v, n.midi, n.vel, t + 0.005, null); if (h) { this._handles.delete(h); n.handle = null; nn.handle = h; this._handles.set(h, { v, n: nn }) } } else { const nn = this._playNote(v, spec, t + 0.005); void nn }
         continue
       }
       if (has(PITCH_KEYS)) this._retuneNote(v, n, n.spec, t)
       if (has(FILTER_KEYS)) for (const f of n.filters) { const cut = clamp(s.filterCutoff * Math.pow(2, s.filterKeyTrack * Math.log2(Math.max(20, n.freq) / 261.63) + n.spec.filterOct), 20, c.sampleRate * 0.45); f.frequency.setTargetAtTime(cut, t, 0.03); f.Q.setTargetAtTime(s.filterQ, t, 0.03); f.gain.setTargetAtTime(s.filterGainDb, t, 0.03) }
       if (n.tRel == null && changed.includes('sustainLevel') && n.env) { n.p.s = s.sustainLevel; const el = t - n.tOn; if (el > n.p.a + n.p.h + n.p.d) n.env.gain.setTargetAtTime(s.sustainLevel, t, 0.05) }
     }
+  }
+
+  // ── V195 polyphonic notes (live instrument, keyboards, MIDI, sequencer) ─────────────────────────────────────────────────────
+  /** engine clock in seconds (AudioContext.currentTime, or the fake clock). `when` of the note API is on this clock. */
+  now () { return this._now() }
+  _ctlGet (id) { const a = this._ctl.get(String(id)) || {}; const g = this._ctl.get('*') || {}; return { bend: a.bend ?? g.bend ?? 0, mod: a.mod ?? g.mod ?? 0, pan: a.pan ?? g.pan ?? 0, expr: a.expr ?? g.expr ?? 1 } }
+  _ctlSet (id, key, val) {
+    id = id == null ? '*' : String(id)
+    if (id === '*') for (const [k, o] of this._ctl) if (k !== '*') delete o[key]
+    const o = this._ctl.get(id) || {}; o[key] = val; this._ctl.set(id, o)
+    while (this._ctl.size > 64) { const k = [...this._ctl.keys()].find(x => x !== '*' && x !== id); if (k == null) break; this._ctl.delete(k) }
+  }
+  /** the poly voice of an instrument (created on demand with `create`). A given `sound` re-tunes it live; no `sound` keeps the current one (default soft sine for a new voice). */
+  _polyVoice (nodeId, sound, create = true) {
+    const key = 'poly:' + nodeId
+    let v = this._voices.get(key)
+    const has = sound !== undefined && sound !== null
+    const s = has ? sanitizeSound({ ...sanitizeSound(sound), positional: false }) : (v ? v.sound : sanitizeSound({ ...defaultSound(), positional: false }))
+    if (v && (v.stopping || v.killed)) { this._voices.delete(key); this._dying.add(v); v = null }
+    if (v) {
+      if (has) {
+        const changed = diffSound(v.sound, s)
+        if (changed.length) { const old = v.sound; v.sound = s; if (!this._isFake()) { try { this._applyLive(v, old, changed) } catch (e) { console.warn('SoundEngine: live update failed', e) } } }
+      }
+      if (v.finished) { v.finished = false; v.endAt = Infinity }
+      return v
+    }
+    if (!create) return null
+    if (!this._isFake()) {
+      const c = this._ensureContext()
+      if (!c) { this._wanted = true; try { window.dispatchEvent(new CustomEvent('omni:sound-unlock-needed', { detail: { nodeId } })) } catch (_) {} return null }
+      if (c.state === 'suspended') { try { c.resume() } catch (_) {} }
+    }
+    while ([...this._voices.values()].filter(x => !x.stopping && !x.finished).length >= this._voiceCap) {
+      let oldest = null
+      for (const x of this._voices.values()) if (!x.stopping && !x.finished && (!oldest || x.startedWall < oldest.startedWall)) oldest = x
+      if (!oldest) break
+      this._killVoice(oldest, 0.04, true)
+    }
+    const now = this._now(); const ctl = this._ctlGet(nodeId)
+    v = {
+      id: key, nodeId, poly: true, sound: s, ctx: null, t0: now, startedWall: ++this._wall, rng: makeRng(hashStr(key)), notes: [], queue: [],
+      loopIdx: 0, iterIdx: 0, loopStart: now, nextTime: now, anchorT: now, anchorI: 0, schedDone: true, stopping: false, finished: false, endAt: Infinity,
+      lastPhase: 'idle', lastFreq: null, lastNoteT: 0, lastGate: 0, lastDyn: s.dynamic, iteration: 0, loopCount: 0, noteId: 0, analysis: null, fftSig: '', lastRead: -1,
+      graph: null, sig: chainSig(s), pos: null, lastPos: null, dopplerCents: 0, chains: [], bend: ctl.bend, mod: ctl.mod, panX: ctl.pan, expr: ctl.expr
+    }
+    this._voices.set(key, v)
+    if (!this._isFake()) { try { this._buildVoice(v) } catch (e) { console.warn('SoundEngine: poly voice build failed', e); this._disposeVoice(v); return null } }
+    this._wanted = true
+    this._ensureTimer()
+    return v
+  }
+  /** build one live note (graph in a real engine) at engine time `at`; tRelAbs = scheduled release time, or null = held until noteOff. */
+  _polyMake (v, midi, vel, at, tRelAbs) {
+    const s = v.sound; const p = adsrParams(s, vel); const g = velocityGain(vel)
+    const rel = tRelAbs == null ? null : Math.max(tRelAbs, at + 0.01)
+    const spec = { semi: 0, gainDb: 20 * Math.log10(Math.max(1e-4, g)), pan: 0, filterOct: 0, held: rel == null, gate: rel == null ? 0 : rel - at, iter: 0 }
+    const n = { id: ++v.noteId, tOn: at, tRel: rel, tEnd: rel == null ? Infinity : rel + p.r, p, spec, nodes: [], tune: [], filters: [], legato: false, freq: noteFrequency(s, midi), midi, vel, vg: g, handle: null }
+    if (!this._isFake()) { try { this._buildNote(v, n) } catch (e) { console.warn('SoundEngine: note build failed', e); n.tEnd = at } }
+    v.notes.push(n)
+    v.lastFreq = n.freq
+    return n
+  }
+  /** make room: at most POLY_MAX live notes per instrument (the oldest is released fast), and a bounded note array. */
+  _polyRoom (v, at) {
+    const live = v.notes.filter(n => n.tRel == null || n.tRel > at)
+    if (live.length >= POLY_MAX) { let o = live[0]; for (const n of live) if (n.tOn < o.tOn) o = n; this._releaseNote(v, o, at, true) }
+    let guard = 0
+    while (v.notes.length >= POLY_NOTE_ARRAY_MAX && guard++ < 64) {
+      const o = v.notes.find(n => n.tRel != null && n.tRel <= at) || v.notes.find(n => n.tRel != null)
+      if (!o) break
+      this._discardNote(v, o)
+    }
+  }
+  _polyHandle (v, n) {
+    const h = 'n' + (++this._handleSeq).toString(36)
+    n.handle = h; this._handles.set(h, { v, n })
+    while (this._handles.size > 1024) { const k = this._handles.keys().next().value; const e = this._handles.get(k); if (e) e.n.handle = null; this._handles.delete(k) }
+    return h
+  }
+  _polyAt (when) { const now = this._now(); const w = Number(when); return Number.isFinite(w) ? Math.max(w, now) : now }
+  /** Start a held note on an instrument (nodeId). Returns a handle string, or null when it cannot sound (invalid midi, audio still locked). */
+  noteOn (nodeId, midi, o = {}) {
+    try {
+      if (nodeId == null) return null
+      const m = Math.round(Number(midi)); if (!(m >= 0 && m <= 127)) return null
+      o = o && typeof o === 'object' ? o : {}
+      const v = this._polyVoice(String(nodeId), o.sound); if (!v) return null
+      const at = this._polyAt(o.when)
+      this._polyRoom(v, at)
+      return this._polyHandle(v, this._polyMake(v, m, clamp(num(o.velocity, 0.8), 0, 1), at, null))
+    } catch (e) { console.warn('SoundEngine.noteOn', e); return null }
+  }
+  /** Release a note (its ADSR release stage runs). `when` = engine time. Returns true if the handle was live. */
+  noteOff (handle, o = {}) {
+    try {
+      const e = this._handles.get(String(handle)); if (!e) return false
+      const at = this._polyAt(o && o.when)
+      if (e.n.tRel != null && e.n.tRel <= at) return false
+      this._releaseNote(e.v, e.n, at)
+      return true
+    } catch (e) { return false }
+  }
+  /** Release every live note of one instrument, or of all instruments. */
+  allNotesOff (nodeId) {
+    try {
+      const now = this._now()
+      for (const v of this._voices.values()) {
+        if (!v.poly || (nodeId != null && v.nodeId !== String(nodeId))) continue
+        for (const n of v.notes) if (n.tRel == null || n.tRel > now) this._releaseNote(v, n, now)
+      }
+    } catch (_) { /* never throws */ }
+  }
+  /** Scheduled one-shot: starts at engine time `when` (default now) and is released after `duration` s. Returns the handle. */
+  playNote (nodeId, midi, o = {}) {
+    try {
+      if (nodeId == null) return null
+      const m = Math.round(Number(midi)); if (!(m >= 0 && m <= 127)) return null
+      o = o && typeof o === 'object' ? o : {}
+      const v = this._polyVoice(String(nodeId), o.sound); if (!v) return null
+      const at = this._polyAt(o.when); const dur = clamp(num(o.duration, 0.25), 0.01, 120)
+      this._polyRoom(v, at)
+      return this._polyHandle(v, this._polyMake(v, m, clamp(num(o.velocity, 0.8), 0, 1), at, at + dur))
+    } catch (e) { console.warn('SoundEngine.playNote', e); return null }
+  }
+  /** Pitch bend in semitones (-24..24) for one instrument, or null = every live (and future) poly instrument. */
+  setPitchBend (nodeId, semitones) {
+    const b = clamp(num(semitones, 0), -24, 24)
+    this._ctlSet(nodeId, 'bend', b)
+    for (const v of this._voices.values()) {
+      if (!v.poly || (nodeId != null && v.nodeId !== String(nodeId))) continue
+      v.bend = b
+      if (v.graph?.bend && this._ctx) try { v.graph.bend.offset.setTargetAtTime(b * 100, this._ctx.currentTime, 0.008) } catch (_) {}
+    }
+  }
+  /** Modulation 0..1 (vibrato depth, up to MOD_CENTS cents) for one instrument, or null = all. */
+  setModulation (nodeId, amount) {
+    const m = clamp(num(amount, 0), 0, 1)
+    this._ctlSet(nodeId, 'mod', m)
+    for (const v of this._voices.values()) {
+      if (!v.poly || (nodeId != null && v.nodeId !== String(nodeId))) continue
+      v.mod = m
+      if (v.graph?.modG && this._ctx) try { v.graph.modG.gain.setTargetAtTime(m * MOD_CENTS, this._ctx.currentTime, 0.02) } catch (_) {}
+    }
+  }
+  /** V195: second controller axis (MIDI-style pan) -1..1 added to the instrument's own pan. */
+  setPan (nodeId, x) {
+    const p = clamp(num(x, 0), -1, 1)
+    this._ctlSet(nodeId, 'pan', p)
+    for (const v of this._voices.values()) {
+      if (!v.poly || (nodeId != null && v.nodeId !== String(nodeId))) continue
+      v.panX = p
+      const ch = v.graph?.chain
+      if (ch?.pan && this._ctx) try { ch.pan.pan.setTargetAtTime(clamp((v.sound.positional ? 0 : v.sound.pan) + p, -1, 1), this._ctx.currentTime, 0.02) } catch (_) {}
+    }
+  }
+  /** V195: expression (CC11 style) 0..1 = the instrument's output level (1 = unchanged). */
+  setExpression (nodeId, x) {
+    const e = clamp(num(x, 1), 0, 1)
+    this._ctlSet(nodeId, 'expr', e)
+    for (const v of this._voices.values()) {
+      if (!v.poly || (nodeId != null && v.nodeId !== String(nodeId))) continue
+      v.expr = e
+      if (v.graph && this._ctx) try { v.graph.out.gain.setTargetAtTime(v.sound.muted ? 0 : e, this._ctx.currentTime, 0.02) } catch (_) {}
+    }
+  }
+  /** Inspect the live notes: one instrument -> {nodeId, live, total, midis, bend, mod, sound} or null; no argument -> an array of those. */
+  getPolyState (nodeId) {
+    const now = this._now()
+    const one = (v) => { const live = v.notes.filter(n => n.tOn <= now + 1e-9 ? (n.tRel == null || n.tRel > now) : true); return { nodeId: v.nodeId, live: live.length, total: v.notes.length, midis: live.map(n => n.midi), bend: v.bend || 0, mod: v.mod || 0, pan: v.panX || 0, expression: v.expr ?? 1, sound: v.sound } }
+    if (nodeId == null) return [...this._voices.values()].filter(v => v.poly).map(one)
+    const v = this._voices.get('poly:' + nodeId); return v ? one(v) : null
+  }
+  _tickPoly (v, now) {
+    if (!v.stopping && v.graph) this._extendCrescendo(v, now)
+    for (const n of [...v.notes]) if (now >= n.tEnd + 0.02) this._retireNote(v, n)
+    if (!v.stopping && !v.finished && !v.notes.length) { v.finished = true; v.endAt = now + tailSeconds(v.sound) + 0.05 }
   }
 
   // ── doppler / spatial ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1119,9 +1321,14 @@ export class OmniSoundEngine {
   getAnalysis (nodeId) {
     if (nodeId === 'master') return this.getMasterAnalysis()
     if (nodeId === 'mixer') return this.getMixerAnalysis()
-    const v = this._voices.get(String(nodeId))
-    if (!v) return null
-    return this._isFake() ? this._fakeAnalysis(v) : this._realAnalysis(v)
+    const v = this._voices.get(String(nodeId)); const pv = this._voices.get('poly:' + nodeId)
+    if (!v && !pv) return null
+    const read = (x) => (this._isFake() ? this._fakeAnalysis(x) : this._realAnalysis(x))
+    if (!pv) return read(v)
+    const b = read(pv); if (b) b.nodeId = String(nodeId)
+    if (!v) return b
+    const a = read(v)   // the node plays its own sound AND has live notes: report the louder of the two
+    return b && (!a || b.level > a.level || (b.playing && !a.playing)) ? b : a
   }
   getMasterAnalysis () {
     if (this._isFake()) return this._fakeMaster()
@@ -1190,19 +1397,22 @@ export class OmniSoundEngine {
     if (!v.fake || v.fake.bins !== bins) v.fake = { spec: new Uint8Array(bins), wave: new Uint8Array(fft), bands: [0, 0, 0, 0, 0, 0, 0], sm: [0, 0, 0, 0, 0, 0, 0], bins, lvl: 0 }
     const F = v.fake
     let amp = 0; let semi = 0; let nact = 0
+    const acts = []
     for (const n of v.notes) {
       const lv = adsrLevel(n.p, now - n.tOn, n.tRel == null ? null : n.tRel - n.tOn)
       if (lv > amp) { amp = lv; semi = n.spec.semi }
       if (now >= n.tOn) nact++
+      if (v.poly && lv > 0.0005) acts.push([n.freq * Math.pow(2, (v.bend || 0) / 12), lv * (n.vg ?? 1)])
     }
-    const gainNow = dynamicsGainAt(s, now - v.t0) * (s.muted ? 1 : 1)
-    const total = amp * gainNow
+    const gainNow = dynamicsGainAt(s, now - v.t0) * (v.poly ? (v.expr ?? 1) : 1)
+    const total = v.poly ? Math.sqrt(acts.reduce((a, x) => a + x[1] * x[1], 0)) * gainNow : amp * gainNow
     const f0 = soundFrequency(s) * Math.pow(2, semi / 12)
+    const layers = v.poly ? acts.map(([f, l]) => [f, l * gainNow]) : [[f0, total]]
     F.spec.fill(0)
     const binHz = sr / 2 / bins; const minDb = s.minDb; const maxDb = s.maxDb
     const cutoff = s.filterEnabled ? s.filterCutoff * (1 + s.filterEnvAmount * 0.0) : 0
-    for (const [f, a0] of this._fakePartials(s, f0)) {
-      let a = a0 * total
+    for (const [fz, lvl] of layers) for (const [f, a0] of this._fakePartials(s, fz)) {
+      let a = a0 * lvl
       if (cutoff && s.filterType === 'lowpass') a *= 1 / (1 + Math.pow(f / cutoff, 4))
       else if (cutoff && s.filterType === 'highpass') a *= 1 / (1 + Math.pow(cutoff / f, 4))
       else if (cutoff && s.filterType === 'bandpass') a *= 1 / (1 + Math.pow(Math.log2(f / cutoff) * s.filterQ, 2))
@@ -1220,7 +1430,7 @@ export class OmniSoundEngine {
     const rms = total * 0.5
     const lvl = levelFromRms(rms) * (total > 0.0005 ? 1 : 0)
     // waveform: fundamental plus 2 harmonics
-    for (let i = 0; i < fft; i++) { const tt = i / sr; F.wave[i] = Math.round(128 + 127 * clamp(total * (Math.sin(2 * Math.PI * f0 * tt) + 0.3 * Math.sin(4 * Math.PI * f0 * tt)), -1, 1)) }
+    for (let i = 0; i < fft; i++) { const tt = i / sr; let y = 0; for (const [fz, lvl] of layers) y += lvl * (Math.sin(2 * Math.PI * fz * tt) + 0.3 * Math.sin(4 * Math.PI * fz * tt)); F.wave[i] = Math.round(128 + 127 * clamp(y, -1, 1)) }
     const ph = this._phaseNow(v, now)
     const dyn = s.crescendoEnabled ? gainToDynamic(dynamicsGainAt(s, now - v.t0) / (dbToGain(s.gainDb) * (0.4 + 0.6 * s.velocity))) : s.dynamic
     return { nodeId: v.id, playing: !v.stopping && !v.finished, phase: ph, level: lvl, rms, bands, peakHz: total > 0.0005 ? peakFromSpectrum(F.spec, sr, s.peakThreshold) : 0, spectrum: F.spec, waveform: F.wave, binCount: bins, sampleRate: sr, iteration: v.iteration, loopCount: v.loopCount, dynamicNow: dyn }
@@ -1266,13 +1476,13 @@ export class OmniSoundEngine {
 
   // ── teardown ────────────────────────────────────────────────────────────────────────────────────────────────────────────
   _disposeVoice (v) {
-    if (this._voices.get(v.id) === v) this._voices.delete(v.id)
+    for (const k of [...this._voices.keys()]) if (this._voices.get(k) === v) this._voices.delete(k)
     for (const n of [...v.notes]) this._disposeNote(n)
     v.notes = []
     const g = v.graph
     if (g) {
       for (const l of g.lfos || []) try { l.dispose() } catch (_) {}
-      for (const n of [g.cresPitch, g.doppler, g.cresBright]) try { n.stop() } catch (_) {}
+      for (const n of [g.cresPitch, g.doppler, g.cresBright, g.bend]) try { n?.stop() } catch (_) {}
       if (g.chain) this._disposeChain(g.chain)
       for (const n of g.nodes) try { n.disconnect() } catch (_) {}
       v.graph = null

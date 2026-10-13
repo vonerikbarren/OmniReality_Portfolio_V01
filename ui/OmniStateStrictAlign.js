@@ -36,6 +36,7 @@ import * as THREE from 'three'
 import * as SA from '../utils/StrictAlign.js'
 import * as S from '../utils/OmniStateStrictAlignSettings.js'
 import * as Extra from '../utils/OmniExtraKinds.js'
+import { isExpressionOn } from '../utils/OmniExpressionFlag.js'   // V195
 
 export const ROOT_ID = 'omni-state-strictalign'
 const STYLE_ID = 'omni-state-strictalign-styles'
@@ -634,6 +635,7 @@ export default class OmniStateStrictAlign {
   // ── keyboard ────────────────────────────────────────────────────────────────
 
   _onKey (e) {
+    if (isExpressionOn()) return                    // V195: Expression typing owns every key while it is on
     const typing = SA.isTypingTarget(e.target) || SA.isTypingTarget(typeof document !== 'undefined' ? document.activeElement : null)
     const isBackquote = (e.code === 'Backquote' || e.key === '`') && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.shiftKey && e.key === '~')
     if (isBackquote) {

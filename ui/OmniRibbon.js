@@ -97,7 +97,7 @@ function buildTabs () {
       groups: [
         { caption: 'OmniStar', btns: [
           b('docs', '≡', 'Docs', '—', 'Opens the Docs panel: the user guide inside the app, a table of contents on the left, the page on the right, a search field that finds and highlights words across all pages. PageDown / PageUp turn pages while it is focused.', nav('⟐OmniDocs'), { name: 'Docs' }),
-          b('starlight', '✧', 'OmniStarLight', 'Ctrl/Cmd+K', 'Opens OmniStarLight, the Spotlight-style search: it lists the main sites of the app (Available or Unavailable) and finds user-guide pages. Arrow keys move, Enter opens, Escape closes.', () => ev('omni:starlight-toggle'), { name: 'OmniStarLight' }),
+          b('starlight', '✧', 'OmniStarLight', 'Q', 'Opens OmniStarLight, the Spotlight-style search: it lists the main sites of the app (Available or Unavailable) and finds user-guide pages. Arrow keys move, Enter opens, Escape closes.', () => ev('omni:starlight-toggle'), { name: 'OmniStarLight' }),
         ] },
       ],
     },
@@ -122,16 +122,21 @@ function buildTabs () {
           b('path-node', '⤳', 'Path node', '—', 'Creates an OmniPathNode in front of the camera: an ordered path of nodes, attached one to the next (LINK) or built from the hierarchy (GENEALOGY). Opens the node order panel.', () => { ev('omni:path-create-request', { select: true }); nav('⟐OmniNodeOrder')() }, { name: 'New path node' }),
           b('terminal-shell', '›_', 'Terminal node', '—', 'Creates a TerminalShellTunnel node in front of the camera: an in-scene terminal that moves with the node. The Terminal button switches every terminal tunnel on and off together; its settings are in the Inspector and in ⟐TerminalSettings.', () => ev('omni:terminal-shell-create-request', { select: true }), { name: 'New TerminalShellTunnel' }),
           b('sound-node', '♪', 'Sound node', '—', 'Creates a SoundNode in front of the camera: a speaker you can place. It makes a sound (a note, a pad, a beat), its bell and rings pulse with the sound, and it can send out particles. Its settings are in ⟐SoundNodeSettings and in the Inspector.', () => ev('omni:sound-node-create', { select: true }), { name: 'New sound node' }),
+          b('music-node', '♫', 'Music node', '—', 'Creates a MusicNode in front of the camera: a step sequencer you can place. Its plate lights the playing step. Edit the pattern, record from the keys or MIDI, and play it in ⟐OmniSequencer and in the Inspector.', () => ev('omni:music-node-create', { select: true }), { name: 'New music node' }),
           b('node-order', '⇅', 'Node order', '—', 'Opens ⟐OmniNodeOrder: the nodes of a path in order, drag to reorder, jump to a node, add, remove.', nav('⟐OmniNodeOrder'), { name: 'Node order panel' }),
           b('floor-panels', '▦', 'Floor panels', '—', 'Opens ⟐FloorNodeMakerSettings (Admin): Tetris-piece floor panels, a blueprint grid, pictures / GIFs / videos on the faces, Place in scene.', nav('⟐FloorNodeMakerSettings'), { name: 'Floor panel maker' }),
         ] },
         { caption: 'Tools', btns: [
-          b('mixer', '♫', 'Mixer', 'k', 'Toggles OmniMixer.', nav('⟐OmniMixer')),
+          b('mixer', '♫', 'Music player', 'k', 'Toggles OmniMusicPlayer (it was called OmniMixer before V195).', nav('⟐OmniMusicPlayer'), { name: 'OmniMusicPlayer' }),
           b('translator', '⇄', 'Translator', 't', 'Toggles OmniTranslator.', () => ev('omni:translator-toggle')),
           b('presenter', '▤', 'Presenter', 'p', 'Toggles the ⟐p OmniPresenter.', sys('omnipresenter')),
           b('gallery', '▥', 'Gallery', 'g', 'Toggles the ⟐g OmniGallery.', sys('omnigallery')),
           b('sound-settings', '♬', 'Sound settings', '—', 'Opens ⟐SoundNodeSettings: every setting of the selected node\'s sound and sound particles, presets, Play / Stop / Audition, copy and paste. Global sound options are in Admin > UI Settings.', nav('⟐SoundNodeSettings'), { name: 'Sound node settings' }),
+          b('expression-settings', '⌨', 'Expression settings', '—', 'Opens ⟐OmniExpressionTypingSettings: the key map, octaves, pitch bend and modulation, the instrument and MIDI keyboards. Ctrl/Cmd+K itself turns Expression typing on and off (Esc leaves).', nav('⟐OmniExpressionTypingSettings'), { name: 'Expression settings' }),
+          b('expression', '⌗', 'Expression', '—', 'Opens OmniExpression: an on-screen keyboard for both hands (touch or mouse, the keys light up when you play on the computer keys or a MIDI keyboard). Maximize the window for the four quadrants; Split puts each hand in its own window.', () => ev('omni:expression-open'), { name: 'OmniExpression' }),
+          b('beatpad', '⊞', 'BeatPad', '—', 'Opens OmniBeatPad: 16 pads in a 4x4 grid. Tap to play; Edit (or a long press) binds a pad to a sound node or a note, with one-shot / hold / toggle modes and choke groups.', nav('OmniBeatPad'), { name: 'OmniBeatPad' }),
           b('browser', '◫', 'Browser', 'b', 'Opens the OmniBrowser (window 1). The b key toggles it; this button only opens it.', nav('⟐OmniBrowserWindow')),
+          b('omnidj', '◉', 'OmniDJ', '—', 'Opens ⟐OmniDJ: six jog-wheel circles and six decks with volume, 3-band EQ, cue, mute, loop, pitch, crossfader and master. Tracks come from the OmniMusicPlayer library. The same DJ can sit in an OmniExpression quadrant.', nav('⟐OmniDJ'), { name: 'OmniDJ' }),
         ] },
         { caption: 'Windows', btns: [
           b('panelcontrol', '❐', 'PanelControl', '—', 'Opens ⟐PanelControl: the list of panels and their state.', nav('⟐PanelControl')),
@@ -140,6 +145,7 @@ function buildTabs () {
         { caption: 'Sound', btns: [
           b('sound-viewer', '♪', 'Sound viewer', '—', 'Opens ⟐SoundViewer: the frequency picture of a sound node or of the whole mix — spectrum bars and line, scope, scrolling spectrogram, the 7 band meters, peak note, envelope phase, freeze and zoom.', nav('⟐SoundViewer'), { name: 'Sound viewer' }),
           b('particle-viewer', '✦', 'Particle viewer', '—', 'Opens ⟐SoundParticleViewer: the particle formation of a sound node (top, front, side or orbit) with its live count, plus the formation, count and size controls.', nav('⟐SoundParticleViewer'), { name: 'Particle viewer' }),
+          b('sequencer', '▦', 'Sequencer', '—', 'Opens ⟐OmniSequencer: the step grid and piano roll of the selected music node, with Play, Record (count-in, quantize), tracks, instruments and pattern presets.', nav('⟐OmniSequencer'), { name: 'Sequencer' }),
         ] },
         { caption: 'Assistance', btns: [
           b('shortcuts', '⌨', 'Shortcuts', '—', 'Opens the list of every real keyboard shortcut.', () => {

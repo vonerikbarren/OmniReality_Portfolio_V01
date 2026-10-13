@@ -60,7 +60,7 @@ against the actual files - not just described.
   active from boot; now click-to-activate with a Put Away control (see
   Legacy, below - this was a real behavior change, not an addition).
 
-**OmniMixer**
+**OmniMusicPlayer** (called OmniMixer until V195; file, ids and storage keys keep the old name)
 - `ui/OmniMixerPanel.js` - 2 independent looping audio channels
   (shared 15-slot library, volume/speed/next), 2 generic iframe embed
   channels (honestly not mixer-controllable - verified Spotify's embed

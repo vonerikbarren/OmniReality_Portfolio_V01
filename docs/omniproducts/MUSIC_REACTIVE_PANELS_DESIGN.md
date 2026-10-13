@@ -5,7 +5,7 @@ Nothing in this document is built. Captures a brainstorm.
 ## The idea
 
 Every panel gets a "slot" — a hook into whatever's currently playing
-through OmniMixer — that can light up the panel's own border in a
+through OmniMusicPlayer (OmniMixer before V195) — that can light up the panel's own border in a
 color/pattern reacting to the music. Two tiers proposed:
 
 - **Regular content**: a generic, RGB-store-light-style reactive

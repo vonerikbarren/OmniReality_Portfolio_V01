@@ -76,7 +76,7 @@ const LEFT_ITEMS = [
   { label: '⟐OmniVisor'       },
   { label: '⟐OmniBrowser'     },
   { label: '⟐OmniSystem',     children: ['⟐OmniSystemCreator', '⟐OmniSystemAnimator', '⟐OmniSystemDimensionalizer', '⟐OmniSystemSettings'] },
-  { label: '⟐OmniMixer'       },
+  { label: '⟐OmniMusicPlayer' },
   { label: '⟐OmniPocket'      },
   { label: '⟐OmniStore'       },
   { label: '⟐OmniValue'       },

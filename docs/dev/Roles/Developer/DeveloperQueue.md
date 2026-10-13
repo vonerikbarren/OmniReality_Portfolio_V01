@@ -1362,3 +1362,22 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 3. Decide: Advanced fold for 265 settings? Mixer follows Sound master? Muted nodes drive particles (now yes)? Doppler / positional default off.
 4. Stub-based v194b / v194c suites should be rewritten against the real modules (current coverage: real-browser integration run).
 5. OmniMixer got one added line (`window.__omniMixerAudio`) for the analysis bridge.
+
+## 85. V195: what was not verified, follow-ups
+
+1. Nothing heard (keys, sequencer, DJ, sound nodes); no real MIDI hardware; no phone / touch.
+2. Two things are called OmniExpression (old drawer panel, new window): rename one.
+3. Old tests assert the removed StarLight Ctrl+K / E,Q hints (m193_v190a_ui, v191a_pads, v190a_pure, v191c_nodev header): update them to the V195 contract.
+4. Mixer quadrant is a placeholder (needs a public API from OmniMusicPlayer or to control the six DJ channels).
+5. DJ: faders / EQ not remembered across reloads; closing the window keeps decks playing; scrub = seek.
+6. Transport keys: Enter / Cmd+Enter send requests; verify the sequencer reacts on a real run.
+7. Spatial equivalence of the quadrants (six DJ circles as a cube) is documented only; owner description needed.
+8. LiveConstructionNode, sample library import and more DAW stages are next.
+
+## 86. V196: OmniDraw picker
+
+1. (done in V197) Path / Terminal / Floor panels are now in the picker.
+2. The V183 nodes test asserts 8 picker modes (comment: 9th slot reserved for OmniAxis); update to 10.
+3. Picker not checked in a real browser.
+
+## 87. V197: OmniDraw picker has 13 tiles; layout not checked in a browser; the V183 nodes test (8 modes) needs updating to 13.

@@ -25,7 +25,7 @@ The "Candidate" column is **my placeholder suggestion**, plain Unicode geometric
 | J | ⟡ | (nothing yet) | | |
 | K | ⌨ | OmniKeys (built) | | |
 | L | ⌖ | OmniLocus (planned / design only), OmniLandingRoom (planned / design only) | | |
-| M | ♫ | OmniMixer (built), OmniMeter (built) | | |
+| M | ♫ | OmniMusicPlayer (built; was OmniMixer before V195), OmniMeter (built) | | |
 | N | ⟁ | OmniNavi (built), OmniNotify (built), OmniNode (built), OmniNet (planned / design only) | | |
 | O | ⭘ | (nothing yet) | | |
 | P | ⬖ | OmniPlayer (built), OmniPresenter (built), OmniPocket (built), OmniProgram (built), OmniPlatform (planned / design only) | | |

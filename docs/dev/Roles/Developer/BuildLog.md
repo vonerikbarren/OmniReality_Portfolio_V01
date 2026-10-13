@@ -1,5 +1,27 @@
 # Build Log
 
+## 2026-10-13 — V197: Path node, Terminal node and Floor panels in the OmniDraw menu
+
+- `ui/OmniDrawModePicker.js`: three more tiles (Path ⤳, Terminal ›_, Floor panels ▦) that do what the ribbon Create buttons do (`omni:path-create-request` + open ⟐OmniNodeOrder; `omni:terminal-shell-create-request`; open ⟐FloorNodeMakerSettings). The picker now has 13 tiles.
+- **Tests:** `v197_test` 10/10 (all new tiles, events, panels, existing modes unchanged). jsdom only; layout of 13 tiles not seen in a browser.
+
+## 2026-10-13 — V196: Sound and Music in the OmniDraw menu
+
+- **Root cause:** SoundNode (V194) and MusicNode (V195) were only added to Home > Create in the ribbon; the OmniDraw mode picker (`ui/OmniDrawModePicker.js`) is a separate list and had no entry. Two tiles added (Sound ♪, Music ♫): they send the same `omni:sound-node-create` / `omni:music-node-create {select:true}` events as the ribbon and then open ⟐SoundNodeSettings / ⟐OmniSequencer.
+- **Tests:** `v196_test` 7/7 (tiles, events, panels, existing modes unchanged). The old V183 check "picker has 8 modes" is now 10 by design. Not run in a browser.
+- **Also missing from the picker (not added):** Path node, Terminal node, Floor panels (ribbon only).
+
+## 2026-10-13 — V195: Expression typing (Cmd/Ctrl+K) + Web MIDI + polyphonic note API, OmniExpression panel with quadrants, BeatPad 4x4, OmniDJ (6 circles + grid organizer), MusicNode step sequencer, Q opens StarLight, new opening
+
+Four parallel parts from V194 (shared `utils/OmniInputBus.js` and `utils/OmniQuadrantRegistry.js` written first, contract `docs/architecture/OMNIEXPRESSION_CONTRACT.md`), merged with git merge-file (main.js, ribbon, StarLight sites, README: additive blocks kept together).
+- **Input (agent 1):** Cmd/Ctrl+K toggles Expression typing; the key map is a data table by `event.code` (LH black w e r t y, white a s d f g + z x c v; RH black u i o p [, white j k l ; ' + m , . /), Space sustain, B/N octave with scope (both / left / right / last), Left Shift + arrows = mod wheel, Right Shift + arrows = pitch bend + a second axis (spring back), Enter = transport request, Cmd/Ctrl+Enter = record request. Capture layer swallows all other keys while on (WASD proven not to move the camera; three window-capture listeners got a one-line guard). `OmniLiveInstrument` plays bus notes through the new polyphonic SoundEngine API (`noteOn/noteOff/allNotesOff/playNote/now/setPitchBend/setModulation`, polyphony 16 per instrument). `OmniMidiIn`: Web MIDI (device list, hot-plug, channel->hand, bend, mod CC1, sustain CC64, expression CC11), permission asked only when enabled. `OmniExpressionTypingSettings` (Admin slot 23, `omni:expression-typing-v1`). Q (bare) opens OmniStarLight, Cmd/Ctrl+K no longer does; movement Q / E bindings wiped.
+- **Panels (agent 2):** OmniExpression window looks like just the keyboard; maximized it becomes four quadrants (Start HUD look) each with a header dropdown over the quadrant registry (`omni:expression-panel-v1`); Split / Join into LH and RH windows; multi-touch pointer keys with velocity; OmniBeatPad strictly 4x4 (`omni:beatpad-v1`, kits, choke groups, bind to sound nodes); mixer quadrant is a labelled placeholder; OmniMixer renamed OmniMusicPlayer in all visible names (ids, files and storage keys kept; both nav names open it).
+- **DJ (agent 3):** reusable grid organizer (`omni:dj-layout-v1`, drag / resize / stack / snap / edit mode, tick + vibrate click feel), OmniDJ with exactly six circles, per-channel volume / 3-band EQ / cue / mute / A-T-B and crossfader, six real decks on the OmniMusicPlayer library (Web Audio chain per deck). Proven with an AnalyserNode on a generated WAV.
+- **MusicNode (agent 4):** `musicNode` kind (instanced plate mesh), step sequencer (lookahead scheduler, swing, count-in, metronome, live and step record with quantize, undo take), OmniSequencer window + 'sequencer' quadrant content, Inspector section, user guide 16.
+- **Opening (lead):** title Omni⟐StarOS, "developed by OmniStar Industries", "Founder: Von'Erik Barren-Tucker" (also in `<title>`, meta description and schema.org JSON-LD for search engines), many more shooting stars from the top-left to 5 o'clock.
+- **Tests:** v195a 592, v195b 243, v195c 290, v195d 410 checks pass in their parts; older suites compared against V194 (only intentional contract changes differ: StarLight Q, E/Q hints, Sound group button count). Merged tree: node --check clean, no zero-byte files, real Chromium integration: all six quadrant contents registered, Ctrl+K then J gave a live polyphonic note (midi 60), music node created, sequencer emitted steps, OmniDJ / BeatPad / OmniExpression / sequencer windows open, only the known howler CDN console error.
+- **Not verified:** nothing heard; no real MIDI hardware; no phone / touch; no real GPU; DJ scrubbing is position jumping, not scratching; the 4-agent merge was integration-tested in one browser session only.
+
 ## 2026-10-13 — V194: SoundNode (dimensional sound), sound on every node, frequency-driven particles, SoundViewer + SoundParticleViewer
 
 Three parallel parts from V193, merged (git merge-file; main.js, OmniRibbon, StarLightSites additive blocks kept together; no real conflicts besides main.js markers).

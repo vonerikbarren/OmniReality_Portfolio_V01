@@ -280,6 +280,18 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V194 sound particles (a THREE.Points cloud per sound node) + the ⟐SoundViewer and ⟐SoundParticleViewer windows ──
   const { addSoundVizModules } = await import('./ui/OmniSoundVizModules.js')
   await addSoundVizModules(base, omniNode)
+  // ── V195 Expression INPUT: Cmd/Ctrl+K typing mode, live instrument (bus -> polyphonic notes), Web MIDI in, ⟐OmniExpressionTypingSettings ──
+  const { addExpressionInputModules } = await import('./ui/OmniExpressionInputModules.js')
+  addExpressionInputModules(base, omniNode)
+  // ── V195 OmniExpression panel (keyboard, 4 quadrants when maximized, Split / Join), OmniBeatPad 4x4 and the quadrant contents keysL / keysR / mixer / beatpad ──
+  const { addExpressionPanelModules } = await import('./ui/OmniExpressionPanelModules.js')
+  await addExpressionPanelModules(base, omniNode)
+  // ── V195 OmniDJ: quadrant content 'dj' (6 circles, grid organizer, decks) + the ⟐OmniDJ window ──
+  const { addDJModules } = await import('./ui/OmniDJModules.js')
+  addDJModules(base)
+  // ── V195 MusicNode kind + step sequencer (transport, record) + the ⟐OmniSequencer window and the 'sequencer' quadrant content ──
+  const { addMusicModules } = await import('./ui/OmniMusicModules.js')
+  addMusicModules(base, omniNode)
   // ── V190 centre reticle (decoration, pointer-events:none), Docs window, OmniStarLight search ──
   base.addModule(new OmniReticle(base.context))
   base.addModule(new OmniDocsPanel())

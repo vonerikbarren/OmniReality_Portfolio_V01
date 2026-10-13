@@ -30,6 +30,7 @@ import { formatSeconds } from '../utils/TimeData.js'
 import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
 import { getPlayer } from '../systems/OmniTimelinePlayer.js'
 import OmniTimelineView from './OmniTimelineView.js'
+import { isExpressionOn } from '../utils/OmniExpressionFlag.js'   // V195
 
 const STORE_KEY = 'omni:chronos:settings'
 const DEFAULTS = { enabled: true, zAxis: false, transparency: true, timeFormat: 'military' }
@@ -730,6 +731,7 @@ export default class OmniChronos {
   }
 
   _onKey (e) {
+    if (isExpressionOn()) return                    // V195: Expression typing owns every key while it is on
     if (!this._isOpen || !this._view || this._tab === 'settings') return
     const t = e.target
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return

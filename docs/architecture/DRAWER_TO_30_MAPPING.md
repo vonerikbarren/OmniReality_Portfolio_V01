@@ -33,7 +33,7 @@ which drawer entries don't cleanly match anything yet.
 | ⟐OmniVisor | Perspective *or* Illuminate | A visor is a lens you see through (Perspective, same as OmniVision) or a display that reveals information (Illuminate, same as OmniSense) — genuinely ambiguous both ways. | **This is the real, unresolved OmniVision/OmniVisor naming question from earlier in this project, surfacing again here** — worth actually settling. |
 | ⟐OmniBrowser | SpaceExternal | A window onto external (web) content — outside-looking-in, same axiom as OmniBrowserSpace's own confirmed SpaceExternal match. | Overlaps ⟐OmniRealities, ⟐NavMap. |
 | ⟐OmniSystem | Structure | Direct, confirmed. | — |
-| ⟐OmniMixer | Consolidate | Multiple audio/video sources combined into one output. | Could also read as Flow (blending) — leaned Consolidate since the output is one fixed mix, not a continuous handoff. |
+| ⟐OmniMusicPlayer (was ⟐OmniMixer) | Consolidate | Multiple audio/video sources combined into one output. | Could also read as Flow (blending) — leaned Consolidate since the output is one fixed mix, not a continuous handoff. |
 | ⟐OmniPocket | Variable | A held, carried value — the definition of a variable, just given a physical/spatial metaphor. | — |
 | ⟐OmniNavi | Operate | Autonomous programs that act/run on their own. | Operate collision #3. |
 | ⟐Developer | Problem | The diagnostic/figuring-things-out surface — same axiom as OmniChronos-Dev's confirmed match. | Direct duplicate of an existing match, not a new letter use. |

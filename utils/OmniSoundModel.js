@@ -90,7 +90,7 @@ export const SOUND_SCHEMA = [
     N('phase', 'Start phase', 0, 0, 360, 1, 'deg', 'Where in its cycle the wave starts. Matters mostly for clicks and for stacked voices.'),
     E('noiseType', 'Noise colour', 'white', [['white', 'White (bright hiss)'], ['pink', 'Pink (natural, rain-like)'], ['brown', 'Brown (deep rumble)']], 'The flavour of noise. White has equal energy at every pitch, pink falls off gently, brown rumbles.'),
     N('noiseLevel', 'Noise mixed into tone', 0, 0, 1, 0.01, '', 'Adds a little noise under any source: breathiness for a flute, grit for a pad. 0 = none.'),
-    N('sampleSlot', 'Sample slot (OmniMixer library)', 0, 0, 15, 1, '', 'Which uploaded OmniMixer audio slot (1 to 15) to play as the sample. 0 = none.'),
+    N('sampleSlot', 'Sample slot (OmniMusicPlayer library)', 0, 0, 15, 1, '', 'Which uploaded OmniMusicPlayer audio slot (1 to 15) to play as the sample. 0 = none.'),
     T('sampleUrl', 'Sample URL', '', 4096, 'Optional direct address of an audio file instead of a library slot (blob:, https: or data:).'),
     B('sampleKeyTrack', 'Sample follows the note', false, 'On: the recording is played faster or slower so that it sounds at the chosen note (A4 = original speed). Off: it plays at its own pitch.'),
     N('additiveHarmonics', 'Harmonics count', 8, 1, 64, 1, '', 'Additive source: how many overtones are stacked on the base note. More = brighter and richer.'),

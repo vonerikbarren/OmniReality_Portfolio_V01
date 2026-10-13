@@ -74,15 +74,18 @@
     SAMPLES_STAR12: 120,     // V185 sampling for the 12-point fallback
     // V190: light shooting stars drawn on the boot canvas AFTER the star has landed (none under prefers-reduced-motion)
     SHOOT_START: 1700,       // virtual ms: the star lands at FLY_END = 1650
-    SHOOT_GAP: [800, 2500],  // ms between spawn events (random)
-    SHOOT_DOUBLE: 0.3,       // chance that an event spawns 2 streaks instead of 1
+    SHOOT_GAP: [350, 1200],  // ms between spawn events (random) (V195: more of them)
+    SHOOT_DOUBLE: 0.5,       // chance that an event spawns 2 streaks instead of 1
     SHOOT_LIFE: [600, 1000], // ms a streak lives
     SHOOT_SPEED: [650, 1000],// px / s
     SHOOT_LEN: [90, 170],    // tail length, px
     SHOOT_ANGLE: 135,        // degrees on screen (y down): 135 = down-left; +- SHOOT_SPREAD
     SHOOT_SPREAD: 40,
     SHOOT_ALPHA: 0.5,        // peak head opacity (the colour comes from the dev intro settings)
-    SHOOT_MAX_LIVE: 3
+    SHOOT_TL_SHARE: 0.7,     // V195: share of streaks that start top-left and travel down to 5 o'clock
+    SHOOT_TL_ANGLE: 60,      // degrees on screen (y down): 0 = 3 o'clock, 60 = 5 o'clock; +- SHOOT_TL_SPREAD
+    SHOOT_TL_SPREAD: 14,
+    SHOOT_MAX_LIVE: 7
   }
 
   // ── V190: intro settings (written by the DEV panel ui/DevOmniStarIntroSettingsPanel.js; this script runs before any module) ─
@@ -472,9 +475,11 @@
   var shooters = [], nextShoot = -1
   function rnd (r) { return r[0] + Math.random() * (r[1] - r[0]) }
   function spawnShooter () {
-    var a = (CONFIG.SHOOT_ANGLE + (Math.random() + Math.random() - 1) * CONFIG.SHOOT_SPREAD) * Math.PI / 180
+    var tl = Math.random() < CONFIG.SHOOT_TL_SHARE      // V195: most streaks come from the top-left corner region toward 5 o'clock
+    var a = (tl ? CONFIG.SHOOT_TL_ANGLE + (Math.random() + Math.random() - 1) * CONFIG.SHOOT_TL_SPREAD
+              : CONFIG.SHOOT_ANGLE + (Math.random() + Math.random() - 1) * CONFIG.SHOOT_SPREAD) * Math.PI / 180
     shooters.push({
-      x: vw * (0.25 + Math.random() * 0.8), y: vh * (-0.05 + Math.random() * 0.6),
+      x: tl ? vw * (-0.05 + Math.random() * 0.45) : vw * (0.25 + Math.random() * 0.8), y: tl ? vh * (-0.05 + Math.random() * 0.35) : vh * (-0.05 + Math.random() * 0.6),
       dx: Math.cos(a), dy: Math.sin(a), sp: rnd(CONFIG.SHOOT_SPEED) / 1000, len: rnd(CONFIG.SHOOT_LEN), life: rnd(CONFIG.SHOOT_LIFE), age: 0
     })
   }

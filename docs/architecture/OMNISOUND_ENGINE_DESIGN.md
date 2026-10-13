@@ -140,7 +140,7 @@ What makes the raw sound before anything shapes it: a tone, noise, a recording, 
 | `phase` | Start phase | 0 to 360 deg, default 0 | Where in its cycle the wave starts. Matters mostly for clicks and for stacked voices. |
 | `noiseType` | Noise colour | one of: white, pink, brown; default white | The flavour of noise. White has equal energy at every pitch, pink falls off gently, brown rumbles. |
 | `noiseLevel` | Noise mixed into tone | 0 to 1, default 0 | Adds a little noise under any source: breathiness for a flute, grit for a pad. 0 = none. |
-| `sampleSlot` | Sample slot (OmniMixer library) | 0 to 15, default 0 | Which uploaded OmniMixer audio slot (1 to 15) to play as the sample. 0 = none. |
+| `sampleSlot` | Sample slot (OmniMusicPlayer library) | 0 to 15, default 0 | Which uploaded OmniMusicPlayer audio slot (1 to 15) to play as the sample. 0 = none. |
 | `sampleUrl` | Sample URL | text up to 4096 characters, default "" | Optional direct address of an audio file instead of a library slot (blob:, https: or data:). |
 | `sampleKeyTrack` | Sample follows the note | on/off, default off | On: the recording is played faster or slower so that it sounds at the chosen note (A4 = original speed). Off: it plays at its own pitch. |
 | `additiveHarmonics` | Harmonics count | 1 to 64, default 8 | Additive source: how many overtones are stacked on the base note. More = brighter and richer. |

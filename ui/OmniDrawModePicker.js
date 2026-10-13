@@ -73,6 +73,11 @@ export default class OmniDrawModePicker {
         <button class="odmp-btn" data-mode="log" title="a blog post, genuinely paginated into real, in-scene pages" aria-pressed="false"><span class="odmp-glyph">☰</span><span class="odmp-label">Log</span></button>
         <button class="odmp-btn" data-mode="omninode" title="the real node registry — Essence Data and every other type" aria-pressed="false"><span class="odmp-glyph">◉</span><span class="odmp-label">OmniNode</span></button>
         <button class="odmp-btn" data-mode="behavior" title="a node that animates others: Orbit, Leader, Follower, Attract, Repel and more" aria-pressed="false"><span class="odmp-glyph">⟳</span><span class="odmp-label">BehaviorNode</span></button>
+        <button class="odmp-btn" data-mode="sound" title="a SoundNode: a speaker you place; a note, a pad or a beat, with particles" aria-pressed="false"><span class="odmp-glyph">♪</span><span class="odmp-label">Sound</span></button>
+        <button class="odmp-btn" data-mode="music" title="a MusicNode: a step sequencer you place; record from the keys or MIDI" aria-pressed="false"><span class="odmp-glyph">♫</span><span class="odmp-label">Music</span></button>
+        <button class="odmp-btn" data-mode="path" title="an OmniPathNode: an ordered path of nodes, linked or from the hierarchy; opens the node order panel" aria-pressed="false"><span class="odmp-glyph">⤳</span><span class="odmp-label">Path</span></button>
+        <button class="odmp-btn" data-mode="terminal" title="a TerminalShellTunnel: an in-scene terminal that moves with the node" aria-pressed="false"><span class="odmp-glyph">›_</span><span class="odmp-label">Terminal</span></button>
+        <button class="odmp-btn" data-mode="floor" title="Floor panels: Tetris-piece floor panels and a blueprint grid (opens FloorNodeMakerSettings)" aria-pressed="false"><span class="odmp-glyph">▦</span><span class="odmp-label">Floor panels</span></button>
       </div>
     `
     document.body.appendChild(this._el)
@@ -85,6 +90,9 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="log"]').addEventListener('click', () => this._choose('log'))
     this._el.querySelector('[data-mode="omninode"]').addEventListener('click', () => this._choose('omninode'))
     this._el.querySelector('[data-mode="behavior"]').addEventListener('click', () => this._choose('behavior'))
+    this._el.querySelector('[data-mode="sound"]').addEventListener('click', () => this._choose('sound'))      // V196
+    this._el.querySelector('[data-mode="music"]').addEventListener('click', () => this._choose('music'))
+    for (const m of ['path', 'terminal', 'floor']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V197
 
     this._onNavSelect = (e) => {
       if (e.detail?.item !== '⟐OmniDraw') return
@@ -137,6 +145,29 @@ export default class OmniDrawModePicker {
       window.dispatchEvent(new CustomEvent('omni:system-toggle', { detail: { system: 'omninode' } }))
       this.close()
       return
+    }
+
+    // V196: Sound and Music create a real node (same events as the ribbon Create buttons) and open its editor.
+    if (mode === 'sound' || mode === 'music') {
+      window.dispatchEvent(new CustomEvent(mode === 'sound' ? 'omni:sound-node-create' : 'omni:music-node-create', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: mode === 'sound' ? '⟐SoundNodeSettings' : '⟐OmniSequencer' } }))
+      this.close()
+      return
+    }
+
+    // V197: Path / Terminal / Floor panels, the same actions as the ribbon Create buttons.
+    if (mode === 'path') {
+      window.dispatchEvent(new CustomEvent('omni:path-create-request', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniNodeOrder' } }))
+      this.close(); return
+    }
+    if (mode === 'terminal') {
+      window.dispatchEvent(new CustomEvent('omni:terminal-shell-create-request', { detail: { select: true } }))
+      this.close(); return
+    }
+    if (mode === 'floor') {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorNodeMakerSettings' } }))
+      this.close(); return
     }
 
     const labels = { static: '⟐OmniDrawStatic', dynamic: '⟐OmniDrawDynamic', jsonifier: '⟐OmniDrawJsonifier', omnicell: '⟐OmniDrawCell', chat: '⟐OmniDrawChat', log: '⟐OmniDrawLog', behavior: '⟐OmniDrawBehavior' }

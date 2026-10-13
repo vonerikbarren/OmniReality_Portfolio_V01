@@ -194,8 +194,8 @@ const EXTRA_BUTTONS = {
   pitchDown: { glyph: '⌄', label: 'ORB-D', name: 'Orbit down', tip: 'Orbit down and under the current target (the selected node, else the point just ahead of you), hold: it keeps going all the way around. Speed: Admin vertical orbit x this hand\'s speed.' },
 }
 // V191 keys (free ones: nothing else binds them). Ignored with Ctrl / Cmd / Alt held so browser shortcuts survive.
+// V195: KeyE / KeyQ (lh ascend / descend) are WIPED: Q now opens OmniStarLight, E is free; the on-screen ASC / DSC buttons remain.
 const EXTRA_KEYS = {
-  KeyE: { handId: 'lh', dir: 'ascend' }, KeyQ: { handId: 'lh', dir: 'descend' },
   KeyY: { handId: 'rh', dir: 'pitchUp' }, KeyH: { handId: 'rh', dir: 'pitchDown' },
   KeyU: { handId: 'lh', dir: 'pitchUp' }, KeyV: { handId: 'lh', dir: 'pitchDown' },   // V192: LH orbit up / down (not X / Y / Z: StrictAlign axis keys)
 }
@@ -1653,7 +1653,7 @@ export default class MovementPad {
     // use free Numpad keys, since Numpad1-4 are already the app's
     // hand-menu shortcuts (main.js's HAND_KEY_BINDINGS).
     const HINTS = {
-      wasd:            { keys: ['W', 'A', 'S', 'D', 'E', 'Q', 'U', 'V'], dirs: ['up', 'left', 'down', 'right', 'ascend', 'descend', 'pitchUp', 'pitchDown'] },   // V192: U / V = ORB-U / ORB-D
+      wasd:            { keys: ['W', 'A', 'S', 'D', 'U', 'V'], dirs: ['up', 'left', 'down', 'right', 'pitchUp', 'pitchDown'] },   // V195: E / Q (ascend / descend) wiped; V192: U / V = ORB-U / ORB-D
       rf:              { keys: ['R', 'F', 'Y', 'H'],           dirs: ['up', 'down', 'pitchUp', 'pitchDown'] },
       'omnihand-axes': { keys: ['/', '*', '-', '+'],       dirs: ['up', 'down', 'left', 'right'] },
       'conscious-axes': { keys: ['N7', 'N9', 'N5', 'N6'],  dirs: ['up', 'down', 'left', 'right'] },
@@ -1961,7 +1961,7 @@ export default class MovementPad {
     }
     const mapped = this._mapKey(e.code)
     if (!mapped) return
-    if (EXTRA_KEYS[e.code] && (e.ctrlKey || e.metaKey || e.altKey)) return   // V191: leave Ctrl/Cmd/Alt+E/Q/Y/H to the browser
+    if (EXTRA_KEYS[e.code] && (e.ctrlKey || e.metaKey || e.altKey)) return   // V191: leave Ctrl/Cmd/Alt+Y/H/U/V to the browser
     const { handId, dir } = mapped
     e.preventDefault()
     if (this._pressed[handId]?.[dir]) return
@@ -2002,7 +2002,7 @@ export default class MovementPad {
       case 'Numpad9': return { handId: 'conscious', dir: 'down'  }
       case 'Numpad5': return { handId: 'conscious', dir: 'left'  }
       case 'Numpad6': return { handId: 'conscious', dir: 'right' }
-      default:     return EXTRA_KEYS[code] ?? null   // V191: E / Q (lh ascend / descend), Y / H (rh orbit up / down)
+      default:     return EXTRA_KEYS[code] ?? null   // V191: Y / H (rh orbit up / down), U / V (lh); V195: E / Q removed
     }
   }
 

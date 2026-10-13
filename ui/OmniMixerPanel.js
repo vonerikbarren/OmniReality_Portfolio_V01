@@ -67,6 +67,8 @@ const videoStore = createWallpaperStore('omnimixer-video', VIDEO_SLOTS)
 const skinStore  = createWallpaperStore('omnimixer-skin', 1)
 
 const STORE_KEY = 'omni:mixer:settings'
+/** V195: the panel was renamed OmniMusicPlayer (visible names only). Both nav names, with and without the glyph, open it; ids, file names and storage keys are unchanged. */
+export const MIXER_NAV = ['⟐OmniMixer', 'OmniMixer', '⟐OmniMusicPlayer', 'OmniMusicPlayer']
 
 function loadSettings () {
   const defaults = {
@@ -281,7 +283,7 @@ export default class OmniMixerPanel {
   init () {
     injectStyles()
     this._onNavSelect = (e) => {
-      if (e.detail?.item !== '⟐OmniMixer') return
+      if (!MIXER_NAV.includes(e.detail?.item)) return   // V195: old and new names both open it
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
@@ -337,7 +339,7 @@ export default class OmniMixerPanel {
     this._playSound('close')
     window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
       detail: {
-        id: 'omnimixer', label: '⟐OmniMixer', iconLabel: '⟐M',
+        id: 'omnimixer', label: '⟐OmniMusicPlayer', iconLabel: '⟐M',
         fromRect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
         variant: 'app',
       }
@@ -387,7 +389,7 @@ export default class OmniMixerPanel {
     el.innerHTML = `
       <div class="mx-skin-tint" id="mx-skin-tint"></div>
       <div class="mx-header">
-        <span class="mx-title">OmniMixer</span>
+        <span class="mx-title">OmniMusicPlayer</span>
         <div class="mx-controls">
           <button class="mx-ctrl" data-action="minimize" title="Minimize">-</button>
           <button class="mx-ctrl" data-action="close" title="Close">x</button>
@@ -474,7 +476,7 @@ export default class OmniMixerPanel {
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
 
     el.dataset.winId = 'omnimixer'
-    WindowManager.register('omnimixer', el, 'OmniMixer')
+    WindowManager.register('omnimixer', el, 'OmniMusicPlayer')
     WindowManager.watchPanelOpacity(el, () => this._isOpen)
 
     // "We have never had an item like this before" — a genuinely new,

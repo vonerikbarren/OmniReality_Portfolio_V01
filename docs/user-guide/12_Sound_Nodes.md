@@ -8,7 +8,7 @@ A **sound node** is a speaker you can place in the space. It makes a sound (a si
 
 ## Make one (numbered)
 
-1. Open the ribbon, **Home** tab, **Create** group, and press **Sound node**. A sound node appears in front of the camera. (OmniStarLight, Ctrl/Cmd+K, finds it too: "Sound node".)
+1. Open the ribbon, **Home** tab, **Create** group, and press **Sound node**. A sound node appears in front of the camera. (OmniStarLight, the Q key, finds it too: "Sound node".)
 2. Press **▶ Play** in the Inspector block "Sound node", or open **Home > Tools > Sound settings** and press **Play**.
 3. To change the sound, press **Open sound settings** (window **⟐SoundNodeSettings**). Everything is there.
 

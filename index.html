@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OmniOS</title>
+  <title>Omni⟐StarOS — developed by OmniStar Industries</title>
+  <meta name="description" content="Omni⟐StarOS (OmniOS): digital spaces of logic, OmniRealities. Developed by OmniStar Industries. Founder: Von'Erik Barren-Tucker." />
+  <meta name="author" content="Von'Erik Barren-Tucker" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Organization","name":"OmniStar Industries","brand":"Omni⟐StarOS","founder":{"@type":"Person","name":"Von'Erik Barren-Tucker","jobTitle":"Founder"}}
+  </script>
 
   <script type="importmap">
   {
@@ -185,10 +190,12 @@
       opacity: 0;
       animation: bootSubIn 0.9s ease 0.9s forwards;
     }
+    .boot-founder { margin-top: 0.5em; font-size: max(0.24em, 10px); letter-spacing: 0.32em; animation-delay: 1.3s; }
     @keyframes bootSubIn { from { opacity: 0; } to { opacity: 0.65; } }
     @media (prefers-reduced-motion: reduce) {
       .boot-glyph .bw { animation: none; opacity: 0.96; }
       .boot-sub { animation: none; opacity: 0.65; }
+      .boot-founder { animation: none; opacity: 0.65; }
       .boot-enter-btn { transition: none; }
     }
 
@@ -246,11 +253,12 @@
 
   <!-- Boot screen — fades once scene is ready -->
   <div id="omni-boot">
-    <h1 class="boot-brand" aria-label="Omni Star OmniOS">
+    <h1 class="boot-brand" aria-label="OmniStarOS, developed by OmniStar Industries. Founder: Von'Erik Barren-Tucker">
       <span class="boot-row">
-        <span class="boot-glyph" id="boot-wordmark" aria-hidden="true"><span class="bw">Omni</span><span class="boot-mark" id="boot-mark"><span class="bw bw-g" id="boot-glyph-char">&#x27D0;</span><span class="boot-star" id="boot-star"><svg viewBox="-60 -60 120 120" focusable="false"><path id="boot-star-path" d=""/></svg></span></span><span class="bw">Star</span></span>
+        <span class="boot-glyph" id="boot-wordmark" aria-hidden="true"><span class="bw">Omni</span><span class="boot-mark" id="boot-mark"><span class="bw bw-g" id="boot-glyph-char">&#x27D0;</span><span class="boot-star" id="boot-star"><svg viewBox="-60 -60 120 120" focusable="false"><path id="boot-star-path" d=""/></svg></span></span><span class="bw">StarOS</span></span>
       </span>
-      <span class="boot-sub" aria-hidden="true">OmniOS</span>
+      <span class="boot-sub">developed by OmniStar Industries</span>
+      <span class="boot-sub boot-founder">Founder: Von'Erik Barren-Tucker</span>
     </h1>
     <div class="boot-progress-track">
       <div class="boot-progress-bar" id="boot-progress-bar"></div>

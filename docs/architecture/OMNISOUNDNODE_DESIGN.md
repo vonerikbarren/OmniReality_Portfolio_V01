@@ -9,7 +9,7 @@ Dimensionalize a sound: a node that makes a sound with as many settings as possi
 - Kinds with a marker in `data.nodeKind` (V183 store items, V191 path / floor panel, V192 terminal shell). The SoundNode follows the V191/V192 route: `utils/OmniExtraKinds.js` (kind id, create fields, mesh, release) plus a runtime module. No new node system.
 - `ui/OmniSettingsPanelBase.js` (class-A window, resize and maximize through `WindowManager`, bottom sheet on phones) is the shell of the settings window.
 - Admin blocks (`OmniStateStrictAlignAdminBlock.js` + `utils/OmniStateStrictAlignSettings.js`) are the pattern for the global options.
-- OmniMixer already plays audio; the engine bridges to it (agent 1). Nothing in this part touches the mixer.
+- OmniMusicPlayer (OmniMixer before V195) already plays audio; the engine bridges to it (agent 1). Nothing in this part touches the mixer.
 
 ## Data (persisted by reference, with the node)
 `data.nodeKind = 'soundNode'`, `data.sound` (sanitized by the sound model), `data.soundParticles` (sanitized by the particle model). Any other node may have `data.sound` once the user switches sound on; until then the node has no sound keys and behaves exactly as before. Nothing is copied into a second store: `OmniNode._save` writes the node's data object, so the sound is saved and loaded with the node. `_fixNode` repairs a loaded sound node whose `sound` is missing or not an object.

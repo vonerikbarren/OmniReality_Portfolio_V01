@@ -1,6 +1,6 @@
 # OmniOS User Guide
 
-Applies to: V194 · Status: verified against code on 2026-10-11 (page 12 written in V194 from its code) · Real devices: not verified.
+Applies to: V195 · Status: verified against code on 2026-10-11 (page 12 written in V194 from its code; page 13 and the search/keys changes written in V195 from their code) · Real devices: not verified.
 
 How to use OmniOS (the product from OmniStar, the company), written for a first-time user. Each page takes under 5 minutes.
 
@@ -21,6 +21,10 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | 10 | [Keyboard and touch cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) | Every key in one table |
 | 11 | [Troubleshooting](11_Troubleshooting.md) | Fixes, clearing data, bug reports, no sound |
 | 12 | [Sound nodes](12_Sound_Nodes.md) | Place a sound, dynamics ppp to ffff, loops, presets, spatial sound, phone notes |
+| 13 | [Expression typing](13_Expression_Typing.md) | Play notes with the computer keys (Ctrl/Cmd+K), octave, pitch bend, sustain, MIDI keyboards, settings |
+| 14 | [Expression panel](14_Expression_Panel.md) | On-screen keyboards, four quadrants, Split / Join, BeatPad, OmniMixer is now OmniMusicPlayer |
+| 15 | [OmniDJ](15_OmniDJ.md) | Six jog-wheel circles, six decks, EQ, crossfader, rearrangeable grid |
+| 16 | [Music nodes](16_Music_Nodes.md) | Step sequencer: grid, piano roll, tracks, instruments, recording, presets |
 
 ## 60-second tour
 
@@ -39,13 +43,14 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | Make a node | n key, or ribbon Home > Create; [Nodes](03_Nodes_and_Inspector.md) |
 | Change a node | Click it; the Inspector; [Nodes](03_Nodes_and_Inspector.md) |
 | Put things on a timeline | Inspector Time section, or ribbon Realities > Chronos; [Chronos](06_Chronos_Player_and_Timeline.md) |
-| Search sites and docs | Ctrl/Cmd+K (OmniStarLight), or ribbon OmniStar > OmniStarLight; ribbon OmniStar > Docs opens this guide in the app |
+| Search sites and docs | Q (OmniStarLight), or ribbon OmniStar > OmniStarLight; ribbon OmniStar > Docs opens this guide in the app |
 | Open a panel | Left drawer (⟐OmniHand ☰), right drawer (⟐ConsciousHand ☰), the ribbon, or the top-bar menus |
 | Change settings | ⟐Admin in the left drawer; a hand's ⚙; [Settings](09_Settings_and_Admin.md) |
 | Pin a product or value as a node | Exchange > Pin to my space; ⟐N picker > Store item; [Pin](08_OmniStore_and_OmniValue.md) |
 | Shop in the sandbox | Ribbon Realities > Value > Store; [Store](08_OmniStore_and_OmniValue.md) |
 | Find a key | [Cheatsheet](10_Keyboard_and_Touch_Cheatsheet.md) |
 | Make a sound | Ribbon Home > Create > Sound node, or an Inspector node's Sound section; [Sound nodes](12_Sound_Nodes.md) |
+| Play notes with my keyboard or a MIDI keyboard | Ctrl/Cmd+K; [Expression typing](13_Expression_Typing.md) |
 | Fix a problem | [Troubleshooting](11_Troubleshooting.md) |
 
 ## Desktop vs phone

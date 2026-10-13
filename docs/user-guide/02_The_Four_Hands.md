@@ -74,7 +74,7 @@ The tool options of OmniHand and ConsciousHand (V191) were only at the axis befo
 |---|---|
 | W A S D | LH pad: forward, left, back, right |
 | R F, Arrow keys | RH pad (Up/Down rise and fall, Left/Right orbit) |
-| E Q | LH pad corner buttons: ascend / descend |
+| (E and Q) | Removed in V195: Q opens OmniStarLight and E is free. The ASC / DSC corner buttons on the LH pad still work (tap or hold them) |
 | U V | LH pad corner buttons: orbit up / down (V192) |
 | Y H | RH pad corner buttons: orbit up / down |
 | Numpad / * - + | OmniHand pad: up, down, left, right |

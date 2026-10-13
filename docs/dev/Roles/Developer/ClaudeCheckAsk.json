@@ -1,9 +1,79 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V194",
+  "version": "V197",
   "date": "2026-10-13",
-  "summary": "V194: SoundNode (202 sound settings), sound on any node, frequency-driven particles (63 settings, count), SoundViewer + SoundParticleViewer, Admin sound settings",
+  "summary": "V197: Path node, Terminal node and Floor panels added to the OmniDraw menu (with Sound and Music from V196)",
   "asks": [
+    {
+      "id": "v197-picker",
+      "question": "Is the OmniDraw menu (now 13 tiles) still easy to scan, on desktop and on a phone? Should anything be grouped or reordered?",
+      "why": "It grew from 8 to 13 tiles; layout only checked in jsdom.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v195-keys",
+      "question": "Press Cmd/Ctrl+K and play with the keys (home row = white keys, row above = black keys, B/N octave, Space sustain). Does it feel right and is the sound clean?",
+      "why": "Verified only by reading analysis peaks (J = 261.7 Hz). Nobody heard it.",
+      "kind": "choice",
+      "choices": [
+        "feels right",
+        "latency / lag",
+        "wrong notes",
+        "some keys dead",
+        "other (notes)"
+      ],
+      "device": "desktop"
+    },
+    {
+      "id": "v195-midi",
+      "question": "Plug in your MIDI controller, open Expression settings and enable MIDI. Do notes, pitch bend, mod and sustain work?",
+      "why": "No real MIDI hardware was available. Needs Chrome, Edge or Firefox; Safari and iOS have no Web MIDI.",
+      "kind": "text",
+      "device": "desktop"
+    },
+    {
+      "id": "v195-panel",
+      "question": "Open OmniExpression, then maximize it. Do the four quadrants look like the Start HUD you wanted?",
+      "why": "Built from the Start HUD look but never seen by you.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v195-phone",
+      "question": "On a phone: can you play the on-screen keyboard with several fingers, and is the BeatPad usable?",
+      "why": "Multi-touch and the phone layout were only simulated.",
+      "kind": "text",
+      "device": "phone"
+    },
+    {
+      "id": "v195-dj",
+      "question": "Load a track into a deck in OmniDJ. Do volume, EQ and the crossfader do what you expect? Does the circle spin?",
+      "why": "Checked only with a generated test tone; jog scrubbing moves the position, it is not true scratching.",
+      "kind": "text",
+      "device": "desktop"
+    },
+    {
+      "id": "v195-seq",
+      "question": "Create a Music node, put steps in the sequencer and press Play, then try Record from the keys. Do the timing and the quantize feel right?",
+      "why": "Timing was checked by clock only, never by ear.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v195-boot",
+      "question": "How does the new opening look (title, credits, shooting stars toward 5 o'clock)?",
+      "why": "First pass; you said animations come later.",
+      "kind": "text",
+      "device": "any"
+    },
+    {
+      "id": "v195-names",
+      "question": "There are now two things called OmniExpression (the old drawer panel and the new window). Rename one?",
+      "why": "Both open from the nav by the same name.",
+      "kind": "text",
+      "device": "any"
+    },
     {
       "id": "v194-hear",
       "question": "Press Play on a Sound node (Home > Create > Sound node, then Play in its settings). Do you hear a clean soft A4 tone, with no clicks, pops or distortion?",

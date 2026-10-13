@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V191 · Status: verified against code on 2026-10-12 · Real devices: not verified.
+Applies to: V195 · Status: verified against code on 2026-10-12 (V195 rows for Q, Ctrl/Cmd+K and Expression typing written from the V195 code) · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 
@@ -11,7 +11,7 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | **Camera** | | |
 | W A S D | Everywhere | LH pad: forward, left, back, right |
 | R / F | Everywhere | Camera up / down |
-| E / Q | Everywhere | LH pad corner buttons: ascend / descend along world Y (V191) |
+| (E / Q) | Removed in V195 | E and Q no longer move the LH pad (Q opens OmniStarLight). Use the ASC / DSC corner buttons on the LH pad |
 | Arrow Up / Down | Everywhere | RH pad: rise / fall |
 | Arrow Left / Right | Everywhere | RH pad: orbit left / right around the current target (the selected node, else the point just ahead of you), not the scene origin (V192) |
 | Y / H | Everywhere | RH pad corner buttons: orbit up / down around the current target; keeps going all the way around, over the top and under the bottom (V192; V191 stopped 5 degrees short of straight up / down) |
@@ -31,8 +31,9 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | P | Everywhere | OmniPresenter |
 | G | Everywhere | OmniGallery |
 | T | Everywhere, unless a button has focus | OmniTranslator |
-| K | Everywhere | OmniMixer |
-| Ctrl+K (Cmd+K on Mac) | Everywhere | OmniStarLight: search sites and docs; Up/Down + Enter pick, Escape closes (does not trigger the plain K) |
+| K | Everywhere | OmniMusicPlayer (was OmniMixer) |
+| Q | Everywhere, not while typing in a text box, not in Expression typing | OmniStarLight: search sites and docs; Up/Down + Enter pick, Escape closes (V195; it was Ctrl/Cmd+K) |
+| Ctrl+K (Cmd+K on Mac) | Everywhere, also inside a text box | **Expression typing** on / off: your keys become a two-handed instrument (V195). While it is on, ALL other keys are taken by it except Esc and browser shortcuts. Esc leaves. See [Expression typing](13_Expression_Typing.md) |
 | PageUp / PageDown | In the Docs panel | Scroll the page; at the end, turn to the next/previous page |
 | M | Everywhere (not while hovering Chronos) | Mini map |
 | Enter | Everywhere, unless a button has focus | Start HUD |
@@ -51,9 +52,25 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | Space, ← →, Home, End, I, O, M, C, Delete, + -, Escape | Chronos window | See [Chronos](06_Chronos_Player_and_Timeline.md) |
 | → ↓ / ← ↑, Space, Esc, Home, End | OmniPresenter open | Next / previous, play, stop, first / last |
 
-E, Q, Y, H, U and V do nothing while Ctrl, Cmd or Alt is held (browser shortcuts keep working), and are ignored while you type in a text box. Not checked on a device.
+Y, H, U and V do nothing while Ctrl, Cmd or Alt is held (browser shortcuts keep working), and are ignored while you type in a text box. Not checked on a device.
 
 Note: R and F are bound both to the camera and the RH pad. Whether they move you twice has not been checked on a device.
+
+## Expression typing keys (V195; only while the mode is on)
+
+Press Ctrl/Cmd+K to turn it on, Esc to leave. Full page: [Expression typing](13_Expression_Typing.md).
+
+| Key | What it does |
+|---|---|
+| A S D F G (white) and W E R T Y (black) | Left hand: C D E F G and C# D# F# G# A#, octave 3. Z X C V play G A B C |
+| J K L ; ' (white) and U I O P [ (black) | Right hand: C D E F G and C# D# F# G# A#, octave 4. M , . / play G A B C |
+| Space | Sustain pedal while held |
+| B / N | Octave down / up (which hand: Admin or the settings window) |
+| Left Shift + Up / Down | Modulation up / down (it stays) |
+| Right Shift + Up / Down | Pitch bend up / down (springs back) |
+| Right Shift + Left / Right | Second axis (pan), springs back |
+| Enter / Ctrl or Cmd + Enter | Play-stop request / record request (needs a music node; see the page) |
+| Esc | Leave the mode |
 
 ## OmniState_StrictAlign keys (V191, upgraded in V192)
 

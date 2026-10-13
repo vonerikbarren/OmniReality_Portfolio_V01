@@ -5,7 +5,8 @@
  * on-screen keyboard never hides the results). Centred, width min(640px, screen - 16px). The input is focused at once. It closes on
  * Escape, on a click / tap outside, after you open something, and when you press the shortcut again.
  *
- *   Open:   Ctrl+K (Cmd+K on a Mac)  |  ribbon OmniStar tab > OmniStarLight  |  window event omni:starlight-toggle / omni:starlight-open
+ *   Open:   Q (the bare key; V195: it was Ctrl/Cmd+K, which now toggles Expression typing)  |  ribbon OmniStar tab > OmniStarLight  |  window event omni:starlight-toggle / omni:starlight-open
+ *           Q is ignored in a text field / select / contenteditable, with Ctrl / Cmd / Alt held, on key repeat, while Expression typing is ON and while the scene terminal has the keyboard.
  *   Keys:   ArrowDown / ArrowUp move, Enter opens, Escape closes, Tab stays in the field.
  *
  * Sources (a small registry; this file registers two, registerSource() adds more):
@@ -26,9 +27,21 @@ import { DOCS } from '../data/OmniDocsData.js'
 import { buildResults, tokenize, MAX_QUERY } from '../utils/OmniStarLightIndex.js'
 import { resolveSites, isDevMode } from '../utils/OmniStarLightSites.js'
 import { getTopOffset } from '../utils/OmniLayout.js'
+import { isExpressionOn } from '../utils/OmniExpressionFlag.js'
+import { sceneTypingActive } from '../utils/TerminalSceneInput.js'
 
+/** a place where the person types text (input except buttons / checkboxes..., textarea, select, contenteditable). */
+function isTypingTarget (el) {
+  try {
+    if (!el || !el.tagName) return false
+    const t = String(el.tagName).toUpperCase()
+    if (t === 'TEXTAREA' || t === 'SELECT') return true
+    if (t === 'INPUT') return !['button', 'checkbox', 'radio', 'range', 'submit', 'reset', 'image', 'file', 'color'].includes(String(el.type || 'text').toLowerCase())
+    return !!el.isContentEditable
+  } catch (_) { return false }
+}
 export const ROOT_ID = 'omni-starlight'
-export const SHORTCUT_LABEL = 'Ctrl/Cmd+K'
+export const SHORTCUT_LABEL = 'Q'
 export const TOGGLE_EVENT = 'omni:starlight-toggle'
 export const OPEN_EVENT = 'omni:starlight-open'
 const PHONE_MAX = 700
@@ -111,7 +124,7 @@ export default class OmniStarLight {
       toggle: () => this.toggle(), open: (e) => this.open(e?.detail?.query),
       resize: () => this._place(),
     }
-    window.addEventListener('keydown', this._on.key, true)         // capture: Ctrl+K must beat main.js's plain 'k' (OmniMixer) handler
+    window.addEventListener('keydown', this._on.key, true)         // capture: Escape must close it before anything else sees it
     document.addEventListener('pointerdown', this._on.down, true)
     window.addEventListener(TOGGLE_EVENT, this._on.toggle)
     window.addEventListener(OPEN_EVENT, this._on.open)
@@ -261,12 +274,18 @@ export default class OmniStarLight {
   }
 
   _onKey (e) {
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+    if (isExpressionOn()) return                      // V195: Expression typing owns every key while it is on
+    if (this._open && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.close(); return }
+    // V195: the bare Q key opens the search (it used to be Ctrl/Cmd+K, now Expression typing's toggle)
+    if ((e.key === 'q' || e.key === 'Q') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat && !e.defaultPrevented) {
+      if (this._open) return
+      if (isTypingTarget(e.target) || isTypingTarget(typeof document !== 'undefined' ? document.activeElement : null)) return
+      let capture = false
+      try { capture = sceneTypingActive() } catch (_) { capture = false }
+      if (capture) return                             // the in-scene terminal has the keyboard: Q is text there
       e.preventDefault(); e.stopPropagation()
-      if (!e.repeat) this.toggle()
-      return
+      this.toggle()
     }
-    if (this._open && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.close() }
   }
 
   /** Top of the panel: a little above the middle on desktop, right under the ribbon on a phone. List height = what fits above the dock. */

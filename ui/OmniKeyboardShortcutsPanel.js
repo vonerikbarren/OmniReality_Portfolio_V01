@@ -131,7 +131,7 @@ const SHORTCUTS = [
   { key: 'b',        desc: 'Toggle OmniBrowser (window 1)' },
   { key: 'n',        desc: 'Open the OmniDraw mode picker (now also opens OmniNode)' },
   { key: 'm',        desc: 'Toggle the mini map' },
-  { key: 'k',        desc: 'Toggle OmniMixer' },
+  { key: 'k',        desc: 'Toggle OmniMusicPlayer' },
   { key: 't',        desc: 'Toggle OmniTranslator' },
   { key: 'p',        desc: 'Toggle ⟐p OmniPresenter' },
   { key: 'g',        desc: 'Toggle ⟐g OmniGallery' },
@@ -140,12 +140,13 @@ const SHORTCUTS = [
   { key: 'Escape',   desc: 'Exit fullscreen' },
   { key: '( / )',    desc: 'Wallpaper sphere spin direction' },
   { key: 'Enter',    desc: 'Toggle OmniStartHUD' },
-  { key: 'Ctrl/Cmd+K', desc: 'OmniStarLight search (sites and docs); Escape closes' },
+  { key: 'q',        desc: 'OmniStarLight search (sites and docs); Escape closes (V195: was Ctrl/Cmd+K; not while typing in a text field)' },
+  { key: 'Ctrl/Cmd+K', desc: 'Expression typing on / off: the keys play notes (A S D F G / J K L ; white keys, Space sustain, B / N octave); Escape leaves (V195)' },
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
   // V191: corner buttons of the LH / RH pads (ui/MovementPad.js). Ignored with Ctrl / Cmd / Alt held.
-  { key: 'e and q',  desc: 'LH pad: ascend / descend along world Y (hold). Same altitude settings and speed as Rise / Fall' },
+  // V195: E and Q no longer move the LH pad (Q opens OmniStarLight); use the ASC / DSC buttons on the pad.
   { key: 'y and h',  desc: 'RH pad: orbit up / down around the current target (hold); keeps going all the way around, over the top and under the bottom (V192; the vertical twin of the Arrow Left / Right orbit)' },
   { key: 'u and v',  desc: 'LH pad: orbit up / down around the current target (hold), the same continuous orbit as y and h (V192)' },
   // OmniHand / Conscious Hand axis pads (V158). These move NO camera — they

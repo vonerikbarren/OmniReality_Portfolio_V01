@@ -2,6 +2,321 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V197 OmniDraw picker: Path, Terminal, Floor panels",
+      "items": [
+        {
+          "feature": "Path, Terminal and Floor panels tiles in the OmniDraw menu",
+          "howToReach": "Home > Create > OmniDraw (or the N key)",
+          "whatToCheck": "The picker now has 13 tiles; Path creates an OmniPathNode and opens the node order panel; Terminal creates a TerminalShellTunnel; Floor panels opens FloorNodeMakerSettings; Sound, Music and the 8 older tiles still work. On a phone the grid still fits and scrolls",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V196 OmniDraw picker: Sound and Music",
+      "items": [
+        {
+          "feature": "Sound and Music tiles in the OmniDraw menu",
+          "howToReach": "Home > Create > OmniDraw (or the N key)",
+          "whatToCheck": "The picker shows Sound (♪) and Music (♫) after Behavior; Sound creates a SoundNode in front of the camera and opens the sound settings; Music creates a MusicNode and opens the sequencer; the other 8 tiles still work",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+      "items": [
+        {
+          "feature": "Boot screen: Omni⟐StarOS, credits, shooting stars",
+          "howToReach": "Reload the page and watch the opening",
+          "whatToCheck": "Title reads Omni⟐StarOS; below it \"developed by OmniStar Industries\" then \"Founder: Von'Erik Barren-Tucker\"; many more light shooting stars travel from the top-left toward 5 o'clock (some old down-left ones remain); the star still lands on the ⟐",
+          "tested": false
+        },
+        {
+          "feature": "Q opens StarLight",
+          "howToReach": "press Q on the canvas",
+          "whatToCheck": "search opens; Esc closes; Q inside a text field types q",
+          "tested": false
+        },
+        {
+          "feature": "Cmd/Ctrl+K does not open StarLight",
+          "howToReach": "press Ctrl+K",
+          "whatToCheck": "Expression typing turns on instead, search stays closed",
+          "tested": false
+        },
+        {
+          "feature": "Expression typing on/off",
+          "howToReach": "Ctrl/Cmd+K, then Esc",
+          "whatToCheck": "hint shows; Esc leaves; all notes stop",
+          "tested": false
+        },
+        {
+          "feature": "Play notes with keys",
+          "howToReach": "mode on, press A S D F / J K L",
+          "whatToCheck": "tones sound, LH octave 3, RH octave 4; B / N shifts octave",
+          "tested": false
+        },
+        {
+          "feature": "WASD frozen in mode",
+          "howToReach": "mode on, press W A S D",
+          "whatToCheck": "camera does not move; after Esc it moves again",
+          "tested": false
+        },
+        {
+          "feature": "Sustain, mod, bend",
+          "howToReach": "Space; Left Shift + Up/Down; Right Shift + arrows",
+          "whatToCheck": "notes hold; vibrato; pitch bends and springs back",
+          "tested": false
+        },
+        {
+          "feature": "Instrument follows selection",
+          "howToReach": "select a node with a sound, play keys",
+          "whatToCheck": "its sound is the instrument; setting turns follow off",
+          "tested": false
+        },
+        {
+          "feature": "Expression settings window",
+          "howToReach": "Ribbon Home > Tools > Expression settings (also Admin)",
+          "whatToCheck": "octave scope, bend range, spring, MIDI options persist after reload",
+          "tested": false
+        },
+        {
+          "feature": "MIDI in",
+          "howToReach": "enable MIDI in the settings window with a keyboard plugged in",
+          "whatToCheck": "browser asks permission only then; notes play; unplug/replug works",
+          "tested": false
+        },
+        {
+          "feature": "Movement Q/E removed",
+          "howToReach": "press Q / E",
+          "whatToCheck": "no ascend/descend; on-screen buttons still work",
+          "tested": false
+        },
+        {
+          "feature": "OmniExpression keyboard (first look)",
+          "howToReach": "Ribbon > Home > Tools > Expression, or OmniStarLight \"OmniExpression keyboard\"",
+          "whatToCheck": "A window with just two keyboard blocks (left / right hand, black row + two white rows each), key letters and note names, Oct readouts, SUS / BEND / MOD",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard touch and mouse",
+          "howToReach": "Press the on-screen keys (several fingers on a touch screen)",
+          "whatToCheck": "Each finger plays its own note and lights its key; sliding glides; lifting always stops the note; low on the key is louder",
+          "tested": false
+        },
+        {
+          "feature": "Keys light up from other inputs",
+          "howToReach": "Play the computer keys or a MIDI keyboard with the panel open",
+          "whatToCheck": "The matching on-screen keys light; SUS / BEND / MOD lamps follow",
+          "tested": false
+        },
+        {
+          "feature": "Maximize to quadrants",
+          "howToReach": "Maximize button of the OmniExpression window",
+          "whatToCheck": "Four glass quadrants with corner brackets and split lines; restoring brings the keyboard back",
+          "tested": false
+        },
+        {
+          "feature": "Quadrant dropdowns",
+          "howToReach": "Header drop-down of each quadrant",
+          "whatToCheck": "Lists keyboards, BeatPad, Mixer (placeholder) and OmniDJ / sequencer when built; the choice survives a reload; swapping and closing leave nothing behind",
+          "tested": false
+        },
+        {
+          "feature": "Split and Join",
+          "howToReach": "Split button in the window header (desktop); Join in either hand window",
+          "whatToCheck": "Two independently movable windows; Join returns one window; positions remembered; no Split on a phone",
+          "tested": false
+        },
+        {
+          "feature": "OmniBeatPad",
+          "howToReach": "Ribbon > Home > Tools > BeatPad, nav OmniBeatPad, or the BeatPad quadrant",
+          "whatToCheck": "4 x 4 pads, tap plays and flashes, several fingers work, keys 1-4 / Q-R / A-F / Z-V only with the grid focused",
+          "tested": false
+        },
+        {
+          "feature": "BeatPad edit",
+          "howToReach": "Edit button or long press on a pad",
+          "whatToCheck": "Label, colour, note / sound node / sample, mode, choke group, volume, Test pad; kits load; saved after reload",
+          "tested": false
+        },
+        {
+          "feature": "Mixer quadrant (placeholder)",
+          "howToReach": "Pick Mixer in a quadrant drop-down",
+          "whatToCheck": "Six faders with M / S that move and are remembered; clearly labelled placeholder",
+          "tested": false
+        },
+        {
+          "feature": "OmniMusicPlayer rename",
+          "howToReach": "Ribbon > Home > Tools > Music player, drawer item, OmniStarLight \"mixer\"",
+          "whatToCheck": "The panel opens with the title OmniMusicPlayer; saved audio / videos / settings are still there; k key still toggles it",
+          "tested": false
+        },
+        {
+          "feature": "OmniDJ window",
+          "howToReach": "Ribbon Home > Tools > OmniDJ (or OmniStarLight \"dj\")",
+          "whatToCheck": "the window opens with six round jog wheels in the top row and six channel strips below; Esc / the x closes it",
+          "tested": false
+        },
+        {
+          "feature": "Load a track",
+          "howToReach": "OmniDJ > Load on a deck",
+          "whatToCheck": "the list shows the OmniMusicPlayer library slots (filled ones enabled); picking one shows its name; \"Open an audio file\" loads a file",
+          "tested": false
+        },
+        {
+          "feature": "Play and the jog wheel",
+          "howToReach": "Load a track, press the play button",
+          "whatToCheck": "the circle spins and its ring fills; pitch fader up makes it spin faster",
+          "tested": false
+        },
+        {
+          "feature": "Scrub",
+          "howToReach": "Drag a circle in a circle while a track plays",
+          "whatToCheck": "the position jumps with your hand (one turn about 1.8 s), playing resumes on release; double-click goes to cue",
+          "tested": false
+        },
+        {
+          "feature": "EQ",
+          "howToReach": "Drag LOW / MID / HIGH knobs on a playing deck",
+          "whatToCheck": "LOW all the way left removes the bass (reads \"kill\"), the centre notch clicks, double-click resets",
+          "tested": false
+        },
+        {
+          "feature": "Volume / mute",
+          "howToReach": "Volume fader and the M button",
+          "whatToCheck": "quieter / silent; the meter beside the fader moves",
+          "tested": false
+        },
+        {
+          "feature": "Crossfader",
+          "howToReach": "Set a deck to A and another to B, move the crossfader",
+          "whatToCheck": "the deck on the far side goes silent; THRU decks never change; Curve button toggles",
+          "tested": false
+        },
+        {
+          "feature": "Grid edit",
+          "howToReach": "OmniDJ > Edit",
+          "whatToCheck": "drag moves (snaps), the corner handle resizes, the up / down arrows stack, the cross hides, + Add brings it back; Done makes the controls work again",
+          "tested": false
+        },
+        {
+          "feature": "Layout kept",
+          "howToReach": "Edit, move something, reload",
+          "whatToCheck": "the layout is the same; Reset layout (two presses) restores it",
+          "tested": false
+        },
+        {
+          "feature": "Click feeling",
+          "howToReach": "Turn Tick on in the top bar, press buttons",
+          "whatToCheck": "a very short tick (audio must be running); on a phone Buzz vibrates briefly",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard",
+          "howToReach": "Tab to a knob / fader / circle",
+          "whatToCheck": "arrows, Page Up / Down, Home / End, Delete reset work and do not move the camera",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "Open OmniDJ at 390 px wide",
+          "whatToCheck": "the window fills the screen, the grid scrolls, buttons can be pressed by touch",
+          "tested": false
+        },
+        {
+          "feature": "OmniDJ in a quadrant",
+          "howToReach": "OmniExpression quadrant header menu (when agent 2's host is present)",
+          "whatToCheck": "OmniDJ is listed and shows the same six circles",
+          "tested": false
+        },
+        {
+          "feature": "Music keeps playing",
+          "howToReach": "Play a deck, close the window",
+          "whatToCheck": "the music continues; reopen shows the same state; Stop all stops it",
+          "tested": false
+        },
+        {
+          "feature": "Music node create",
+          "howToReach": "Home > Create > Music node",
+          "whatToCheck": "A flat plate with a 4x16 grid appears, selected; Inspector shows tempo, Play/Stop, Record, Open sequencer",
+          "tested": false
+        },
+        {
+          "feature": "Sequencer window",
+          "howToReach": "Home > Sound > Sequencer (or Inspector > Open sequencer)",
+          "whatToCheck": "Window opens (phone: bottom sheet) with 4 tracks; tapping a step toggles it, dragging paints, dragging up/down sets velocity",
+          "tested": false
+        },
+        {
+          "feature": "Piano roll",
+          "howToReach": "Sequencer > track view button (Roll)",
+          "whatToCheck": "Tap paints a note, tap a note selects it, sideways drag sets its length, Delete removes",
+          "tested": false
+        },
+        {
+          "feature": "Play",
+          "howToReach": "Sequencer > Play (or Inspector Play)",
+          "whatToCheck": "Playhead moves, notes sound through the track's SoundNode, the 3D plate column follows the step",
+          "tested": false
+        },
+        {
+          "feature": "Tempo/loop/metronome",
+          "howToReach": "Sequencer header or Inspector",
+          "whatToCheck": "Tempo changes without a jump or drift; metronome clicks; Loop off stops at the end",
+          "tested": false
+        },
+        {
+          "feature": "Record live",
+          "howToReach": "Sequencer > Rec, play keys/MIDI/pads",
+          "whatToCheck": "Count-in first (notes ignored), notes land on the armed track, quantized per setting",
+          "tested": false
+        },
+        {
+          "feature": "Step record",
+          "howToReach": "Sequencer > Rec > Step mode",
+          "whatToCheck": "Cursor advances per note, chords within 60 ms share a step, Rest/Back work",
+          "tested": false
+        },
+        {
+          "feature": "Undo a take",
+          "howToReach": "Sequencer > Undo",
+          "whatToCheck": "A whole take disappears in one undo; Redo brings it back",
+          "tested": false
+        },
+        {
+          "feature": "Presets",
+          "howToReach": "Sequencer > track > pattern preset",
+          "whatToCheck": "11 presets apply to the track; undo restores",
+          "tested": false
+        },
+        {
+          "feature": "Instrument picker",
+          "howToReach": "Sequencer > track instrument",
+          "whatToCheck": "Lists SoundNodes; choosing one changes the sound; a deleted SoundNode shows 'missing'",
+          "tested": false
+        },
+        {
+          "feature": "Save/reload",
+          "howToReach": "Edit, reload the page",
+          "whatToCheck": "Pattern, tempo and tracks come back",
+          "tested": false
+        },
+        {
+          "feature": "Delete cleanup",
+          "howToReach": "Delete the music node while playing",
+          "whatToCheck": "Playback stops, no stuck notes, mesh disposed, services keep working",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "390 px wide",
+          "whatToCheck": "Bottom sheet, lanes scroll sideways, no page scroll, touch painting works",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "V194 SoundNode and sound (settings; particles; viewers)",
       "items": [
         {
@@ -3669,7 +3984,7 @@
         },
         {
           "feature": "OmniStarLight",
-          "howToReach": "Ctrl/Cmd+K, type \"perspectives\"",
+          "howToReach": "Q, type \"perspectives\"",
           "whatToCheck": "listed as Unavailable (Planned) with its reason.",
           "tested": false
         }

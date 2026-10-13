@@ -16,6 +16,7 @@
 import * as Shells from './TerminalShells.js'
 import * as Session from './TerminalSession.js'
 import { getSettings } from './TerminalSettings.js'
+import { isExpressionOn } from './OmniExpressionFlag.js'
 
 let refs = 0
 let bound = null
@@ -32,6 +33,7 @@ export function sceneTypingActive () {
 
 /** Handle one keydown. Returns true when it was used (the caller stops the event). Exported for the tests. */
 export function handleKey (e) {
+  if (isExpressionOn()) return false              // V195: Expression typing owns every key while it is on
   if (!sceneTypingActive() || isTypingTarget()) return false
   if (e.ctrlKey || e.metaKey || e.altKey) return false
   const k = e.key
