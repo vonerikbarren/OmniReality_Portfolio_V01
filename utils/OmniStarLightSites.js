@@ -72,6 +72,7 @@ export const SITES = [
   S('omnimix', 'Mixer (OmniMix)', 'Tools', 'The mixing desk window of the selected mix node: channel strips, crossfader, DJ moves, automation lanes and a record button for fader moves.', nav('⟐OmniMix'), ['mix', 'mixer', 'dj', 'crossfader', 'strips', 'automation', 'set', 'music']),
   S('omnidoc', 'Documents (OmniDoc)', 'Tools', 'The document window of the selected doc node: choose a guide page or import a PDF, markdown, text or image, turn pages, size the sheet, copy its text.', nav('⟐OmniDoc'), ['doc', 'document', 'pdf', 'page', 'import', 'read']),
   S('omnipoly', 'Poly faces (OmniPoly)', 'Tools', 'The window of the selected poly node: shape, and face by face colour, tags, event and content.', nav('⟐OmniPoly'), ['poly', 'face', 'faces', 'shape', 'tag', 'tooltip']),
+  S('themepresets', 'Theme presets', 'Settings', 'Admin settings: one click sets a wallpaper and all the panel colours together (Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast, or your own saved themes).', { type: 'event', name: 'omni:admin-open', detail: { section: 'themepresets' } }, ['theme', 'themes', 'preset', 'wallpaper', 'colour', 'color', 'panel', 'dark', 'light', 'admin']),
   S('soundmixer', 'OmniMixer', 'Tools', 'The sound mixer.', nav('⟐OmniMixer'), ['sound', 'audio', 'volume']),
   S('soundviewer', 'Sound viewer', 'Tools', 'The frequency viewer of a sound node or the whole mix: spectrum bars and line, scope, spectrogram, 7 band meters, peak note, envelope phase.', nav('⟐SoundViewer'), ['sound', 'audio', 'spectrum', 'frequency', 'fft', 'spectrogram', 'scope', 'waveform', 'meters']),
   S('soundparticleviewer', 'Particle viewer', 'Tools', 'The particle formation of a sound node (top, front, side, orbit) with its live count; pick the formation, count and size.', nav('⟐SoundParticleViewer'), ['sound', 'particles', 'formation', 'count', 'cloud', 'sphere', 'galaxy']),
@@ -86,7 +87,7 @@ export const SITES = [
   S('omnipocket', 'OmniPocket', 'Tools', 'The pocket: inventory.', nav('⟐OmniPocket'), ['inventory', 'items']),
   S('omnikeys', 'OmniKeys', 'Tools', 'The OmniKeys panel.', nav('⟐OmniKeys'), ['keys', 'keyboard']),
   S('omninavi', 'OmniNavi', 'Tools', 'The OmniProgram / OmniNavi panel (the bot program).', nav('⟐OmniNavi'), ['program', 'bot']),
-  S('omnitargeting', 'OmniTargeting', 'Tools', 'The OmniTargeting settings.', nav('⟐OmniTargetingSettings'), ['target', 'aim']),
+  S('omnitargeting', 'OmniTargeting', 'Tools', 'The OmniTargeting settings.', nav('⟐OmniTargetingSettings'), ['target', 'aim', 'z-targeting', 'l-targeting', 'r-targeting', '9 oclock', '3 oclock', 'side']),
   S('omniexpressionator', 'OmniExpressionator', 'Tools', 'The OmniExpressionator panel.', nav('⟐OmniExpressionator'), ['expression', 'emotion']),
   S('omnisystemcreator', 'OmniSystemCreator', 'Tools', 'The OmniSystemCreator panel.', nav('⟐OmniSystemCreator'), ['system', 'create']),
   // ── App ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────

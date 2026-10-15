@@ -41,6 +41,7 @@ import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import * as GridWidgets   from './GridWidgets.js'
 import * as ThemeManager  from './ThemeManager.js'
+import * as TP from '../utils/OmniThemePresets.js'   // V205: theme presets (wallpaper + rgba panel colours)
 import { createWallpaperStore, KNOWN_NAMESPACES } from '../utils/WallpaperStorage.js'
 import * as UC from '../utils/OmniUserCompassSettings.js'   // V188: userCompass options (user-facing, no Dev import)
 import * as ODR from './OmniDockRealitiesSettingsPanel.js'          // V191: OmniDock_Realities Admin block (user-facing)
@@ -546,6 +547,7 @@ export default class AdminPanel {
          <div class="ap-row"><span class="ap-row-label">Accent (rgba)</span><input class="ap-input ap-text" id="ap-custom-accent" placeholder="rgba(255,178,127,0.9)"></div>
          <div class="ap-row"><button class="ap-file-btn" id="ap-custom-apply">Apply Custom Colors</button></div>`
       ) +
+      group('Theme presets', 'themepresets', this._themePresetRows()) +
       // Space Wallpaper settings moved to their own dedicated panel
       // (Admin03 -> ui/WallpaperSettingsPanel.js) — shape, position/
       // rotation/scale, and the 20-slot wallpaper browser all live
@@ -588,6 +590,7 @@ export default class AdminPanel {
 
     this._populateThemeSelect(body)
     this._bindCustomTheme(body)
+    this._bindThemePresets(body)   // V205
     this._bindFields(body)
     this._bindDataManagement(body)
     this._bindWindowSizes(body)
@@ -673,6 +676,69 @@ export default class AdminPanel {
       const n = WindowManager.resetWindowSizes()
       const st = body.querySelector('#ap-window-sizes-status')
       if (st) st.textContent = n ? `Reset: ${n} open window${n === 1 ? '' : 's'} back to default size, saved sizes forgotten.` : 'Saved window sizes forgotten (no open window had a custom size).'
+    })
+  }
+
+  // ── V205: Theme presets = a wallpaper + a full set of rgba() panel colours, applied in one click ────────────────────────────────────────────────
+  _presetCardHTML (p, custom) {
+    const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const w = p.wallpaper
+    const wallLabel = w.kind === 'slot' ? `wallpaper slot ${w.slot}` : w.kind === 'image' ? 'default picture' : 'plain colour'
+    const sw = `<span class="ap-pre-sw" style="background:${w.kind === 'color' ? w.color : '#445566'}"><span style="background:${p.panel.bg};border:1px solid ${p.panel.border};color:${p.panel.text}">Aa<i style="background:${p.panel.accent}"></i></span></span>`
+    return `<div class="ap-pre" data-preset="${esc(p.id)}"><button class="ap-pre-main" type="button" data-pre-apply="${esc(p.id)}" aria-label="Apply theme ${esc(p.label)}" title="Applies the wallpaper and the panel colours at once">${sw}<span class="ap-pre-txt"><b>${esc(p.label)}</b><small>${wallLabel}, wallpaper alpha ${w.alpha}</small></span></button>${custom ? `<button class="ap-pre-x" type="button" data-pre-rename="${esc(p.id)}" aria-label="Rename ${esc(p.label)}" title="Rename">✎</button><button class="ap-pre-x" type="button" data-pre-update="${esc(p.id)}" aria-label="Replace ${esc(p.label)} with what is on screen now" title="Replace with what is on screen now">⟳</button><button class="ap-pre-x" type="button" data-pre-del="${esc(p.id)}" aria-label="Delete ${esc(p.label)}" title="Delete">×</button>` : ''}</div>`
+  }
+
+  _themePresetRows () {
+    this._tpCustom = TP.loadCustom()
+    return `<style>.ap-pre{display:flex;gap:4px;margin:3px 0;align-items:stretch}.ap-pre-main{flex:1;display:flex;gap:8px;align-items:center;text-align:left;background:rgba(255,255,255,.05);border:1px solid var(--ap-input-border,rgba(255,255,255,.18));border-radius:8px;padding:4px 8px;color:var(--ap-text,#fff);cursor:pointer;font:inherit;min-height:40px}.ap-pre-main:hover,.ap-pre-main:focus-visible{background:rgba(255,255,255,.12)}.ap-pre-main.is-on{border-color:var(--ap-accent,#7fd8ff)}.ap-pre-txt{display:flex;flex-direction:column;font-size:11px}.ap-pre-txt small{font-size:9px;opacity:.7}.ap-pre-sw{flex:0 0 46px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center}.ap-pre-sw>span{display:flex;align-items:center;gap:3px;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:700}.ap-pre-sw i{display:block;width:8px;height:8px;border-radius:50%}.ap-pre-x{flex:0 0 30px;background:rgba(255,255,255,.05);border:1px solid var(--ap-input-border,rgba(255,255,255,.18));border-radius:6px;color:var(--ap-text-dim,#ddd);cursor:pointer;font:inherit}.ap-pre-x:hover{background:rgba(255,255,255,.14)}</style>
+      <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">One click sets the wallpaper and all the panel colours (background, border, text, accent, inputs) together, so you do not have to change them one by one in the wallpaper settings and above. Applies at once.</div>
+      <div id="ap-pre-list">${this._presetListHTML()}</div>
+      <div class="ap-subhead">Save what is on screen</div>
+      <div class="ap-row"><span class="ap-row-label">Name</span><input class="ap-input ap-text" id="ap-pre-name" maxlength="32" placeholder="My theme"></div>
+      <div class="ap-row"><button class="ap-file-btn" id="ap-pre-save" type="button" data-omni-tip="Save as theme" data-omni-tip-key="—" data-omni-tip-desc="Saves the wallpaper now showing (its slot, picture or colour and alpha) together with the panel colours now in use as a theme of your own.">Save current as theme</button></div>
+      <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4" id="ap-pre-status" role="status" aria-live="polite">A saved theme that uses a wallpaper slot needs that slot to still be filled in this browser. A video wallpaper is turned off when a theme is applied.</div>`
+  }
+
+  _presetListHTML () {
+    const custom = this._tpCustom ?? []
+    return TP.SHIPPED.map(p => this._presetCardHTML(p, false)).join('') + (custom.length ? '<div class="ap-subhead">My themes</div>' + custom.map(p => this._presetCardHTML(p, true)).join('') : '')
+  }
+
+  /** Apply a preset: the wallpaper through its settings panel (so its saved state and slot highlight stay right), the panel colours through ThemeManager. */
+  applyThemePreset (preset) {
+    const p = TP.sanitizePreset(preset)
+    window.dispatchEvent(new CustomEvent('omni:wallpaper-preset-apply', { detail: { patch: TP.toWallpaperPatch(p) } }))
+    ThemeManager.setCustomTheme(TP.toPanelTokens(p))
+    this._setStaged('theme', 'custom')
+    const select = this._el?.querySelector('#ap-theme-select'); if (select) select.value = 'custom'
+    const bg = this._el?.querySelector('#ap-custom-bg'); if (bg) bg.value = p.panel.bg
+    const bd = this._el?.querySelector('#ap-custom-border'); if (bd) bd.value = p.panel.border
+    const ac = this._el?.querySelector('#ap-custom-accent'); if (ac) ac.value = p.panel.accent
+    window.dispatchEvent(new CustomEvent('omni:theme-preset-applied', { detail: { id: p.id, label: p.label } }))
+    return p
+  }
+
+  _bindThemePresets (body) {
+    const list = body.querySelector('#ap-pre-list'); if (!list) return
+    const status = (t) => { const s = body.querySelector('#ap-pre-status'); if (s) s.textContent = t }
+    const current = (name) => {
+      let w = {}; try { w = JSON.parse(localStorage.getItem('omni:wallpaper:settings') ?? '{}') } catch (_) { /* none */ }
+      return TP.captureCurrent(w, ThemeManager.getAppliedTokens(), name)
+    }
+    const redraw = () => { list.innerHTML = this._presetListHTML() }
+    list.addEventListener('click', (e) => {
+      const t = e.target.closest?.('button'); if (!t) return
+      const d = t.dataset
+      if (d.preApply) { const p = TP.findPreset(this._tpCustom, d.preApply); if (!p) return; this.applyThemePreset(p); list.querySelectorAll('.ap-pre-main').forEach(b => b.classList.toggle('is-on', b === t)); status(`Applied “${p.label}”.`); return }
+      if (d.preDel) { this._tpCustom = TP.removeCustom(this._tpCustom, d.preDel); TP.saveCustom(this._tpCustom); redraw(); status('Theme deleted.'); return }
+      if (d.preRename) { const cur = this._tpCustom.find(x => x.id === d.preRename); const name = typeof prompt === 'function' ? prompt('Theme name', cur?.label ?? '') : null; if (name) { this._tpCustom = TP.renameCustom(this._tpCustom, d.preRename, name); TP.saveCustom(this._tpCustom); redraw() } return }
+      if (d.preUpdate) { const cur = this._tpCustom.find(x => x.id === d.preUpdate); if (!cur) return; const fresh = { ...current(cur.label), id: cur.id }; this._tpCustom = this._tpCustom.map(x => (x.id === cur.id ? TP.sanitizePreset(fresh) : x)); TP.saveCustom(this._tpCustom); redraw(); status(`“${cur.label}” now holds what is on screen.`) }
+    })
+    body.querySelector('#ap-pre-save')?.addEventListener('click', () => {
+      const nameEl = body.querySelector('#ap-pre-name'); const name = (nameEl?.value ?? '').trim() || `My theme ${this._tpCustom.length + 1}`
+      const r = TP.addCustom(this._tpCustom, current(name))
+      if (!r.ok) { status(r.error); return }
+      this._tpCustom = r.list; TP.saveCustom(this._tpCustom); if (nameEl) nameEl.value = ''; redraw(); status(`Saved “${r.preset.label}”.`)
     })
   }
 

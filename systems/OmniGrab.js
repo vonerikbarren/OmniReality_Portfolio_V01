@@ -27,6 +27,10 @@ import * as THREE from 'three'
 const JITTER_AMOUNT   = 0.03   // world units — small, visible tremble, not violent shaking
 const JITTER_SPEED    = 40     // how fast the jitter direction changes per second
 const CONDENSE_SCALE  = 0.05   // how small a reality shrinks to once fully condensed into a hand
+// V206: grabbing a node by pressing the mouse on it anywhere in the scene is OFF for now: it swallowed every press on a node, so a target ON a node
+// (a face of a poly node, a doc sheet, a button on it) could not be clicked. The menu route (ToolTipMenu 'Grab' -> grabMesh, 'Send to hand' -> sendToHand,
+// the terminal command) is unchanged. Turn it back on with window event omni:grab-drag-set { enabled: true } or grab.setDirectDrag(true).
+export const DIRECT_DRAG_DEFAULT = false
 const RELEASE_DURATION = 0.25  // seconds — snap-back animation when dropped outside any open hand
 
 export default class OmniGrab {
@@ -64,13 +68,21 @@ export default class OmniGrab {
     this._onPointerDown = null
     this._onPointerMove = null
     this._onPointerUp = null
+    this._directDrag = DIRECT_DRAG_DEFAULT
+    this._onDragSet = null
   }
+
+  /** V206: direct grab (press the mouse on a node) on / off. */
+  setDirectDrag (on) { this._directDrag = !!on; return this._directDrag }
+  get directDrag () { return this._directDrag }
 
   init () {
     this._onPointerDown = (e) => this._handlePointerDown(e)
     this._onPointerMove = (e) => this._handlePointerMove(e)
     this._onPointerUp = (e) => this._handlePointerUp(e)
 
+    this._onDragSet = (e) => { if (e.detail && typeof e.detail.enabled === 'boolean') this.setDirectDrag(e.detail.enabled) }
+    window.addEventListener('omni:grab-drag-set', this._onDragSet)
     window.addEventListener('mousedown', this._onPointerDown)
     window.addEventListener('mousemove', this._onPointerMove)
     window.addEventListener('mouseup', this._onPointerUp)
@@ -111,6 +123,7 @@ export default class OmniGrab {
   onResize () {}
 
   destroy () {
+    window.removeEventListener('omni:grab-drag-set', this._onDragSet)
     window.removeEventListener('mousedown', this._onPointerDown)
     window.removeEventListener('mousemove', this._onPointerMove)
     window.removeEventListener('mouseup', this._onPointerUp)
@@ -123,6 +136,7 @@ export default class OmniGrab {
 
   _handlePointerDown (e) {
     if (this._grabbedMesh) return   // already holding something
+    if (!this._directDrag) return   // V206: pressing on a node no longer grabs it
     this._setMouseFromEvent(e)
     this._raycaster.setFromCamera(this._mouse, this.ctx.camera)
 

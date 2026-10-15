@@ -37,13 +37,14 @@ Not supported: Word / PowerPoint / Excel files (export to PDF first), zip files,
 
 - **Doc node list, + Doc, Undo, Redo** at the top. It follows the selected doc node.
 - **Document, Import a file…** and the list of **your documents** (Rename, ×). Removing a document from the library makes sheets that show it say so.
-- **Page** box with **◀ ▶**; the status line says *Opening…* or an error in plain words.
+- **▲ Page up / ▼ Page down** buttons (and the PageUp / PageDown keys) and a **Page** box; the status line says *Opening…* or an error in plain words.
 - A **preview** of the current page and the **text of the page**, which you can select, and **Copy text**.
+- **Pages**: one page, or two pages like an open book (the sheet is twice as wide and turns two pages at a time). **Zoom %** (100–400; 100 shows the whole page) with − / + / Fit and arrows to move the zoomed view.
 - **Width** (1 to 30 units; the sheet keeps the document's proportions), **sides** (both, or front only), **quality** (auto, low = lighter, high = sharper), **paper** colour, **frame** (the coloured edge), **title**.
 
 ## The Inspector block
 
-With a doc node selected, **Appearance** has a **⟐ Doc node** block: document and page, **◀ Page** and **Page ▶**, **Width**, and **Open ⟐OmniDoc**.
+With a doc node selected, **Appearance** has a **⟐ Doc node** block: document and page, **▲ Page up** and **▼ Page down**, **Pages**, **Zoom %**, **Width**, and **Open ⟐OmniDoc**.
 
 ## Good to know
 

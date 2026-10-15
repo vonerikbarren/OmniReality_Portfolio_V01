@@ -8,7 +8,9 @@
  *                (rasterWidthFor), share the global pixel budget between all sheets (planBudget: farthest shrink first), and redraw ONLY the sheets whose page / document / size step changed.
  *                A sheet that is far, off screen, hidden or over budget drops its texture. At rest (nobody moving, nothing changed) the whole thing costs one cheap loop and zero GPU work.
  *   - THE STORE  getDoc / commit / edit / undo / redo / beginStroke (like the mix store): what the ⟐OmniDoc panel and the Inspector read and write.
- *   - PAGES      turn(id, dir) / goto(id, page); omni:doc-turn { nodeId, dir | page }. Events: omni:doc-changed { nodeId, reason }, omni:doc-status { nodeId, status, text }.
+ *   - PAGES      turn(id, dir) / goto(id, page) / pageUp / pageDown; omni:doc-turn { nodeId, dir | page }. Events: omni:doc-changed { nodeId, reason }, omni:doc-status { nodeId, status, text }.
+ *   - VIEW (V206) setSpread(id, 'single'|'double') (two pages side by side, turning by 2), setZoom(id, percent 100..400) / zoomBy, setPan; omni:doc-view-set { nodeId, spread?, zoom?, panX?, panY? }.
+ *                A zoomed sheet asks for a sharper texture (up to the limit) and shows a window of it; a spread draws two pages into one texture of twice the width.
  *   - LIBRARY    listSources() -> { guide, library } for the pickers; attachFile(id, file) imports a file into utils/OmniDocAssets.js and shows it.
  * Module contract: constructor(context, omniNode) / init (guarded) / update(delta) / destroy / onResize. User-facing: imports no Dev* module.
  */
@@ -63,6 +65,7 @@ export default class OmniDocNodes {
     on('omni:node-deselected', () => { this._selectedId = null })
     on('omni:node-created', (d) => this._fixNode(d.node))
     on('omni:node-deleted', (d) => this._onDeleted(d.id))
+    on('omni:doc-view-set', (d) => this._viewSet(d))
     on('omni:doc-turn', (d) => { if (!d.nodeId) return; if (Number.isFinite(d.page)) this.goto(d.nodeId, d.page); else this.turn(d.nodeId, d.dir < 0 ? -1 : 1) })
     on('omni:doc-assets-changed', (d) => { this._refreshLibrary(); if (d.action === 'remove') this._invalidateAll() })
     if (!this._raster) this._raster = createDocRaster({ getBytes: (id) => this._getBytes(id) })
@@ -128,17 +131,18 @@ export default class OmniDocNodes {
         const e = mesh.matrixWorld.elements
         dist = cam ? Math.hypot(e[12] - cam.position.x, e[13] - cam.position.y, e[14] - cam.position.z) : 5
         const sx = Math.hypot(e[0], e[1], e[2]); const sy = Math.hypot(e[4], e[5], e[6])
-        const sheetW = doc.width * sx
-        const radius = 0.5 * Math.hypot(doc.width * sx, doc.width * doc.aspect * sy)
+        const sz = D.sheetSize(doc); const kk = doc.spread === 'double' ? 2 : 1
+        const sheetW = doc.width * sx * (doc.zoom / 100)           // ONE page across, magnified by the zoom: a zoomed-in sheet needs a sharper texture
+        const radius = 0.5 * Math.hypot(sz.width * sx, sz.height * sy)
         const inView = !frustumOk || (this._sph.set(this._v3(e), radius), this._frustum.intersectsSphere(this._sph))
         // distance to the near edge of the sheet, not its centre, so a big sheet you stand next to is sharp
         const nearDist = Math.max(0.3, dist - radius * 0.5)
         if (inView && dist < FAR) {
-          step = D.rasterWidthFor({ distance: nearDist, sheetWidth: sheetW, fovDeg: env.fov, viewportHeightPx: env.vh, dpr: env.dpr, quality: doc.quality, maxTexture: env.maxTex, current: v.drawn.step })
+          step = D.rasterWidthFor({ distance: nearDist, sheetWidth: sheetW, fovDeg: env.fov, viewportHeightPx: env.vh, dpr: env.dpr, quality: doc.quality, maxTexture: D.RASTER_STEPS.includes(env.maxTex / kk) ? env.maxTex / kk : 512, current: v.drawn.step })
         }
       }
       st.wantStep = step
-      reqs.push({ id, want: step, aspect: doc.aspect, distance: dist })
+      reqs.push({ id, want: step, aspect: doc.aspect * (doc.spread === 'double' ? 2 : 1), distance: dist })
       by.set(id, { mesh, doc, st, v })
     }
     const plan = D.planBudget(reqs, env.budget)
@@ -149,8 +153,8 @@ export default class OmniDocNodes {
 
   _apply (id, mesh, doc, st, v, step) {
     const key = `${doc.source.type}:${doc.source.id}`
-    if (doc.source.type === 'none') { if (v.drawn.step) clearPage(mesh); this._status(id, st, 'empty', 'No document yet. Choose one in ⟐OmniDoc.'); return }
-    if (step === 0) { if (v.drawn.step) clearPage(mesh); if (st.pending) { st.token++; st.pending = false; st.pendingKey = '' } return }   // a render still running is told it is stale
+    if (doc.source.type === 'none') { if (v.drawn.step) this._clear(mesh, st); this._status(id, st, 'empty', 'No document yet. Choose one in ⟐OmniDoc.'); return }
+    if (step === 0) { if (v.drawn.step) this._clear(mesh, st); if (st.pending) { st.token++; st.pending = false; st.pendingKey = '' } return }   // a render still running is told it is stale
     // a source that failed to open is not retried every pass: only after RETRY_MS (the network may come back), or when the source / library changes
     if (st.failed === key && nowMs() - (st.failedAt ?? 0) < RETRY_MS) return
     // the source must be opened (once per source) before a page can be drawn
@@ -169,24 +173,43 @@ export default class OmniDocNodes {
       return
     }
     if (!st.key) return                                              // still opening
-    const page = Math.min(doc.page, doc.pages || doc.page)
+    const [page, pageR] = D.visiblePages(doc)
     const dr = v.drawn
-    if (dr.key === st.key && dr.page === page && dr.step === step && !st.stale) return
-    const want = `${st.key}|${page}|${step}`
+    if (dr.key === st.key && dr.page === page && dr.step === step && dr.spread === doc.spread && !st.stale) return
+    const want = `${st.key}|${page}|${step}|${doc.spread}`
     if (st.pending && st.pendingKey === want) return
     if (st.badKey === want && nowMs() - (st.badAt ?? 0) < RETRY_MS) return          // a page that failed to draw is not retried every pass
     const tok = ++st.token; st.pending = true; st.pendingKey = want; st.pendingTok = tok
     this._stats.renders++
-    this._raster.render(st.key, page, step, v.canvas, () => tok !== st.token || !this._state.has(id)).then((res) => {
+    const stale = () => tok !== st.token || !this._state.has(id)
+    const job = doc.spread === 'double' ? this._renderSpread(st, st.key, page, pageR, step, v.canvas, doc.paper, stale) : this._raster.render(st.key, page, step, v.canvas, stale)
+    job.then((res) => {
       if (tok !== st.token) { if (st.pendingTok === tok) { st.pending = false; st.pendingKey = '' } return }
       st.pending = false; st.pendingKey = ''
-      if (!res?.ok) { if (!res?.stale) { st.badKey = `${st.key}|${page}|${step}`; st.badAt = nowMs(); this._status(id, st, 'error', 'That page could not be drawn.') } return }
+      if (!res?.ok) { if (!res?.stale) { st.badKey = `${st.key}|${page}|${step}|${doc.spread}`; st.badAt = nowMs(); this._status(id, st, 'error', 'That page could not be drawn.') } return }
       st.badKey = ''
       setPageCanvas(mesh)
-      v.drawn = { key: st.key, page, step }
+      v.drawn = { key: st.key, page, step, spread: doc.spread }
       st.stale = false
       this._status(id, st, 'ready', '')
     }, () => { if (st.pendingTok === tok) { st.pending = false; st.pendingKey = '' } })
+  }
+  _clear (mesh, st) { clearPage(mesh); if (st) { for (const k of ['tmpL', 'tmpR']) { if (st[k]) { st[k].width = 1; st[k].height = 1; st[k] = null } } } }
+  /** A spread: two pages drawn side by side into ONE canvas (twice as wide). The right half is plain paper when there is no right page. Resolves { ok } | { ok:false, stale }. */
+  async _renderSpread (st, key, left, right, step, canvas, paper, stale) {
+    const mk = () => (typeof document !== 'undefined' ? document.createElement('canvas') : null)
+    st.tmpL ??= mk(); st.tmpR ??= mk()
+    if (!st.tmpL || !st.tmpR) return { ok: false }
+    const a = await this._raster.render(key, left, step, st.tmpL, stale); if (!a?.ok) return a ?? { ok: false }
+    let b = null
+    if (right) { b = await this._raster.render(key, right, step, st.tmpR, stale); if (!b?.ok) return b ?? { ok: false } }
+    if (stale()) return { ok: false, stale: true }
+    const w = st.tmpL.width; const h = st.tmpL.height
+    canvas.width = w * 2; canvas.height = h
+    const g = canvas.getContext('2d'); g.fillStyle = paper || '#ffffff'; g.fillRect(0, 0, w * 2, h)
+    g.drawImage(st.tmpL, 0, 0, w, h)
+    if (b) g.drawImage(st.tmpR, w, 0, w, h)
+    return { ok: true, w: w * 2, h }
   }
   _status (id, st, status, text) {
     if (st.status === status && st.text === text) return
@@ -245,7 +268,9 @@ export default class OmniDocNodes {
     try {
       const doc = this.getDoc(id); if (!doc || doc.source.type === 'none') return { ok: false }
       const h = await this._raster.open(doc.source); if (!h.ok) return { ok: false, error: h.error }
-      return await this._raster.render(h.key, Math.min(doc.page, h.pages), width, canvas)
+      const [l, r] = D.visiblePages({ ...doc, pages: h.pages })
+      if (doc.spread !== 'double') return await this._raster.render(h.key, Math.min(l, h.pages), width, canvas)
+      return await this._renderSpread({}, h.key, l, r, Math.round(width / 2), canvas, doc.paper, () => false)
     } catch (_) { return { ok: false } }
   }
   /** The text of the current page (for selecting / copying in the panel). */
@@ -253,7 +278,9 @@ export default class OmniDocNodes {
     try {
       const doc = this.getDoc(id); if (!doc || doc.source.type === 'none') return ''
       const h = await this._raster.open(doc.source); if (!h.ok) return ''
-      return await this._raster.text(h.key, Math.min(doc.page, h.pages))
+      const [l, r] = D.visiblePages({ ...doc, pages: h.pages })
+      const a = await this._raster.text(h.key, Math.min(l, h.pages))
+      return r ? a + '\n\n' + await this._raster.text(h.key, r) : a
     } catch (_) { return '' }
   }
   async removeFromLibrary (id) { try { await this._ensureAssetsAsync(); return await this._assets.remove(id) } catch (_) { return { ok: false } } }
@@ -325,6 +352,18 @@ export default class OmniDocNodes {
 
   // ── Pages, sources, import ──────────────────────────────────────────────────
   turn (id, dir) { return this.edit(id, 'turn', (m) => D.turn(m, dir)) }
+  pageUp (id) { return this.turn(id, -1) }
+  pageDown (id) { return this.turn(id, 1) }
+  setSpread (id, mode) { return this.edit(id, 'spread', (m) => D.setSpread(m, mode)) }
+  setZoom (id, percent) { return this.edit(id, 'zoom', (m) => D.setZoom(m, percent), 'zoom:' + id) }
+  zoomBy (id, dir) { return this.edit(id, 'zoom', (m) => D.zoomBy(m, dir)) }
+  setPan (id, x, y) { return this.edit(id, 'pan', (m) => D.setPan(m, x, y), 'pan:' + id) }
+  _viewSet (d) {
+    if (!d || typeof d.nodeId !== 'string') return
+    if (d.spread !== undefined) this.setSpread(d.nodeId, d.spread)
+    if (d.zoom !== undefined) this.setZoom(d.nodeId, Number(d.zoom))
+    if (d.panX !== undefined || d.panY !== undefined) { const m = this.getDoc(d.nodeId); if (m) this.setPan(d.nodeId, d.panX ?? m.panX, d.panY ?? m.panY) }
+  }
   goto (id, page) { return this.edit(id, 'page', (m) => D.setPage(m, page), 'page:' + id) }
   setSource (id, type, srcId, title = null) { const st = this._state.get(id); if (st) { st.failed = '' }; return this.edit(id, 'source', (m) => D.setSource(m, type, srcId, title)) }
   /** Import a file into the library and show it on this node. Returns the import result ({ ok, id?, meta?, error? }). */

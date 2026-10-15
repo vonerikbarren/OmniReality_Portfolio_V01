@@ -2,6 +2,153 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V207 Z / L / R Targeting",
+      "items": [
+        {
+          "feature": "Find the setting",
+          "howToReach": "⟐OmniTargeting > OmniTargetingSettings, top group 'Targeting mode'",
+          "whatToCheck": "Mode (Z centre, L 9 o'clock, R 3 o'clock) and Side distance (20–80 %) are there.",
+          "tested": false
+        },
+        {
+          "feature": "L-Targeting",
+          "howToReach": "choose L, select a node",
+          "whatToCheck": "the view slides so the node sits on the LEFT; the right side is open space. Orbiting and clicking other nodes still work.",
+          "tested": false
+        },
+        {
+          "feature": "R-Targeting",
+          "howToReach": "choose R, select a node",
+          "whatToCheck": "the node sits on the RIGHT; the left side is open space.",
+          "tested": false
+        },
+        {
+          "feature": "Open a panel on the free side",
+          "howToReach": "with L on, open a panel (for example ⟐OmniDoc) on the right",
+          "whatToCheck": "clicking inside the panel does NOT leave the mode.",
+          "tested": false
+        },
+        {
+          "feature": "Leaving",
+          "howToReach": "click empty 3D space, or press Escape",
+          "whatToCheck": "the target is released and the view eases back to the centre.",
+          "tested": false
+        },
+        {
+          "feature": "Back to Z",
+          "howToReach": "choose Z while a node is targeted",
+          "whatToCheck": "the node returns to the centre at once.",
+          "tested": false
+        },
+        {
+          "feature": "Remembered",
+          "howToReach": "reload the page, select a node",
+          "whatToCheck": "the last chosen mode is still on.",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "turn the phone sideways, use L or R",
+          "whatToCheck": "the node is still visible and the free side is usable.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V206 DocNode pages, zoom + direct-grab off",
+      "items": [
+        {
+          "feature": "Page up / Page down",
+          "howToReach": "Select a doc node, open ⟐OmniDoc",
+          "whatToCheck": "▲ Page up and ▼ Page down turn the page; PageUp / PageDown keys do the same while the window has focus (not while typing in the page box).",
+          "tested": false
+        },
+        {
+          "feature": "Two pages",
+          "howToReach": "⟐OmniDoc > Pages > Two pages (open book)",
+          "whatToCheck": "the sheet becomes twice as wide showing pages 1–2; Page down goes to 3–4; the page row says 'showing 3–4'. One page returns.",
+          "tested": false
+        },
+        {
+          "feature": "Zoom %",
+          "howToReach": "type 200 in Zoom, press + / − / Fit",
+          "whatToCheck": "100 shows the whole page; 200 shows the middle part, sharper; Fit returns to 100. Range is 100–400.",
+          "tested": false
+        },
+        {
+          "feature": "Move the zoomed view",
+          "howToReach": "zoom to 200, press ◀ ▲ ▼ ▶",
+          "whatToCheck": "the visible part of the page moves; the buttons are off at 100%.",
+          "tested": false
+        },
+        {
+          "feature": "Inspector",
+          "howToReach": "select a doc node > Appearance > Doc node",
+          "whatToCheck": "Page up/down, Pages and Zoom % work the same.",
+          "tested": false
+        },
+        {
+          "feature": "Click targets on a node",
+          "howToReach": "click a face of a poly node / a button on a sheet",
+          "whatToCheck": "the click reaches the target; the node no longer jitters or follows the mouse.",
+          "tested": false
+        },
+        {
+          "feature": "Menu Grab still works",
+          "howToReach": "right-click a node > Grab / Send to hand",
+          "whatToCheck": "still grabs / sends to the hand as before.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+      "items": [
+        {
+          "feature": "Find the section",
+          "howToReach": "Admin settings > scroll to 'Theme presets' (right under 'Theme'), or search 'Theme presets' in OmniStarLight",
+          "whatToCheck": "seven themes are listed: Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast, each with a small swatch of its panel colours.",
+          "tested": false
+        },
+        {
+          "feature": "Apply a theme",
+          "howToReach": "Click Ember (then Daylight, then Midnight)",
+          "whatToCheck": "the wallpaper and every panel (ribbon, Inspector, Admin, notify box) change colour at once. The Theme group above shows 'Custom' and the new background / border / accent. Text stays readable in every theme.",
+          "tested": false
+        },
+        {
+          "feature": "Wallpaper settings follow",
+          "howToReach": "Apply Ocean, then open the wallpaper settings",
+          "whatToCheck": "its Color and Alpha boxes show the theme's wallpaper values; a video wallpaper that was playing is off.",
+          "tested": false
+        },
+        {
+          "feature": "Save your own",
+          "howToReach": "Set a wallpaper slot, tune the colours in 'Theme' above, type a name, press 'Save current as theme'",
+          "whatToCheck": "it appears under 'My themes'. Apply another theme, then click yours: both the wallpaper (same slot) and the panel colours come back.",
+          "tested": false
+        },
+        {
+          "feature": "Rename, replace, delete",
+          "howToReach": "The ✎ ⟳ × buttons next to one of your themes",
+          "whatToCheck": "rename changes its name, ⟳ replaces it with what is on screen now, × deletes it. The shipped themes have no such buttons.",
+          "tested": false
+        },
+        {
+          "feature": "Survives a reload",
+          "howToReach": "Apply a theme and reload the page",
+          "whatToCheck": "the panel colours and wallpaper are still the theme's (the Save button is not needed for this).",
+          "tested": false
+        },
+        {
+          "feature": "Phone",
+          "howToReach": "Open Admin settings on a phone",
+          "whatToCheck": "the theme buttons are easy to hit and the list scrolls inside the panel.",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "V204 Poly nodes (multi-face solids, every face its own content)",
       "items": [
         {

@@ -261,6 +261,17 @@ export default class WallpaperSettingsPanel {
       this.open()
     }
     window.addEventListener('omni:nav-select', this._onNavSelect)
+    // V205: a theme preset (Admin > Theme presets) sets the wallpaper through this panel so its saved state, slot highlight and the sphere stay in step
+    this._onPreset = (e) => {
+      const patch = e.detail?.patch; if (!patch || typeof patch !== 'object') return
+      this._commit(patch)
+      this._el?.querySelectorAll('[data-slot]').forEach(btn => btn.classList.toggle('is-active', Number(btn.dataset.slot) === this._state.activeSlot))
+      const al = this._el?.querySelector('#ws-alpha'); if (al && patch.alpha !== undefined) al.value = String(patch.alpha)
+      const co = this._el?.querySelector('#ws-color'); if (co && /^#[0-9a-f]{6}$/i.test(patch.color ?? '')) co.value = patch.color
+      this._refreshVideoStatus?.(false, null)
+      this._el?.querySelectorAll('[data-video-slot]').forEach(btn => btn.classList.remove('is-active'))
+    }
+    window.addEventListener('omni:wallpaper-preset-apply', this._onPreset)
 
     window.dispatchEvent(new CustomEvent('omni:wallpaper-settings-set', { detail: { ...this._state } }))
   }
@@ -270,6 +281,7 @@ export default class WallpaperSettingsPanel {
 
   destroy () {
     window.removeEventListener('omni:nav-select', this._onNavSelect)
+    window.removeEventListener('omni:wallpaper-preset-apply', this._onPreset)
     this._el?.parentNode?.removeChild(this._el)
     WindowManager.unregister('wallpapersettings')
   }

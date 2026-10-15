@@ -5,10 +5,230 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V204",
+ "version": "V207",
  "date": "2026-10-15",
  "summary": "V203: DocNode, a flat sheet in the space that shows a PDF, markdown, text, image or guide page (a 2D canvas texture: no CSS3D, no extra GPU context, drawn only as sharp as the distance needs); V199-V202 questions still open",
  "checks": [
+  {
+   "id": "v207-z-l-r-targeting.find-the-setting",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Find the setting",
+   "howToReach": "⟐OmniTargeting > OmniTargetingSettings, top group 'Targeting mode'",
+   "whatToCheck": "Mode (Z centre, L 9 o'clock, R 3 o'clock) and Side distance (20–80 %) are there.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.l-targeting",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "L-Targeting",
+   "howToReach": "choose L, select a node",
+   "whatToCheck": "the view slides so the node sits on the LEFT; the right side is open space. Orbiting and clicking other nodes still work.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.r-targeting",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "R-Targeting",
+   "howToReach": "choose R, select a node",
+   "whatToCheck": "the node sits on the RIGHT; the left side is open space.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.open-a-panel-on-the-free-side",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Open a panel on the free side",
+   "howToReach": "with L on, open a panel (for example ⟐OmniDoc) on the right",
+   "whatToCheck": "clicking inside the panel does NOT leave the mode.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.leaving",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Leaving",
+   "howToReach": "click empty 3D space, or press Escape",
+   "whatToCheck": "the target is released and the view eases back to the centre.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.back-to-z",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Back to Z",
+   "howToReach": "choose Z while a node is targeted",
+   "whatToCheck": "the node returns to the centre at once.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.remembered",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Remembered",
+   "howToReach": "reload the page, select a node",
+   "whatToCheck": "the last chosen mode is still on.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v207-z-l-r-targeting.phone",
+   "category": "V207 Z / L / R Targeting",
+   "version": "V207",
+   "feature": "Phone",
+   "howToReach": "turn the phone sideways, use L or R",
+   "whatToCheck": "the node is still visible and the free side is usable.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.page-up-page-down",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Page up / Page down",
+   "howToReach": "Select a doc node, open ⟐OmniDoc",
+   "whatToCheck": "▲ Page up and ▼ Page down turn the page; PageUp / PageDown keys do the same while the window has focus (not while typing in the page box).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.two-pages",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Two pages",
+   "howToReach": "⟐OmniDoc > Pages > Two pages (open book)",
+   "whatToCheck": "the sheet becomes twice as wide showing pages 1–2; Page down goes to 3–4; the page row says 'showing 3–4'. One page returns.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.zoom",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Zoom %",
+   "howToReach": "type 200 in Zoom, press + / − / Fit",
+   "whatToCheck": "100 shows the whole page; 200 shows the middle part, sharper; Fit returns to 100. Range is 100–400.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.move-the-zoomed-view",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Move the zoomed view",
+   "howToReach": "zoom to 200, press ◀ ▲ ▼ ▶",
+   "whatToCheck": "the visible part of the page moves; the buttons are off at 100%.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.inspector",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Inspector",
+   "howToReach": "select a doc node > Appearance > Doc node",
+   "whatToCheck": "Page up/down, Pages and Zoom % work the same.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.click-targets-on-a-node",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Click targets on a node",
+   "howToReach": "click a face of a poly node / a button on a sheet",
+   "whatToCheck": "the click reaches the target; the node no longer jitters or follows the mouse.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v206-docnode-pages-zoom-direct.menu-grab-still-works",
+   "category": "V206 DocNode pages, zoom + direct-grab off",
+   "version": "V206",
+   "feature": "Menu Grab still works",
+   "howToReach": "right-click a node > Grab / Send to hand",
+   "whatToCheck": "still grabs / sends to the hand as before.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.find-the-section",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Find the section",
+   "howToReach": "Admin settings > scroll to 'Theme presets' (right under 'Theme'), or search 'Theme presets' in OmniStarLight",
+   "whatToCheck": "seven themes are listed: Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast, each with a small swatch of its panel colours.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.apply-a-theme",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Apply a theme",
+   "howToReach": "Click Ember (then Daylight, then Midnight)",
+   "whatToCheck": "the wallpaper and every panel (ribbon, Inspector, Admin, notify box) change colour at once. The Theme group above shows 'Custom' and the new background / border / accent. Text stays readable in every theme.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.wallpaper-settings-follow",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Wallpaper settings follow",
+   "howToReach": "Apply Ocean, then open the wallpaper settings",
+   "whatToCheck": "its Color and Alpha boxes show the theme's wallpaper values; a video wallpaper that was playing is off.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.save-your-own",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Save your own",
+   "howToReach": "Set a wallpaper slot, tune the colours in 'Theme' above, type a name, press 'Save current as theme'",
+   "whatToCheck": "it appears under 'My themes'. Apply another theme, then click yours: both the wallpaper (same slot) and the panel colours come back.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.rename-replace-delete",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Rename, replace, delete",
+   "howToReach": "The ✎ ⟳ × buttons next to one of your themes",
+   "whatToCheck": "rename changes its name, ⟳ replaces it with what is on screen now, × deletes it. The shipped themes have no such buttons.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.survives-a-reload",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Survives a reload",
+   "howToReach": "Apply a theme and reload the page",
+   "whatToCheck": "the panel colours and wallpaper are still the theme's (the Save button is not needed for this).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v205-theme-presets-wallpaper-p.phone",
+   "category": "V205 Theme presets (wallpaper + panel colours in one click)",
+   "version": "V205",
+   "feature": "Phone",
+   "howToReach": "Open Admin settings on a phone",
+   "whatToCheck": "the theme buttons are easy to hit and the list scrolls inside the panel.",
+   "priority": "normal",
+   "device": "phone"
+  },
   {
    "id": "v204-poly-nodes-multi-face-sol.create-a-poly-node",
    "category": "V204 Poly nodes (multi-face solids, every face its own content)",
@@ -4013,6 +4233,114 @@ export default {
    ],
    "device": "any",
    "version": "V204"
+  },
+  {
+   "id": "v205-theme-set",
+   "question": "Which themes do you want in the shipped list, and which of mine should go?",
+   "why": "I made seven (Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast). Most use a plain-colour wallpaper because the app ships only one picture. If you have wallpapers you want as part of a theme, put them in a slot and use 'Save current as theme', or tell me and I will add them.",
+   "kind": "choice",
+   "choices": [
+    "Keep these seven",
+    "Add more colour themes",
+    "Add themes with pictures (I will send the pictures)",
+    "Remove some (tell me which)"
+   ],
+   "device": "any",
+   "version": "V205"
+  },
+  {
+   "id": "v205-theme-text",
+   "question": "Does the text stay readable on every panel in every theme (especially Daylight and High contrast)?",
+   "why": "Some older panels use fixed colours instead of the theme variables, so they may keep dark colours on a light theme. I could only look at one screenshot.",
+   "kind": "choice",
+   "choices": [
+    "All readable",
+    "Some panels look wrong (tell me which)",
+    "Daylight is too bright",
+    "High contrast is not contrasty enough"
+   ],
+   "device": "any",
+   "version": "V205"
+  },
+  {
+   "id": "v206-zoom-range",
+   "question": "Is zoom 100–400 enough, or do you want to zoom OUT below 100 (smaller page inside the sheet)?",
+   "why": "I made 100 = the whole page.",
+   "kind": "choice",
+   "choices": [
+    "Enough",
+    "Want below 100",
+    "Want above 400"
+   ],
+   "device": "any",
+   "version": "V206"
+  },
+  {
+   "id": "v206-grab-click",
+   "question": "Can you now click targets on top of a node?",
+   "why": "Direct drag is off; the menu Grab still works.",
+   "kind": "choice",
+   "choices": [
+    "Yes, works",
+    "Still blocked (tell me where)",
+    "I want drag back as a setting"
+   ],
+   "device": "any",
+   "version": "V206"
+  },
+  {
+   "id": "v206-ltarget",
+   "question": "L-Targeting: when the origin moves to 9 o'clock, should the camera/aim keep working there, and what opens in the freed area (a panel, a node, both)? Can L and R be on together?",
+   "why": "Discussion only; nothing built yet.",
+   "kind": "choice",
+   "choices": [
+    "Panel only",
+    "Panel or node",
+    "Both L and R at once",
+    "Let me explain"
+   ],
+   "device": "any",
+   "version": "V206"
+  },
+  {
+   "id": "v207-side-distance",
+   "question": "Does the node sit where you imagined for L / R at 50 % (a quarter of the screen from the edge)?",
+   "why": "You said 9 / 3 o'clock; the very edge would hide the node under the HUD, so I made it adjustable.",
+   "kind": "choice",
+   "choices": [
+    "About right",
+    "Closer to the edge",
+    "Closer to the centre",
+    "Make the default different (tell me)"
+   ],
+   "device": "any",
+   "version": "V207"
+  },
+  {
+   "id": "v207-side-leave",
+   "question": "Is 'click empty space or Escape leaves the mode' the right way out?",
+   "why": "It reuses the existing release; a panel click does not leave.",
+   "kind": "choice",
+   "choices": [
+    "Yes",
+    "Also leave when I press a key (tell me which)",
+    "Stay until I choose Z"
+   ],
+   "device": "any",
+   "version": "V207"
+  },
+  {
+   "id": "v207-side-panels",
+   "question": "What should open in the free space on its own: nothing (you open panels yourself), or a chosen panel/node?",
+   "why": "I built only the view shift for now; auto-opening is a separate step.",
+   "kind": "choice",
+   "choices": [
+    "Nothing, I open them",
+    "Open a panel I choose",
+    "Open a node I choose"
+   ],
+   "device": "any",
+   "version": "V207"
   }
  ],
  "knownIssues": [
@@ -4040,6 +4368,9 @@ export default {
   "V202: decks work on audio-library clips only; song and sound strips have no cue or loop. One loop, one cue and 4 hot cues per strip.",
   "V203: doc nodes show one page at a time and cannot yet be clicked, scrolled or selected on the sheet itself (use ⟐OmniDoc or the Inspector). PDF forms, annotations and links are not interactive. .docx / .pptx are not supported (export to PDF first). A PDF needs the internet the first time to load the PDF reader (pdf.js from a CDN); markdown, text, images and guide pages do not.",
   "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none.",
-  "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active."
+  "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active.",
+  "V205: panels built with fixed colours (not the --omni-theme-* variables) do not follow a theme; wallpaper slots are per browser, so a saved theme that uses a slot shows the plain colour if the slot is empty there.",
+  "V206: direct grab (press a node to grab) is off by default; re-enable with event omni:grab-drag-set {enabled:true}. Zoom out below 100% is not offered. Two-page mode turns pages two at a time.",
+  "V207: L / R only shift the picture; nothing opens in the free space by itself. The ribbon icon still says ⟐Z whatever the mode. Not yet seen in a real browser."
  ]
 }

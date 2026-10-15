@@ -5,7 +5,7 @@
  */
 
 import { SERVICES } from '../utils/OmniExtraKinds.js'
-import { describeDoc, setWidth } from '../utils/OmniDocModel.js'
+import { describeDoc, setWidth, ZOOM_MIN, ZOOM_MAX } from '../utils/OmniDocModel.js'
 import { esc } from './OmniSoundFields.js'
 
 const NAV_ITEM = '⟐OmniDoc'
@@ -39,6 +39,8 @@ export function runDocAction (act, id, arg = null) {
   switch (act) {
     case 'prev': case 'next': { const r = s.turn(id, act === 'prev' ? -1 : 1); return r.ok ? { ok: true, text: r.same ? (act === 'prev' ? 'This is the first page.' : 'This is the last page.') : `Page ${s.getDoc(id).page}.` } : { ok: false, text: r.error || 'Could not turn the page.' } }
     case 'width': { const r = s.edit(id, 'width', (m) => setWidth(m, Number(arg)), 'width'); return r.ok ? { ok: true, text: `Width ${s.getDoc(id).width}.` } : { ok: false, text: r.error } }
+    case 'spread': { const r = s.setSpread(id, String(arg)); return r.ok ? { ok: true, text: s.getDoc(id).spread === 'double' ? 'Two pages.' : 'One page.' } : { ok: false, text: r.error } }
+    case 'zoom': { const r = s.setZoom(id, Number(arg)); return r.ok ? { ok: true, text: `Zoom ${s.getDoc(id).zoom}%.` } : { ok: false, text: r.error } }
     case 'open': openPanel(); return { ok: true, text: 'Opening ⟐OmniDoc…' }
     default: return { ok: false, text: 'Unknown action.' }
   }
@@ -50,7 +52,9 @@ export function docKindBlockHTML (data) {
   return `<div class="oi-custom-section" id="oi-custom-doc" data-oidc-root data-kind="docNode" data-node-id="${esc(data.id)}">
     <div class="oi-custom-title">⟐ Doc node</div>
     <div class="oidc-row"><span class="oidc-note" style="margin:0;flex:1 1 100%" data-testid="oidc-state">${esc(stateText(data.id))}</span></div>
-    <div class="oidc-row"><button class="oi-btn-small" data-oidca="prev" aria-label="Previous page">◀ Page</button><button class="oi-btn-small" data-oidca="next" aria-label="Next page">Page ▶</button></div>
+    <div class="oidc-row"><button class="oi-btn-small" data-oidca="prev" aria-label="Page up (previous page)">▲ Page up</button><button class="oi-btn-small" data-oidca="next" aria-label="Page down (next page)">▼ Page down</button></div>
+    <div class="oidc-row"><span class="oi-label">Pages</span><select class="oidc-in" data-oidc="spread" aria-label="One page or two pages" style="flex:1 1 auto"><option value="single"${d?.spread !== 'double' ? ' selected' : ''}>One page</option><option value="double"${d?.spread === 'double' ? ' selected' : ''}>Two pages</option></select></div>
+    <div class="oidc-row"><span class="oi-label">Zoom %</span><input class="oidc-in" type="number" data-oidc="zoom" min="${ZOOM_MIN}" max="${ZOOM_MAX}" step="25" value="${d?.zoom ?? 100}" aria-label="Zoom percent"></div>
     <div class="oidc-row"><span class="oi-label">Width</span><input class="oidc-in" type="number" data-oidc="width" min="0.5" max="60" step="0.5" value="${d?.width ?? 4}" aria-label="Sheet width"></div>
     <div class="oidc-row"><button class="oi-btn-small" data-oidca="open">⚙ Open ⟐OmniDoc</button></div>
     <div class="oidc-msg" role="status" aria-live="polite" data-ref="oidc-msg"></div>
@@ -67,7 +71,11 @@ export function wireDocKindBlock (root, data) {
     say(sec, runDocAction(b.dataset.oidca, data.id)); setTimeout(() => refreshLive(sec), 0)
   })
   sec.addEventListener('change', (e) => {
-    const el = e.target; if (el.dataset?.oidc !== 'width' || !Number.isFinite(Number(el.value))) return
+    const el = e.target; const k = el.dataset?.oidc; if (!k) return
+    if (k === 'spread') { say(sec, runDocAction('spread', data.id, el.value)); refreshLive(sec, el); return }
+    if (!Number.isFinite(Number(el.value))) return
+    if (k === 'zoom') { say(sec, runDocAction('zoom', data.id, Number(el.value))); refreshLive(sec, el); return }
+    if (k !== 'width') return
     say(sec, runDocAction('width', data.id, Number(el.value))); refreshLive(sec, el)
   })
 }
@@ -80,7 +88,7 @@ function refreshLive (root, skip = null) {
   const id = root.dataset.nodeId; const s = svc(); if (!id || !s) return
   const d = s.getDoc(id); if (!d) return
   const st = root.querySelector('[data-testid="oidc-state"]'); if (st) st.textContent = stateText(id)
-  root.querySelectorAll('[data-oidc="width"]').forEach(el => { if (el !== skip && document.activeElement !== el) el.value = String(d.width) })
+  root.querySelectorAll('[data-oidc]').forEach(el => { if (el === skip || document.activeElement === el) return; const k = el.dataset.oidc; el.value = String(k === 'width' ? d.width : k === 'zoom' ? d.zoom : d.spread) })
 }
 
 let LIVE_BOUND = false

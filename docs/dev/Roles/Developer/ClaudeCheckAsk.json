@@ -1,6 +1,6 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V203",
+  "version": "V207",
   "date": "2026-10-15",
   "summary": "V203: DocNode, a flat sheet in the space that shows a PDF, markdown, text, image or guide page (a 2D canvas texture: no CSS3D, no extra GPU context, drawn only as sharp as the distance needs); V199-V202 questions still open",
   "asks": [
@@ -816,6 +816,114 @@
       ],
       "device": "any",
       "version": "V204"
+    },
+    {
+      "id": "v205-theme-set",
+      "question": "Which themes do you want in the shipped list, and which of mine should go?",
+      "why": "I made seven (Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast). Most use a plain-colour wallpaper because the app ships only one picture. If you have wallpapers you want as part of a theme, put them in a slot and use 'Save current as theme', or tell me and I will add them.",
+      "kind": "choice",
+      "choices": [
+        "Keep these seven",
+        "Add more colour themes",
+        "Add themes with pictures (I will send the pictures)",
+        "Remove some (tell me which)"
+      ],
+      "device": "any",
+      "version": "V205"
+    },
+    {
+      "id": "v205-theme-text",
+      "question": "Does the text stay readable on every panel in every theme (especially Daylight and High contrast)?",
+      "why": "Some older panels use fixed colours instead of the theme variables, so they may keep dark colours on a light theme. I could only look at one screenshot.",
+      "kind": "choice",
+      "choices": [
+        "All readable",
+        "Some panels look wrong (tell me which)",
+        "Daylight is too bright",
+        "High contrast is not contrasty enough"
+      ],
+      "device": "any",
+      "version": "V205"
+    },
+    {
+      "id": "v206-zoom-range",
+      "question": "Is zoom 100–400 enough, or do you want to zoom OUT below 100 (smaller page inside the sheet)?",
+      "why": "I made 100 = the whole page.",
+      "kind": "choice",
+      "choices": [
+        "Enough",
+        "Want below 100",
+        "Want above 400"
+      ],
+      "device": "any",
+      "version": "V206"
+    },
+    {
+      "id": "v206-grab-click",
+      "question": "Can you now click targets on top of a node?",
+      "why": "Direct drag is off; the menu Grab still works.",
+      "kind": "choice",
+      "choices": [
+        "Yes, works",
+        "Still blocked (tell me where)",
+        "I want drag back as a setting"
+      ],
+      "device": "any",
+      "version": "V206"
+    },
+    {
+      "id": "v206-ltarget",
+      "question": "L-Targeting: when the origin moves to 9 o'clock, should the camera/aim keep working there, and what opens in the freed area (a panel, a node, both)? Can L and R be on together?",
+      "why": "Discussion only; nothing built yet.",
+      "kind": "choice",
+      "choices": [
+        "Panel only",
+        "Panel or node",
+        "Both L and R at once",
+        "Let me explain"
+      ],
+      "device": "any",
+      "version": "V206"
+    },
+    {
+      "id": "v207-side-distance",
+      "question": "Does the node sit where you imagined for L / R at 50 % (a quarter of the screen from the edge)?",
+      "why": "You said 9 / 3 o'clock; the very edge would hide the node under the HUD, so I made it adjustable.",
+      "kind": "choice",
+      "choices": [
+        "About right",
+        "Closer to the edge",
+        "Closer to the centre",
+        "Make the default different (tell me)"
+      ],
+      "device": "any",
+      "version": "V207"
+    },
+    {
+      "id": "v207-side-leave",
+      "question": "Is 'click empty space or Escape leaves the mode' the right way out?",
+      "why": "It reuses the existing release; a panel click does not leave.",
+      "kind": "choice",
+      "choices": [
+        "Yes",
+        "Also leave when I press a key (tell me which)",
+        "Stay until I choose Z"
+      ],
+      "device": "any",
+      "version": "V207"
+    },
+    {
+      "id": "v207-side-panels",
+      "question": "What should open in the free space on its own: nothing (you open panels yourself), or a chosen panel/node?",
+      "why": "I built only the view shift for now; auto-opening is a separate step.",
+      "kind": "choice",
+      "choices": [
+        "Nothing, I open them",
+        "Open a panel I choose",
+        "Open a node I choose"
+      ],
+      "device": "any",
+      "version": "V207"
     }
   ],
   "knownIssues": [
@@ -843,6 +951,9 @@
     "V202: decks work on audio-library clips only; song and sound strips have no cue or loop. One loop, one cue and 4 hot cues per strip.",
     "V203: doc nodes show one page at a time and cannot yet be clicked, scrolled or selected on the sheet itself (use ⟐OmniDoc or the Inspector). PDF forms, annotations and links are not interactive. .docx / .pptx are not supported (export to PDF first). A PDF needs the internet the first time to load the PDF reader (pdf.js from a CDN); markdown, text, images and guide pages do not.",
     "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none.",
-    "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active."
+    "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active.",
+    "V205: panels built with fixed colours (not the --omni-theme-* variables) do not follow a theme; wallpaper slots are per browser, so a saved theme that uses a slot shows the plain colour if the slot is empty there.",
+    "V206: direct grab (press a node to grab) is off by default; re-enable with event omni:grab-drag-set {enabled:true}. Zoom out below 100% is not offered. Two-page mode turns pages two at a time.",
+    "V207: L / R only shift the picture; nothing opens in the free space by itself. The ribbon icon still says ⟐Z whatever the mode. Not yet seen in a real browser."
   ]
 }

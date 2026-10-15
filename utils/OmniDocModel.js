@@ -3,7 +3,9 @@
  * No DOM, no WebGL, no imports. sanitize never throws, is idempotent, is hostile-input and __proto__ safe, with caps; edit ops are immutable.
  *
  * Stored in node.data.doc:  { version, title, source:{ type, id }, page (1-based), pages (cached count, 0 = unknown), aspect (page height / width), width (world units),
- *                             sides 'double'|'front', paper '#rrggbb', frame (bool), quality 'auto'|'low'|'high' }
+ *                             sides 'double'|'front', paper '#rrggbb', frame (bool), quality 'auto'|'low'|'high',
+ *                             spread 'single'|'double' (V206: one page, or two side by side like an open book: pages 1-2, 3-4 ... `page` is then the LEFT page and is odd),
+ *                             zoom (V206: percent, 100 = the whole page fits the sheet, up to 400), panX / panY (-1..1, where the zoomed view looks) }
  * source.type: 'none' | 'guide' (id = a guide page id) | 'pdf' | 'markdown' | 'text' | 'image' (id = an id in the document library, utils/OmniDocAssets.js).
  *
  * Also here, the maths that keeps the GPU cost low (used by systems/OmniDocNodes.js, tested in Node):
@@ -16,6 +18,10 @@ export const KIND_DOC = 'docNode'
 export const SOURCE_TYPES = Object.freeze(['none', 'guide', 'pdf', 'markdown', 'text', 'image'])
 export const SIDES = Object.freeze(['double', 'front'])
 export const QUALITIES = Object.freeze(['auto', 'low', 'high'])
+export const SPREADS = Object.freeze(['single', 'double'])
+export const ZOOM_MIN = 100
+export const ZOOM_MAX = 400
+export const ZOOM_STEP = 25
 export const DOC_LIMITS = Object.freeze({ pages: 5000, titleMax: 80, idMax: 64, widthMin: 0.5, widthMax: 60, widthDefault: 4, aspectMin: 0.2, aspectMax: 5, aspectDefault: 1.414 })
 /** Texture widths a page may be drawn at (power-of-two steps; 0 = not drawn). */
 export const RASTER_STEPS = Object.freeze([128, 256, 512, 1024, 2048, 4096])
@@ -52,6 +58,9 @@ export function sanitizeDoc (raw) {
   const pages = Math.round(num(get(r, 'pages'), 0, 0, L.pages))
   let page = Math.round(num(get(r, 'page'), 1, 1, L.pages))
   if (pages > 0 && page > pages) page = pages
+  const spread = pickOf(get(r, 'spread'), SPREADS, 'single')
+  if (spread === 'double' && page % 2 === 0) page -= 1          // a spread starts on an odd page: 1-2, 3-4 ...
+  const zoom = Math.round(num(get(r, 'zoom'), 100, ZOOM_MIN, ZOOM_MAX))
   return {
     version: DOC_VERSION,
     title: cleanText(get(r, 'title'), L.titleMax, ''),
@@ -63,6 +72,9 @@ export function sanitizeDoc (raw) {
     paper: typeof get(r, 'paper') === 'string' && HEX.test(get(r, 'paper')) ? get(r, 'paper').toLowerCase() : '#ffffff',
     frame: typeof get(r, 'frame') === 'boolean' ? get(r, 'frame') : true,
     quality: pickOf(get(r, 'quality'), QUALITIES, 'auto'),
+    spread, zoom,
+    panX: zoom === 100 ? 0 : r3(num(get(r, 'panX'), 0, -1, 1)),
+    panY: zoom === 100 ? 0 : r3(num(get(r, 'panY'), 0, -1, 1)),
   }
 }
 
@@ -74,7 +86,18 @@ export function setSource (doc, type, id, title = null) {
 }
 export function setPage (doc, page) { return edit(doc, (d) => { d.page = Math.round(num(page, d.page, 1, L.pages)) }) }
 /** Next (+1) / previous (-1) page; stops at the ends. */
-export function turn (doc, dir) { return edit(doc, (d) => { d.page = d.page + (dir < 0 ? -1 : 1); if (d.page < 1) return false }) }
+export function turn (doc, dir) {
+  return edit(doc, (d) => {
+    const step = d.spread === 'double' ? 2 : 1
+    const next = d.page + (dir < 0 ? -step : step)
+    if (next < 1) return false
+    if (d.pages > 0 && next > d.pages) return false            // the last page (or last spread) stays
+    d.page = next
+  })
+}
+/** V206: Page Up / Page Down are the same as previous / next. */
+export const pageUp = (doc) => turn(doc, -1)
+export const pageDown = (doc) => turn(doc, 1)
 /** The loader found out the real page count and shape of the document. */
 export function setPages (doc, pages, aspect = null) { return edit(doc, (d) => { d.pages = Math.round(num(pages, 0, 0, L.pages)); if (aspect !== null) d.aspect = num(aspect, d.aspect, L.aspectMin, L.aspectMax) }) }
 export function setTitle (doc, title) { return edit(doc, (d) => { d.title = title }) }
@@ -83,12 +106,31 @@ export function setSides (doc, s) { return edit(doc, (d) => { d.sides = s }) }
 export function setQuality (doc, q) { return edit(doc, (d) => { d.quality = q }) }
 export function setPaper (doc, c) { return edit(doc, (d) => { d.paper = c }) }
 export function setFrame (doc, on) { return edit(doc, (d) => { d.frame = !!on }) }
+/** V206: one page or two side by side. Switching to two keeps the page you are on (an even page becomes the right half of its spread). */
+export function setSpread (doc, mode) { return edit(doc, (d) => { if (!SPREADS.includes(mode)) return false; d.spread = mode }) }
+/** V206: zoom in percent (100 = fit, 400 = four times). Going back to 100 re-centres. */
+export function setZoom (doc, z) { return edit(doc, (d) => { d.zoom = num(z, d.zoom, ZOOM_MIN, ZOOM_MAX); if (Math.round(d.zoom) === 100) { d.panX = 0; d.panY = 0 } }) }
+/** V206: step the zoom up (+1) or down (-1) by 25 points. */
+export const zoomBy = (doc, dir) => setZoom(doc, Math.round(sanitizeDoc(doc).zoom / ZOOM_STEP) * ZOOM_STEP + (dir < 0 ? -ZOOM_STEP : ZOOM_STEP))
+/** V206: where the zoomed view looks (-1..1 on each axis; the sheet shows a window of the page). Only when zoomed in. */
+export function setPan (doc, x, y) { return edit(doc, (d) => { if (d.zoom <= 100) return false; d.panX = num(x, d.panX, -1, 1); d.panY = num(y, d.panY, -1, 1) }) }
+/** The pages on the sheet now: [left, right] (right = 0 when there is none: a single page, or the last page of an odd-length document). */
+export function visiblePages (doc) {
+  const d = sanitizeDoc(doc)
+  if (d.spread !== 'double') return [d.page, 0]
+  return [d.page, d.pages > 0 && d.page + 1 > d.pages ? 0 : d.page + 1]
+}
+/** The size of the sheet in the space: one page is `width` wide, a spread twice that, the height stays the page height. */
+export function sheetSize (doc) {
+  const d = sanitizeDoc(doc); const k = d.spread === 'double' ? 2 : 1
+  return { width: d.width * k, aspect: d.aspect / k, height: d.width * d.aspect }
+}
 
 /** Short human description for the Inspector. */
 export function describeDoc (d) {
   if (!d || d.source.type === 'none') return 'No document yet.'
   const kind = { guide: 'guide page', pdf: 'PDF', markdown: 'markdown', text: 'text', image: 'image' }[d.source.type] ?? 'document'
-  return `${d.title || d.source.id}, ${kind}, ${d.pages > 0 ? `page ${d.page} of ${d.pages}` : `page ${d.page}`}.`
+  return `${d.title || d.source.id}, ${kind}, ${(() => { const [l, r] = visiblePages(d); const pg = r ? `pages ${l}-${r}` : `page ${l}`; return d.pages > 0 ? `${pg} of ${d.pages}` : pg })()}${d.zoom !== 100 ? `, zoom ${d.zoom}%` : ''}.`
 }
 
 // ── GPU cost control ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -141,6 +183,7 @@ export function planBudget (requests, budgetPixels) {
 }
 
 export default {
-  DOC_VERSION, KIND_DOC, DOC_LIMITS, RASTER_STEPS, defaultDoc, sanitizeDoc, setSource, setPage, turn, setPages, setTitle, setWidth, setSides, setQuality, setPaper, setFrame,
+  DOC_VERSION, KIND_DOC, DOC_LIMITS, RASTER_STEPS, defaultDoc, sanitizeDoc, setSource, setPage, turn, pageUp, pageDown, setPages, setTitle, setWidth, setSides, setQuality, setPaper, setFrame,
+  setSpread, setZoom, zoomBy, setPan, visiblePages, sheetSize, SPREADS, ZOOM_MIN, ZOOM_MAX,
   describeDoc, rasterWidthFor, planBudget,
 }

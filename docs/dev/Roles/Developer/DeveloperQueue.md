@@ -1442,3 +1442,20 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 5. Faces are not child nodes; if faces must be individually selectable in the hierarchy or movable, that is a larger change (each face would become a node).
 6. Document faces re-render the whole atlas when any face changes; fine for 20 faces, worth caching per-cell bitmaps if a node ever has dozens.
 7. Still open from before: items 89, 92, 93 (export as audio, pattern strips, lane editor, jog wheels, V199 orbit / tunnel / skybox nodes, page turning on doc sheets).
+
+## 95. V205: Theme presets
+
+1. Panels with fixed colours (not `--omni-theme-*`) ignore a theme; a list of them would help decide what to convert (ask `v205-theme-text`).
+2. Shipped themes mostly use a plain-colour wallpaper (only one picture ships); pictures per theme need files from the owner (ask `v205-theme-set`).
+3. A theme that uses a wallpaper slot depends on that slot in this browser; exporting a theme with its picture would need the picture inside the export (Export Reality already carries the slots, the theme only the slot number).
+4. Still open from before: items 89, 92, 93, 94.
+
+## 96. V206: DocNode spread/zoom, direct grab off
+1. L-Targeting / R-Targeting (HUD side origin at 9 / 3 o'clock) is next, after the owner answers `v206-ltarget`.
+2. Zoom below 100% not offered (ask `v206-zoom-range`).
+3. Direct grab can return as a setting (ask `v206-grab-click`).
+
+## 97. V207: Z / L / R Targeting
+1. Auto-open a panel/node in the free space (ask `v207-side-panels`).
+2. Ribbon icon label could show the mode (Z/L/R).
+3. Check on a real browser and phone.

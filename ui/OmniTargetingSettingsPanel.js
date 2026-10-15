@@ -8,6 +8,7 @@
 
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
+import * as Side from '../utils/OmniSideTargeting.js'
 import { targetTextureStore, TARGET_TEXTURE_SLOTS, TARGETING_GEOMETRIES } from '../modules/OmniTargeting.js'
 
 const STORE_KEY = 'omni:targeting:settings'
@@ -194,6 +195,10 @@ export default class OmniTargetingSettingsPanel {
     this._el.querySelector('[data-field="geometry"]').value = s.geometry
     this._el.querySelector('[data-field="color"]').value = s.color
     this._el.querySelector('[data-field="alpha"]').value = s.alpha
+    const m = Side.load()
+    this._el.querySelector('[data-field="mode"]').value = m.mode
+    this._el.querySelector('[data-field="distance"]').value = Math.round(m.distance * 100)
+    this._el.querySelector('[data-ref="modenote"]').textContent = Side.MODE_INFO[m.mode].note
   }
 
   async _refreshSlots () {
@@ -230,13 +235,23 @@ export default class OmniTargetingSettingsPanel {
     el.className = 'omni-targeting-settings-panel'
     el.innerHTML = `
       <div class="ts-header">
-        <span class="ts-title">⟐Targeting — Direct Settings</span>
+        <span class="ts-title">⟐Targeting — Settings (Z · L · R)</span>
         <div class="ts-controls">
           <button class="ts-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="ts-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
       <div class="ts-body">
+        <div class="ts-group-title">Targeting mode</div>
+        <div class="ts-row"><span class="ts-row-label">Mode</span>
+          <select class="ts-select" data-field="mode" aria-label="Targeting mode">
+            ${Side.MODES.map(m => `<option value="${m}">${Side.MODE_INFO[m].label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="ts-row"><span class="ts-row-label">Side distance</span><input class="ts-num-input" type="number" min="${Side.DISTANCE_MIN * 100}" max="${Side.DISTANCE_MAX * 100}" step="5" data-field="distance" aria-label="Side distance percent"> %</div>
+        <div class="ts-note" data-ref="modenote"></div>
+        <div class="ts-note">Only one mode at a time. A click on empty space (not on a panel) lets go of the target and the view returns to the centre.</div>
+
         <div class="ts-group-title">Marker Geometry</div>
         <div class="ts-row"><span class="ts-row-label">targetRadiusGeometry</span>
           <select class="ts-select" data-field="geometry">
@@ -261,6 +276,12 @@ export default class OmniTargetingSettingsPanel {
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
 
+    const modeSet = (patch) => {
+      window.dispatchEvent(new CustomEvent('omni:targeting-mode-set', { detail: patch }))
+      const m = Side.load(); el.querySelector('[data-ref="modenote"]').textContent = Side.MODE_INFO[m.mode].note
+    }
+    el.querySelector('[data-field="mode"]').addEventListener('change', (e) => modeSet({ mode: e.target.value }))
+    el.querySelector('[data-field="distance"]').addEventListener('change', (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) modeSet({ distance: v / 100 }) })
     el.querySelector('[data-field="geometry"]').addEventListener('change', (e) => {
       window.dispatchEvent(new CustomEvent('omni:targeting-set', { detail: { geometry: e.target.value } }))
     })

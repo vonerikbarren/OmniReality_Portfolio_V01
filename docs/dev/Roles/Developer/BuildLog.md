@@ -1,4 +1,26 @@
+## 2026-10-15 — V207: Z / L / R Targeting
+- New `utils/OmniSideTargeting.js` + `systems/OmniSideTargeting.js`: while a target is held, `camera.setViewOffset` slides the view so the target sits left (L, 9 o'clock) or right (R, 3 o'clock); Z = centre. One mode at a time; saved. Release = existing OmniOrbitRelease (empty-space click / Escape); panel clicks do not release.
+- Targeting settings panel: new 'Targeting mode' group (Mode, Side distance). Event `omni:targeting-mode-set`, out `omni:targeting-mode-changed`.
+- Test v207_side_targeting (27). Guide page 22.
+
+## 2026-10-15 — V206: DocNode page up/down, two-page spread, zoom %; direct node grab turned off
+- DocNode: Page up/down buttons + keys, One/Two pages, Zoom 100–400 with pan; Inspector too. Model/mesh/runtime spread-aware.
+- OmniGrab: pressing a node no longer grabs it (so targets on a node can be clicked); menu Grab/Send to hand unchanged; event `omni:grab-drag-set {enabled}` re-enables.
+- Test v206_spread (51). Sweep same as V205 (v195d 'note editor: delete' is an existing flaky test).
+
 # Build Log
+
+## 2026-10-15 — V205: Theme presets in Admin settings (a wallpaper + rgba panel colours in one click)
+
+Requested: a new section in the Admin settings called theme, under the border / panel / text section: "just a wallpaper + rgba() combo so we dont have to go into the settings for wallpaper then manually changing the panel colors."
+- **Where:** a new group **Theme presets** directly under the existing **Theme** group (that group already has the panel theme list and the Background / Border / Accent boxes, so the new one has a different name instead of two groups both called Theme).
+- **`utils/OmniThemePresets.js` (new, pure):** a preset = wallpaper (`image` = default picture, `slot` = one of the 20 saved wallpaper slots, `color` = plain colour, plus alpha) + nine panel colours (bg, border, headerBg, text, textDim, textMuted, accent, inputBg, inputBorder). Seven shipped (Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast). Every colour is validated (rgb, rgba, #hex only, so a hostile string never reaches a CSS variable); sanitize is idempotent and `__proto__` safe; your own themes in `omni:admin:themePresets` (max 24, add / rename / replace / delete, corrupt storage = empty); `captureCurrent` builds a preset from the wallpaper settings and the colours now in use (a video wallpaper or a blob picture is not captured, a colour is used instead).
+- **`ui/AdminPanel.js`:** the list with swatches, click to apply (panel colours through `ThemeManager.setCustomTheme`, so they persist and the Theme group above shows them; wallpaper through the event below), **Save current as theme** with a name, and Rename / Replace / Delete on your own. `ui/ThemeManager.js` `getAppliedTokens()`.
+- **`ui/WallpaperSettingsPanel.js`:** listens for `omni:wallpaper-preset-apply { patch }` and commits it like any change of its own (saved state, the sphere, the slot highlight, colour and alpha boxes, video off), so the panel and the wallpaper never disagree.
+- **Also:** StarLight site `themepresets`, guide page 09 row, checklist V205 (7 checks), 2 questions.
+- **Real Chromium:** the section sits under Theme, seven cards with swatches, clicking Ember re-coloured the whole interface and the wallpaper and saved both (checked in localStorage).
+- **Tests:** v205_theme_presets 77 (validation, hostile input, presets, capture, storage, cap, the Admin group, apply, save, replace, delete, the wallpaper panel). Earlier suites compared against V204.
+- **Not verified:** a phone; panels built with fixed colours do not follow a theme (they were never wired to the theme variables).
 
 ## 2026-10-15 — V204: PolyNode, solids / planes / strips / rings whose every face holds its own colour, picture, text, document or sound
 

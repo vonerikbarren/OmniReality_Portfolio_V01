@@ -30,6 +30,7 @@ How to use OmniOS (the product from OmniStar, the company), written for a first-
 | 19 | [Mix nodes](19_Mix_Nodes.md) | A mixing desk with DJ crossfader: strips for sounds, songs and audio clips, EQ, sends, DJ moves saved as automation, recording; audio strips are decks (waveform, cue, hot cues, loops, tap tempo, pitch, key lock) |
 | 20 | [Doc nodes](20_Doc_Nodes.md) | A sheet in the space that shows a PDF, markdown, text, image or guide page; import, page turns, size, copy text, how it keeps the GPU light |
 | 21 | [Poly nodes](21_Poly_Nodes.md) | A solid, plane, strip or ring whose every face holds its own colour, pattern, text, image, document or sound; tap a face for its menu; tags, events |
+| 22 | [Targeting: Z, L and R](22_Targeting_Z_L_R.md) | Put the target in the centre (Z), on the left at 9 o'clock (L) or on the right at 3 o'clock (R), leaving the other side of the HUD free |
 
 ## 60-second tour
 

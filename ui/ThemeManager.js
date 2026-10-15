@@ -93,3 +93,13 @@ export function getSavedThemeName () {
 export async function initTheme () {
   await setTheme(getSavedThemeName())
 }
+
+/** V205: the panel colours in effect right now (what the --omni-theme-* variables hold), with the built-in dark values where a variable is empty. Used by Admin > Theme presets to save what is on screen. */
+export function getAppliedTokens () {
+  const dark = { bg: 'rgba(8, 8, 12, 0.92)', border: 'rgba(255, 255, 255, 0.09)', headerBg: 'rgba(255, 255, 255, 0.03)', text: 'rgba(255, 255, 255, 0.95)', textDim: 'rgba(255, 255, 255, 0.70)', textMuted: 'rgba(255, 255, 255, 0.48)', accent: '#7fd8ff', inputBg: 'rgba(255, 255, 255, 0.10)', inputBorder: 'rgba(255, 255, 255, 0.18)' }
+  const vars = { bg: '--omni-theme-bg', border: '--omni-theme-border', headerBg: '--omni-theme-header-bg', text: '--omni-theme-text', textDim: '--omni-theme-text-dim', textMuted: '--omni-theme-text-muted', accent: '--omni-theme-accent', inputBg: '--omni-theme-input-bg', inputBorder: '--omni-theme-input-border' }
+  const out = {}
+  const st = typeof document !== 'undefined' ? document.documentElement.style : null
+  for (const k of Object.keys(vars)) { const v = st?.getPropertyValue(vars[k])?.trim(); out[k] = v || dark[k] }
+  return out
+}

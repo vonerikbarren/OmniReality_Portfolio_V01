@@ -26,6 +26,7 @@ Staged: changes apply when you press 💾.
 | Group | Options |
 |---|---|
 | Theme | Panel theme (Dark, Light, Custom); for Custom type Background, Border and Accent as rgba values and press "Apply Custom Colors" (applies at once) |
+| Theme presets (V205) | One click sets a **wallpaper and all the panel colours** together. Seven ship with the app (Midnight, Daylight, Ember, Ocean, Forest, Violet, High contrast). **Save current as theme** stores the wallpaper now showing (a slot, the default picture or a plain colour, and its alpha) plus the panel colours now in use as a theme of your own (up to 24; rename, replace with what is on screen, delete). A video wallpaper is switched off when a theme is applied; a theme that uses a wallpaper slot needs that slot to still be filled in this browser. Applies at once. |
 | Domain Grid | Grid colour, Opacity (0–1), Wireframe, Visible |
 | User Space | Colour, Size multiplier, Visible, Spinning, Texture |
 | UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187); the **userCompass** section (V188, below) |

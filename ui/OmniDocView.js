@@ -62,6 +62,14 @@ export default class OmniDocView {
     on(this.host, 'click', (e) => this._click(e))
     on(this.host, 'change', (e) => this._change(e))
     on(this.host, 'input', (e) => this._input(e))
+    // V206: PageUp / PageDown turn the page while the focus is in this window (not while typing in a field)
+    on(this.host, 'keydown', (e) => {
+      if (e.key !== 'PageUp' && e.key !== 'PageDown') return
+      const t = e.target; if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && ['text', 'number'].includes(t.type)) || t.tagName === 'SELECT')) return
+      if (!this.nodeId) return
+      e.preventDefault(); e.stopPropagation()
+      this._act('turn', () => this.svc?.turn(this.nodeId, e.key === 'PageUp' ? -1 : 1))
+    })
     on(this.host, 'pointerdown', (e) => { if (e.target?.type === 'range') this.svc?.beginStroke?.(this.nodeId) })
     on(window, 'pointerup', () => this.svc?.endStroke?.())
     on(this.host, 'dragover', (e) => { if (e.dataTransfer?.types?.includes?.('Files')) { e.preventDefault(); this.host.querySelector('.odc-drop')?.classList.add('is-over') } })
@@ -129,15 +137,20 @@ export default class OmniDocView {
     const st = svc.getStatus?.(this.nodeId) ?? { text: '' }
     const sel = `<select data-act="pick" aria-label="Doc node">${nodes.map(id => `<option value="${esc(id)}"${id === this.nodeId ? ' selected' : ''}>${esc(svc.getNodeData(id)?.label || id)}</option>`).join('')}</select>`
     const pages = doc.pages > 0 ? doc.pages : '?'
+    const vp = D.visiblePages(doc); const lastShown = doc.pages > 0 && (vp[1] || vp[0]) >= doc.pages
     const lib = src.library.length ? `<div class="odc-lib" aria-label="Your documents">${src.library.map(l => `<div><span>${esc(l.name)} <span class="odc-note">${esc(l.type)}, ${(l.size / 1024).toFixed(l.size > 10240 ? 0 : 1)} KB</span></span><span><button data-act="libren" data-id="${esc(l.id)}" aria-label="Rename ${esc(l.name)}">Rename</button> <button data-act="libdel" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)} from the library">×</button></span></div>`).join('')}</div>` : ''
     return `<div class="odc-row">${sel}<button data-act="create" title="New doc node">+ Doc</button>
         <button data-act="undo" ${svc.canUndo(this.nodeId) ? '' : 'disabled'}>Undo</button><button data-act="redo" ${svc.canRedo(this.nodeId) ? '' : 'disabled'}>Redo</button></div>
       <div class="odc-drop"><div class="odc-row">${sourceSel}<button data-act="import">Import a file…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden></div>
         <div class="odc-note">PDF, markdown, text or an image. Drop a file here too. Files stay in this browser (up to 50 MB each).</div></div>
-      <div class="odc-row"><button data-act="prev" ${doc.page <= 1 ? 'disabled' : ''} aria-label="Previous page">◀</button>
-        <label>page <input type="number" data-act="page" min="1" max="${doc.pages || 5000}" value="${doc.page}" aria-label="Page number"> of ${pages}</label>
-        <button data-act="next" ${doc.pages > 0 && doc.page >= doc.pages ? 'disabled' : ''} aria-label="Next page">▶</button>
+      <div class="odc-row"><button data-act="prev" ${doc.page <= 1 ? 'disabled' : ''} aria-label="Page up (previous page)" title="Page up (the PageUp key)">▲ Page up</button>
+        <button data-act="next" ${lastShown ? 'disabled' : ''} aria-label="Page down (next page)" title="Page down (the PageDown key)">▼ Page down</button>
+        <label>page <input type="number" data-act="page" min="1" max="${doc.pages || 5000}" value="${doc.page}" aria-label="Page number"> of ${pages}${vp[1] ? ` <span class="odc-note">(showing ${vp[0]}–${vp[1]})</span>` : ''}</label>
         <span class="odc-note" data-ref="status">${esc(st.text)}</span></div>
+      <div class="odc-row"><label>pages <select data-act="spread" aria-label="One page or two pages"><option value="single"${doc.spread === 'single' ? ' selected' : ''}>One page</option><option value="double"${doc.spread === 'double' ? ' selected' : ''}>Two pages (open book)</option></select></label>
+        <span class="odc-row" role="group" aria-label="Zoom"><button data-act="zoomout" ${doc.zoom <= D.ZOOM_MIN ? 'disabled' : ''} aria-label="Zoom out">−</button><label>zoom <input type="number" data-act="zoom" min="${D.ZOOM_MIN}" max="${D.ZOOM_MAX}" step="25" value="${doc.zoom}" aria-label="Zoom percent"> %</label><button data-act="zoomin" ${doc.zoom >= D.ZOOM_MAX ? 'disabled' : ''} aria-label="Zoom in">+</button><button data-act="zoomfit" ${doc.zoom === 100 ? 'disabled' : ''} aria-label="Zoom to fit (100 percent)">Fit</button></span>
+        <span class="odc-row" role="group" aria-label="Move the zoomed view"><button data-act="panl" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look left">◀</button><button data-act="panu" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look up">▲</button><button data-act="pand" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look down">▼</button><button data-act="panr" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look right">▶</button></span></div>
+      <div class="odc-note">100 % shows the whole page on the sheet. Zooming in shows a part of it, sharper the closer you are (up to the device's texture limit). Two pages turn two at a time (1–2, 3–4 …).</div>
       <div class="odc-grid"><div class="odc-prevbox" data-ref="prevbox"><canvas class="odc-prev" data-ref="prev" width="2" height="2" aria-label="Preview of the current page"></canvas></div>
         <div class="odc-col">
           <div class="odc-row"><label>width <input type="range" data-act="width" min="1" max="30" step="0.5" value="${Math.min(30, doc.width)}" aria-label="Sheet width"> <b data-ref="wv">${doc.width}</b></label></div>
@@ -184,6 +197,10 @@ export default class OmniDocView {
       case 'redo': s?.redo(id); break
       case 'prev': this._act('turn', () => s.turn(id, -1)); break
       case 'next': this._act('turn', () => s.turn(id, 1)); break
+      case 'zoomin': this._act('zoom', () => s.zoomBy(id, 1)); break
+      case 'zoomout': this._act('zoom', () => s.zoomBy(id, -1)); break
+      case 'zoomfit': this._act('zoom', () => s.setZoom(id, 100)); break
+      case 'panl': case 'panr': case 'panu': case 'pand': { const d = this._doc(); if (!d) break; const k = 0.25; const dx = a === 'panl' ? -k : a === 'panr' ? k : 0; const dy = a === 'panu' ? -k : a === 'pand' ? k : 0; this._act('pan', () => s.setPan(id, Math.min(1, Math.max(-1, d.panX + dx)), Math.min(1, Math.max(-1, d.panY + dy)))); break }
       case 'import': this.host.querySelector('[data-ref=file]')?.click(); break
       case 'copy': { const t = this.host.querySelector('[data-ref=text]')?.textContent ?? ''; try { navigator.clipboard.writeText(t).then(() => this.say('Copied.'), () => this.say('Select the text and copy it.', true)) } catch (_) { this.say('Select the text and copy it.', true) } break }
       case 'libdel': s?.removeFromLibrary(b.dataset.id).then((r) => this.say(r?.ok ? 'Removed from your documents.' : (r?.message || 'Could not remove.'), !r?.ok)); break
@@ -199,6 +216,8 @@ export default class OmniDocView {
       case 'pick': this.setNode(el.value); break
       case 'source': { const i = el.value.indexOf(':'); const type = el.value.slice(0, i); const sid = el.value.slice(i + 1); const label = el.options[el.selectedIndex]?.textContent?.replace(/ \((pdf|markdown|text|image)\)$/, '') ?? null; this._act('source', () => s.setSource(id, type === 'none' ? 'none' : type, sid, type === 'none' ? '' : label)); break }
       case 'page': this._act('page', () => s.goto(id, Number(el.value))); break
+      case 'spread': this._act('spread', () => s.setSpread(id, el.value)); break
+      case 'zoom': this._act('zoom', () => s.setZoom(id, Number(el.value))); break
       case 'sides': this._act('sides', () => s.edit(id, 'sides', (m) => D.setSides(m, el.value))); break
       case 'quality': this._act('quality', () => s.edit(id, 'quality', (m) => D.setQuality(m, el.value))); break
       case 'paper': this._act('paper', () => s.edit(id, 'paper', (m) => D.setPaper(m, el.value), 'paper')); break
