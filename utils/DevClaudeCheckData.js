@@ -35,7 +35,7 @@ export const DEVICES = ['any', 'desktop', 'phone', 'touch', 'gpu']
 export const KINDS = ['text', 'yesno', 'choice', 'number']
 export const RESULTS = ['pass', 'fail', 'skip']
 export const LIMITS = {
-  stateChars: 200000, checks: 400, asks: 40, issues: 30, choices: 12,
+  stateChars: 200000, checks: 600, asks: 120, issues: 30, choices: 12,
   id: 96, version: 16, summary: 240, category: 100, feature: 160, howToReach: 320, whatToCheck: 700, question: 300, why: 300, choice: 60, issue: 300,
   note: 300, message: 4000, answerText: 500, ua: 200,
 }
@@ -45,6 +45,18 @@ const VER_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const clean = (v, max) => (typeof v === 'string' ? v : (typeof v === 'number' && Number.isFinite(v) ? String(v) : '')).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max)
 const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o)
+
+// ── Version grouping (V200) ─────────────────────────────────────────────────────
+/** The version a category name or an id belongs to: "V198 OmniSongNode ..." -> "V198", "userCompass (V188)" -> "V188", "v195-keys" -> "V195". '' when none. */
+export function versionOfText (text) { const m = /(?:^|[^A-Za-z0-9])[Vv](\d{2,4})(?![0-9])/.exec(String(text ?? '')); return m ? 'V' + Number(m[1]) : '' }
+/** Newest first by the number inside the version ("V200" before "V199"); anything without a number goes last. */
+export function compareVersions (a, b) { const n = (v) => { const m = /(\d+)/.exec(String(v ?? '')); return m ? Number(m[1]) : -1 }; return n(b) - n(a) }
+/** Group items by their `version`: [{ version, items }] newest first; items keep their order inside a group. */
+export function groupByVersion (list) {
+  const map = new Map()
+  for (const it of Array.isArray(list) ? list : []) { const v = typeof it?.version === 'string' ? it.version : ''; if (!map.has(v)) map.set(v, []); map.get(v).push(it) }
+  return [...map.entries()].map(([version, items]) => ({ version, items })).sort((a, b) => compareVersions(a.version, b.version))
+}
 
 // ── Iteration data ──────────────────────────────────────────────────────────────
 
@@ -62,6 +74,7 @@ export function validateData (raw) {
   const date = clean(raw.date, 10)
   const data = { schema: DATA_SCHEMA, version, date: DATE_RE.test(date) ? date : '', summary: clean(raw.summary, LIMITS.summary), checks: [], asks: [], knownIssues: [] }
   if (!data.date) errors.push('date should be YYYY-MM-DD')
+  const pickVersion = (explicit, text, fallback) => { const e = clean(explicit, LIMITS.version); return VER_RE.test(e) ? e : (versionOfText(text) || fallback) }
   const seen = new Set()
   ;(Array.isArray(raw.checks) ? raw.checks : []).slice(0, LIMITS.checks).forEach((c, i) => {
     if (!isObj(c)) { errors.push(`checks[${i}]: not an object`); return }
@@ -72,7 +85,7 @@ export function validateData (raw) {
     if (!feature) { errors.push(`checks[${i}]: no feature`); return }
     seen.add(id)
     data.checks.push({
-      id, category: clean(c.category, LIMITS.category) || 'General', feature, howToReach: clean(c.howToReach, LIMITS.howToReach), whatToCheck: clean(c.whatToCheck, LIMITS.whatToCheck),
+      id, category: clean(c.category, LIMITS.category) || 'General', version: pickVersion(c.version, c.category, version), feature, howToReach: clean(c.howToReach, LIMITS.howToReach), whatToCheck: clean(c.whatToCheck, LIMITS.whatToCheck),
       priority: PRIORITIES.includes(c.priority) ? c.priority : 'normal', device: DEVICES.includes(c.device) ? c.device : 'any',
     })
   })
@@ -83,7 +96,7 @@ export function validateData (raw) {
     if (!ID_RE.test(id) || seenA.has(id)) { errors.push(`asks[${i}]: bad or duplicate id`); return }
     const question = clean(a.question, LIMITS.question)
     if (!question || !KINDS.includes(a.kind)) { errors.push(`asks[${i}]: needs a question and a kind (${KINDS.join('|')})`); return }
-    const ask = { id, question, why: clean(a.why, LIMITS.why), kind: a.kind, device: DEVICES.includes(a.device) ? a.device : 'any' }
+    const ask = { id, version: pickVersion(a.version, a.id, version), question, why: clean(a.why, LIMITS.why), kind: a.kind, device: DEVICES.includes(a.device) ? a.device : 'any' }
     if (a.kind === 'choice') {
       ask.choices = (Array.isArray(a.choices) ? a.choices : []).slice(0, LIMITS.choices).map(x => clean(x, LIMITS.choice)).filter((x, j, arr) => x && arr.indexOf(x) === j)
       if (ask.choices.length < 2) { errors.push(`asks[${i}]: a choice needs at least 2 choices`); return }

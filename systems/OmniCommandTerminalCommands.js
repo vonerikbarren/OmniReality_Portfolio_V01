@@ -14,6 +14,7 @@
 
 import { registerCommand } from '../utils/CommandRegistry.js'
 import { goToObject } from '../utils/CameraTravel.js'
+import { SHORTCUTS, parseCombo, findShortcut, fireEntry, eventInitFor } from '../utils/OmniShortcutTable.js'
 
 function requireNode (omniNode, id, commandName) {
   const mesh = omniNode.getMeshById(id)
@@ -22,6 +23,25 @@ function requireNode (omniNode, id, commandName) {
 }
 
 export function registerOmniCommandTerminalCommands (omniGrab) {
+  // V201: keyboard shortcuts as commands (same shared table as OmniKeys Command mode and the Keyboard Shortcuts panel).
+  registerCommand('key', (args) => {
+    const text = (Array.isArray(args) ? args.join(' ') : String(args ?? '')).trim()
+    if (!text) throw new Error('⟐key: give a key, for example "key q", "key ctrl+k", "key pagedown"')
+    const spec = parseCombo(text)
+    if (!spec) throw new Error(`⟐key: "${text}" is not a key I know (letters, digits, f1-f15, arrows, enter, escape, tab, backspace, delete, home, end, pageup, pagedown, numpad0-9; modifiers ctrl, cmd, shift, alt joined with +)`)
+    const init = eventInitFor(spec)
+    window.dispatchEvent(new KeyboardEvent('keydown', init)); window.dispatchEvent(new KeyboardEvent('keyup', init))
+    return `⟐key: sent ${text}`
+  }, 'Sends one real key press: key q, key ctrl+k, key pagedown')
+  registerCommand('shortcut', (args) => {
+    const text = (Array.isArray(args) ? args.join(' ') : String(args ?? '')).trim()
+    if (!text) return SHORTCUTS.map(s => `${s.key} — ${s.desc.slice(0, 70)}`).join('\n')
+    const e = findShortcut(text)
+    if (!e) throw new Error(`⟐shortcut: nothing matches "${text}" (run "shortcut" alone to list them)`)
+    fireEntry(e, window, 0)
+    return `⟐shortcut: fired ${e.key}`
+  }, 'Fires a listed shortcut by key or words; "shortcut" alone lists them')
+
   registerCommand('ls', (args, termCtx) => {
     const nodes = termCtx.omniNode.getAllNodes()
     if (nodes.length === 0) return 'No real nodes exist yet.'

@@ -228,6 +228,7 @@ export class OmniSongPlayer {
   _indexSong (s) {
     s.laneMap = new Map(s.song.lanes.map(l => [l.id, l]))
     s.hasAudio = s.song.clips.some(c => s.laneMap.get(c.lane)?.kind === 'audio')
+    s.hasPattern = s.song.clips.some(c => s.laneMap.get(c.lane)?.kind === 'pattern') && typeof this.engine?.setRouter === 'function'
   }
 
   /** Stop. Notes started are released, audio sources stopped, the bus graph faded and disconnected. The next play starts from bar 1 (or the bar of the last explicit play / seek-while-stopped). */
@@ -276,6 +277,8 @@ export class OmniSongPlayer {
     if (this._sess === s) this._sess = null
     const now = this.now()
     this._silence(s, now, true)
+    this._removeRouter(s)
+    if (s.capBefore != null) { try { this.engine?.setVoiceCap?.(s.capBefore) } catch (_) { /* ignore */ } s.capBefore = null }
     if (s.graph) this._disposeGraph(s.graph)
     s.graph = null
     if (o.announce) this._announce('stop', s.nodeId, o.paused)
@@ -387,7 +390,8 @@ export class OmniSongPlayer {
     this._prune(s, now)
     // the audio library is still loading and the song needs it: hold the start (nothing was scheduled yet)
     if (s.hasAudio && this._assetsState === 'loading' && !s.began) { s.anchors[0].t = now + START_DELAY_S; this._arm(); return }
-    if (s.hasAudio && !s.graph) this._ensureGraph(s)
+    if ((s.hasAudio || s.hasPattern) && !s.graph) this._ensureGraph(s)
+    if (s.graph && s.hasPattern && !s.instLane) this._installRouter(s)
     const horizonEng = now + this._lookahead()
     let sent = 0
     if (!s.ended) {
@@ -512,16 +516,23 @@ export class OmniSongPlayer {
             const dur = Math.max(0.02, Math.min(gate, endWhen - when, capWhen - when))
             const gainLane = this._val(s, lane.id, 'volume', barPos, lane.volume)
             const gainMaster = this._val(s, 'master', 'volume', barPos, song.master.gain)
-            const velocity = clamp(ev.velocity * tr.volume * m.gain * gainLane * clip.gain * gainMaster, 0, 1)
-            if (velocity < 0.01) continue
             const inst = tr.instrumentNodeId && this._instrumentExists(tr.instrumentNodeId) ? tr.instrumentNodeId : null
             const id = inst ?? clip.ref.id
-            const o = { velocity, when, duration: dur, pan: clamp(tr.pan + this._val(s, lane.id, 'pan', barPos, lane.pan), -1, 1) }
+            // V201: when the instrument is routed through its lane bus, lane volume / master gain / lane pan act on the bus (so they can exceed the pattern's own level); otherwise they stay a velocity scale
+            if (s.instLane && s.graph?.lanes.has(lane.id) && !s.instLane.has(id)) { s.instLane.set(id, lane.id); try { this.engine?.rerouteVoices?.() } catch (_) { /* ignore */ } }
+            const routed = !!(s.instLane && s.instLane.get(id) === lane.id && s.graph?.lanes.has(lane.id))
+            const velocity = clamp(ev.velocity * tr.volume * m.gain * clip.gain * (routed ? 1 : gainLane * gainMaster), 0, 1)
+            if (velocity < 0.01) continue
+            const o = { velocity, when, duration: dur, pan: routed ? clamp(tr.pan, -1, 1) : clamp(tr.pan + this._val(s, lane.id, 'pan', barPos, lane.pan), -1, 1) }
             const sound = inst ? this._soundOf(inst) : undefined
             if (sound) o.sound = sound
             if (!s.used.has(id)) {
               s.used.add(id)
               let cap = 0; try { cap = this.engine?.getVoiceCap?.() ?? 0 } catch (_) { cap = 0 }
+              // V201: a song with more instruments than the cap raises the cap (to at most 32) while it plays; teardown restores it
+              if (cap > 0 && s.used.size > cap && cap < 32 && typeof this.engine?.setVoiceCap === 'function') {
+                try { if (s.capBefore == null) s.capBefore = cap; this.engine.setVoiceCap(Math.min(32, s.used.size + 1)); cap = this.engine.getVoiceCap() } catch (_) { /* ignore */ }
+              }
               if (cap > 0 && s.used.size > cap) this._warn(s, 'voicecap', `This song uses ${s.used.size} instruments but the sound engine voice cap is ${cap}: the oldest instruments are cut. Raise the voice cap in the sound settings.`)
             }
             let set = s.laneUsed.get(lane.id); if (!set) s.laneUsed.set(lane.id, set = new Set()); set.add(id)
@@ -594,6 +605,8 @@ export class OmniSongPlayer {
       g.in.connect(g.filter); g.filter.connect(g.pan); g.pan.connect(g.comp); g.comp.connect(g.an)
       let dest = null
       try { dest = this.engine?._master?.gain ?? null } catch (_) { dest = null }
+      // V201: the music mix can take the song's whole output into a mixer strip
+      try { const o = typeof this._outFn === 'function' ? this._outFn(s.nodeId) : null; if (o && typeof o.connect === 'function' && (!o.context || o.context === ctx)) dest = o } catch (_) { /* keep the master */ }
       g.an.connect(dest || ctx.destination)
       // send FX: reverb (convolution of a generated impulse) and a feedback delay; both return into the master input
       g.revIn = mk(ctx.createGain()); g.conv = mk(ctx.createConvolver()); g.revRet = mk(ctx.createGain())
@@ -602,6 +615,7 @@ export class OmniSongPlayer {
       g.delIn.connect(g.delay); g.delay.connect(g.tone); g.tone.connect(g.fb); g.fb.connect(g.delay); g.tone.connect(g.delRet); g.delRet.connect(g.in)
       s.graph = g
       this._syncLaneBuses(s)
+      this._installRouter(s)
       this._prefetch(s, ctx)
       return g
     } catch (e) {
@@ -610,11 +624,25 @@ export class OmniSongPlayer {
     }
   }
 
-  /** Create the bus of an audio lane (on demand), or null. */
+  /** V201: send each instrument's voice to the bus of the pattern lane that plays it (pan, filter, sends and lane volume then act on the real sound). */
+  _installRouter (s) {
+    if (!s.hasPattern || typeof this.engine?.setRouter !== 'function') return
+    s.instLane = s.instLane ?? new Map()
+    this.engine.setRouter((id) => {
+      const cur = this._sess; if (!cur || cur !== s || !cur.graph) return null
+      const lane = cur.instLane.get(id); if (lane == null) return null
+      return cur.graph.lanes.get(lane)?.in ?? null
+    }, 'song')
+  }
+  _removeRouter (s) {
+    if (!s?.instLane) return
+    try { if (typeof this.engine?.setRouter === 'function') this.engine.setRouter(null, 'song') } catch (_) { /* ignore */ }
+  }
+  /** Create the bus of an audio or pattern lane (on demand), or null. */
   _laneBus (s, laneId) {
     const g = s.graph; if (!g) return null
     let b = g.lanes.get(laneId); if (b) return b
-    const lane = s.laneMap.get(laneId); if (!lane || lane.kind !== 'audio') return null
+    const lane = s.laneMap.get(laneId); if (!lane || (lane.kind !== 'audio' && !(lane.kind === 'pattern' && s.hasPattern))) return null
     const ctx = g.ctx
     const nodes = []
     const mk = (n) => { nodes.push(n); g.nodes.push(n); return n }
@@ -627,10 +655,10 @@ export class OmniSongPlayer {
   }
   _syncLaneBuses (s) {
     const g = s.graph; if (!g) return
-    for (const l of s.song.lanes) if (l.kind === 'audio') this._laneBus(s, l.id)
+    for (const l of s.song.lanes) if (l.kind === 'audio' || (l.kind === 'pattern' && s.hasPattern)) this._laneBus(s, l.id)
     for (const [id, b] of [...g.lanes]) {
       const lane = s.laneMap.get(id)
-      if (lane && lane.kind === 'audio') continue
+      if (lane && (lane.kind === 'audio' || (lane.kind === 'pattern' && s.hasPattern))) continue
       for (const n of b.nodes) { try { n.disconnect() } catch (_) { /* ignore */ } }
       g.lanes.delete(id); s.lvAudio.delete(id)
     }
@@ -688,6 +716,8 @@ export class OmniSongPlayer {
   }
   /** Disconnect the buses of finished songs now (tests / destroy). */
   flushDisposals () { for (const g of [...this._disposing]) this._finishDispose(g) }
+  /** V201: send the output of a playing song somewhere else (a mixer strip). fn(songNodeId) -> an AudioNode of the engine context, or null for the master. Takes effect for songs started after. */
+  setOutput (fn) { this._outFn = typeof fn === 'function' ? fn : null }
   /** The bus graph of the playing song (tests / debugging): { master, lanes:Map } or null. */
   getGraph (nodeId = null) { const s = this._sess; return s && (!nodeId || nodeId === s.nodeId) ? s.graph : null }
 }

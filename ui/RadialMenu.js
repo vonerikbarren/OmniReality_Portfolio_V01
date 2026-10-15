@@ -1045,10 +1045,21 @@ export default class RadialMenu {
     const w = window.innerWidth
     const shiftScale = w >= 500 ? 1 : w <= 380 ? 0 : (w - 380) / 120
 
-    const extraLift  = ((corner === 'bl' || corner === 'br') ? 250 : 0) * shiftScale
-    const extraShift = (corner === 'bl' ? 200 : corner === 'br' ? -200 : 0) * shiftScale
-    el.style.left = `${x - HALF + extraShift}px`
-    el.style.top  = `${y - HALF - extraLift}px`
+    // V200: OmniHand (tl) and ConsciousHand (tr) get the same "bring it out of the corner" shift as LH / RH: inward by 200 and, because they hang from the
+    // top, DOWN by 250 (LH / RH go up). The ring (OUTER_R + TOOL_R) is then clamped inside the viewport so a short window never pushes it off screen.
+    const top        = corner === 'tl' || corner === 'tr'
+    const extraLift  = (top ? -250 : (corner === 'bl' || corner === 'br') ? 250 : 0) * shiftScale
+    const extraShift = ((corner === 'bl' || corner === 'tl') ? 200 : (corner === 'br' || corner === 'tr') ? -200 : 0) * shiftScale
+    let cx = x + extraShift
+    let cy = y - extraLift
+    if (top && shiftScale > 0) {
+      const reach = OUTER_R + TOOL_R + 8
+      const h = window.innerHeight
+      cy = Math.min(cy, Math.max(y, h - DOCK_H - reach))                                  // never lower than the window allows (and never above where it was)
+      cx = corner === 'tl' ? Math.min(cx, Math.max(x, w - reach)) : Math.max(cx, Math.min(x, reach))
+    }
+    el.style.left = `${cx - HALF}px`
+    el.style.top  = `${cy - HALF}px`
   }
 
   _handleResize () {

@@ -1392,3 +1392,53 @@ See `docs/user-guide/00_How_To_Maintain_This_Guide.md`. Follow-ups:
 6. Song timeline is cramped at 720 px high; consider collapsing the toolbar.
 7. The V197 draw-picker test expects 13 tiles (now 14).
 8. Next: lyrics + markers + metadata UI, MIDI export, real-time WAV export, mic recording, 3D experience.
+
+## 89. V199: sim clock + orbit models (pure) — what is next, and what is open
+
+1. Nothing uses the two models yet. Next steps in order: shared keyframe timeline panel (DOM), OmniOrbitNode (camera and node modes, ride controller), TimeTunnelNode, SkyboxNode, 3D tunnel view.
+2. Owner questions still open: "scale of 25" (25x bigger or 1/25?); double sided = visible from outside and inside?; orbit first as camera or as node motion; a real hold (rate 0) needs a dwell field; does the tunnel own the clock of its skies; calendar units; relation to the Master Tunnel (RootSpace.js) and the V172 sequencer.
+3. Riding the orbit must hand control cleanly to / from the existing camera controls (WASD, pads, F3) and always show a way to let go; respect reduced motion.
+4. The skybox light must be a single ambient / hemisphere light with a cap on active skies, fading out when no viewer is inside.
+
+## 90. V200: tool menu overlap, Claude Check
+
+1. The four hand tool menus are 420 px boxes; OmniHand / ConsciousHand now sit at the same x as LH / RH. Opened together they overlap. Decide: smaller menus, other positions, or only one pair at a time.
+2. The tool menus were checked with numbers in jsdom only, never by eye in a browser.
+3. The older Claude Check and radial suites (V184 UI/model, V168/V169) have known baseline failures that are tied to old version strings; they were not changed.
+4. V199 sim clock + orbit models still have no UI or node (see item 89).
+
+## 91. V201: shortcuts, routing, OmniMusicMixNode
+
+1. Owner question: is the Command palette what was meant, or shortcuts on the keys (ask `v201-command-palette`).
+2. Never heard: the mix engine, the crossfade, the lane routing (asks `v201-mix-sound`, `v201-pattern-lanes`).
+3. Next for the mix (pick one, ask `v201-dj-direction`): decks A / B with jog wheels (reuse `systems/OmniDJDecks.js`), time-stretch for real beat matching, cue points and loops, export as audio, music-node (pattern) strips, an automation lane editor.
+4. Song strips: one at a time (the song player plays one song). Several songs would need the player reworked.
+5. V199 sim clock + orbit models still have no UI or node (see item 89). Next builds named by the owner: two more.
+
+## 92. V202: decks in the mix node, key lock, Command button
+
+1. Never heard: key lock on real music (drums soften above rate 1.1; the WSOLA stretch is v1), loops (a click at the loop point is possible), the pitch fader, the waveform (asks `v202-keylock-quality`, `v202-deck-layout`).
+2. The deck block makes a strip about 160 px taller; check it on a phone (ask `v202-deck-layout`).
+3. Key lock of a 3-minute clip takes a few seconds of background work before it swaps in; until then the clip plays pitch-shifted at the right tempo.
+4. Only one loop and one cue per strip plus 4 hot cues; no saved loop list, no sync lock between two decks beyond "-> mix".
+5. Still open: export as audio, pattern strips, lane editor, jog wheels (ask `v202-next`).
+6. V199 sim clock + orbit models still have no UI or node (item 89). Builds named by the owner: one more after this.
+
+## 93. V203: DocNode (documents on a sheet in the space)
+
+1. Never seen: a real phone GPU with several doc nodes (texture cap 1024 and an 8 M pixel budget are estimates), large or scanned PDFs, unusual PDF fonts (asks `v203-doc-pdf`, `v203-doc-phone`).
+2. The first PDF needs the internet once (pdf.js from jsdelivr). If the app must work offline, vendor `pdf.min.mjs` and `pdf.worker.min.mjs` into the project and point `PDFJS_URL` / `PDFJS_WORKER_URL` in `systems/OmniDocRaster.js` at them (about 1 MB).
+3. Interaction on the sheet itself (page turn by click / wheel / gesture, links, selection) is not built; the owner should choose how (ask `v203-doc-interact`).
+4. The Inspector's 3D preview (`systems/OmniInspector.js`, older code) opens WebGL contexts each time it renders; with the app's own 5 this can approach the browser limit. Worth fixing or sharing one preview renderer.
+5. New sheets face the camera; whether they should stand upright or sit on the floor grid is open (ask `v203-doc-facing`).
+6. Still open from before: export as audio, pattern strips, lane editor, jog wheels, the V199 orbit / tunnel / skybox nodes (items 89, 92; ask `v203-next`).
+
+## 94. V204: PolyNode (multi-face solids, every face its own content)
+
+1. Never seen: a real phone GPU with several poly nodes (atlas cap 1024 px and an 8 M pixel budget are estimates), a sound played from a face (ask `v204-poly-content`), the face menu on a real finger (ask `v204-poly-menu`), a face seen from behind (ask `v204-poly-back`).
+2. Name: OmniPolyNode in code and UI; the owner may rename to OmniComplexityNode (ask `v204-poly-name`).
+3. Next shapes: mixed-shape solids, prisms / pyramids, a free face editor, fold animation (ask `v204-poly-shapes-next`).
+4. The tap menu also opens while a drawing tool is active; if that gets in the way, gate `pickAt` on the active tool.
+5. Faces are not child nodes; if faces must be individually selectable in the hierarchy or movable, that is a larger change (each face would become a node).
+6. Document faces re-render the whole atlas when any face changes; fine for 20 faces, worth caching per-cell bitmaps if a node ever has dozens.
+7. Still open from before: items 89, 92, 93 (export as audio, pattern strips, lane editor, jog wheels, V199 orbit / tunnel / skybox nodes, page turning on doc sheets).

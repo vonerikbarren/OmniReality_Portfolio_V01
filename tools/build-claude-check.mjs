@@ -25,6 +25,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const slug = (s, max) => String(s ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/g, '')
 export const makeId = (category, feature) => `${slug(category, 30) || 'x'}.${slug(feature, 50) || 'x'}`
 
+export const versionOfText = (t) => { const m = /(?:^|[^A-Za-z0-9])[Vv](\d{2,4})(?![0-9])/.exec(String(t ?? '')); return m ? 'V' + Number(m[1]) : '' }
+
 export function derivePriority (category, item) {
   const text = `${item.feature} ${item.howToReach} ${item.whatToCheck}`
   if (/V18[23]\b/.test(category) || /regress|persist/i.test(text)) return 'high'
@@ -54,12 +56,12 @@ export function buildData ({ checklist, ask, version, date, categories, includeT
       const item = { feature: String(it.feature ?? ''), howToReach: String(it.howToReach ?? ''), whatToCheck: String(it.whatToCheck ?? '') }
       let id = makeId(name, item.feature)
       if (ids.has(id)) { const n = ids.get(id) + 1; ids.set(id, n); const nid = `${id}-${n}`; duplicates.push({ id, renamed: nid, feature: item.feature }); id = nid; ids.set(id, 1) } else ids.set(id, 1)
-      checks.push({ id, category: name, feature: item.feature, howToReach: item.howToReach, whatToCheck: item.whatToCheck, priority: derivePriority(name, item), device: deriveDevice(item) })
+      checks.push({ id, category: name, version: versionOfText(name) || version, feature: item.feature, howToReach: item.howToReach, whatToCheck: item.whatToCheck, priority: derivePriority(name, item), device: deriveDevice(item) })
     }
   }
   const data = {
     schema: 'omni-claude-check/1', version, date: date || ask?.date || new Date().toISOString().slice(0, 10), summary: String(ask?.summary ?? ''),
-    checks, asks: Array.isArray(ask?.asks) ? ask.asks : [], knownIssues: Array.isArray(ask?.knownIssues) ? ask.knownIssues : [],
+    checks, asks: (Array.isArray(ask?.asks) ? ask.asks : []).map(a => (a && typeof a === 'object' && !a.version ? { ...a, version: versionOfText(a.id) || version } : a)), knownIssues: Array.isArray(ask?.knownIssues) ? ask.knownIssues : [],
   }
   return { data, missing: pats.filter(p => !used.has(p)), duplicates, matched }
 }

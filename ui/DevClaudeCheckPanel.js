@@ -33,6 +33,7 @@ const STYLES = `
 .dcc-bar > i { display: block; height: 100%; } .dcc-bar .p { background: #8fe3a2; } .dcc-bar .f { background: #ff8a8a; } .dcc-bar .s { background: #ffd37a; }
 .dcc-chip { padding: 2px 8px; } .dcc-chip.is-on { background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.8); }
 .dcc-det { border-bottom: 1px solid var(--omni-theme-border, rgba(255,255,255,.14)); padding: 2px 0; }
+.dcc-det .dcc-det { margin-left: 8px; }
 .dcc-det > summary { cursor: pointer; padding: 6px 0; letter-spacing: .06em; font-size: 10px; text-transform: uppercase; color: var(--omni-theme-text-dim, rgba(255,255,255,.7)); }
 .dcc-item { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 6px 8px; margin: 5px 0; }
 .dcc-item[data-r="pass"] { border-color: rgba(143,227,162,.55); } .dcc-item[data-r="fail"] { border-color: rgba(255,138,138,.8); } .dcc-item[data-r="skip"] { border-color: rgba(255,211,122,.6); }
@@ -139,6 +140,8 @@ export default class DevClaudeCheckPanel extends OmniSettingsPanelBase {
     const carried = Data.getCarriedOnly()
     if (!this._open) {
       this._open = new Set()
+      this._open.add('askver:' + data.version)
+      this._open.add('ver:' + data.version)   // V200: the current version is open, older versions start closed
       data.checks.forEach(c => { if (c.priority === 'high' && !res(c.id)) this._open.add(c.category) })
       if (carried.length) this._open.add('__carried')
     }
@@ -164,15 +167,22 @@ export default class DevClaudeCheckPanel extends OmniSettingsPanelBase {
     if (carried.length) {
       frag.appendChild(this._section('__carried', `Carried over (${carried.length})`, carried.filter(shown).map(c => this._item(c, true)), 'Failed or skipped in an earlier version and not passed since. Mark them again here.'))
     }
-    // checks by category
-    const cats = []
-    data.checks.forEach(c => { let g = cats.find(x => x.name === c.category); if (!g) { g = { name: c.category, items: [] }; cats.push(g) } g.items.push(c) })
+    // checks by version (newest first), then by category inside each version
     const checksSec = h('div', { 'data-ref': 'checks' }, h('div', { class: 'oss-sec', text: 'Check these' }))
     if (!data.checks.length) checksSec.appendChild(h('div', { class: 'oss-dim', text: 'No checks in this version.' }))
-    cats.forEach(g => {
-      const items = g.items.filter(shown)
-      if (!items.length) return
-      checksSec.appendChild(this._section(g.name, `${g.name} (${items.length})`, items.map(c => this._item(c, false))))
+    Data.groupByVersion(data.checks).forEach(vg => {
+      const cats = []
+      vg.items.forEach(c => { let g = cats.find(x => x.name === c.category); if (!g) { g = { name: c.category, items: [] }; cats.push(g) } g.items.push(c) })
+      const catEls = []; let count = 0
+      cats.forEach(g => {
+        const items = g.items.filter(shown)
+        if (!items.length) return
+        count += items.length
+        catEls.push(this._section(g.name, `${g.name} (${items.length})`, items.map(c => this._item(c, false))))
+      })
+      if (!count) return
+      const label = vg.version || 'No version'
+      checksSec.appendChild(this._section('ver:' + vg.version, `${label}${vg.version === data.version ? ' (this version)' : ''} · ${count} to check`, catEls))
     })
     frag.appendChild(checksSec)
 
@@ -180,7 +190,10 @@ export default class DevClaudeCheckPanel extends OmniSettingsPanelBase {
     const asks = data.asks.filter(a => Data.deviceVisible(a.device, ui.filter))
     const askSec = h('div', { 'data-ref': 'asks' }, h('div', { class: 'oss-sec', text: "What I'm looking for" }))
     if (!asks.length) askSec.appendChild(h('div', { class: 'oss-dim', text: 'No questions for this filter.' }))
-    asks.forEach(a => askSec.appendChild(this._ask(a)))
+    Data.groupByVersion(asks).forEach(vg => {
+      const label = vg.version || 'No version'
+      askSec.appendChild(this._section('askver:' + vg.version, `${label}${vg.version === data.version ? ' (this version)' : ''} · ${vg.items.length} question${vg.items.length === 1 ? '' : 's'}`, vg.items.map(a => this._ask(a))))
+    })
     frag.appendChild(askSec)
 
     // known issues

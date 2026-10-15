@@ -16,7 +16,7 @@ import SoundEngine from './OmniSoundEngine.js'
 import { sanitizeSound } from '../utils/OmniSoundModel.js'
 
 const SYNC_INTERVAL = 0.25
-const DEFAULTS = { masterVolume: 0.8, voiceCap: 8, muteOnPhones: false, muted: false, requireOptIn: false }
+const DEFAULTS = { masterVolume: 0.8, voiceCap: 16, muteOnPhones: false, muted: false, requireOptIn: false }
 let CURRENT = null
 
 /** ids of the nodes whose data.sound.enabled (works without a scene instance: returns []). */

@@ -366,6 +366,45 @@ export class OmniSoundEngine {
   setRequireOptIn (b) { this._requireOptIn = !!b }
   setVoiceCap (n) { this._voiceCap = clamp(Math.round(num(n, SOUND_LIMITS.defaultVoices)), 1, SOUND_LIMITS.maxVoicesCap) }
   getVoiceCap () { return this._voiceCap }
+
+  // ── V201 output routing ────────────────────────────────────────────────────────────────────────────────────────────────
+  /** Install a router under a key ('main' by default): fn(nodeId) -> an AudioNode of THIS context (a mixer bus input) or null (= not mine). Every voice, new or already built, goes to
+   *  the first router that answers with a usable node, else to the master. A failing or foreign-context router counts as "not mine". Pass null to remove that key's router.
+   *  Several owners (the song player, the music mix) each use their own key. */
+  setRouter (fn, key = 'main') {
+    if (!this._routers) this._routers = new Map()
+    if (typeof fn === 'function') this._routers.set(String(key), fn); else this._routers.delete(String(key))
+    this.rerouteVoices()
+  }
+  getRouter (key = 'main') { return this._routers?.get(String(key)) ?? null }
+  _routeFor (v) {
+    const master = this._master.gain
+    if (!this._routers || !this._routers.size) return master
+    const id = String(v.id).replace(/^poly:/, '')
+    for (const fn of this._routers.values()) {
+      try {
+        const d = fn(id)
+        if (d && typeof d.connect === 'function' && (!d.context || d.context === this._ctx)) return d
+      } catch (_) { /* try the next router */ }
+    }
+    return master
+  }
+  /** Connect a voice output to its routed bus, falling back to the master if the connection is refused (for example a node of another context). */
+  _connectOut (v, out) {
+    const master = this._master.gain
+    const dest = this._routeFor(v)
+    try { out.connect(dest) } catch (_) { if (dest !== master) { try { out.connect(master) } catch (_e) { /* ignore */ } } }
+  }
+  /** Re-connect the output of every built voice according to the router (after setRouter, or when the routes changed). */
+  rerouteVoices () {
+    if (!this._master) return 0
+    let n = 0
+    for (const v of this._voices.values()) {
+      const out = v.graph?.out; if (!out || v.finished) continue
+      try { out.disconnect(); this._connectOut(v, out); n++ } catch (_) { /* ignore */ }
+    }
+    return n
+  }
   setMasterVolume (v) {
     this._volume = clamp(num(v, 0.8), 0, 1)
     if (this._master) try { this._master.gain.gain.setTargetAtTime(this._muted ? 0 : this._volume, this._ctx.currentTime, 0.02) } catch (_) {}
@@ -703,7 +742,7 @@ export class OmniSoundEngine {
     g.an = mk(c.createAnalyser()); this._configAnalyser(g.an, s)
     if (v.poly) g.out.gain.value = s.muted ? 0 : (v.expr ?? 1)
     g.tap = this._makeTap(g.an, g.an.fftSize)
-    g.out.connect(this._master.gain)
+    this._connectOut(v, g.out)
     this._buildChain(v, true)
     this._scheduleCrescendoStart(v, now)
   }

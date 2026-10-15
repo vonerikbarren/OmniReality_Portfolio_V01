@@ -298,6 +298,13 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V198 SongNode kind + the ⟐OmniSong timeline window and the 'song' quadrant content ──
   const { addSongModules } = await import('./ui/OmniSongModules.js')
   addSongModules(base, omniNode)
+  // ── V201 OmniMusicMixNode kind + the ⟐OmniMix mixing desk window and the 'mix' quadrant content ──
+  const { addMixModules } = await import('./ui/OmniMixModules.js')
+  addMixModules(base, omniNode)
+  const { addDocModules } = await import('./ui/OmniDocModules.js')   // V203: DocNode — documents inside the space
+  addDocModules(base, omniNode)
+  const { addPolyModules } = await import('./ui/OmniPolyModules.js')   // V204: PolyNode — multi-face solids, every face its own content
+  addPolyModules(base, omniNode)
   // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──
   const { addAudioModules } = await import('./ui/OmniAudioModules.js')
   addAudioModules(base, omniNode)

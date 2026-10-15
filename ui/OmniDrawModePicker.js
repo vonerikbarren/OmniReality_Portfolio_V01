@@ -76,6 +76,9 @@ export default class OmniDrawModePicker {
         <button class="odmp-btn" data-mode="sound" title="a SoundNode: a speaker you place; a note, a pad or a beat, with particles" aria-pressed="false"><span class="odmp-glyph">♪</span><span class="odmp-label">Sound</span></button>
         <button class="odmp-btn" data-mode="music" title="a MusicNode: a step sequencer you place; record from the keys or MIDI" aria-pressed="false"><span class="odmp-glyph">♫</span><span class="odmp-label">Music</span></button>
         <button class="odmp-btn" data-mode="song" title="a SongNode: arrange music nodes and audio clips on a timeline with a mixer; opens the song editor" aria-pressed="false"><span class="odmp-glyph">♬</span><span class="odmp-label">Song</span></button>
+        <button class="odmp-btn" data-mode="mix" title="an OmniMusicMixNode: a mixing desk with DJ crossfader for songs, sounds and audio clips; opens the mixer" aria-pressed="false"><span class="odmp-glyph">♫♫</span><span class="odmp-label">Mix</span></button>
+        <button class="odmp-btn" data-mode="doc" title="a DocNode: a flat sheet that shows a PDF, markdown, text, image or guide page inside the space; opens the document panel" aria-pressed="false"><span class="odmp-glyph">▤</span><span class="odmp-label">Doc</span></button>
+        <button class="odmp-btn" data-mode="poly" title="a PolyNode: a cube, tetrahedron, octahedron, dodecahedron, icosahedron, plane, strip or ring whose every face holds its own colour, picture, text, document or sound; opens the poly panel" aria-pressed="false"><span class="odmp-glyph">⬡</span><span class="odmp-label">Poly</span></button>
         <button class="odmp-btn" data-mode="path" title="an OmniPathNode: an ordered path of nodes, linked or from the hierarchy; opens the node order panel" aria-pressed="false"><span class="odmp-glyph">⤳</span><span class="odmp-label">Path</span></button>
         <button class="odmp-btn" data-mode="terminal" title="a TerminalShellTunnel: an in-scene terminal that moves with the node" aria-pressed="false"><span class="odmp-glyph">›_</span><span class="odmp-label">Terminal</span></button>
         <button class="odmp-btn" data-mode="floor" title="Floor panels: Tetris-piece floor panels and a blueprint grid (opens FloorNodeMakerSettings)" aria-pressed="false"><span class="odmp-glyph">▦</span><span class="odmp-label">Floor panels</span></button>
@@ -94,6 +97,9 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="sound"]').addEventListener('click', () => this._choose('sound'))      // V196
     this._el.querySelector('[data-mode="music"]').addEventListener('click', () => this._choose('music'))
     this._el.querySelector('[data-mode="song"]').addEventListener('click', () => this._choose('song'))      // V198
+    this._el.querySelector('[data-mode="mix"]').addEventListener('click', () => this._choose('mix'))        // V201
+    this._el.querySelector('[data-mode="doc"]').addEventListener('click', () => this._choose('doc'))        // V203
+    this._el.querySelector('[data-mode="poly"]').addEventListener('click', () => this._choose('poly'))      // V204
     for (const m of ['path', 'terminal', 'floor']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V197
 
     this._onNavSelect = (e) => {
@@ -161,6 +167,30 @@ export default class OmniDrawModePicker {
     if (mode === 'song') {
       window.dispatchEvent(new CustomEvent('omni:song-node-create', { detail: { select: true } }))
       window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniSong' } }))
+      this.close()
+      return
+    }
+
+    // V201: Mix creates a real mix node (same event as the ribbon Create button) and opens the mixer.
+    if (mode === 'mix') {
+      window.dispatchEvent(new CustomEvent('omni:mix-node-create', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniMix' } }))
+      this.close()
+      return
+    }
+
+    // V203: Doc creates a real doc node (same event as the ribbon Create button) and opens the document panel.
+    if (mode === 'doc') {
+      window.dispatchEvent(new CustomEvent('omni:doc-node-create', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniDoc' } }))
+      this.close()
+      return
+    }
+
+    // V204: Poly creates a real poly node (same event as the ribbon Create button) and opens the poly panel.
+    if (mode === 'poly') {
+      window.dispatchEvent(new CustomEvent('omni:poly-node-create', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniPoly' } }))
       this.close()
       return
     }

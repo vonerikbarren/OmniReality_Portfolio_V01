@@ -5,13 +5,464 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V198",
- "date": "2026-10-13",
- "summary": "V198: SongNode (timeline arrangement + mixer), Audio library (import any audio file), piano roll, Song tile in the OmniDraw menu",
+ "version": "V204",
+ "date": "2026-10-15",
+ "summary": "V203: DocNode, a flat sheet in the space that shows a PDF, markdown, text, image or guide page (a 2D canvas texture: no CSS3D, no extra GPU context, drawn only as sharp as the distance needs); V199-V202 questions still open",
  "checks": [
+  {
+   "id": "v204-poly-nodes-multi-face-sol.create-a-poly-node",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Create a poly node",
+   "howToReach": "Ribbon Home > Create > Poly node (or the Poly tile in the OmniDraw menu, or search 'Poly node' in OmniStarLight)",
+   "whatToCheck": "a cube appears about 7 units in front of you with patterns and 'Face 1' ... 'Face 6' labels on its faces. ⟐OmniPoly opens.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.tap-a-face-the-menu",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Tap a face: the menu",
+   "howToReach": "Tap (do not drag) a face of the cube",
+   "whatToCheck": "a small menu opens where you tapped with: Select this face, Open face settings, Remove this face. Escape or a tap elsewhere closes it. Say if it appears in a good place on your phone.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.double-sided-faces",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Double-sided faces",
+   "howToReach": "Orbit the camera behind and inside the cube; remove one face first (menu > Remove this face)",
+   "whatToCheck": "the labels and text on a face read correctly from the back too (not mirrored). Through the hole you see the inside faces.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.choose-a-shape",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Choose a shape",
+   "howToReach": "⟐OmniPoly > Shape",
+   "whatToCheck": "tetrahedron (4 triangles), octahedron (8), dodecahedron (12 pentagons), icosahedron (20), plane (1), strip, ring: each looks right and closed (no gaps) and keeps face 1, 2, 3 data by position.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.strip-and-ring",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Strip and ring",
+   "howToReach": "⟐OmniPoly > Shape: strip, then ring; change sides, faces and fold°",
+   "whatToCheck": "a strip folds like a page-turn chain; a ring of squares closes into a tube / drum. Weird values never break it.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.colour-label-tags-event",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Colour, label, tags, event",
+   "howToReach": "⟐OmniPoly > Faces > pick a face",
+   "whatToCheck": "colour tints just that face, Node colour clears it, the label is drawn on the face, tags are kept lower-case, 'Colour all tagged …' colours every face with the first tag.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.text-on-a-face",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Text on a face",
+   "howToReach": "⟐OmniPoly > Content: text",
+   "whatToCheck": "your text is wrapped on the face and stays inside it.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.image-on-a-face",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Image on a face",
+   "howToReach": "⟐OmniPoly > Content: image > Import… (or choose one from your library)",
+   "whatToCheck": "the image fills the face in its own proportions. Remove it from the library and the face says 'Could not load' instead of breaking.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.document-on-a-face",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Document on a face",
+   "howToReach": "⟐OmniPoly > Content: document > a guide page or an imported PDF",
+   "whatToCheck": "the page is drawn on the face; Next page / Previous page in the face menu (and ◀ ▶ in the window) change it. The first PDF needs the internet once.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.sound-on-a-face",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Sound on a face",
+   "howToReach": "⟐OmniPoly > Content: sound > a sound node, then an audio-library clip; tap the face > Play the sound",
+   "whatToCheck": "the sound plays (say which kind you heard). A face with an event also fires it.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.events-and-tag-selection",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Events and tag selection",
+   "howToReach": "Give a face an event name and a tag; tap it > Fire / Select all tagged",
+   "whatToCheck": "Fire sends the event (e.g. a listener in the console sees omni:poly-face-action). Select all tagged selects every face with that tag.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.far-and-near",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Far and near",
+   "howToReach": "Fly away from the poly node and back",
+   "whatToCheck": "far away the faces are plain colours (no picture); near they draw sharp; nothing flickers or redraws while you stand still.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.many-poly-nodes",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Many poly nodes",
+   "howToReach": "Create 8 to 10 poly nodes with images / documents",
+   "whatToCheck": "the frame rate stays acceptable; the farthest ones lose detail first. Say the device.",
+   "priority": "normal",
+   "device": "gpu"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.undo-redo-and-saving",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Undo / Redo and saving",
+   "howToReach": "Edit faces, press Undo and Redo, reload the page",
+   "whatToCheck": "each change is one Undo step; the shape and every face are back after a reload.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v204-poly-nodes-multi-face-sol.inspector-block",
+   "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+   "version": "V204",
+   "feature": "Inspector block",
+   "howToReach": "Select a poly node > Inspector > Appearance",
+   "whatToCheck": "a ⟐ Poly node block shows the shape and edge and 'Open ⟐OmniPoly'; changing the shape there works.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.create-a-doc-node",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Create a doc node",
+   "howToReach": "Ribbon Home > Create > Doc node (or the Doc tile in the OmniDraw menu, or search 'Doc node' in OmniStarLight)",
+   "whatToCheck": "a flat sheet appears about 7 units in front of you, turned to face you with its top edge up (also when you look straight down), showing the Guide index page. ⟐OmniDoc opens.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.pick-a-guide-page",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Pick a guide page",
+   "howToReach": "⟐OmniDoc > the Document list > Guide pages",
+   "whatToCheck": "choose Keyboard and Touch Cheatsheet: the sheet shows that page with headings, lists, a table and code boxes. The Page box says 'of N'. ◀ ▶ turn pages on the sheet.",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.import-a-pdf",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Import a PDF",
+   "howToReach": "⟐OmniDoc > Import a file… (or drag a PDF onto the window)",
+   "whatToCheck": "the PDF appears on the sheet with its real text, images and shapes. The page count is right. The first time needs the internet (the PDF reader is loaded once from a CDN). Say how long the first page took.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.import-markdown-text-and-an-image",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Import markdown, text and an image",
+   "howToReach": "⟐OmniDoc > Import a file…",
+   "whatToCheck": "a .md file shows headings and lists, a .txt file shows in a fixed-width font and wraps long lines, a PNG / JPG fills the sheet. A zip or an empty file is refused with a clear message.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.turn-pages-in-the-space",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Turn pages in the space",
+   "howToReach": "Select the doc node, press ◀ ▶ in ⟐OmniDoc or 'Page ◀ ▶' in the Inspector",
+   "whatToCheck": "the page changes, Undo goes back one page, nothing flickers. At page 1 ◀ says it is the first page.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.distance-and-sharpness",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Distance and sharpness",
+   "howToReach": "Walk or fly toward and away from a doc node showing a PDF",
+   "whatToCheck": "far away the sheet is a plain white sheet (no page, saves GPU); coming closer the page appears and gets sharper in steps; when it is off screen nothing is drawn. Say if the page ever looks blurry up close or pops in too late.",
+   "priority": "normal",
+   "device": "gpu"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.phone-gpu-and-heat",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Phone: GPU and heat",
+   "howToReach": "Open a scene with 3 or more doc nodes on your phone and move around for a minute",
+   "whatToCheck": "the phone stays smooth and does not get hot or reload the page. Texture size is capped lower on phones (1024). Try Quality > low (lighter) if it struggles.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.size-sides-paper-frame",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Size, sides, paper, frame",
+   "howToReach": "⟐OmniDoc > width slider, sides, paper colour, frame",
+   "whatToCheck": "the sheet changes size (stays in proportion to the document), 'front only' hides the page on the back, paper colour shows through text pages, frame off removes the coloured edge.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.copy-the-text-of-a-page",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Copy the text of a page",
+   "howToReach": "⟐OmniDoc > Text of this page > Copy text",
+   "whatToCheck": "the text of the current page can be selected and copied (PDF text, markdown text, guide text). An image has no text.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.library-rename-and-remove",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Library: rename and remove",
+   "howToReach": "⟐OmniDoc > the list of your documents",
+   "whatToCheck": "Rename changes the name everywhere; × removes it and a sheet that showed it says it is not in the library any more. Documents stay after you reload the page (not in a private window).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.saved-with-the-scene",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Saved with the scene",
+   "howToReach": "Create a doc node with a PDF, save / reload the scene",
+   "whatToCheck": "the doc node comes back showing the same document and page (the file itself stays in this browser's library).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v203-doc-nodes-documents-insid.many-doc-nodes",
+   "category": "V203 Doc nodes (documents inside the space)",
+   "version": "V203",
+   "feature": "Many doc nodes",
+   "howToReach": "Create about 10 doc nodes (Ribbon Home > Create > Doc node, several times) and look around",
+   "whatToCheck": "the page does not reload and the browser does not warn about too many WebGL contexts (a doc node adds none; the Inspector preview, older code, does add some). Sheets far from you or behind you are plain white sheets.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.command-button-in-the-kryptx-keyboard",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Command button in the Kryptx keyboard",
+   "howToReach": "Open OmniKeys (it opens on the Kryptx view). Look at the header.",
+   "whatToCheck": "a Command button sits left of the keyboard icon. Press it: the keyboard switches to the QWERTY view with the Command tab lit and the shortcut buttons showing. Press q: StarLight opens.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.keyboard-and-touch-guide-inside-the-app",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Keyboard and Touch guide inside the app",
+   "howToReach": "Open the Keyboard Shortcuts panel (Ribbon Home > Assistance) and press Guide; in OmniKeys press the ? button (both the Kryptx and the QWERTY view); or Docs (OmniStar tab) > Keyboard and Touch Cheatsheet",
+   "whatToCheck": "the Docs window opens on the Keyboard and Touch page. It has the section 'Firing shortcuts without a physical keyboard' and the list of Contents includes a Mix nodes page (page 19). Say if a shortcut is missing or wrong on that page.",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.deck-block-on-an-audio-strip",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Deck block on an audio strip",
+   "howToReach": "Open ⟐OmniMix, add a strip of type audio clip, choose a clip from the library, press Play",
+   "whatToCheck": "only audio strips show a block with a waveform, CUE, set, pause, play, tap, grid, 4 numbered hot cue buttons, loop buttons, a pitch slider and key / 0 / -> mix. Song and sound strips do not show it. Does it fit your phone screen?",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.waveform-and-playhead",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Waveform and playhead",
+   "howToReach": "Play a mix with an audio strip",
+   "whatToCheck": "the waveform of the clip is drawn; a white line moves across it in time with the music; clicking the waveform jumps there",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.cue-and-hot-cues",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Cue and hot cues",
+   "howToReach": "While playing: press set (cue) at a beat, move on, press CUE. Press hot cue 1, move on, press 1 again. Shift-click 1.",
+   "whatToCheck": "CUE jumps back to the cue (snapped to the beat if the clip has a bpm). Hot cue 1 stores the spot (the button gets a pink edge and a pink mark on the waveform), pressing it again jumps there, shift-click clears it. Any audible click at the jump?",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.loops",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Loops",
+   "howToReach": "Type the clip's bpm. While playing press loop 4",
+   "whatToCheck": "a loop of 4 beats starting on the beat you were in plays; the waveform shows the loop region; ÷2 and ×2 change its length at once; ◂ ▸ move it; ⟲ turns it off and the clip plays on. Say if you hear a click at the loop point.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.tap-tempo-and-grid",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Tap tempo and grid",
+   "howToReach": "On a clip without a bpm press tap in time with the beat (4 times)",
+   "whatToCheck": "the bpm box fills in (the message counts the taps). Press grid on a beat to say where beat 1 is; loops and cues then snap to your grid.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.pitch-and-tempo-sync",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Pitch and tempo sync",
+   "howToReach": "Give two audio strips different bpm, switch sync on, move a strip's pitch slider",
+   "whatToCheck": "the tempo readout under the deck shows the heard bpm; moving the pitch changes speed and pitch smoothly without a gap; '-> mix' makes the mix tempo that strip's tempo and other synced strips follow",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.key-lock",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Key lock",
+   "howToReach": "Pitch +8 %, press key, listen for a few seconds (long clips take longer)",
+   "whatToCheck": "the tempo stays changed but the pitch goes back to normal after the stretch is ready (a short moment of higher pitch first). Tell Claude how drums, bass and vocals sound: clean, softer drums, warble.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.two-decks-and-the-crossfader",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Two decks and the crossfader",
+   "howToReach": "Two audio strips, one on A one on B, loop on both, press Crossfade -> B",
+   "whatToCheck": "the transition runs over the seconds you set; hot cues and loops keep working during it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v202-mix-decks-cue-loops-key-l.undo-of-deck-edits",
+   "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+   "version": "V202",
+   "feature": "Undo of deck edits",
+   "howToReach": "Make a loop, press Undo",
+   "whatToCheck": "the loop is undone as one step; dragging the pitch slider counts as one step",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.omnihand-tool-menu-position",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "OmniHand tool menu position",
+   "howToReach": "Press 3 (or the OmniHand ⬢ button) on a 1280x720 or larger desktop window",
+   "whatToCheck": "the round menu opens clearly away from the top-left corner (about 200 px inward and 250 px down), fully inside the window, nothing important covered",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.conscioushand-tool-menu-position",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "ConsciousHand tool menu position",
+   "howToReach": "Press 4 (or the ConsciousHand ⬢ button)",
+   "whatToCheck": "the mirror image of OmniHand's: away from the top-right corner, fully inside the window",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.tool-menus-opened-together",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "Tool menus opened together",
+   "howToReach": "Open OmniHand, ConsciousHand, LH (Left Shift) and RH (Right Shift) tool menus at once",
+   "whatToCheck": "say how much they overlap and whether you can still click every tool; tell Claude what you want (smaller, other positions, only two at a time)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.tool-menu-positions-in-a-short-window-and-on-a-pho",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "Tool menu positions in a short window and on a phone",
+   "howToReach": "Make the window 1024x600, then a phone width (about 390 px wide)",
+   "whatToCheck": "the top menus stay on screen in the short window; on the phone nothing is shifted (as before) and the menus do not cover the movement pads",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.claude-check-grouped-by-version",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "Claude Check grouped by version",
+   "howToReach": "Developer > Claude Check",
+   "whatToCheck": "checks and questions are in version groups, newest first; this version is open, older versions are closed; counts are right; Hide done and the device filters still work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v200-hand-tool-menus-and-claud.claude-check-older-questions-restored",
+   "category": "V200 hand tool menus and Claude Check by version",
+   "version": "V200",
+   "feature": "Claude Check older questions restored",
+   "howToReach": "Developer > Claude Check, open the V198, V195 and V194 question groups",
+   "whatToCheck": "the V191 to V198 questions are all there and can be answered; the progress line still counts correctly",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v199-sim-clock-and-orbit-model.pure-models",
+   "category": "V199 sim clock and orbit models (no UI yet)",
+   "version": "V199",
+   "feature": "Pure models",
+   "howToReach": "node --import ./register.mjs v199_models_test.mjs (developer only)",
+   "whatToCheck": "120/120 pass; there is nothing to see in the app yet",
+   "priority": "normal",
+   "device": "any"
+  },
   {
    "id": "v198-omnisongnode-audio-librar.song-transport-play-two-pattern-lanes",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song transport: play two pattern lanes",
    "howToReach": "Create a Song node, add two music node patterns on two pattern lanes, press Play (or dispatch omni:song-transport-request {action:'play'})",
    "whatToCheck": "both patterns sound together at the song tempo, the playhead moves, Stop silences everything (no hanging note)",
@@ -21,6 +472,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-tempo-map",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song tempo map",
    "howToReach": "In the song panel add a tempo point at bar 3 (e.g. 60 bpm) while playing",
    "whatToCheck": "the beat changes at bar 3, the playhead does not jump, notes stay in time",
@@ -30,6 +482,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-loop-region",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song loop region",
    "howToReach": "Turn Loop on with bars 2-4, press Play",
    "whatToCheck": "playback wraps from bar 4 back to bar 2 without a gap or a doubled note; loop count increases",
@@ -39,6 +492,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-seek-and-pause",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song seek and pause",
    "howToReach": "Click the ruler while playing; press Pause then Play",
    "whatToCheck": "the playhead jumps and the music continues from there; pause keeps the bar, Stop returns to bar 1",
@@ -48,6 +502,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-mixer-mute-solo-volume",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song mixer mute / solo / volume",
    "howToReach": "Lane header: M, S and the volume slider while playing",
    "whatToCheck": "muting a pattern lane silences its notes within about a tenth of a second; solo keeps only the solo lanes; volume lowers the loudness",
@@ -57,6 +512,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-audio-clip-lane",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song audio clip lane",
    "howToReach": "Import a WAV in the audio library, drop it on an audio lane, press Play",
    "whatToCheck": "the clip sounds in time, the lane meter moves, lane mute silences it, lane pan/reverb send change the sound",
@@ -66,6 +522,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-master-limiter-and-sends",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song master limiter and sends",
    "howToReach": "Master strip: limiter threshold, reverb mix/size, delay time/feedback/mix",
    "whatToCheck": "loud audio is held under the threshold; the reverb and delay returns are audible on audio lanes only",
@@ -75,6 +532,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-automation",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song automation",
    "howToReach": "Draw a volume automation on a lane",
    "whatToCheck": "the lane volume follows the line while playing (pattern lanes: loudness steps with the line)",
@@ -84,6 +542,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.only-one-song-plays",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Only one song plays",
    "howToReach": "Start song A, then press Play on song B",
    "whatToCheck": "A stops (stop event) and only B sounds",
@@ -93,6 +552,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-deleted-while-playing",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song deleted while playing",
    "howToReach": "Delete the playing song node",
    "whatToCheck": "playback stops, no error",
@@ -102,6 +562,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-missing-pattern-warning",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song missing pattern warning",
    "howToReach": "Delete a MusicNode used by a clip, press Play",
    "whatToCheck": "the clip stays visible, the rest plays, the panel shows a warning (no crash)",
@@ -111,6 +572,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-node-create",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song node create",
    "howToReach": "Ribbon Home > Create > Song node",
    "whatToCheck": "A record disc appears, the ⟐OmniSong window opens on it",
@@ -120,6 +582,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.song-editor-open",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Song editor open",
    "howToReach": "Ribbon Home > Tools > Song editor, or Ctrl+K \"Song editor\"",
    "whatToCheck": "Window opens on the selected song node",
@@ -129,6 +592,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.draw-picker-song-tile",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Draw picker Song tile",
    "howToReach": "OmniDraw picker > Song",
    "whatToCheck": "Creates a song node and opens the editor",
@@ -138,6 +602,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.lanes-and-clips",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Lanes and clips",
    "howToReach": "Song window > Pattern lane, library Add / drag",
    "whatToCheck": "Clip appears, drag moves, edges resize, snaps to grid",
@@ -147,6 +612,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.lane-mixer",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Lane mixer",
    "howToReach": "Lane header faders and knobs, M, S",
    "whatToCheck": "Values change, meters move while playing, mute/solo dim the lane",
@@ -156,6 +622,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.sections-and-markers",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Sections and markers",
    "howToReach": "Click ruler section band, marker button",
    "whatToCheck": "Box edits name/start/length/colour; markers rename/delete",
@@ -165,6 +632,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.tempo-track",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Tempo track",
    "howToReach": "Click/drag on the tempo row",
    "whatToCheck": "Points add, move, delete; first point is base bpm",
@@ -174,6 +642,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.automation",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Automation",
    "howToReach": "Lane header ∿",
    "whatToCheck": "Points add/drag/remove; param menu switches curve",
@@ -183,6 +652,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.make-unique",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Make unique",
    "howToReach": "Select pattern clip > Make unique",
    "whatToCheck": "New music node; editing it leaves other clips alone",
@@ -192,6 +662,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.audio-import",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Audio import",
    "howToReach": "Library Import… or file drop",
    "whatToCheck": "Waveform clip; friendly error for bad files",
@@ -201,6 +672,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.undo-redo",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Undo/redo",
    "howToReach": "Ctrl+Z / Ctrl+Shift+Z with window focus",
    "whatToCheck": "Steps back, up to 100; a drag is one step",
@@ -210,6 +682,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.delete-cleanup",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Delete cleanup",
    "howToReach": "Delete the song node",
    "whatToCheck": "Window shows empty state, playback stops",
@@ -219,6 +692,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.phone-sheet",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Phone sheet",
    "howToReach": "390 px wide: ⟐OmniSong",
    "whatToCheck": "Lane cards, tap expands mixer, play works",
@@ -228,6 +702,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.audio-library-window",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Audio library window",
    "howToReach": "Ribbon Home > Tools > Audio library (or OmniStarLight: audio)",
    "whatToCheck": "Window `⟐OmniAudioLibrary` opens, shows the empty-state text, the storage meter (\"0 B of 300 MB used ... saved in this browser\") and an Import audio button",
@@ -237,6 +712,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.import-by-button",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Import by button",
    "howToReach": "Audio library > Import audio, pick a WAV and an MP3 (and an OGG / FLAC / M4A if you have them)",
    "whatToCheck": "Each valid file appears as a row (name, length, format, size, date, waveform); a toast per file; a file your browser cannot open gives a red line with the reason",
@@ -246,6 +722,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.reject-non-audio",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Reject non-audio",
    "howToReach": "Import a PNG renamed to .wav, a 0-byte file, a text file",
    "whatToCheck": "Red message each (\"looks like an image\", \"is empty\", \"could not be decoded\"); nothing is added",
@@ -255,6 +732,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.drag-and-drop-import",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Drag and drop import",
    "howToReach": "Drag a sound file from the desktop over the browser while the library is open",
    "whatToCheck": "Full-screen drop zone appears; dropping adds the file; dragging plain text does not show the zone",
@@ -264,6 +742,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.preview",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Preview",
    "howToReach": "Press the play button on a row; click on the waveform",
    "whatToCheck": "Sound plays (nothing sounds before you press); button turns to stop; playhead moves; stops when you close the window or press again",
@@ -273,6 +752,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.rename-delete",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Rename / delete",
    "howToReach": "Rename a row (Enter / Esc); Delete asks first",
    "whatToCheck": "New name sticks after a reload; duplicates become \"Name (2)\"; delete removes it; if a song uses it the confirm says how many songs",
@@ -282,6 +762,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.persistence",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Persistence",
    "howToReach": "Import a file, reload the page, open Audio library",
    "whatToCheck": "The file is still there (meter says \"saved in this browser\")",
@@ -291,6 +772,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.private-mode",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Private mode",
    "howToReach": "Open the app in a private / incognito window, import a file",
    "whatToCheck": "Yellow warning \"Private mode or blocked storage\" and meter \"NOT saved (memory only)\"; the file is gone after closing the tab",
@@ -300,6 +782,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.limits",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Limits",
    "howToReach": "Import a file over 40 MB; fill the library past 300 MB",
    "whatToCheck": "\"too large\" / \"library is full\" messages, nothing added, meter shows usage",
@@ -309,6 +792,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.audio-picker",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Audio picker",
    "howToReach": "From the song panel, add an audio clip (agent 2)",
    "whatToCheck": "A modal list of the library with Import; picking a row returns the file; Esc closes",
@@ -318,6 +802,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.phone-layout",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Phone layout",
    "howToReach": "Open Audio library at 390 px width",
    "whatToCheck": "Bottom sheet, buttons at least 40 px high, list scrolls, waveform fits",
@@ -327,6 +812,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.piano-roll-switch",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Piano roll switch",
    "howToReach": "Ribbon Home > Sound > Sequencer (or select a music node and open the Inspector's Open sequencer), a track row, press Roll next to the name",
    "whatToCheck": "The track's step lane is replaced by a piano roll (keys, rows, velocity lane); Grid brings the lane back; reopen the window: the choice is remembered",
@@ -336,6 +822,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.draw-and-lengthen-notes",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Draw and lengthen notes",
    "howToReach": "In the roll press an empty cell, drag sideways",
    "whatToCheck": "A note appears (you hear the pitch), drag sets its length in steps, up to the whole pattern; one Undo removes the whole gesture",
@@ -345,6 +832,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.move-and-resize-notes",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Move and resize notes",
    "howToReach": "Drag a note body, drag its right edge, drag its left edge",
    "whatToCheck": "The note moves in steps and pitch, the length changes, a same-pitch neighbour is shortened (not deleted) and comes back when you drag away",
@@ -354,6 +842,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.select-copy-duplicate",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Select, copy, duplicate",
    "howToReach": "Select tool: drag a rectangle, Shift+click; Ctrl/Cmd+C, +V, +D, Delete, arrows",
    "whatToCheck": "The selection moves / transposes with the arrows (Shift = bar / octave), paste lands at the last click, duplicate sits right behind the selection",
@@ -363,6 +852,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.velocity-lane",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Velocity lane",
    "howToReach": "Drag a bar under the grid, sweep across several bars",
    "whatToCheck": "The note's velocity changes, a selected group follows; one Undo step per drag",
@@ -372,6 +862,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.scale-and-snap",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Scale and snap",
    "howToReach": "Key / Scale / Snap selects and the ♯ Scale button",
    "whatToCheck": "Rows outside the scale are dimmed, new and moved notes snap to scale notes, snap step / half / bar / off changes where notes start",
@@ -381,6 +872,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.zoom-and-scroll",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Zoom and scroll",
    "howToReach": "Ctrl/Cmd+wheel, wheel, Shift+wheel, +/-/Fit buttons",
    "whatToCheck": "The roll zooms about the pointer, scrolls both ways, Fit shows the whole pattern",
@@ -390,6 +882,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.playhead",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Playhead",
    "howToReach": "Press Play with the roll open",
    "whatToCheck": "A line runs over the roll in time (not choppy), Follow scrolls with it, it hides on Stop",
@@ -399,6 +892,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.touch-editing-on-a-phone",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Touch editing on a phone",
    "howToReach": "Open the sequencer on a phone (bottom sheet), Roll",
    "whatToCheck": "Bigger rows and buttons, one finger draws, two fingers scroll and pinch-zoom, long press on a note deletes it, Pan tool scrolls",
@@ -408,6 +902,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.duplicate-a-music-node",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Duplicate a music node",
    "howToReach": "Dispatch `omni:music-node-duplicate {nodeId, select:true}` (the song node's Make unique)",
    "whatToCheck": "A \"... copy\" music node appears next to the original with the same notes, edits to it do not change the original, Delete removes it, an unknown / non-music id answers an error code",
@@ -417,6 +912,7 @@ export default {
   {
    "id": "v198-omnisongnode-audio-librar.long-notes-play",
    "category": "V198 OmniSongNode, audio library, piano roll",
+   "version": "V198",
    "feature": "Long notes play",
    "howToReach": "Draw a note 16 steps long, press Play, Loop on and off",
    "whatToCheck": "The note sounds for the whole bar; with Loop off it ends with the pattern; an old (V195) pattern sounds exactly as before",
@@ -426,6 +922,7 @@ export default {
   {
    "id": "v197-omnidraw-picker-path-term.path-terminal-and-floor-panels-tiles-in-the-omnidr",
    "category": "V197 OmniDraw picker: Path, Terminal, Floor panels",
+   "version": "V197",
    "feature": "Path, Terminal and Floor panels tiles in the OmniDraw menu",
    "howToReach": "Home > Create > OmniDraw (or the N key)",
    "whatToCheck": "The picker now has 13 tiles; Path creates an OmniPathNode and opens the node order panel; Terminal creates a TerminalShellTunnel; Floor panels opens FloorNodeMakerSettings; Sound, Music and the 8 older tiles still work. On a phone the grid still fits and scrolls",
@@ -435,6 +932,7 @@ export default {
   {
    "id": "v196-omnidraw-picker-sound-and.sound-and-music-tiles-in-the-omnidraw-menu",
    "category": "V196 OmniDraw picker: Sound and Music",
+   "version": "V196",
    "feature": "Sound and Music tiles in the OmniDraw menu",
    "howToReach": "Home > Create > OmniDraw (or the N key)",
    "whatToCheck": "The picker shows Sound (♪) and Music (♫) after Behavior; Sound creates a SoundNode in front of the camera and opens the sound settings; Music creates a MusicNode and opens the sequencer; the other 8 tiles still work",
@@ -444,6 +942,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.boot-screen-omni-staros-credits-shooting-stars",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Boot screen: Omni⟐StarOS, credits, shooting stars",
    "howToReach": "Reload the page and watch the opening",
    "whatToCheck": "Title reads Omni⟐StarOS; below it \"developed by OmniStar Industries\" then \"Founder: Von'Erik Barren-Tucker\"; many more light shooting stars travel from the top-left toward 5 o'clock (some old down-left ones remain); the star still lands on the ⟐",
@@ -453,6 +952,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.q-opens-starlight",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Q opens StarLight",
    "howToReach": "press Q on the canvas",
    "whatToCheck": "search opens; Esc closes; Q inside a text field types q",
@@ -462,6 +962,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.cmd-ctrl-k-does-not-open-starlight",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Cmd/Ctrl+K does not open StarLight",
    "howToReach": "press Ctrl+K",
    "whatToCheck": "Expression typing turns on instead, search stays closed",
@@ -471,6 +972,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.expression-typing-on-off",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Expression typing on/off",
    "howToReach": "Ctrl/Cmd+K, then Esc",
    "whatToCheck": "hint shows; Esc leaves; all notes stop",
@@ -480,6 +982,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.play-notes-with-keys",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Play notes with keys",
    "howToReach": "mode on, press A S D F / J K L",
    "whatToCheck": "tones sound, LH octave 3, RH octave 4; B / N shifts octave",
@@ -489,6 +992,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.wasd-frozen-in-mode",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "WASD frozen in mode",
    "howToReach": "mode on, press W A S D",
    "whatToCheck": "camera does not move; after Esc it moves again",
@@ -498,6 +1002,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.sustain-mod-bend",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Sustain, mod, bend",
    "howToReach": "Space; Left Shift + Up/Down; Right Shift + arrows",
    "whatToCheck": "notes hold; vibrato; pitch bends and springs back",
@@ -507,6 +1012,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.instrument-follows-selection",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Instrument follows selection",
    "howToReach": "select a node with a sound, play keys",
    "whatToCheck": "its sound is the instrument; setting turns follow off",
@@ -516,6 +1022,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.expression-settings-window",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Expression settings window",
    "howToReach": "Ribbon Home > Tools > Expression settings (also Admin)",
    "whatToCheck": "octave scope, bend range, spring, MIDI options persist after reload",
@@ -525,6 +1032,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.midi-in",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "MIDI in",
    "howToReach": "enable MIDI in the settings window with a keyboard plugged in",
    "whatToCheck": "browser asks permission only then; notes play; unplug/replug works",
@@ -534,6 +1042,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.movement-q-e-removed",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Movement Q/E removed",
    "howToReach": "press Q / E",
    "whatToCheck": "no ascend/descend; on-screen buttons still work",
@@ -543,6 +1052,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.omniexpression-keyboard-first-look",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "OmniExpression keyboard (first look)",
    "howToReach": "Ribbon > Home > Tools > Expression, or OmniStarLight \"OmniExpression keyboard\"",
    "whatToCheck": "A window with just two keyboard blocks (left / right hand, black row + two white rows each), key letters and note names, Oct readouts, SUS / BEND / MOD",
@@ -552,6 +1062,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.keyboard-touch-and-mouse",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Keyboard touch and mouse",
    "howToReach": "Press the on-screen keys (several fingers on a touch screen)",
    "whatToCheck": "Each finger plays its own note and lights its key; sliding glides; lifting always stops the note; low on the key is louder",
@@ -561,6 +1072,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.keys-light-up-from-other-inputs",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Keys light up from other inputs",
    "howToReach": "Play the computer keys or a MIDI keyboard with the panel open",
    "whatToCheck": "The matching on-screen keys light; SUS / BEND / MOD lamps follow",
@@ -570,6 +1082,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.maximize-to-quadrants",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Maximize to quadrants",
    "howToReach": "Maximize button of the OmniExpression window",
    "whatToCheck": "Four glass quadrants with corner brackets and split lines; restoring brings the keyboard back",
@@ -579,6 +1092,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.quadrant-dropdowns",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Quadrant dropdowns",
    "howToReach": "Header drop-down of each quadrant",
    "whatToCheck": "Lists keyboards, BeatPad, Mixer (placeholder) and OmniDJ / sequencer when built; the choice survives a reload; swapping and closing leave nothing behind",
@@ -588,6 +1102,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.split-and-join",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Split and Join",
    "howToReach": "Split button in the window header (desktop); Join in either hand window",
    "whatToCheck": "Two independently movable windows; Join returns one window; positions remembered; no Split on a phone",
@@ -597,6 +1112,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.omnibeatpad",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "OmniBeatPad",
    "howToReach": "Ribbon > Home > Tools > BeatPad, nav OmniBeatPad, or the BeatPad quadrant",
    "whatToCheck": "4 x 4 pads, tap plays and flashes, several fingers work, keys 1-4 / Q-R / A-F / Z-V only with the grid focused",
@@ -606,6 +1122,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.beatpad-edit",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "BeatPad edit",
    "howToReach": "Edit button or long press on a pad",
    "whatToCheck": "Label, colour, note / sound node / sample, mode, choke group, volume, Test pad; kits load; saved after reload",
@@ -615,6 +1132,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.mixer-quadrant-placeholder",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Mixer quadrant (placeholder)",
    "howToReach": "Pick Mixer in a quadrant drop-down",
    "whatToCheck": "Six faders with M / S that move and are remembered; clearly labelled placeholder",
@@ -624,6 +1142,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.omnimusicplayer-rename",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "OmniMusicPlayer rename",
    "howToReach": "Ribbon > Home > Tools > Music player, drawer item, OmniStarLight \"mixer\"",
    "whatToCheck": "The panel opens with the title OmniMusicPlayer; saved audio / videos / settings are still there; k key still toggles it",
@@ -633,6 +1152,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.omnidj-window",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "OmniDJ window",
    "howToReach": "Ribbon Home > Tools > OmniDJ (or OmniStarLight \"dj\")",
    "whatToCheck": "the window opens with six round jog wheels in the top row and six channel strips below; Esc / the x closes it",
@@ -642,6 +1162,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.load-a-track",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Load a track",
    "howToReach": "OmniDJ > Load on a deck",
    "whatToCheck": "the list shows the OmniMusicPlayer library slots (filled ones enabled); picking one shows its name; \"Open an audio file\" loads a file",
@@ -651,6 +1172,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.play-and-the-jog-wheel",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Play and the jog wheel",
    "howToReach": "Load a track, press the play button",
    "whatToCheck": "the circle spins and its ring fills; pitch fader up makes it spin faster",
@@ -660,6 +1182,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.scrub",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Scrub",
    "howToReach": "Drag a circle in a circle while a track plays",
    "whatToCheck": "the position jumps with your hand (one turn about 1.8 s), playing resumes on release; double-click goes to cue",
@@ -669,6 +1192,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.eq",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "EQ",
    "howToReach": "Drag LOW / MID / HIGH knobs on a playing deck",
    "whatToCheck": "LOW all the way left removes the bass (reads \"kill\"), the centre notch clicks, double-click resets",
@@ -678,6 +1202,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.volume-mute",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Volume / mute",
    "howToReach": "Volume fader and the M button",
    "whatToCheck": "quieter / silent; the meter beside the fader moves",
@@ -687,6 +1212,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.crossfader",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Crossfader",
    "howToReach": "Set a deck to A and another to B, move the crossfader",
    "whatToCheck": "the deck on the far side goes silent; THRU decks never change; Curve button toggles",
@@ -696,6 +1222,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.grid-edit",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Grid edit",
    "howToReach": "OmniDJ > Edit",
    "whatToCheck": "drag moves (snaps), the corner handle resizes, the up / down arrows stack, the cross hides, + Add brings it back; Done makes the controls work again",
@@ -705,6 +1232,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.layout-kept",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Layout kept",
    "howToReach": "Edit, move something, reload",
    "whatToCheck": "the layout is the same; Reset layout (two presses) restores it",
@@ -714,6 +1242,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.click-feeling",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Click feeling",
    "howToReach": "Turn Tick on in the top bar, press buttons",
    "whatToCheck": "a very short tick (audio must be running); on a phone Buzz vibrates briefly",
@@ -723,6 +1252,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.keyboard",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Keyboard",
    "howToReach": "Tab to a knob / fader / circle",
    "whatToCheck": "arrows, Page Up / Down, Home / End, Delete reset work and do not move the camera",
@@ -732,6 +1262,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.phone",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Phone",
    "howToReach": "Open OmniDJ at 390 px wide",
    "whatToCheck": "the window fills the screen, the grid scrolls, buttons can be pressed by touch",
@@ -741,6 +1272,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.omnidj-in-a-quadrant",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "OmniDJ in a quadrant",
    "howToReach": "OmniExpression quadrant header menu (when agent 2's host is present)",
    "whatToCheck": "OmniDJ is listed and shows the same six circles",
@@ -750,6 +1282,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.music-keeps-playing",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Music keeps playing",
    "howToReach": "Play a deck, close the window",
    "whatToCheck": "the music continues; reopen shows the same state; Stop all stops it",
@@ -759,6 +1292,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.music-node-create",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Music node create",
    "howToReach": "Home > Create > Music node",
    "whatToCheck": "A flat plate with a 4x16 grid appears, selected; Inspector shows tempo, Play/Stop, Record, Open sequencer",
@@ -768,6 +1302,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.sequencer-window",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Sequencer window",
    "howToReach": "Home > Sound > Sequencer (or Inspector > Open sequencer)",
    "whatToCheck": "Window opens (phone: bottom sheet) with 4 tracks; tapping a step toggles it, dragging paints, dragging up/down sets velocity",
@@ -777,6 +1312,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.piano-roll",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Piano roll",
    "howToReach": "Sequencer > track view button (Roll)",
    "whatToCheck": "Tap paints a note, tap a note selects it, sideways drag sets its length, Delete removes",
@@ -786,6 +1322,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.play",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Play",
    "howToReach": "Sequencer > Play (or Inspector Play)",
    "whatToCheck": "Playhead moves, notes sound through the track's SoundNode, the 3D plate column follows the step",
@@ -795,6 +1332,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.tempo-loop-metronome",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Tempo/loop/metronome",
    "howToReach": "Sequencer header or Inspector",
    "whatToCheck": "Tempo changes without a jump or drift; metronome clicks; Loop off stops at the end",
@@ -804,6 +1342,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.record-live",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Record live",
    "howToReach": "Sequencer > Rec, play keys/MIDI/pads",
    "whatToCheck": "Count-in first (notes ignored), notes land on the armed track, quantized per setting",
@@ -813,6 +1352,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.step-record",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Step record",
    "howToReach": "Sequencer > Rec > Step mode",
    "whatToCheck": "Cursor advances per note, chords within 60 ms share a step, Rest/Back work",
@@ -822,6 +1362,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.undo-a-take",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Undo a take",
    "howToReach": "Sequencer > Undo",
    "whatToCheck": "A whole take disappears in one undo; Redo brings it back",
@@ -831,6 +1372,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.presets",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Presets",
    "howToReach": "Sequencer > track > pattern preset",
    "whatToCheck": "11 presets apply to the track; undo restores",
@@ -840,6 +1382,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.instrument-picker",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Instrument picker",
    "howToReach": "Sequencer > track instrument",
    "whatToCheck": "Lists SoundNodes; choosing one changes the sound; a deleted SoundNode shows 'missing'",
@@ -849,6 +1392,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.save-reload",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Save/reload",
    "howToReach": "Edit, reload the page",
    "whatToCheck": "Pattern, tempo and tracks come back",
@@ -858,6 +1402,7 @@ export default {
   {
    "id": "v195-expression-typing-panels.delete-cleanup",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Delete cleanup",
    "howToReach": "Delete the music node while playing",
    "whatToCheck": "Playback stops, no stuck notes, mesh disposed, services keep working",
@@ -867,41 +1412,1890 @@ export default {
   {
    "id": "v195-expression-typing-panels.phone-2",
    "category": "V195 Expression typing, panels, BeatPad, OmniDJ, MusicNode",
+   "version": "V195",
    "feature": "Phone",
    "howToReach": "390 px wide",
    "whatToCheck": "Bottom sheet, lanes scroll sideways, no page scroll, touch painting works",
    "priority": "normal",
    "device": "phone"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-engine-plays-a-tone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound engine plays a tone",
+   "howToReach": "open the app, click once, run in the console: `import('/systems/OmniSoundEngine.js').then(m=>m.default.start('t',{sustained:true}))`",
+   "whatToCheck": "you hear a soft steady A4 (440 Hz) after the first click; `m.default.stop('t')` fades it out in about 0.4 s without a click or pop",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.autoplay-unlock",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Autoplay unlock",
+   "howToReach": "reload, do NOT click, trigger a sound start",
+   "whatToCheck": "nothing plays and no console warning; after the first click or key press the queued sound starts",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.dynamics-pppp-ffff",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Dynamics pppp..ffff",
+   "howToReach": "start the sound with `dynamic` pppp, then ffff via `SoundEngine.update`",
+   "whatToCheck": "pppp is almost silent, ffff is clearly the loudest, steps in between rise evenly, no distortion at ffff",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.adsr-and-sustained",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "ADSR and sustained",
+   "howToReach": "play a pluck preset, then a pad preset with sustained",
+   "whatToCheck": "the pluck dies by itself; the pad holds until Stop, then fades by its release",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.crescendo",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Crescendo",
+   "howToReach": "play the swell preset",
+   "whatToCheck": "gets steadily louder and brighter over ~10 s, no steps or zipper noise",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.iterative-play-and-loop",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Iterative play and loop",
+   "howToReach": "play the arp and rain presets, then the heartbeat preset",
+   "whatToCheck": "arp climbs and falls on an even rhythm without drifting, rain is random drops, heartbeat repeats forever until Stop",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.vibrato-vs-tremolo",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Vibrato vs tremolo",
+   "howToReach": "play siren (vibrato) then set tremoloDepth to 0.6",
+   "whatToCheck": "vibrato wobbles the pitch, tremolo pulses the loudness",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.filter-and-fx",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Filter and FX",
+   "howToReach": "enable filter, reverb, delay, chorus, distortion one at a time on a saw note",
+   "whatToCheck": "each effect is audible, switching one on or off while playing makes no click",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.positional-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Positional sound",
+   "howToReach": "set positional true on a node and fly the camera around it",
+   "whatToCheck": "louder when near, moves left/right with the view, quiet far away; air absorption makes far sound duller",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.voice-cap",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Voice cap",
+   "howToReach": "start 12 sounds",
+   "whatToCheck": "at most the Admin cap (default 8) play, the oldest is faded out, no crash",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.mixer-bridge",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Mixer bridge",
+   "howToReach": "open OmniMixer, play a track, run `SoundEngine.getAnalysis('mixer')`",
+   "whatToCheck": "returns spectrum/peakHz that follow the music; the music is not louder/quieter than before and does not stop",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.tab-in-background",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Tab in background",
+   "howToReach": "start an arp and switch tabs for 10 s",
+   "whatToCheck": "the rhythm continues (notes may sound slightly blocky) and nothing piles up when returning",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.phone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Phone",
+   "howToReach": "open on a phone with Admin \"mute on phones\"",
+   "whatToCheck": "muted until the user unmutes; with it off, sound works after the first tap",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-node-create",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound node create",
+   "howToReach": "Ribbon > Home > Create > Sound node",
+   "whatToCheck": "node appears, bell shape, selected, undo removes it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-node-persists",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound node persists",
+   "howToReach": "create, set a note, reload",
+   "whatToCheck": "node and settings come back",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.node-reacts",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Node reacts",
+   "howToReach": "press Play on a sound node",
+   "whatToCheck": "core/rings move with level, pause bars show",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-on-any-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound on any node",
+   "howToReach": "Inspector > Sound section > switch on",
+   "whatToCheck": "node gets sound; off removes playing voice",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-settings-window",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound settings window",
+   "howToReach": "Ribbon > Tools > Sound settings, or Nav ⟐SoundNodeSettings",
+   "whatToCheck": "schema sections, search, presets, Reset, copy/paste JSON, Undo",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.settings-window-on-phone",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Settings window on phone",
+   "howToReach": "open at <=700px",
+   "whatToCheck": "bottom sheet, usable by touch",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.admin-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Admin sound",
+   "howToReach": "Admin > UI Settings > Sound",
+   "whatToCheck": "master volume, voice cap, mute on phone, ask before sound, particle cap, prompt toggle take effect",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.unlock-prompt",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Unlock prompt",
+   "howToReach": "enable \"ask before sound\", press Play",
+   "whatToCheck": "toast appears; Enable sound unmutes; × hides until reload",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.speaker-toggle",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Speaker toggle",
+   "howToReach": "Inspector Sound section speaker",
+   "whatToCheck": "mutes/unmutes all sound",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.delete-sound-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Delete sound node",
+   "howToReach": "delete then undo",
+   "whatToCheck": "node and its sound return/leave cleanly, no voice left playing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.sound-particles-appear",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Sound particles appear",
+   "howToReach": "Create a sound node (or enable sound on a node), keep soundParticles on, press Play in the sound settings",
+   "whatToCheck": "A cloud of points surrounds the node, in the shape of the chosen formation, and moves with the sound; stop the sound and the cloud settles and stays still",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particle-count-is-live",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Particle count is live",
+   "howToReach": "⟐SoundParticleViewer, drag the Count slider",
+   "whatToCheck": "The Particles readout and the cloud in the scene follow within a quarter of a second; 0 removes the cloud; 4000 is the most; the value is still there after Refresh",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.frequency-drives-the-motion",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Frequency drives the motion",
+   "howToReach": "Play a bass-heavy sound, then a bright one; look at the cloud",
+   "whatToCheck": "Bass makes the cloud breathe (radius), mids lift it, high mids swirl it, the highest band shakes it (defaults); the band strip in ⟐SoundParticleViewer shows each band and what it drives",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.formations",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Formations",
+   "howToReach": "⟐SoundParticleViewer > Formation, or the sound settings",
+   "whatToCheck": "All 14 formations draw (ring, sphere, spiral, helix, galaxy, lissajous, wave, bars, cube, burst, torus, cloud, disc, funnel); Bars rises and falls with the spectrum, bass on the left",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.colour-modes-and-blend",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Colour modes and blend",
+   "howToReach": "Sound settings > Colour & Blend",
+   "whatToCheck": "Solid, by band (rainbow), by pitch (the colour follows the note) and gradient look right; Additive glows, Normal covers; Hide behind objects works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.moving-the-node-moves-the-cloud",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Moving the node moves the cloud",
+   "howToReach": "Drag a sound node, or use StrictAlign (the ` key)",
+   "whatToCheck": "The cloud goes along with the node, also while it plays",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.delete-disable-frees-the-cloud",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Delete / disable frees the cloud",
+   "howToReach": "Delete the node, or turn its sound or particles off",
+   "whatToCheck": "The cloud disappears at once and nothing is left in the scene",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.lod-and-the-shared-cap",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "LOD and the shared cap",
+   "howToReach": "Create 6 sound nodes of 4000 particles each",
+   "whatToCheck": "The nearest five keep 4000, the farthest is thinned or hidden (Particles readout says cap 20000); far nodes show fewer particles; behind you or beyond the hide distance the cloud is hidden",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.silent-costs-nothing",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Silent costs nothing",
+   "howToReach": "Several sound nodes, none playing; watch the frame rate",
+   "whatToCheck": "No difference from a scene without sound nodes",
+   "priority": "normal",
+   "device": "gpu"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.no-new-webgl-context",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "No new WebGL context",
+   "howToReach": "Open both viewers and play sounds",
+   "whatToCheck": "The page still holds the same number of WebGL contexts as before (the viewers are 2D canvas)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-opens",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "SoundViewer opens",
+   "howToReach": "Ribbon Home > Sound > Sound viewer, OmniStarLight \"Sound viewer\", or nav item ⟐SoundViewer",
+   "whatToCheck": "A window with the picker, Freeze, five views, zoom, readout and the canvas; resize and maximize work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-shows-the-sound",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "SoundViewer shows the sound",
+   "howToReach": "Play a sound node, pick it (or select it with Auto)",
+   "whatToCheck": "Spectrum bars and line move, the scope shows the wave, the spectrogram scrolls, the 7 meters move, the peak shows Hz and a note name, the envelope chip lights Att / Dec / Sus / Rel",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-master-and-node-picker",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "SoundViewer master and node picker",
+   "howToReach": "Picker: Auto, Master, a node",
+   "whatToCheck": "Master shows the whole mix; Auto follows the selected node (master when it has no sound); a node set to off is marked (off)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-freeze-and-zoom",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "SoundViewer freeze and zoom",
+   "howToReach": "Freeze, then the − / ＋ buttons or the mouse wheel on the picture",
+   "whatToCheck": "Freeze holds the picture and the readout; zoom goes 20-20k, 20-8k, 20-2k, 20-500, 20-120 Hz; Run lets it go on",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.soundviewer-silence",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "SoundViewer silence",
+   "howToReach": "Open it with nothing playing",
+   "whatToCheck": "An empty grid and a hint, no error; theme colours follow the OmniOS theme",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-opens",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "ParticleViewer opens",
+   "howToReach": "Ribbon Home > Sound > Particle viewer, OmniStarLight \"Particle viewer\", or nav item ⟐SoundParticleViewer",
+   "whatToCheck": "With no node selected: a hint; select a sound node: its formation is drawn, the count reads drawn / count",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-views",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "ParticleViewer views",
+   "howToReach": "Top / Front / Side / Orbit, drag the picture, Spin",
+   "whatToCheck": "Each view projects the formation; Orbit turns by itself (Spin) or by dragging; silent: nothing redraws except the orbit turn",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.particleviewer-edits-the-node",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "ParticleViewer edits the node",
+   "howToReach": "Formation picker, Count and Size sliders, On / Off",
+   "whatToCheck": "The scene changes at once, the values are saved with the node (Refresh keeps them), a node without particles gets a complete set on the first edit",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v194-soundnode-and-sound-setti.phone-2",
+   "category": "V194 SoundNode and sound (settings; particles; viewers)",
+   "version": "V194",
+   "feature": "Phone",
+   "howToReach": "Both viewers at 390 px width",
+   "whatToCheck": "Bottom sheets, buttons at least 36 px high, the picture readable, no horizontal scroll",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "usercompass-v188.where-it-sits",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Where it sits",
+   "howToReach": "Desktop window at least ~1010 px wide: look under the logo, above the top-left hand's ☰ MENU cell",
+   "whatToCheck": "A small clear spinning globe sits in that strip. It does not touch the Global Bar, the ribbon, the OmniNotify box or the MENU cell.",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "usercompass-v188.looks-like-a-globe",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Looks like a globe",
+   "howToReach": "Look at it for 20 seconds",
+   "whatToCheck": "6 meridians and 5 parallels, the equator a little brighter, front lines bright and back lines dim, tilted about 23 degrees, turns once in about 14 seconds, no filled background.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.hover-tip",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Hover tip",
+   "howToReach": "Hover the globe",
+   "whatToCheck": "The OmniNotify box says userCompass, your orientation globe, click for settings.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.click-opens-settings",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Click opens settings",
+   "howToReach": "Click the globe (or right-click it, or Tab to it and press Enter)",
+   "whatToCheck": "Admin opens and scrolls to Admin > UI Settings > userCompass.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.show-on-off",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Show on / off",
+   "howToReach": "Admin > UI Settings > userCompass > Show",
+   "whatToCheck": "The globe disappears and comes back at once, no Save needed; it is remembered after a reload.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.alignment-left-center-right",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Alignment left / center / right",
+   "howToReach": "Admin > UI Settings > userCompass > Align",
+   "whatToCheck": "The globe moves inside its strip (left edge, middle, right edge) and never goes under the MENU cell or past the strip.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.size-small-medium-large",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Size small / medium / large",
+   "howToReach": "Admin > UI Settings > userCompass > Size",
+   "whatToCheck": "32 / 44 / 56 px; with the ribbon folded (strip only 29 px tall) it shrinks to about 25 px instead of overlapping.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.spin-speed",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Spin speed",
+   "howToReach": "Admin > UI Settings > userCompass > Spin",
+   "whatToCheck": "Off stops it; Slow about 28 s, Normal 14 s, Fast 7 s per turn. Does the speed feel right? (answer in Claude Check)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.heading-mode",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Heading mode",
+   "howToReach": "Set Mode to Heading, then drag the scene to look around",
+   "whatToCheck": "The globe turns with where the camera faces (turn right: the globe's front moves left); the bright meridian marks north.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.line-colour-and-opacity",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Line colour and opacity",
+   "howToReach": "Admin > UI Settings > userCompass > Line colour / Opacity",
+   "whatToCheck": "White, Cyan, Accent (theme colour; change the theme to see it change); opacity 30 to 100 percent.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.reset-usercompass",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Reset userCompass",
+   "howToReach": "Admin > UI Settings > userCompass > Reset userCompass",
+   "whatToCheck": "Everything goes back to: shown, centre, medium, normal spin, white, 85 percent.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.reduced-motion",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Reduced motion",
+   "howToReach": "Turn on 'reduce motion' in the operating system, reload",
+   "whatToCheck": "The globe starts still (Spin = Off) but tilted; you can still choose a speed.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.hides-when-the-ribbon-covers-its-strip",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Hides when the ribbon covers its strip",
+   "howToReach": "Make the window narrower than about 1010 px, or drag the OmniNotify box away from its docked spot",
+   "whatToCheck": "The globe hides itself (no overlap with the ribbon); it returns when you widen the window or double-click the OmniNotify header to dock it.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.phone-390-px-wide",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Phone (390 px wide)",
+   "howToReach": "Open on a phone in portrait",
+   "whatToCheck": "No globe is expected on a phone in portrait (the ribbon covers the strip); nothing else moved, no console error. Tell me if you want a place for it on phones.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "usercompass-v188.hands-banner-hidden-shown",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Hands banner hidden / shown",
+   "howToReach": "Dock ⚇ icon, or ribbon Hands tab: hide and show the top hands",
+   "whatToCheck": "The globe stays exactly where it is under the logo.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.never-blocks-clicks",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Never blocks clicks",
+   "howToReach": "Click just beside the globe (inside its strip but off the circle)",
+   "whatToCheck": "The click goes to whatever is underneath (the scene); only the round globe takes clicks.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.persistence",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Persistence",
+   "howToReach": "Change a few options, reload the page",
+   "whatToCheck": "Options are the same after the reload (stored in omni:user-compass-v1).",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "usercompass-v188.not-a-window",
+   "category": "userCompass (V188)",
+   "version": "V188",
+   "feature": "Not a window",
+   "howToReach": "Look for resize handles or a maximize button on the globe",
+   "whatToCheck": "There are none (it is not a panel window).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "omniaddress-v189.address-model-has-no-visible-ui",
+   "category": "OmniAddress (V189)",
+   "version": "V189",
+   "feature": "Address model has no visible UI",
+   "howToReach": "Nothing to open: V189 adds only utils/OmniAddress.js (pure module)",
+   "whatToCheck": "Open the app: it should look and behave exactly like V188 (regression only)",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "omniaddress-v189.version-label",
+   "category": "OmniAddress (V189)",
+   "version": "V189",
+   "feature": "Version label",
+   "howToReach": "Developer drawer > store dump (app field)",
+   "whatToCheck": "Reads OmniOS V189",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omninotify-default-spot",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "OmniNotify default spot",
+   "howToReach": "Hover any button, desktop 1280 wide, fresh profile",
+   "whatToCheck": "Box sits under your profile (top left), ribbon starts to its right; drag it away and reload: it stays; double-click header: returns",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.usercompass-panel-drag",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "userCompass panel drag",
+   "howToReach": "Drag the globe",
+   "whatToCheck": "It follows the pointer, stays below the ribbon, reload keeps the spot; click without dragging opens Admin > UI Settings; Reset position works",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.usercompass-on-a-phone",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "userCompass on a phone",
+   "howToReach": "390x844",
+   "whatToCheck": "Globe visible at the right edge under the ribbon, not hidden, does not cover the tabs",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omnistar-tab",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "OmniStar tab",
+   "howToReach": "Ribbon, leftmost tab",
+   "whatToCheck": "Two buttons: Docs, OmniStarLight; tooltips show; five tabs fit on a phone",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.docs-panel",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "Docs panel",
+   "howToReach": "OmniStar > Docs",
+   "whatToCheck": "Contents left, page right, window chrome (resize, maximize), prev/next, PageUp/PageDown, search filters pages and highlights, phone shows as a bottom sheet",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.omnistarlight",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "OmniStarLight",
+   "howToReach": "Ctrl or Cmd+K, or OmniStar > OmniStarLight",
+   "whatToCheck": "Opens near the upper middle, input focused, empty list grouped Available/Unavailable, typing filters, arrows+Enter, Escape/outside click closes; an available site shows its name and description in OmniNotify then opens; an unavailable one shows a reason only; a docs result opens Docs with highlights",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.hands-tab-dividers",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "Hands tab dividers",
+   "howToReach": "Ribbon > Hands, desktop and 390px",
+   "whatToCheck": "A divider between LH, RH, OmniHand and Conscious in every group; all buttons still work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-ui-omnistar-tab-starlight.centre-reticle",
+   "category": "V190 UI: OmniStar tab, StarLight, Docs, compass panel, reticle, hands dividers, notify dock",
+   "version": "V190",
+   "feature": "Centre reticle",
+   "howToReach": "Look at the screen centre, then Admin > UI Settings > Reticle",
+   "whatToCheck": "Faint turning circle at about 15% behind panels, never blocks clicks; switch and slider work and persist; reduced-motion stops the turning",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.floor-20-texture-slots",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Floor: 20 texture slots",
+   "howToReach": "Admin > FloorSettings > Floor Texture",
+   "whatToCheck": "Grid shows Default + 20 numbered slots. Fill slot 17, click it: the floor is textured; slots 1-5 keep older saves; reload keeps the choice",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.floor-removing-the-shown-texture",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Floor: removing the shown texture",
+   "howToReach": "same panel",
+   "whatToCheck": "Pressing x on the shown slot returns the floor to wireframe by itself",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.x-axis-meter-at-the-bottom",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "X axis meter at the bottom",
+   "howToReach": "Admin > OmniMeter(Internal)",
+   "whatToCheck": "Horizontal ruler along the bottom just above the Dock, between the bottom hands; A/D moves the marker; follows dock height; fits on a phone",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.meter-gear-and-depth-line",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Meter gear and depth line",
+   "howToReach": "same",
+   "whatToCheck": "Gear sits under the ribbon left of the top-right hand and opens meter settings; green Depth line starts under the ribbon",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.session-time-readout",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Session time readout",
+   "howToReach": "same, left edge under the top-left hand",
+   "whatToCheck": "NOW is a 24-hour clock ticking each second, STARTED shows session start (refresh keeps it), ELAPSED counts up, bar fills toward the goal (default 2 h) then restarts orange with x2",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.session-goal-setting",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Session goal setting",
+   "howToReach": "OmniMeter gear > Goal (h)",
+   "whatToCheck": "0.25 fills fast; 999 becomes 24; letters give 2; untick Session time hides it; reload keeps both",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.click-empty-space-releases-orbit",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Click empty space releases orbit",
+   "howToReach": "Select a node, then click empty 3D space",
+   "whatToCheck": "Notice 'Orbit released' shows and WASD flies freely",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.dragging-does-not-release",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Dragging does not release",
+   "howToReach": "With a target set, drag to rotate",
+   "whatToCheck": "View rotates around the target, no release; clicking a panel, a node, or right-dragging does not release either",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.esc-releases-orbit",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Esc releases orbit",
+   "howToReach": "With a target set press Esc",
+   "whatToCheck": "Same release; Esc while typing does nothing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.orbit-release-setting",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Orbit release setting",
+   "howToReach": "Admin > Camera Movement Options > Orbit Target",
+   "whatToCheck": "Unticking stops click and Esc releasing; reload keeps it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-star-size",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Boot star size",
+   "howToReach": "Reload the page",
+   "whatToCheck": "After landing, the star is only slightly larger than the glyph (about 1.3x) and the glyph stays readable",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-shooting-stars",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Boot shooting stars",
+   "howToReach": "Wait a few seconds on the boot screen after landing",
+   "whatToCheck": "Thin faint streaks cross the background every 1-2 s heading down-left, stop on Enter; none with reduce motion",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.dev-intro-settings",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Dev intro settings",
+   "howToReach": "Developer drawer slot 8 DevOmniStarIntroSettings",
+   "whatToCheck": "Background colour, texture, texture opacity, star colour and opacity, shooting-star colour; Preview intro replays; reload shows the same; Reset restores defaults; custom image up to 200 KB",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v190-scene-floor-20-slots-mete.boot-escape-hatch",
+   "category": "V190 Scene: floor 20 slots, meters, orbit release, boot",
+   "version": "V190",
+   "feature": "Boot escape hatch",
+   "howToReach": "Open the page with ?bootintro=off",
+   "whatToCheck": "Intro ignores saved dev settings for that load",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.round-pad-buttons",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "Round pad buttons",
+   "howToReach": "Open any pad (⚇) at 1280x900 and at 390x844",
+   "whatToCheck": "The 4 buttons and the chip around each pad are circles with clear space to the pad; labels fully readable; nothing overlaps the ribbon, dock, other hands or the edge",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.chip-text",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "Chip text",
+   "howToReach": "LH pad ⚙ > OmniHands > LogicalHand > Ammo: load Transform and set it current",
+   "whatToCheck": "The chip circle reads Transform completely, no clipping",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.lh-ascend-descend",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "LH ascend / descend",
+   "howToReach": "Open LH pad, hold ASC (top-right corner) then DSC; or hold E / Q",
+   "whatToCheck": "Camera rises / falls along world Y while held and stops on release; speed follows OmniHands LH Speed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.rh-ascend-descend",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "RH ascend / descend",
+   "howToReach": "RH pad right corners",
+   "whatToCheck": "Same motion as RISE / FALL; holding both does not double",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.rh-vertical-orbit",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "RH vertical orbit",
+   "howToReach": "RH pad, hold ORB-U then ORB-D (top-left corner); or keys Y / H",
+   "whatToCheck": "View orbits up / down around the selected node (else the scene centre), stops short of straight up/down, speed follows RH Speed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.symbol",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "◬ symbol",
+   "howToReach": "ConsciousHand pad, ribbon Home > Dim. Axes, Keyboard Shortcuts, OmniHands > ConsciousHand, tunnel labels",
+   "whatToCheck": "◬ everywhere the Conscious Hand was Δ; it renders (not a missing-glyph box) on your OS",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.axis-tool-options-on-omnihand-conscioushand-pads",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "Axis tool options on OmniHand / ConsciousHand pads",
+   "howToReach": "Open the pad and click the round chip",
+   "whatToCheck": "Menu opens with TakeMeThere, Root, Back, Forth, up, down, Reset marker, Tunnel, Follow pads, Settings; each matches the same action at the axis",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-pads-and-hands-round-butt.launcher",
+   "category": "V191 Pads and hands (round buttons, vertical moves, ◬, tool options, launcher)",
+   "version": "V191",
+   "feature": "Launcher",
+   "howToReach": "Click the round ⟐ at the bottom centre",
+   "whatToCheck": "Ring with Keyboard, OmniKeys, OmniDraw; each opens its panel; near a screen edge all three stay on screen",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.path-node-link-mode",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Path node, LINK mode",
+   "howToReach": "Ribbon Home > Create > Path node, Record links, select 3 nodes",
+   "whatToCheck": "List shows them in order, a line joins them, reload keeps it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.path-node-genealogy-mode",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Path node, GENEALOGY mode",
+   "howToReach": "OmniNodeOrder, mode GENEALOGY, select a parent, Use selected as root, Build",
+   "whatToCheck": "Pre-order and breadth-first orders match the tree",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.omninodeorderpanel-reorder",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "OmniNodeOrderPanel reorder",
+   "howToReach": "Drag the handle (mouse and touch), or the up / down buttons",
+   "whatToCheck": "Order changes, Undo restores",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.deleting-a-member-node",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Deleting a member node",
+   "howToReach": "Delete a node that is in a path",
+   "whatToCheck": "It leaves the order and the panel notes it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.floor-panels-place",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Floor panels place",
+   "howToReach": "Admin slot 20 or ribbon Floor panels: pick T, click the grid, Place in scene",
+   "whatToCheck": "Tiles lie on the floor in the right shape; rotate and mirror work",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.floor-panel-faces",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Floor panel faces",
+   "howToReach": "Face tool or Inspector: add png, GIF, mp4",
+   "whatToCheck": "Pictures show, GIF animates, video plays muted and loops; with 5+ videos only 4 play",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.remove-one-panel",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Remove one panel",
+   "howToReach": "Inspector Remove panel or click the grid cell",
+   "whatToCheck": "Only that cell goes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.grid-overlay-ghost",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Grid overlay + ghost",
+   "howToReach": "Place with pointer",
+   "whatToCheck": "Ghost follows the pointer, red when blocked, snaps",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.reload",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Reload",
+   "howToReach": "Reload the page",
+   "whatToCheck": "Floor panels, faces and paths return",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-nodes-omnipathnode-omnino.phone",
+   "category": "V191 Nodes (OmniPathNode, OmniNodeOrderPanel, floorPanelNode, FloorNodeMakerSettings)",
+   "version": "V191",
+   "feature": "Phone",
+   "howToReach": "390 px",
+   "whatToCheck": "Both windows open as bottom sheets, nothing overflows",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.omnidock-realities-strip",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "OmniDock_Realities strip",
+   "howToReach": "open the app, look above the bottom Dock",
+   "whatToCheck": "a scrollable row of 20 wireframe shapes with count badges; compass at its left end; no overlap with Dock, bottom hands, X meter",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.realities-quicktip",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "Realities quickTip",
+   "howToReach": "hover a shape (desktop) / tap once (phone)",
+   "whatToCheck": "tip shows \"N nodes\"; a second tap on phone opens the panel",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.realitiesinshape-panel",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "RealitiesInShape panel",
+   "howToReach": "click a shape",
+   "whatToCheck": "window lists id / name / kind, live-updates on create/delete, row click selects and flies to the node, resizable/maximizable, same shape again closes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.dock-settings",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "Dock settings",
+   "howToReach": "Admin > OmniDock_Realities rows, or the gear at the row end",
+   "whatToCheck": "S/M/L + slider, opacity, per-shape colour/opacity, hide-empty, show/hide, reset, Dock compass reset; survives reload",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.compass",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "Compass",
+   "howToReach": "drag it away, reload",
+   "whatToCheck": "saved position wins; \"Dock compass\" returns it to the row",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "StrictAlign",
+   "howToReach": "press ` with a node selected",
+   "whatToCheck": "panel with X/Y/Z; one axis active, others locked; ArrowUp/Down, wheel over the node, drag the gizmo, typed value + Enter all move it; Esc or ` exits",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-blocked-nodes",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "StrictAlign blocked nodes",
+   "howToReach": "select a locked / tracking node",
+   "whatToCheck": "panel shows why it cannot move",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-vs-f1",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "StrictAlign vs F1",
+   "howToReach": "press F1",
+   "whatToCheck": "terminal still opens; ` while typing in a field does nothing",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.strictalign-admin",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "StrictAlign Admin",
+   "howToReach": "Admin > StrictAlign rows",
+   "whatToCheck": "step, shift step, axis line, close-after-Enter, snap drag",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-omnidock-realities-and-om.keyboard-panel",
+   "category": "V191 OmniDock_Realities and OmniState_StrictAlign",
+   "version": "V191",
+   "feature": "Keyboard panel",
+   "howToReach": "open shortcuts",
+   "whatToCheck": "F1 terminal, ` StrictAlign, 1 2 3 / x y z listed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.wallpaper-rectangle-shape",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Wallpaper Rectangle shape",
+   "howToReach": "Admin > Wallpaper Settings > Shape > \"Rectangle (16:9 room)\"",
+   "whatToCheck": "Pick it with a 1080p image (slot) and a 1080p video: front and back walls show it undistorted (circle stays round), left/right walls are square, no stretching. Spin is on by default: press \"Hold still\".",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-left-right-top-bottom-options",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Rectangle: left/right + top/bottom options",
+   "howToReach": "same panel, \"Rectangle room\" section",
+   "whatToCheck": "Left/right: Square crop / Mirror fill / Solid colour; Top/bottom: Media / Solid / None; each updates live and survives reload.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-size-lock-fit",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Rectangle: size + lock + fit",
+   "howToReach": "same section",
+   "whatToCheck": "Width/Height (aspect lock moves the other; 16:9 button), Fit Contain (bars in Bar colour) vs Cover (crop) with a 4:3 and a 21:9 image.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.rectangle-with-video",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Rectangle with video",
+   "howToReach": "upload a video slot, then Rectangle",
+   "whatToCheck": "video fills front/back, switching shape back to Sphere keeps the video, Deactivate returns to the image, no leftover playing video (check CPU/audio).",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.old-wallpaper-save-unaffected",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Old wallpaper save unaffected",
+   "howToReach": "reload with a sphere/cubemap wallpaper saved before V191",
+   "whatToCheck": "looks the same.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.navmap-close",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "NavMap close",
+   "howToReach": "Ribbon Home > NavMap",
+   "whatToCheck": "x in the header closes it; click the panel then press Esc closes it; Esc with the 3D view focused does not; reopen from the ribbon; maximize and x do not overlap; on a phone the whole panel (and x) is on screen.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.perspectives-toolbar-entry",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "Perspectives toolbar entry",
+   "howToReach": "Ribbon > Realities tab > Perspectives (right after Experiences)",
+   "whatToCheck": "glyph is a plain text circle-dot (not a coloured emoji eye); click shows the \"planned\" notice; tab row still fits at 390px.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v191-wallpaper-rectangle-navma.omnistarlight",
+   "category": "V191 Wallpaper Rectangle, NavMap close, Perspectives entry",
+   "version": "V191",
+   "feature": "OmniStarLight",
+   "howToReach": "Q, type \"perspectives\"",
+   "whatToCheck": "listed as Unavailable (Planned) with its reason.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.lh-orb-u",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "LH: `ORB-U",
+   "howToReach": "FWD",
+   "whatToCheck": "ASC` / `STR-L | centre (Fire) | STR-R` / `ORB-D | BCK | DSC`",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-u",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "RH: `ORB-U",
+   "howToReach": "RISE",
+   "whatToCheck": "ASC` / `ORB-L | centre (Fire) | ORB-R` / `ORB-D | FALL | DSC` (unchanged)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-l-orb-r-around-the-target",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "RH ORB-L / ORB-R around the target",
+   "howToReach": "Hands > turn the RH pad on, select a node (or Take Me There), hold ORB-L / ORB-R (or arrow left / right)",
+   "whatToCheck": "the camera circles THAT node at constant distance and constant height relative to it, the node stays in view (not the scene origin); click empty space (release) then orbit: it circles the point just ahead of you",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.rh-orb-u-orb-d-continuous",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "RH ORB-U / ORB-D continuous",
+   "howToReach": "RH pad, hold ORB-U (or Y) / ORB-D (or H) for 10 s with a node selected",
+   "whatToCheck": "the camera goes over the top and under the bottom and keeps looping with no stop or flip; on release the view rolls upright smoothly (about half a second if upside down), then the mouse orbit works with no jump",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.lh-orb-u-orb-d",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "LH ORB-U / ORB-D",
+   "howToReach": "LH pad (bottom-left): top-left and bottom-left corner buttons, or keys U / V",
+   "whatToCheck": "same continuous vertical orbit as the RH; tooltips show \"LogicalHand Orbit up / Orbit down\" with key U / V; ASC / DSC still in the right corners",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.shortcuts-panel",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "Shortcuts panel",
+   "howToReach": "Assistance > Keyboard Shortcuts",
+   "whatToCheck": "rows \"y and h\" and \"u and v\" are listed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.ammo-chips-above-the-realities-row",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "Ammo chips above the Realities row",
+   "howToReach": "Turn both lower pads on at 1280x720 (the OmniDock_Realities row visible)",
+   "whatToCheck": "the LH / RH ammo name circles (e.g. Bind, Pulse) and the settings circles sit above the row, none touching another circle; change the row size in OmniDock_Realities settings: they follow the row height; hide the row: they drop back",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v192-orbit-around-target-verti.ammo-chips-on-a-phone",
+   "category": "V192 Orbit around target, vertical orbit, bind/pulse lift",
+   "version": "V192",
+   "feature": "Ammo chips on a phone",
+   "howToReach": "390x844, both pads on",
+   "whatToCheck": "chips unchanged and visible (the row does not reach them)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-checkmarks",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign checkmarks",
+   "howToReach": "select a node, press `",
+   "whatToCheck": "X/Y/Z each have a checkmark; checking one unchecks the others; clicking the checked one does nothing; keys 1/2/3 move the checkmark; only that field is editable",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-arrows-step",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign arrows + step",
+   "howToReach": "in the panel press - / +",
+   "whatToCheck": "the node moves by the Step along the checked axis; hold repeats; Shift = 10 x, Alt = /10; Ctrl+Z undoes the whole hold in one go",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-step-field",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign step field",
+   "howToReach": "type 0.25 + Enter, tap chips 0.01/0.1/1/10, reload",
+   "whatToCheck": "step applies and survives a reload; junk is marked red and the old value returns",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-exact-values",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign exact values",
+   "howToReach": "step 0.1 from 0, 100 presses; type 1.23456 with Decimals 2",
+   "whatToCheck": "lands exactly on 10 / 1.23; Inspector Location fields and the saved node agree",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-pick-node",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign pick node",
+   "howToReach": "with the mode on, click another node (also with Path/Place mode)",
+   "whatToCheck": "the target switches; nothing is connected or placed; dragging the camera does not switch it",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.strictalign-node-kinds",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "StrictAlign node kinds",
+   "howToReach": "try a group member, a label (text) node, a floor panel, a path node, a tracking node",
+   "whatToCheck": "world position shown; floor panel keeps working with snap afterwards; tracking node says why it cannot move",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.rh-fire-after-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "RH fire after delete",
+   "howToReach": "select a node, give the RH a looping payload, fire, delete the node",
+   "whatToCheck": "the anchor and its words disappear at once and never come back; the next fire goes to the selected node / nearest / ahead of the camera, not the deleted one",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.rh-tracer-on-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "RH tracer on delete",
+   "howToReach": "fire, delete the target immediately",
+   "whatToCheck": "no anchor appears afterwards, no tracer line stays",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.tooltips-after-delete",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "Tooltips after delete",
+   "howToReach": "hover a node row in a list (Realities in shape / dock), delete the node",
+   "whatToCheck": "the OmniNotify box no longer shows its tip",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-keyboard-keys",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "CryptX keyboard keys",
+   "howToReach": "launcher > Keyboard, pull a column out, click keys",
+   "whatToCheck": "every key responds (try q, Space, Backspace; with a text box focused the letters appear in it)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-drawer-arrows",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "CryptX drawer arrows",
+   "howToReach": "bottom bar ◂ / ▸",
+   "whatToCheck": "◂ slides the next column out, ▸ pushes it in; nothing at the top",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-drag-grip",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "CryptX drag grip",
+   "howToReach": "drag the strip on the left edge of the panel (mouse and finger), then reload",
+   "whatToCheck": "it moves anywhere inside the window, never presses a key, and returns to the same place and drawer state",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-strictalign-checkmarks-rh.cryptx-wheel",
+   "category": "V192 StrictAlign checkmarks, RH fire after delete, CryptX keyboard",
+   "version": "V192",
+   "feature": "CryptX wheel",
+   "howToReach": "wheel away from the panel with the keyboard open",
+   "whatToCheck": "the 3D view zooms again",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-button-toggles-all-tunnels",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Terminal button toggles all tunnels",
+   "howToReach": "Ribbon > Terminal, click twice",
+   "whatToCheck": "First click shows every terminal tunnel, second hides all, button pressed state follows",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.toggle-state-persists",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Toggle state persists",
+   "howToReach": "Terminal on, reload",
+   "whatToCheck": "Tunnels come back in the same on/off state",
+   "priority": "high",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-node-create",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Terminal node create",
+   "howToReach": "Ribbon > Create > Terminal node (click 2-3 times)",
+   "whatToCheck": "Each makes a selectable TerminalShellTunnel node; Terminal button toggles all together",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.terminal-node-delete",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Terminal node delete",
+   "howToReach": "Select node, delete",
+   "whatToCheck": "Only that tunnel disappears, others stay",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.inspector-terminal-section",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Inspector Terminal section",
+   "howToReach": "Select a TerminalShellTunnel node, open Inspector",
+   "whatToCheck": "Terminal settings show; name edit renames the node; \"same as default\" checkbox",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.follow-omnios-theme",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Follow OmniOS theme",
+   "howToReach": "Settings > Terminal, switch OmniOS theme dark/light",
+   "whatToCheck": "Scene tunnel and DOM panel recolour live; untick Follow and pick custom colours",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.where-you-type",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Where you type",
+   "howToReach": "Settings > Terminal > Where you type: Scene / DOM / Both",
+   "whatToCheck": "Scene: type in scene; DOM: DOM panel opens and takes focus; Both: draft mirrors in both",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.orientation-presets",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Orientation presets",
+   "howToReach": "Settings > Terminal > Front/Left/Right/Top/Flat on floor",
+   "whatToCheck": "Panel turns live; out-of-range angles are rejected",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.yaw-pitch-roll-and-billboard",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Yaw/pitch/roll and billboard",
+   "howToReach": "Settings > Terminal > angles, billboard off",
+   "whatToCheck": "Panel holds fixed angle; billboard on faces camera",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.per-node-orientation-override",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Per-node orientation override",
+   "howToReach": "Inspector on a terminal node, untick \"same as default\"",
+   "whatToCheck": "Only that node changes orientation",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.f1-and-escape",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "F1 and Escape",
+   "howToReach": "Press F1 with DOM panel focused, then Escape",
+   "whatToCheck": "No desync with the ribbon button; Escape dismisses all",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.omnichat-terminal-tab",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "OmniChat Terminal tab",
+   "howToReach": "Open OmniChat > Terminal tab, switch to another tab",
+   "whatToCheck": "Terminal tunnels hide only when leaving the Terminal tab",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.landing-point-panel",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Landing point panel",
+   "howToReach": "Terminals on while camera on the centre axis",
+   "whatToCheck": "Built-in panel visible 4.5 units ahead, not hidden",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-terminal-theme-settings-t.phone-dom-panel",
+   "category": "V192 Terminal theme, settings, TerminalShellTunnel",
+   "version": "V192",
+   "feature": "Phone DOM panel",
+   "howToReach": "390x844, DOM mode",
+   "whatToCheck": "Panel fits the viewport, does not overlap off-screen",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler",
+   "howToReach": "Ribbon Realities > Chronos > Time ruler, or ⟐Times slot 1",
+   "whatToCheck": "Window opens at the right edge under the ribbon; 00:00 at the top, 24:00 at the bottom, 25 hour labels, minor ticks, no overlapping text; Elapsed / Remaining count up / down once a second",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-baseline",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler baseline",
+   "howToReach": "⟐Admin slot 21 TimeDataRulerSettings > Date + Time > Set",
+   "whatToCheck": "The ruler's 00:00:00 moves to that moment (bottom line shows \"Baseline ...\"); an impossible date (30 Feb) or empty time is refused with a message and nothing changes; Now / Session start / Today 00:00 buttons work; survives a reload",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-consumption",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler consumption",
+   "howToReach": "Open the ruler, wait",
+   "whatToCheck": "Past part of the day is dimmed with a bar along the spine and a marker line + time chip moving down; a ring pulses at the hour boundary; with the OS \"reduce motion\" on (or Animation off) no pulse and the marker steps once a minute",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-after-24-00",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler after 24:00",
+   "howToReach": "Settings > After 24:00",
+   "whatToCheck": "Move on: the window becomes the next day (\"Day +1\"); Stay: the bar stays full (Day complete); with the automatic baseline the ruler resets to 00:00:00 at midnight",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-hierarchy",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler hierarchy",
+   "howToReach": "Ruler toolbar W / M / Y / X (or − ＋, mouse wheel over the canvas, pinch on a phone)",
+   "whatToCheck": "Day lines, week lines (W42), month lines (Nov 2026), year lines and decade years (2030, 2040 in the accent colour, longest line) appear with increasing length / weight; labels never overlap",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-week-start",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler week start",
+   "howToReach": "Settings > Week start ISO / Monday / Sunday, week / month toggles",
+   "whatToCheck": "Week lines move to Mondays / Sundays; unticking Week lines / Month lines / Year lines / Decade years removes those lines live",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-paging",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler paging",
+   "howToReach": "Ruler ▲ ▼ ⌖ ⊤",
+   "whatToCheck": "▲/▼ move one day (week, month ...) back/forward and stop following; ⌖ follows now again; ⊤ shows the window that starts at the baseline",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-phone",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler phone",
+   "howToReach": "390 px wide",
+   "whatToCheck": "Ruler is a tall panel on the right edge above the dock; all 25 hour labels readable; buttons >= 34 px; pinch zooms",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v192-timedata-ruler.timedata-ruler-window",
+   "category": "V192 TimeData ruler",
+   "version": "V192",
+   "feature": "TimeData ruler window",
+   "howToReach": "Drag the header, resize edges, maximize ⛶",
+   "whatToCheck": "Window resizes and the ruler redraws crisply at the new size; maximize fills the free area",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.rh-word-directions",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "version": "V193",
+   "feature": "RH word directions",
+   "howToReach": "Hand pad RH > Payload panel > Word timing > Direction",
+   "whatToCheck": "Choices up, down, left, right, forward, backward. Fire a payload: left / right words drift sideways, forward grows toward you, backward shrinks away; Preview matches; old payloads still rise",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.refresh-button",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "version": "V193",
+   "feature": "Refresh button",
+   "howToReach": "Ribbon Home > Assistance, next to Fullscreen",
+   "whatToCheck": "Reloads the page; nodes and settings come back",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v193-rh-word-directions-refres.reset-hud-button",
+   "category": "V193 RH word directions, Refresh, Reset HUD",
+   "version": "V193",
+   "feature": "Reset HUD button",
+   "howToReach": "Ribbon Home > Assistance, next to Refresh",
+   "whatToCheck": "Drag a window to resize it, drag the OmniNotify box and the compass away, press Reset HUD: sizes reset, OmniNotify re-docks under the profile, compass returns; nodes and settings untouched",
+   "priority": "normal",
+   "device": "touch"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.command-mode-shortcut-palette",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Command mode shortcut palette",
+   "howToReach": "OmniKeys (switch to the QWERTY view with the keyboard button) > Command mode",
+   "whatToCheck": "A strip of small buttons appears under the mode note: every listed shortcut (F1, `, Escape, c, o, 0 / 9, b, n, m, k, t, p, g, F2, F4, Enter, q, Ctrl/Cmd+K, r, f, j, y and h, u and v, the numpad pad keys) plus dashed Tab, Backspace, Delete, Home, End, PageUp, PageDown. Press q: StarLight opens. Press Ctrl/Cmd+K: expression typing toggles. It is hidden in the other modes.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.terminal-key-and-shortcut-commands",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Terminal key and shortcut commands",
+   "howToReach": "Open the command terminal (F1 or the Terminal button), type: key q   /   key ctrl+k   /   key pagedown   /   shortcut fullscreen   /   shortcut",
+   "whatToCheck": "key sends one real key press (a bad key says what it accepts); shortcut fires a listed shortcut by key or words; shortcut alone lists them all",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.keyboard-shortcuts-panel-uses-the-shared-table",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Keyboard Shortcuts panel uses the shared table",
+   "howToReach": "Ribbon Home > Assistance > Keyboard Shortcuts",
+   "whatToCheck": "Same list as before (no entry lost, the Edit button still works); the list now comes from utils/OmniShortcutTable.js, shared with Command mode and the terminal",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.mix-node-create",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Mix node: create",
+   "howToReach": "Ribbon Home > Create > Mix node, or OmniDraw menu > Mix, or OmniStarLight 'Mix node'",
+   "whatToCheck": "A small mixing desk appears in front of you and the ⟐OmniMix window opens. With song / sound nodes in the scene it starts with a strip for each. The desk shows faders and a crossfader cap. Select it: the Inspector shows a Mix node block (strips, tempo, Play, Record, Open mixer)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.mixer-strips-and-crossfader",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Mixer: strips and crossfader",
+   "howToReach": "⟐OmniMix (Create > Mix node, or Tools > Mixer)",
+   "whatToCheck": "Each strip: name, source type and source, volume fader with level meter, pan, filter, low / mid / high EQ, reverb and delay sends, A / T / B, M / S, loop, tempo and sync, move, remove. Master volume, limiter, reverb and delay returns, crossfader with curve. Undo and Redo work; a fader drag is one undo step",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.mixer-play-sounds-songs-and-audio-clips",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Mixer: play sounds, songs and audio clips",
+   "howToReach": "⟐OmniMix > add strips, choose sources, press Play",
+   "whatToCheck": "A sound node strip plays its sound; an audio-library clip strip plays and loops; a song node strip plays the song through the strip (only one song at a time: a second song strip says so). Mute, solo, volume, EQ and the filter change what you hear at once",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.dj-moves-and-recording",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "DJ moves and recording",
+   "howToReach": "⟐OmniMix > over [8] s > Crossfade → B / Fade out / Fade in / Filter sweep; ● Rec while playing and move a fader",
+   "whatToCheck": "A crossfade from A to B over the chosen seconds is heard as a smooth blend (no jump in loudness in the middle); fades and the filter sweep do what the buttons say; recorded fader moves come back when you play again; Clear removes the lanes",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.tempo-sync-of-audio-strips",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Tempo sync of audio strips",
+   "howToReach": "⟐OmniMix > a looping audio strip > bpm (its own tempo) + sync, and the mix bpm",
+   "whatToCheck": "With sync on, the clip plays faster or slower so its tempo matches the mix (pitch changes with the speed: there is no time-stretch yet). Off = original speed",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.song-pattern-lanes-now-use-pan-filter-and-sends",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Song pattern lanes now use pan, filter and sends",
+   "howToReach": "A song node with pattern lanes > OmniSong mixer headers: lane volume above 1, pan, filter, reverb / delay sends",
+   "whatToCheck": "Pan, filter and the sends now change the sound of pattern lanes (before V201 they did not). Lane volume can be raised above the pattern's own level. Stop the song: the instruments sound normal again (back on the master)",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.voice-cap-default-16",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Voice cap default 16",
+   "howToReach": "Admin > Sound > Sounds at once",
+   "whatToCheck": "New default is 16 (was 8); a song with more instruments than the cap raises the cap while it plays (up to 32) and restores it on stop. A saved choice of yours stays",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v201-shortcut-table-omnikeys-c.mix-node-desk-reacts",
+   "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+   "version": "V201",
+   "feature": "Mix node desk reacts",
+   "howToReach": "Play a mix and look at the desk node",
+   "whatToCheck": "Fader caps sit where the strips' faders are; caps brighten with the level; the crossfader cap moves; far nodes (> 220 units) do not update",
+   "priority": "normal",
+   "device": "any"
   }
  ],
  "asks": [
+  {
+   "id": "v200-hand-menus",
+   "question": "Open the OmniHand tool menu (key 3 or its ⬢ button) and the ConsciousHand tool menu (key 4). Are they now far enough out of the corner, and do they get in the way of anything (the pad, the ribbon, the LH / RH tool menus if you open them together)?",
+   "why": "They now sit like the LH / RH menus (200 px inward and 250 px down). Opened together with LH / RH they will overlap each other; I only checked positions with numbers, not with my eyes.",
+   "kind": "choice",
+   "choices": [
+    "Good as it is",
+    "Still too close to the corner",
+    "Too far in",
+    "They overlap the LH / RH menus and that bothers me"
+   ],
+   "device": "desktop",
+   "version": "V200"
+  },
+  {
+   "id": "v200-groups",
+   "question": "Developer > Claude Check now groups the checks and the questions by version (newest first, this version open). Is that the organisation you wanted?",
+   "why": "Older versions start closed; carried-over items stay in their own section on top.",
+   "kind": "yesno",
+   "device": "any",
+   "version": "V200"
+  },
+  {
+   "id": "v199-scale",
+   "question": "A skybox is a smaller context inside the wallpaper 'at a scale of 25 from the original size of a node'. Do you mean 25 times BIGGER or 1/25 of a normal node?",
+   "why": "It decides the size of every sky and how it sits in the wallpaper sphere.",
+   "kind": "choice",
+   "choices": [
+    "25 times bigger",
+    "1/25 of the size",
+    "Something else (tell me)"
+   ],
+   "device": "any",
+   "version": "V199"
+  },
+  {
+   "id": "v199-double",
+   "question": "'Double sided' for a skybox: do you want to see it from OUTSIDE like a snow globe and also step INSIDE it?",
+   "why": "It decides whether the sky is rendered from both sides and when its light switches on and off.",
+   "kind": "yesno",
+   "device": "any",
+   "version": "V199"
+  },
+  {
+   "id": "v199-orbit",
+   "question": "Which should the first OmniOrbitNode do: ride the CAMERA around a reality (outside view), or move a NODE around another node?",
+   "why": "The model supports both; the first one built gets the polish.",
+   "kind": "choice",
+   "choices": [
+    "Camera around a reality",
+    "Node around a node",
+    "Both at once"
+   ],
+   "device": "any",
+   "version": "V199"
+  },
+  {
+   "id": "v199-hold",
+   "question": "At a time point, do you want a real HOLD (time stands still for N seconds) in addition to slow / fast?",
+   "why": "The clock model allows speeds from 0.05 to 16 only; a true hold needs a separate 'dwell' field.",
+   "kind": "yesno",
+   "device": "any",
+   "version": "V199"
+  },
   {
    "id": "v198-song",
    "question": "Create a Song node (OmniDraw > Song), add a lane, drop in a pattern and an audio clip, press Play. Does the arrangement play in time and does the mixer (volume, pan, mute, solo) do what you expect?",
    "why": "Timing was verified with clocks and meters on software-rendered Chromium; nobody listened.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V198"
   },
   {
    "id": "v198-import",
    "question": "Import your own WAV and MP3 (and anything else you have) in the Audio library. Which formats work, and does it keep them after a reload?",
    "why": "The browser decides what it can decode; AAC/M4A could not be tested here.",
    "kind": "text",
-   "device": "desktop"
+   "device": "desktop",
+   "version": "V198"
   },
   {
    "id": "v198-roll",
    "question": "Open a Music node sequencer, switch a track to Roll and draw some notes. Is the piano roll comfortable (mouse and touch)?",
    "why": "Only synthetic pointer events were used.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V198"
   },
   {
    "id": "v198-layout",
    "question": "Is the song timeline too cramped at your screen size (it opened about 393 px tall at 720 px)? What would you move or hide?",
    "why": "The toolbar and clip bar take several rows on small windows.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V198"
   },
   {
    "id": "v198-pan",
@@ -913,7 +3307,8 @@ export default {
     "later",
     "fine as is"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V198"
   },
   {
    "id": "v198-voices",
@@ -925,7 +3320,8 @@ export default {
     "keep 8",
     "make it a setting"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V198"
   },
   {
    "id": "v195-keys",
@@ -939,56 +3335,64 @@ export default {
     "some keys dead",
     "other (notes)"
    ],
-   "device": "desktop"
+   "device": "desktop",
+   "version": "V195"
   },
   {
    "id": "v195-midi",
    "question": "Plug in your MIDI controller, open Expression settings and enable MIDI. Do notes, pitch bend, mod and sustain work?",
    "why": "No real MIDI hardware was available. Needs Chrome, Edge or Firefox; Safari and iOS have no Web MIDI.",
    "kind": "text",
-   "device": "desktop"
+   "device": "desktop",
+   "version": "V195"
   },
   {
    "id": "v195-panel",
    "question": "Open OmniExpression, then maximize it. Do the four quadrants look like the Start HUD you wanted?",
    "why": "Built from the Start HUD look but never seen by you.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V195"
   },
   {
    "id": "v195-phone",
    "question": "On a phone: can you play the on-screen keyboard with several fingers, and is the BeatPad usable?",
    "why": "Multi-touch and the phone layout were only simulated.",
    "kind": "text",
-   "device": "phone"
+   "device": "phone",
+   "version": "V195"
   },
   {
    "id": "v195-dj",
    "question": "Load a track into a deck in OmniDJ. Do volume, EQ and the crossfader do what you expect? Does the circle spin?",
    "why": "Checked only with a generated test tone; jog scrubbing moves the position, it is not true scratching.",
    "kind": "text",
-   "device": "desktop"
+   "device": "desktop",
+   "version": "V195"
   },
   {
    "id": "v195-seq",
    "question": "Create a Music node, put steps in the sequencer and press Play, then try Record from the keys. Do the timing and the quantize feel right?",
    "why": "Timing was checked by clock only, never by ear.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V195"
   },
   {
    "id": "v195-boot",
    "question": "How does the new opening look (title, credits, shooting stars toward 5 o'clock)?",
    "why": "First pass; you said animations come later.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V195"
   },
   {
    "id": "v195-names",
    "question": "There are now two things called OmniExpression (the old drawer panel and the new window). Rename one?",
    "why": "Both open from the nav by the same name.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V195"
   },
   {
    "id": "v194-hear",
@@ -1002,7 +3406,8 @@ export default {
     "no sound",
     "other (describe in notes)"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V194"
   },
   {
    "id": "v194-dynamics",
@@ -1015,14 +3420,16 @@ export default {
     "ffff too loud",
     "uneven steps"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V194"
   },
   {
    "id": "v194-presets",
    "question": "Try presets (pad, pluck, arp, heartbeat, swell). Which sound wrong or boring?",
    "why": "15 presets were tuned by numbers, not by ear.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V194"
   },
   {
    "id": "v194-spatial",
@@ -1035,14 +3442,16 @@ export default {
     "no panning",
     "other"
    ],
-   "device": "desktop"
+   "device": "desktop",
+   "version": "V194"
   },
   {
    "id": "v194-particles",
    "question": "Do the particles look good and follow the sound? How many particles can you run before it lags?",
    "why": "Particles were seen only on software GL (about 1 fps); real frame rate unknown. Cap is 4000 per node and 20000 total.",
    "kind": "number",
-   "device": "gpu"
+   "device": "gpu",
+   "version": "V194"
   },
   {
    "id": "v194-amount",
@@ -1054,14 +3463,16 @@ export default {
     "add an Advanced fold",
     "too many, cut"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V194"
   },
   {
    "id": "v194-phone",
    "question": "On a phone, does the first tap enable sound, and are the settings window and viewers usable?",
    "why": "iOS/Android autoplay unlock and touch were never tested.",
    "kind": "text",
-   "device": "phone"
+   "device": "phone",
+   "version": "V194"
   },
   {
    "id": "v194-mixer",
@@ -1072,7 +3483,8 @@ export default {
     "yes",
     "no, keep separate"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V194"
   },
   {
    "id": "v193-forward-backward",
@@ -1084,14 +3496,16 @@ export default {
     "want real 3D depth motion",
     "want something else"
    ],
-   "device": "any"
+   "device": "any",
+   "version": "V193"
   },
   {
    "id": "v193-resethud",
    "question": "Does Reset HUD reset what you expected?",
    "why": "It resets window sizes, re-docks OmniNotify and returns the compass; it does not touch the dock row, hands, or the CryptX keyboard. Tell me what else belongs.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V193"
   },
   {
    "id": "v192-orbit-feel",
@@ -1104,7 +3518,8 @@ export default {
     "jerky",
     "wrong centre",
     "upside-down problems"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-orbit-roll",
@@ -1115,21 +3530,24 @@ export default {
    "choices": [
     "roll upright is fine",
     "stay rolled"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-lh-keys",
    "question": "Are U / V the right keys for the LH vertical orbit?",
    "why": "X/Y/Z are StrictAlign, WASDEQ taken.",
    "kind": "yesno",
-   "device": "any"
+   "device": "any",
+   "version": "V192"
   },
   {
    "id": "v192-bindpulse",
    "question": "Which buttons were 'Bind' and 'Pulse'?",
    "why": "I found no button with those names; I lifted the LH/RH ammo-name chips and settings circles above the Realities row. If you meant something else, tell me where it is.",
    "kind": "text",
-   "device": "any"
+   "device": "any",
+   "version": "V192"
   },
   {
    "id": "v192-strictalign2",
@@ -1141,7 +3559,8 @@ export default {
     "good",
     "not exact",
     "confusing"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-fire-delete",
@@ -1153,7 +3572,8 @@ export default {
     "fixed",
     "still fires",
     "keep anchors"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-cryptx",
@@ -1165,7 +3585,8 @@ export default {
     "good",
     "key problem",
     "drag problem"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-terminal",
@@ -1177,7 +3598,8 @@ export default {
     "good",
     "theme mismatch",
     "typing problem"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-terminal-toggle",
@@ -1189,7 +3611,8 @@ export default {
     "good",
     "some stay",
     "none appear"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-ruler",
@@ -1201,14 +3624,16 @@ export default {
     "good",
     "not what I meant",
     "needs changes"
-   ]
+   ],
+   "version": "V192"
   },
   {
    "id": "v192-ruler-nodes",
    "question": "Should nodes appear as marks on the TimeData ruler?",
    "why": "The registry stores seconds since app start, not dates.",
    "kind": "yesno",
-   "device": "any"
+   "device": "any",
+   "version": "V192"
   },
   {
    "id": "v191-pad-circles",
@@ -1221,7 +3646,8 @@ export default {
     "too small",
     "too big",
     "touching"
-   ]
+   ],
+   "version": "V191"
   },
   {
    "id": "v191-orbit-dir",
@@ -1232,7 +3658,8 @@ export default {
    "choices": [
     "right",
     "reverse it"
-   ]
+   ],
+   "version": "V191"
   },
   {
    "id": "v191-hand-tools",
@@ -1243,7 +3670,8 @@ export default {
    "choices": [
     "good",
     "want circles around the pad"
-   ]
+   ],
+   "version": "V191"
   },
   {
    "id": "v191-dock-row",
@@ -1256,14 +3684,335 @@ export default {
     "too big",
     "too small",
     "overlaps something"
-   ]
+   ],
+   "version": "V191"
   },
   {
    "id": "v191-dock-tap",
    "question": "On touch: tap once = tip, tap again = open panel. OK?",
    "why": "",
    "kind": "yesno",
-   "device": "touch"
+   "device": "touch",
+   "version": "V191"
+  },
+  {
+   "id": "v201-command-palette",
+   "question": "OmniKeys > Command mode now shows a strip of shortcut buttons (plus Tab, Backspace, Delete, Home, End, PageUp, PageDown). Is a strip of buttons what you meant by 'the same commands in OmniKey/command', or did you want the shortcuts on the keys themselves (or the text terminal only)?",
+   "why": "I read 'OmniKey/command' as Command mode and built a palette because the key grid has no room for ~30 named shortcuts. The terminal also got `key` and `shortcut` commands.",
+   "kind": "choice",
+   "choices": [
+    "The palette is what I meant",
+    "I wanted them on the keys",
+    "I meant the text terminal only",
+    "I wanted both the palette and key labels"
+   ],
+   "device": "desktop",
+   "version": "V201"
+  },
+  {
+   "id": "v201-mix-sound",
+   "question": "Make a mix node, add a sound-node strip and an audio-clip strip, press Play. Move the faders, the crossfader and do a Crossfade → B over 8 s. Does it sound right (no clicks, no jump in loudness in the middle)?",
+   "why": "The mixing graph was only tested with a mock audio context. I have never heard it.",
+   "kind": "choice",
+   "choices": [
+    "Sounds right",
+    "Clicks or pops when moving controls",
+    "Loudness jumps during the crossfade",
+    "Nothing plays",
+    "Something else (say in the note)"
+   ],
+   "device": "any",
+   "version": "V201"
+  },
+  {
+   "id": "v201-mix-song",
+   "question": "Put a song node on a mix strip and play it. Does the song play through the strip (fader, EQ and filter change it)? Then add a second song strip: it should say only one song can play at a time. Is that limit OK?",
+   "why": "The song player plays one song at a time; the mix feeds its output into the strip. Several songs at once would need the player to be reworked.",
+   "kind": "choice",
+   "choices": [
+    "Works, and one song at a time is fine",
+    "Works, but I need several songs at once",
+    "The song did not go through the strip",
+    "Nothing played"
+   ],
+   "device": "any",
+   "version": "V201"
+  },
+  {
+   "id": "v201-pattern-lanes",
+   "question": "In a song with pattern lanes, turn a lane's pan fully left, lower its filter and raise its reverb send. Do you hear each change? Then stop the song and play a sound node: is everything back to normal?",
+   "why": "Before V201 pan, filter and sends did not act on pattern lanes. The instruments are now routed through the lane buses while a song plays.",
+   "kind": "choice",
+   "choices": [
+    "All three change the sound and it is normal after Stop",
+    "Some do not change the sound",
+    "Sound stays odd after Stop",
+    "I did not hear a difference"
+   ],
+   "device": "any",
+   "version": "V201"
+  },
+  {
+   "id": "v201-dj-direction",
+   "question": "What should the DJ side of the mix node be next?",
+   "why": "The mix node has strips, a crossfader and recorded moves. A fuller DJ would add two big decks A / B (reusing the OmniDJ jog wheels), beat-matching with time-stretch, cue points and loops, or a recorded set export.",
+   "kind": "choice",
+   "choices": [
+    "Two decks A / B with jog wheels inside the mix",
+    "Beat-matching with time-stretch (pitch stays)",
+    "Cue points and loop in / out",
+    "Export the finished mix as audio",
+    "Pattern (music node) strips",
+    "None: polish what exists"
+   ],
+   "device": "any",
+   "version": "V201"
+  },
+  {
+   "id": "v201-voice-cap",
+   "question": "The default for 'Sounds at once' is now 16 (was 8). Any slowdown or crackle on your device when a song plays several instruments?",
+   "why": "More voices at once cost more CPU. Phones may need a lower value.",
+   "kind": "choice",
+   "choices": [
+    "No problem",
+    "Crackles or slows down",
+    "I did not test it"
+   ],
+   "device": "phone",
+   "version": "V201"
+  },
+  {
+   "id": "v202-keylock-quality",
+   "question": "With key lock on (pitch +8 % or a synced strip), how does the music sound?",
+   "why": "The time-stretch is a first version. Sine tones keep their pitch exactly, but drum hits can get softer and bass or vocals can wobble. Only your ears can say if it is good enough or needs a better method.",
+   "kind": "choice",
+   "choices": [
+    "Clean, I cannot tell",
+    "Drums are softer or smeared",
+    "Wobble or warble on bass or vocals",
+    "It took too long before it switched in",
+    "I did not test it"
+   ],
+   "device": "any",
+   "version": "V202"
+  },
+  {
+   "id": "v202-deck-layout",
+   "question": "Is the deck block in a strip usable on your phone?",
+   "why": "Each audio strip gained a waveform and about 20 small buttons, so strips are taller. A phone may need a different layout (for example one deck at a time).",
+   "kind": "choice",
+   "choices": [
+    "Fine",
+    "Too crowded or too small to press",
+    "Needs scrolling too much",
+    "I did not test it on a phone"
+   ],
+   "device": "phone",
+   "version": "V202"
+  },
+  {
+   "id": "v202-command-tab",
+   "question": "Is the Command button in the Kryptx keyboard what you meant by the OmniKey Command tab?",
+   "why": "V201 put the shortcut buttons in the QWERTY view's Command mode. V202 adds a Command button to the Kryptx header that opens it. If you meant something else (shortcuts on the keys themselves, a tab inside the Kryptx view) say so.",
+   "kind": "choice",
+   "choices": [
+    "Yes, that is it",
+    "Put them inside the Kryptx view itself",
+    "Put them on the keys",
+    "Something else (tell Claude)"
+   ],
+   "device": "any",
+   "version": "V202"
+  },
+  {
+   "id": "v202-next",
+   "question": "What should come next after the decks?",
+   "why": "Still open for the mix: export the mix as an audio file, pattern (music node) strips, an automation lane editor, jog wheels in the mix, two songs at once. Or move on to the orbit / time tunnel / skybox nodes of V199.",
+   "kind": "choice",
+   "choices": [
+    "Export the mix as audio",
+    "Pattern strips in the mix",
+    "Automation lane editor",
+    "Jog wheels",
+    "OmniOrbitNode / TimeTunnelNode / SkyboxNode",
+    "Polish what exists"
+   ],
+   "device": "any",
+   "version": "V202"
+  },
+  {
+   "id": "v203-doc-pdf",
+   "question": "Import a PDF into a doc node. Does it look right?",
+   "why": "The PDF is drawn with pdf.js onto a 2D canvas, then used as a texture. I saw it render correctly in headless Chromium with a generated 3-page PDF (text, shapes), but I have not seen your real documents (scans, fonts, forms, big files).",
+   "kind": "choice",
+   "choices": [
+    "Looks right",
+    "Text is blurry up close",
+    "Some fonts or images are wrong or missing",
+    "It was slow to appear",
+    "It failed to open",
+    "I did not test it"
+   ],
+   "device": "any",
+   "version": "V203"
+  },
+  {
+   "id": "v203-doc-phone",
+   "question": "On your phone, with a doc node or three in the scene: is it smooth, and does the phone stay cool?",
+   "why": "The big difference from a CSS3D iframe is that nothing is drawn unless the sheet is near and in view, and the texture is capped at 1024 px wide on phones. I measured logic and one desktop Chromium run, not a real phone GPU.",
+   "kind": "choice",
+   "choices": [
+    "Smooth and cool",
+    "Smooth but the page looks soft",
+    "Laggy",
+    "Hot or the page reloaded",
+    "I did not test it on a phone"
+   ],
+   "device": "phone",
+   "version": "V203"
+  },
+  {
+   "id": "v203-doc-facing",
+   "question": "A new doc node is turned to face you (top edge up on screen). Is that where and how you want it?",
+   "why": "It appears 7 units in front of the camera, facing the camera, also when looking straight down. Other choices: stand it upright on the ground, or lay it flat on the floor grid.",
+   "kind": "choice",
+   "choices": [
+    "Good as it is",
+    "Always stand it upright",
+    "Put it on the floor grid",
+    "Closer to me",
+    "Further from me"
+   ],
+   "device": "any",
+   "version": "V203"
+  },
+  {
+   "id": "v203-doc-interact",
+   "question": "How should you turn pages and scroll a long document inside the space?",
+   "why": "Today you turn pages with the ⟐OmniDoc buttons or the Inspector. Options for in the space itself: clicking the sheet's right / left half, a hand gesture, the mouse wheel while the pointer is on the sheet.",
+   "kind": "choice",
+   "choices": [
+    "Click the right / left half of the sheet",
+    "Mouse wheel on the sheet",
+    "Hand gesture",
+    "The buttons are enough",
+    "All of these"
+   ],
+   "device": "any",
+   "version": "V203"
+  },
+  {
+   "id": "v203-next",
+   "question": "What should come next after DocNode?",
+   "why": "Open: page turning inside the space, links and selection on the sheet itself, a continuous scroll mode, Office files (.docx / .pptx need conversion), export the mix as audio, pattern strips, orbit / time tunnel / skybox nodes.",
+   "kind": "choice",
+   "choices": [
+    "Page turning and links inside the space",
+    "Continuous scroll mode",
+    "Export the mix as audio",
+    "Orbit / Time tunnel / Skybox nodes",
+    "Polish what exists"
+   ],
+   "device": "any",
+   "version": "V203"
+  },
+  {
+   "id": "v204-poly-menu",
+   "question": "Tap a face of the new poly node. Is the menu that opens (Select / Open face settings / Remove …) easy to hit and in a good place?",
+   "why": "I picked a small menu at the tap point with only the options that fit the face. I could only check its position with numbers, not on a real screen or finger.",
+   "kind": "choice",
+   "choices": [
+    "Good as it is",
+    "Too small to hit",
+    "Covers what I wanted to see",
+    "I expected something else (tell me)"
+   ],
+   "device": "any",
+   "version": "V204"
+  },
+  {
+   "id": "v204-poly-content",
+   "question": "Put an image, a document and a sound on three faces. Which of them worked?",
+   "why": "Each is built (library image, guide page / PDF page, sound node or audio clip) but I only tested them with fakes and one headless browser; I never heard any sound.",
+   "kind": "choice",
+   "choices": [
+    "All three worked",
+    "Image and document worked, sound did not",
+    "Sound worked, image or document did not",
+    "Something looked wrong (tell me which)"
+   ],
+   "device": "desktop",
+   "version": "V204"
+  },
+  {
+   "id": "v204-poly-back",
+   "question": "Look at a face from behind. Does its text / label read the right way round?",
+   "why": "I draw the back as its own mirrored copy so it reads correctly; I have not seen it with my eyes.",
+   "kind": "choice",
+   "choices": [
+    "Reads correctly",
+    "Mirrored",
+    "The back looks wrong in another way"
+   ],
+   "device": "desktop",
+   "version": "V204"
+  },
+  {
+   "id": "v204-poly-phone",
+   "question": "On a phone, make a dodecahedron or icosahedron with an image or document on several faces and fly around it. How does it run?",
+   "why": "Atlas cells are capped at 1024 px total texture on phones and the budget is 8 M pixels; those numbers are estimates.",
+   "kind": "choice",
+   "choices": [
+    "Smooth",
+    "A bit slow but fine",
+    "Slow",
+    "Crashed / went black"
+   ],
+   "device": "phone",
+   "version": "V204"
+  },
+  {
+   "id": "v204-poly-name",
+   "question": "Is OmniPolyNode the name you want, or OmniComplexityNode?",
+   "why": "You said either works. The code and windows say PolyNode / ⟐OmniPoly. Renaming later is a find-and-replace but easier early.",
+   "kind": "choice",
+   "choices": [
+    "Keep OmniPolyNode",
+    "Rename to OmniComplexityNode",
+    "Keep both (complexity node = poly node with scripts later)"
+   ],
+   "device": "any",
+   "version": "V204"
+  },
+  {
+   "id": "v204-poly-shapes-next",
+   "question": "Which shapes next?",
+   "why": "Done: cube, tetrahedron, octahedron, dodecahedron, icosahedron, plane, strip, ring. Next could be solids that mix shapes (soccer ball, cuboctahedron), prisms / pyramids, or a free editor where you join faces.",
+   "kind": "choice",
+   "choices": [
+    "Mixed-shape solids (soccer ball, etc.)",
+    "Prisms and pyramids",
+    "Free face editor (join faces yourself)",
+    "Fold animation (open and close)",
+    "Polish what exists"
+   ],
+   "device": "any",
+   "version": "V204"
+  },
+  {
+   "id": "v204-next",
+   "question": "What should come next after the PolyNode?",
+   "why": "Open: page turning and links inside the space, face gestures, fold animation, export the mix as audio, orbit / time tunnel / skybox nodes.",
+   "kind": "choice",
+   "choices": [
+    "Gestures and links on faces and sheets",
+    "Fold animation",
+    "Export the mix as audio",
+    "Orbit / Time tunnel / Skybox nodes",
+    "Polish what exists"
+   ],
+   "device": "any",
+   "version": "V204"
   }
  ],
  "knownIssues": [
@@ -1278,6 +4027,19 @@ export default {
   "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
   "The Realities dock row can be covered by open windows and the MiniMap corners.",
   "Phone heights under about 842 px: second-ring pad chips can touch.",
-  "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet."
+  "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
+  "V200: the OmniHand / ConsciousHand tool menus now sit like the LH / RH ones, so opening all four tool menus at once makes them overlap (positions checked with numbers, not by eye).",
+  "V199: the sim clock and orbit models exist but nothing in the app uses them yet.",
+  "V201: the mix engine and the pattern-lane routing were tested with a mock audio context in jsdom; nothing was heard on a real device.",
+  "V201: tempo sync changes the playback rate, so the pitch changes with it (no time-stretch).",
+  "V201: an instrument used in two song lanes is routed through the first lane's bus only.",
+  "V201: only one song strip can sound at a time in a mix (the song player plays one song).",
+  "V201: automation can be recorded, written by the DJ moves and cleared, but its points cannot be edited by hand yet (no lane editor).",
+  "V202: key lock softens drum hits (up to about 6 dB) above rate 1.1; the stretch is a first version.",
+  "V202: key lock needs about half a second after the pitch fader stops, plus the stretch time (a few seconds for a 3-minute clip), before it swaps in; until then the clip plays pitch-shifted at the right tempo. Clips over 10 minutes are not stretched.",
+  "V202: decks work on audio-library clips only; song and sound strips have no cue or loop. One loop, one cue and 4 hot cues per strip.",
+  "V203: doc nodes show one page at a time and cannot yet be clicked, scrolled or selected on the sheet itself (use ⟐OmniDoc or the Inspector). PDF forms, annotations and links are not interactive. .docx / .pptx are not supported (export to PDF first). A PDF needs the internet the first time to load the PDF reader (pdf.js from a CDN); markdown, text, images and guide pages do not.",
+  "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none.",
+  "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active."
  ]
 }

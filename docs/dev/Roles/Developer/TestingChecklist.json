@@ -2,6 +2,301 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V204 Poly nodes (multi-face solids, every face its own content)",
+      "items": [
+        {
+          "feature": "Create a poly node",
+          "howToReach": "Ribbon Home > Create > Poly node (or the Poly tile in the OmniDraw menu, or search 'Poly node' in OmniStarLight)",
+          "whatToCheck": "a cube appears about 7 units in front of you with patterns and 'Face 1' ... 'Face 6' labels on its faces. ⟐OmniPoly opens.",
+          "tested": false
+        },
+        {
+          "feature": "Tap a face: the menu",
+          "howToReach": "Tap (do not drag) a face of the cube",
+          "whatToCheck": "a small menu opens where you tapped with: Select this face, Open face settings, Remove this face. Escape or a tap elsewhere closes it. Say if it appears in a good place on your phone.",
+          "tested": false
+        },
+        {
+          "feature": "Double-sided faces",
+          "howToReach": "Orbit the camera behind and inside the cube; remove one face first (menu > Remove this face)",
+          "whatToCheck": "the labels and text on a face read correctly from the back too (not mirrored). Through the hole you see the inside faces.",
+          "tested": false
+        },
+        {
+          "feature": "Choose a shape",
+          "howToReach": "⟐OmniPoly > Shape",
+          "whatToCheck": "tetrahedron (4 triangles), octahedron (8), dodecahedron (12 pentagons), icosahedron (20), plane (1), strip, ring: each looks right and closed (no gaps) and keeps face 1, 2, 3 data by position.",
+          "tested": false
+        },
+        {
+          "feature": "Strip and ring",
+          "howToReach": "⟐OmniPoly > Shape: strip, then ring; change sides, faces and fold°",
+          "whatToCheck": "a strip folds like a page-turn chain; a ring of squares closes into a tube / drum. Weird values never break it.",
+          "tested": false
+        },
+        {
+          "feature": "Colour, label, tags, event",
+          "howToReach": "⟐OmniPoly > Faces > pick a face",
+          "whatToCheck": "colour tints just that face, Node colour clears it, the label is drawn on the face, tags are kept lower-case, 'Colour all tagged …' colours every face with the first tag.",
+          "tested": false
+        },
+        {
+          "feature": "Text on a face",
+          "howToReach": "⟐OmniPoly > Content: text",
+          "whatToCheck": "your text is wrapped on the face and stays inside it.",
+          "tested": false
+        },
+        {
+          "feature": "Image on a face",
+          "howToReach": "⟐OmniPoly > Content: image > Import… (or choose one from your library)",
+          "whatToCheck": "the image fills the face in its own proportions. Remove it from the library and the face says 'Could not load' instead of breaking.",
+          "tested": false
+        },
+        {
+          "feature": "Document on a face",
+          "howToReach": "⟐OmniPoly > Content: document > a guide page or an imported PDF",
+          "whatToCheck": "the page is drawn on the face; Next page / Previous page in the face menu (and ◀ ▶ in the window) change it. The first PDF needs the internet once.",
+          "tested": false
+        },
+        {
+          "feature": "Sound on a face",
+          "howToReach": "⟐OmniPoly > Content: sound > a sound node, then an audio-library clip; tap the face > Play the sound",
+          "whatToCheck": "the sound plays (say which kind you heard). A face with an event also fires it.",
+          "tested": false
+        },
+        {
+          "feature": "Events and tag selection",
+          "howToReach": "Give a face an event name and a tag; tap it > Fire / Select all tagged",
+          "whatToCheck": "Fire sends the event (e.g. a listener in the console sees omni:poly-face-action). Select all tagged selects every face with that tag.",
+          "tested": false
+        },
+        {
+          "feature": "Far and near",
+          "howToReach": "Fly away from the poly node and back",
+          "whatToCheck": "far away the faces are plain colours (no picture); near they draw sharp; nothing flickers or redraws while you stand still.",
+          "tested": false
+        },
+        {
+          "feature": "Many poly nodes",
+          "howToReach": "Create 8 to 10 poly nodes with images / documents",
+          "whatToCheck": "the frame rate stays acceptable; the farthest ones lose detail first. Say the device.",
+          "tested": false
+        },
+        {
+          "feature": "Undo / Redo and saving",
+          "howToReach": "Edit faces, press Undo and Redo, reload the page",
+          "whatToCheck": "each change is one Undo step; the shape and every face are back after a reload.",
+          "tested": false
+        },
+        {
+          "feature": "Inspector block",
+          "howToReach": "Select a poly node > Inspector > Appearance",
+          "whatToCheck": "a ⟐ Poly node block shows the shape and edge and 'Open ⟐OmniPoly'; changing the shape there works.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V203 Doc nodes (documents inside the space)",
+      "items": [
+        {
+          "feature": "Create a doc node",
+          "howToReach": "Ribbon Home > Create > Doc node (or the Doc tile in the OmniDraw menu, or search 'Doc node' in OmniStarLight)",
+          "whatToCheck": "a flat sheet appears about 7 units in front of you, turned to face you with its top edge up (also when you look straight down), showing the Guide index page. ⟐OmniDoc opens.",
+          "tested": false
+        },
+        {
+          "feature": "Pick a guide page",
+          "howToReach": "⟐OmniDoc > the Document list > Guide pages",
+          "whatToCheck": "choose Keyboard and Touch Cheatsheet: the sheet shows that page with headings, lists, a table and code boxes. The Page box says 'of N'. ◀ ▶ turn pages on the sheet.",
+          "tested": false
+        },
+        {
+          "feature": "Import a PDF",
+          "howToReach": "⟐OmniDoc > Import a file… (or drag a PDF onto the window)",
+          "whatToCheck": "the PDF appears on the sheet with its real text, images and shapes. The page count is right. The first time needs the internet (the PDF reader is loaded once from a CDN). Say how long the first page took.",
+          "tested": false
+        },
+        {
+          "feature": "Import markdown, text and an image",
+          "howToReach": "⟐OmniDoc > Import a file…",
+          "whatToCheck": "a .md file shows headings and lists, a .txt file shows in a fixed-width font and wraps long lines, a PNG / JPG fills the sheet. A zip or an empty file is refused with a clear message.",
+          "tested": false
+        },
+        {
+          "feature": "Turn pages in the space",
+          "howToReach": "Select the doc node, press ◀ ▶ in ⟐OmniDoc or 'Page ◀ ▶' in the Inspector",
+          "whatToCheck": "the page changes, Undo goes back one page, nothing flickers. At page 1 ◀ says it is the first page.",
+          "tested": false
+        },
+        {
+          "feature": "Distance and sharpness",
+          "howToReach": "Walk or fly toward and away from a doc node showing a PDF",
+          "whatToCheck": "far away the sheet is a plain white sheet (no page, saves GPU); coming closer the page appears and gets sharper in steps; when it is off screen nothing is drawn. Say if the page ever looks blurry up close or pops in too late.",
+          "tested": false
+        },
+        {
+          "feature": "Phone: GPU and heat",
+          "howToReach": "Open a scene with 3 or more doc nodes on your phone and move around for a minute",
+          "whatToCheck": "the phone stays smooth and does not get hot or reload the page. Texture size is capped lower on phones (1024). Try Quality > low (lighter) if it struggles.",
+          "tested": false
+        },
+        {
+          "feature": "Size, sides, paper, frame",
+          "howToReach": "⟐OmniDoc > width slider, sides, paper colour, frame",
+          "whatToCheck": "the sheet changes size (stays in proportion to the document), 'front only' hides the page on the back, paper colour shows through text pages, frame off removes the coloured edge.",
+          "tested": false
+        },
+        {
+          "feature": "Copy the text of a page",
+          "howToReach": "⟐OmniDoc > Text of this page > Copy text",
+          "whatToCheck": "the text of the current page can be selected and copied (PDF text, markdown text, guide text). An image has no text.",
+          "tested": false
+        },
+        {
+          "feature": "Library: rename and remove",
+          "howToReach": "⟐OmniDoc > the list of your documents",
+          "whatToCheck": "Rename changes the name everywhere; × removes it and a sheet that showed it says it is not in the library any more. Documents stay after you reload the page (not in a private window).",
+          "tested": false
+        },
+        {
+          "feature": "Saved with the scene",
+          "howToReach": "Create a doc node with a PDF, save / reload the scene",
+          "whatToCheck": "the doc node comes back showing the same document and page (the file itself stays in this browser's library).",
+          "tested": false
+        },
+        {
+          "feature": "Many doc nodes",
+          "howToReach": "Create about 10 doc nodes (Ribbon Home > Create > Doc node, several times) and look around",
+          "whatToCheck": "the page does not reload and the browser does not warn about too many WebGL contexts (a doc node adds none; the Inspector preview, older code, does add some). Sheets far from you or behind you are plain white sheets.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V202 Mix decks (cue, loops, key lock) and the Kryptx Command button",
+      "items": [
+        {
+          "feature": "Command button in the Kryptx keyboard",
+          "howToReach": "Open OmniKeys (it opens on the Kryptx view). Look at the header.",
+          "whatToCheck": "a Command button sits left of the keyboard icon. Press it: the keyboard switches to the QWERTY view with the Command tab lit and the shortcut buttons showing. Press q: StarLight opens.",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard and Touch guide inside the app",
+          "howToReach": "Open the Keyboard Shortcuts panel (Ribbon Home > Assistance) and press Guide; in OmniKeys press the ? button (both the Kryptx and the QWERTY view); or Docs (OmniStar tab) > Keyboard and Touch Cheatsheet",
+          "whatToCheck": "the Docs window opens on the Keyboard and Touch page. It has the section 'Firing shortcuts without a physical keyboard' and the list of Contents includes a Mix nodes page (page 19). Say if a shortcut is missing or wrong on that page.",
+          "tested": false
+        },
+        {
+          "feature": "Deck block on an audio strip",
+          "howToReach": "Open ⟐OmniMix, add a strip of type audio clip, choose a clip from the library, press Play",
+          "whatToCheck": "only audio strips show a block with a waveform, CUE, set, pause, play, tap, grid, 4 numbered hot cue buttons, loop buttons, a pitch slider and key / 0 / -> mix. Song and sound strips do not show it. Does it fit your phone screen?",
+          "tested": false
+        },
+        {
+          "feature": "Waveform and playhead",
+          "howToReach": "Play a mix with an audio strip",
+          "whatToCheck": "the waveform of the clip is drawn; a white line moves across it in time with the music; clicking the waveform jumps there",
+          "tested": false
+        },
+        {
+          "feature": "Cue and hot cues",
+          "howToReach": "While playing: press set (cue) at a beat, move on, press CUE. Press hot cue 1, move on, press 1 again. Shift-click 1.",
+          "whatToCheck": "CUE jumps back to the cue (snapped to the beat if the clip has a bpm). Hot cue 1 stores the spot (the button gets a pink edge and a pink mark on the waveform), pressing it again jumps there, shift-click clears it. Any audible click at the jump?",
+          "tested": false
+        },
+        {
+          "feature": "Loops",
+          "howToReach": "Type the clip's bpm. While playing press loop 4",
+          "whatToCheck": "a loop of 4 beats starting on the beat you were in plays; the waveform shows the loop region; ÷2 and ×2 change its length at once; ◂ ▸ move it; ⟲ turns it off and the clip plays on. Say if you hear a click at the loop point.",
+          "tested": false
+        },
+        {
+          "feature": "Tap tempo and grid",
+          "howToReach": "On a clip without a bpm press tap in time with the beat (4 times)",
+          "whatToCheck": "the bpm box fills in (the message counts the taps). Press grid on a beat to say where beat 1 is; loops and cues then snap to your grid.",
+          "tested": false
+        },
+        {
+          "feature": "Pitch and tempo sync",
+          "howToReach": "Give two audio strips different bpm, switch sync on, move a strip's pitch slider",
+          "whatToCheck": "the tempo readout under the deck shows the heard bpm; moving the pitch changes speed and pitch smoothly without a gap; '-> mix' makes the mix tempo that strip's tempo and other synced strips follow",
+          "tested": false
+        },
+        {
+          "feature": "Key lock",
+          "howToReach": "Pitch +8 %, press key, listen for a few seconds (long clips take longer)",
+          "whatToCheck": "the tempo stays changed but the pitch goes back to normal after the stretch is ready (a short moment of higher pitch first). Tell Claude how drums, bass and vocals sound: clean, softer drums, warble.",
+          "tested": false
+        },
+        {
+          "feature": "Two decks and the crossfader",
+          "howToReach": "Two audio strips, one on A one on B, loop on both, press Crossfade -> B",
+          "whatToCheck": "the transition runs over the seconds you set; hot cues and loops keep working during it",
+          "tested": false
+        },
+        {
+          "feature": "Undo of deck edits",
+          "howToReach": "Make a loop, press Undo",
+          "whatToCheck": "the loop is undone as one step; dragging the pitch slider counts as one step",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V200 hand tool menus and Claude Check by version",
+      "items": [
+        {
+          "feature": "OmniHand tool menu position",
+          "howToReach": "Press 3 (or the OmniHand ⬢ button) on a 1280x720 or larger desktop window",
+          "whatToCheck": "the round menu opens clearly away from the top-left corner (about 200 px inward and 250 px down), fully inside the window, nothing important covered",
+          "tested": false
+        },
+        {
+          "feature": "ConsciousHand tool menu position",
+          "howToReach": "Press 4 (or the ConsciousHand ⬢ button)",
+          "whatToCheck": "the mirror image of OmniHand's: away from the top-right corner, fully inside the window",
+          "tested": false
+        },
+        {
+          "feature": "Tool menus opened together",
+          "howToReach": "Open OmniHand, ConsciousHand, LH (Left Shift) and RH (Right Shift) tool menus at once",
+          "whatToCheck": "say how much they overlap and whether you can still click every tool; tell Claude what you want (smaller, other positions, only two at a time)",
+          "tested": false
+        },
+        {
+          "feature": "Tool menu positions in a short window and on a phone",
+          "howToReach": "Make the window 1024x600, then a phone width (about 390 px wide)",
+          "whatToCheck": "the top menus stay on screen in the short window; on the phone nothing is shifted (as before) and the menus do not cover the movement pads",
+          "tested": false
+        },
+        {
+          "feature": "Claude Check grouped by version",
+          "howToReach": "Developer > Claude Check",
+          "whatToCheck": "checks and questions are in version groups, newest first; this version is open, older versions are closed; counts are right; Hide done and the device filters still work",
+          "tested": false
+        },
+        {
+          "feature": "Claude Check older questions restored",
+          "howToReach": "Developer > Claude Check, open the V198, V195 and V194 question groups",
+          "whatToCheck": "the V191 to V198 questions are all there and can be answered; the progress line still counts correctly",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V199 sim clock and orbit models (no UI yet)",
+      "items": [
+        {
+          "feature": "Pure models",
+          "howToReach": "node --import ./register.mjs v199_models_test.mjs (developer only)",
+          "whatToCheck": "120/120 pass; there is nothing to see in the app yet",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "V198 OmniSongNode, audio library, piano roll",
       "items": [
         {
@@ -4574,6 +4869,77 @@
           "feature": "Reset HUD button",
           "howToReach": "Ribbon Home > Assistance, next to Refresh",
           "whatToCheck": "Drag a window to resize it, drag the OmniNotify box and the compass away, press Reset HUD: sizes reset, OmniNotify re-docks under the profile, compass returns; nodes and settings untouched",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V201 Shortcut table, OmniKeys Command palette, OmniMusicMixNode, engine routing",
+      "items": [
+        {
+          "feature": "Command mode shortcut palette",
+          "howToReach": "OmniKeys (switch to the QWERTY view with the keyboard button) > Command mode",
+          "whatToCheck": "A strip of small buttons appears under the mode note: every listed shortcut (F1, `, Escape, c, o, 0 / 9, b, n, m, k, t, p, g, F2, F4, Enter, q, Ctrl/Cmd+K, r, f, j, y and h, u and v, the numpad pad keys) plus dashed Tab, Backspace, Delete, Home, End, PageUp, PageDown. Press q: StarLight opens. Press Ctrl/Cmd+K: expression typing toggles. It is hidden in the other modes.",
+          "tested": false
+        },
+        {
+          "feature": "Terminal key and shortcut commands",
+          "howToReach": "Open the command terminal (F1 or the Terminal button), type: key q   /   key ctrl+k   /   key pagedown   /   shortcut fullscreen   /   shortcut",
+          "whatToCheck": "key sends one real key press (a bad key says what it accepts); shortcut fires a listed shortcut by key or words; shortcut alone lists them all",
+          "tested": false
+        },
+        {
+          "feature": "Keyboard Shortcuts panel uses the shared table",
+          "howToReach": "Ribbon Home > Assistance > Keyboard Shortcuts",
+          "whatToCheck": "Same list as before (no entry lost, the Edit button still works); the list now comes from utils/OmniShortcutTable.js, shared with Command mode and the terminal",
+          "tested": false
+        },
+        {
+          "feature": "Mix node: create",
+          "howToReach": "Ribbon Home > Create > Mix node, or OmniDraw menu > Mix, or OmniStarLight 'Mix node'",
+          "whatToCheck": "A small mixing desk appears in front of you and the ⟐OmniMix window opens. With song / sound nodes in the scene it starts with a strip for each. The desk shows faders and a crossfader cap. Select it: the Inspector shows a Mix node block (strips, tempo, Play, Record, Open mixer)",
+          "tested": false
+        },
+        {
+          "feature": "Mixer: strips and crossfader",
+          "howToReach": "⟐OmniMix (Create > Mix node, or Tools > Mixer)",
+          "whatToCheck": "Each strip: name, source type and source, volume fader with level meter, pan, filter, low / mid / high EQ, reverb and delay sends, A / T / B, M / S, loop, tempo and sync, move, remove. Master volume, limiter, reverb and delay returns, crossfader with curve. Undo and Redo work; a fader drag is one undo step",
+          "tested": false
+        },
+        {
+          "feature": "Mixer: play sounds, songs and audio clips",
+          "howToReach": "⟐OmniMix > add strips, choose sources, press Play",
+          "whatToCheck": "A sound node strip plays its sound; an audio-library clip strip plays and loops; a song node strip plays the song through the strip (only one song at a time: a second song strip says so). Mute, solo, volume, EQ and the filter change what you hear at once",
+          "tested": false
+        },
+        {
+          "feature": "DJ moves and recording",
+          "howToReach": "⟐OmniMix > over [8] s > Crossfade → B / Fade out / Fade in / Filter sweep; ● Rec while playing and move a fader",
+          "whatToCheck": "A crossfade from A to B over the chosen seconds is heard as a smooth blend (no jump in loudness in the middle); fades and the filter sweep do what the buttons say; recorded fader moves come back when you play again; Clear removes the lanes",
+          "tested": false
+        },
+        {
+          "feature": "Tempo sync of audio strips",
+          "howToReach": "⟐OmniMix > a looping audio strip > bpm (its own tempo) + sync, and the mix bpm",
+          "whatToCheck": "With sync on, the clip plays faster or slower so its tempo matches the mix (pitch changes with the speed: there is no time-stretch yet). Off = original speed",
+          "tested": false
+        },
+        {
+          "feature": "Song pattern lanes now use pan, filter and sends",
+          "howToReach": "A song node with pattern lanes > OmniSong mixer headers: lane volume above 1, pan, filter, reverb / delay sends",
+          "whatToCheck": "Pan, filter and the sends now change the sound of pattern lanes (before V201 they did not). Lane volume can be raised above the pattern's own level. Stop the song: the instruments sound normal again (back on the master)",
+          "tested": false
+        },
+        {
+          "feature": "Voice cap default 16",
+          "howToReach": "Admin > Sound > Sounds at once",
+          "whatToCheck": "New default is 16 (was 8); a song with more instruments than the cap raises the cap while it plays (up to 32) and restores it on stop. A saved choice of yours stays",
+          "tested": false
+        },
+        {
+          "feature": "Mix node desk reacts",
+          "howToReach": "Play a mix and look at the desk node",
+          "whatToCheck": "Fader caps sit where the strips' faders are; caps brighten with the level; the crossfader cap moves; far nodes (> 220 units) do not update",
           "tested": false
         }
       ]

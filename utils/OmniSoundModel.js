@@ -318,7 +318,7 @@ export const SOUND_FIELDS = SOUND_SCHEMA.flatMap(g => g.fields)
 const FIELD_BY_KEY = new Map(SOUND_FIELDS.map(f => [f.key, f]))
 export const getSoundField = (key) => FIELD_BY_KEY.get(key) || null
 
-export const SOUND_LIMITS = { fieldCount: SOUND_FIELDS.length, groupCount: SOUND_SCHEMA.length, maxVoicesCap: 32, defaultVoices: 8, maxTextLength: 4096, maxPresets: 64 }
+export const SOUND_LIMITS = { fieldCount: SOUND_FIELDS.length, groupCount: SOUND_SCHEMA.length, maxVoicesCap: 32, defaultVoices: 16, maxTextLength: 4096, maxPresets: 64 }
 
 const cleanText = (s, max) => String(s).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, Math.max(0, max | 0))
 

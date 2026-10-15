@@ -5,7 +5,7 @@
  *
  *   key             values                   default  meaning
  *   masterVolume    0..1                     0.8      the volume of everything the sound engine plays
- *   voiceCap        1..32 (integer)          8        how many sounds may play at once (the oldest is stolen)
+ *   voiceCap        1..32 (integer)          16       how many sounds may play at once (the oldest is stolen)
  *   muteOnPhone     true | false             true     on a phone-sized screen start muted until the person unmutes (speaker button)
  *   requireOptIn    true | false             false    no sound at all until the person has pressed "Enable sound" (this session)
  *   particleCap     0..50000 (integer)       20000    the most sound particles drawn in the whole scene
@@ -36,7 +36,7 @@ export const LIMITS = Object.freeze({
 
 export const DEFAULTS = Object.freeze({
   masterVolume: 0.8,
-  voiceCap: 8,
+  voiceCap: 16,
   muteOnPhone: true,
   requireOptIn: false,
   particleCap: 20000,

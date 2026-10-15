@@ -30,7 +30,13 @@ import { buildSoundNodeMesh, releaseSoundMesh } from './OmniSoundNodeMesh.js'   
 import { buildMusicNodeMesh, releaseMusicMesh } from './OmniMusicNodeMesh.js'   // V195: the MusicNode geometry (a drum-machine plate whose lit cells follow the step)
 import { sanitizeMusic, defaultMusic } from './OmniMusicModel.js'               // V195: data.music (the step sequencer pattern, saved with the node)
 import { buildSongNodeMesh, releaseSongMesh } from './OmniSongNodeMesh.js'        // V198: the SongNode geometry (a record disc whose rings are the lanes; the lit segment follows the song position)
-import { sanitizeSong, defaultSong } from './OmniSongModel.js'                    // V198: data.song (the arrangement, saved with the node)
+import { sanitizeSong, defaultSong } from './OmniSongModel.js'
+import { buildMixNodeMesh, releaseMixMesh } from './OmniMixNodeMesh.js'              // V201: the OmniMusicMixNode geometry (a small mixing desk)
+import { buildDocNodeMesh, releaseDocMesh } from './OmniDocNodeMesh.js'            // V203: the DocNode geometry (a thin sheet showing one page of a document)
+import { sanitizeDoc, defaultDoc } from './OmniDocModel.js'
+import { buildPolyNodeMesh, releasePolyMesh } from './OmniPolyNodeMesh.js'          // V204: the PolyNode geometry (a solid / strip / ring whose every face has its own picture)
+import { sanitizePoly, defaultPoly } from './OmniPolyModel.js'                    // V204: data.poly (shape + per-face data)                       // V203: data.doc (which document, which page, how big)
+import { sanitizeMix, defaultMix } from './OmniMixModel.js'                         // V201: data.mix (the desk: strips, master, crossfader, automation)                    // V198: data.song (the arrangement, saved with the node)
 
 export const KIND_PATH = 'omniPath'
 export const KIND_FLOOR_PANEL = 'floorPanel'
@@ -38,22 +44,31 @@ export const KIND_TERMINAL_SHELL = 'terminalShell'   // V192: TerminalShellTunne
 export const KIND_SOUND = 'soundNode'   // V194: SoundNode — data = { nodeKind:'soundNode', sound, soundParticles } (the sound settings live IN the node: utils/OmniSoundModel.js)
 export const KIND_MUSIC = 'musicNode'   // V195: MusicNode — data = { nodeKind:'musicNode', music } (the step sequencer pattern lives IN the node: utils/OmniMusicModel.js)
 export const KIND_SONG = 'songNode'     // V198: SongNode — data = { nodeKind:'songNode', song } (the arrangement lives IN the node: utils/OmniSongModel.js)
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG]
+export const KIND_MIX = 'mixNode'       // V201: OmniMusicMixNode — data = { nodeKind:'mixNode', mix } (the mixing desk lives IN the node: utils/OmniMixModel.js)
+export const KIND_DOC = 'docNode'       // V203: DocNode — data = { nodeKind:'docNode', doc } (which document and page lives IN the node: utils/OmniDocModel.js)
+export const KIND_POLY = 'polyNode'     // V204: PolyNode — data = { nodeKind:'polyNode', poly } (shape and every face live IN the node: utils/OmniPolyModel.js)
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY]
 export const GEO_PATH = 'OmniPathNode'
 export const GEO_FLOOR_PANEL = 'FloorPanelNode'
 export const GEO_TERMINAL_SHELL = 'TerminalShellTunnel'
 export const GEO_SOUND = 'SoundNode'
 export const GEO_MUSIC = 'MusicNode'
 export const GEO_SONG = 'SongNode'
+export const GEO_MIX = 'MixNode'
+export const GEO_DOC = 'DocNode'
+export const GEO_POLY = 'PolyNode'
 export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring panels
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY)
 export const isMusicNodeData = (d) => !!d && d.nodeKind === KIND_MUSIC
 export const isSongNodeData = (d) => !!d && d.nodeKind === KIND_SONG
+export const isMixNodeData = (d) => !!d && d.nodeKind === KIND_MIX
+export const isDocNodeData = (d) => !!d && d.nodeKind === KIND_DOC
+export const isPolyNodeData = (d) => !!d && d.nodeKind === KIND_POLY
 export const isSoundNodeData = (d) => !!d && d.nodeKind === KIND_SOUND
 export const isTerminalShellData = (d) => !!d && d.nodeKind === KIND_TERMINAL_SHELL
 export const isFloorPanelData = (d) => !!d && d.nodeKind === KIND_FLOOR_PANEL
@@ -131,6 +146,17 @@ export function extraCreateFields (spec) {
   if (spec.nodeKind === KIND_SONG) {
     // the arrangement travels WITH the node (a sanitized copy; a missing / hostile one becomes the default song)
     return { geometry: GEO_SONG, label: clip(spec.label || 'Song node', 40), data: { nodeKind: KIND_SONG, song: spec.song && typeof spec.song === 'object' ? sanitizeSong(spec.song) : defaultSong() } }
+  }
+  if (spec.nodeKind === KIND_MIX) {
+    // the desk travels WITH the node (a sanitized copy; a missing / hostile one becomes the default mix)
+    return { geometry: GEO_MIX, label: clip(spec.label || 'Mix node', 40), data: { nodeKind: KIND_MIX, mix: spec.mix && typeof spec.mix === 'object' ? sanitizeMix(spec.mix) : defaultMix() } }
+  }
+  if (spec.nodeKind === KIND_POLY) {
+    return { geometry: GEO_POLY, label: clip(spec.label || 'Poly node', 40), data: { nodeKind: KIND_POLY, poly: spec.poly && typeof spec.poly === 'object' ? sanitizePoly(spec.poly) : defaultPoly() } }
+  }
+  if (spec.nodeKind === KIND_DOC) {
+    // which document and page travel WITH the node (a sanitized copy; a missing / hostile one becomes an empty sheet)
+    return { geometry: GEO_DOC, label: clip(spec.label || 'Doc node', 40), data: { nodeKind: KIND_DOC, doc: spec.doc && typeof spec.doc === 'object' ? sanitizeDoc(spec.doc) : defaultDoc() } }
   }
   if (spec.nodeKind === KIND_FLOOR_PANEL) {
     const fp = sanitizeFloorPanel(spec)
@@ -222,6 +248,29 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_MIX) {
+    const mesh = buildMixNodeMesh(col)
+    mesh.userData.extraKind = { kind: KIND_MIX, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_POLY) {
+    if (!data.poly || typeof data.poly !== 'object') data.poly = defaultPoly()
+    const mesh = buildPolyNodeMesh(col, sanitizePoly(data.poly))
+    mesh.userData.extraKind = { kind: KIND_POLY, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_DOC) {
+    if (!data.doc || typeof data.doc !== 'object') data.doc = defaultDoc()
+    const mesh = buildDocNodeMesh(col, sanitizeDoc(data.doc))
+    mesh.userData.extraKind = { kind: KIND_DOC, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   const fp = sanitizeFloorPanel(data)
   let geo
   if (fp) {
@@ -265,6 +314,9 @@ export function releaseExtraMesh (mesh) {
   if (ek.kind === KIND_SOUND) releaseSoundMesh(mesh)
   if (ek.kind === KIND_MUSIC) releaseMusicMesh(mesh)
   if (ek.kind === KIND_SONG) releaseSongMesh(mesh)
+  if (ek.kind === KIND_MIX) releaseMixMesh(mesh)
+  if (ek.kind === KIND_DOC) releaseDocMesh(mesh)
+  if (ek.kind === KIND_POLY) releasePolyMesh(mesh)
   LIVE.delete(mesh)
   delete mesh.userData.extraKind
   delete mesh.userData.omniRelease

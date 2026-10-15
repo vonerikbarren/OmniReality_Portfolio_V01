@@ -17,6 +17,7 @@
  */
 
 import * as WindowManager from './WindowManager.js'
+import { SHORTCUTS } from '../utils/OmniShortcutTable.js'
 
 const STYLES = /* css */`
 
@@ -67,6 +68,8 @@ const STYLES = /* css */`
   cursor         : pointer;
   margin-right   : 6px;
 }
+.oks-guide-btn { margin-left: auto; }
+.oks-guide-btn + .oks-edit-btn { margin-left: 0; }
 .oks-edit-btn.enabled { color: #fff; border-color: rgba(255,255,255,0.25); }
 .oks-edit-btn:not(.enabled) { cursor: not-allowed; opacity: 0.5; }
 .oks-close {
@@ -117,46 +120,7 @@ function injectStyles () {
   document.head.appendChild(tag)
 }
 
-// Compiled directly from main.js's own real keydown handlers, not
-// guessed. Each entry's own key/description matches its real,
-// current behavior.
-const SHORTCUTS = [
-  { key: 'F1',       desc: 'Switch the terminal tunnels on (the Terminal button switches them on and off together)' },
-  { key: '`',        desc: 'Toggle OmniState_StrictAlign: move the selected node along ONE axis (X, Y or Z) with exact coordinates (V191; the terminal keeps F1)' },
-  { key: '1 2 3 / x y z', desc: 'While OmniState_StrictAlign is on: choose the axis. Arrow keys / PageUp / PageDown / mouse wheel on the node = one step (Shift = big step); Enter = type an exact value; Ctrl+Z = undo; Esc = leave' },
-  { key: 'Escape',   desc: 'Switch the terminal tunnels off' },
-  { key: 'c',        desc: 'Return to landing point coordinates' },
-  { key: 'o',        desc: 'User Space sphere quick toggles' },
-  { key: '0 / 9',    desc: "Toggle the domain grid sphere's visibility" },
-  { key: 'b',        desc: 'Toggle OmniBrowser (window 1)' },
-  { key: 'n',        desc: 'Open the OmniDraw mode picker (now also opens OmniNode)' },
-  { key: 'm',        desc: 'Toggle the mini map' },
-  { key: 'k',        desc: 'Toggle OmniMusicPlayer' },
-  { key: 't',        desc: 'Toggle OmniTranslator' },
-  { key: 'p',        desc: 'Toggle ⟐p OmniPresenter' },
-  { key: 'g',        desc: 'Toggle ⟐g OmniGallery' },
-  { key: 'F2',        desc: 'Refresh the page' },
-  { key: 'F4',        desc: 'Toggle fullscreen' },
-  { key: 'Escape',   desc: 'Exit fullscreen' },
-  { key: '( / )',    desc: 'Wallpaper sphere spin direction' },
-  { key: 'Enter',    desc: 'Toggle OmniStartHUD' },
-  { key: 'q',        desc: 'OmniStarLight search (sites and docs); Escape closes (V195: was Ctrl/Cmd+K; not while typing in a text field)' },
-  { key: 'Ctrl/Cmd+K', desc: 'Expression typing on / off: the keys play notes (A S D F G / J K L ; white keys, Space sustain, B / N octave); Escape leaves (V195)' },
-  { key: 'r',        desc: 'Move up (vertical, Y-axis)' },
-  { key: 'f',        desc: 'Move down (vertical, Y-axis)' },
-  { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' },
-  // V191: corner buttons of the LH / RH pads (ui/MovementPad.js). Ignored with Ctrl / Cmd / Alt held.
-  // V195: E and Q no longer move the LH pad (Q opens OmniStarLight); use the ASC / DSC buttons on the pad.
-  { key: 'y and h',  desc: 'RH pad: orbit up / down around the current target (hold); keeps going all the way around, over the top and under the bottom (V192; the vertical twin of the Arrow Left / Right orbit)' },
-  { key: 'u and v',  desc: 'LH pad: orbit up / down around the current target (hold), the same continuous orbit as y and h (V192)' },
-  // OmniHand / Conscious Hand axis pads (V158). These move NO camera — they
-  // step the dimensional-axis markers (systems/OmniDimensionalAxes.js). Press
-  // = one step, hold = repeat. Compiled from ui/MovementPad.js's _mapKey.
-  { key: 'Numpad / and Numpad *', desc: '⟐ OmniHand: Υ tier up / down (no camera movement)' },
-  { key: 'Numpad - and Numpad +', desc: '⟐ OmniHand: back / forth along the OmniProduct axis, 10 to 4 o\'clock (no camera movement)' },
-  { key: 'Numpad 7 and Numpad 9', desc: '◬ Conscious Hand: Υ scale degree up / down (no camera movement)' },
-  { key: 'Numpad 5 and Numpad 6', desc: '◬ Conscious Hand: back / forth along the perspective axis, 8 to 2 o\'clock (no camera movement)' },
-]
+// V201: the table lives in utils/OmniShortcutTable.js (shared with OmniKeys Command mode and the terminal).
 
 export default class OmniKeyboardShortcutsPanel {
   constructor () {
@@ -173,7 +137,9 @@ export default class OmniKeyboardShortcutsPanel {
     WindowManager.enhanceWindow(this._el, { id: 'omnishortcuts' })   // V187: resize handles + maximize button
 
     this._el.querySelector('.oks-close').addEventListener('click', () => this.close())
-    this._el.querySelector('.oks-edit-btn').addEventListener('click', () => this._onEditClick())
+    this._el.querySelector('.oks-edit-btn:not(.oks-guide-btn)').addEventListener('click', () => this._onEditClick())
+    // V202: the Keyboard and Touch page of the in-app Docs
+    this._el.querySelector('[data-action="guide"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:docs-open', { detail: { page: '10-keyboard-and-touch-cheatsheet' } })))
 
     // Real, global registration — shows in the Assistance dropdown
     // regardless of which panel is frontmost, matching WindowManager's
@@ -208,6 +174,7 @@ export default class OmniKeyboardShortcutsPanel {
     el.innerHTML = `
       <div class="oks-header">
         <span class="oks-title">⟐ Keyboard Shortcuts</span>
+        <button class="oks-edit-btn oks-guide-btn enabled" data-action="guide" title="Open the Keyboard and Touch guide in the Docs">Guide</button>
         <button class="oks-edit-btn">Edit</button>
         <button class="oks-close" aria-label="Close">✕</button>
       </div>

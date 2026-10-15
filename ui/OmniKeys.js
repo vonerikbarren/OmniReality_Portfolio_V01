@@ -56,6 +56,7 @@
  * Follows the standard module contract (constructor / init / update / destroy).
  */
 
+import { SHORTCUTS as SHORTCUT_TABLE, NAV_KEYS, fireEntry } from '../utils/OmniShortcutTable.js'
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import { generateId } from '../systems/OmniNode.js'
@@ -444,6 +445,11 @@ const STYLES = /* css */`
   padding          : 4px;
   border-bottom    : 1px solid rgba(255,255,255,0.05);
 }
+.ok-shortcuts { display:flex; flex-wrap:wrap; gap:4px; padding:4px 10px 6px; max-height:92px; overflow:auto; }
+.ok-shortcuts[hidden] { display:none; }
+.ok-sc { font:inherit; font-size:10px; padding:2px 7px; border-radius:5px; cursor:pointer; color:#fff; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.16); }
+.ok-sc:hover { background:rgba(255,255,255,0.16); }
+.ok-sc--nav { border-style:dashed; }
 
 .ok-save-banner {
   flex-shrink      : 0;
@@ -982,12 +988,14 @@ export default class OmniKeys {
           `).join('')}
         </div>
         <div class="ok-controls">
+          <button class="ok-ctrl" data-action="guide" title="Open the Keyboard and Touch guide in the Docs">?</button>
           <button class="ok-ctrl ok-ctrl--inspector" data-action="inspector" title="Open OmniKeys Inspector">⟐i</button>
           <button class="ok-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="ok-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
       <div class="ok-mode-note" id="ok-mode-note"></div>
+      <div class="ok-shortcuts" id="ok-shortcuts" hidden></div>
       <div class="ok-save-banner" id="ok-save-banner"></div>
       <div class="ok-grid-wrap">
         <div class="ok-grid" id="ok-grid"></div>
@@ -1003,6 +1011,7 @@ export default class OmniKeys {
     el.querySelectorAll('[data-mode]').forEach(btn => {
       btn.addEventListener('click', () => this._setMode(btn.dataset.mode, el))
     })
+    el.querySelector('[data-action="guide"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:docs-open', { detail: { page: '10-keyboard-and-touch-cheatsheet' } })))
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
     el.querySelector('[data-action="inspector"]').addEventListener('click', () => this._openInspectorForSelected())
@@ -1042,6 +1051,8 @@ export default class OmniKeys {
       <div class="ok-header">
         <span class="ok-title">⟐OmniKryptx Keyboard</span>
         <div class="ok-controls">
+          <button class="ok-ctrl" data-action="guide" title="Open the Keyboard and Touch guide in the Docs">?</button>
+          <button class="ok-mode-btn ok-mode-btn--command" data-action="open-command" title="Open the Command tab: every shortcut as a button">Command</button>
           <button class="ok-ctrl" data-action="toggle-view" title="Switch to normal QWERTY view">⌨</button>
           <button class="ok-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="ok-ctrl" data-action="close" title="Close">×</button>
@@ -1062,6 +1073,9 @@ export default class OmniKeys {
     this._bindResize(el)
 
     el.querySelector('[data-action="toggle-view"]').addEventListener('click', () => this._toggleView(el))
+    // V202: straight to the QWERTY view's Command tab (shortcut palette)
+    el.querySelector('[data-action="guide"]').addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:docs-open', { detail: { page: '10-keyboard-and-touch-cheatsheet' } })))
+    el.querySelector('[data-action="open-command"]').addEventListener('click', () => { this._mode = 'Command'; this._toggleView(el) })
     el.querySelector('[data-action="minimize"]').addEventListener('click', () => this.minimize())
     el.querySelector('[data-action="close"]').addEventListener('click', () => this.close())
 
@@ -1326,6 +1340,29 @@ export default class OmniKeys {
     this._updateModeNote(el)
   }
 
+  /** V201: Command mode shows every shortcut of the shared table (utils/OmniShortcutTable.js) plus the keys the layout has no button for. */
+  _renderPalette (el) {
+    const box = el.querySelector('#ok-shortcuts')
+    if (!box) return
+    const on = this._mode === 'Command'
+    box.hidden = !on
+    if (!on) return
+    if (!box.dataset.built) {
+      const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+      const btn = (e, i, nav) => `<button class="ok-sc${nav ? ' ok-sc--nav' : ''}" data-sc="${nav ? 'n' : 's'}${i}" title="${esc(e.desc)}">${esc(e.key)}</button>`
+      box.innerHTML = SHORTCUT_TABLE.map((e, i) => btn(e, i, false)).join('') + NAV_KEYS.map((e, i) => btn(e, i, true)).join('')
+      box.addEventListener('click', (ev) => {
+        const b = ev.target.closest?.('[data-sc]'); if (!b) return
+        const kind = b.dataset.sc[0], idx = Number(b.dataset.sc.slice(1))
+        const entry = (kind === 'n' ? NAV_KEYS : SHORTCUT_TABLE)[idx]
+        if (!entry) return
+        // an entry with several keys ("0 / 9") fires the first; hold-style entries are covered by the keys themselves
+        fireEntry(entry, window, 0)
+      })
+      box.dataset.built = '1'
+    }
+  }
+
   _updateModeNote (el) {
     const note = el.querySelector('#ok-mode-note')
     if (!note) return
@@ -1336,6 +1373,7 @@ export default class OmniKeys {
       Command: 'Click modifiers to hold them, then a key to fire the real shortcut',
     }
     note.textContent = notes[this._mode] ?? ''
+    this._renderPalette(el)
   }
 
   /** The middle (center) 8-directional pad's four cardinal arrows are

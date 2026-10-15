@@ -1,36 +1,104 @@
 {
   "_readme": "HAND-WRITTEN every iteration by Claude (or the agent doing the build): what Claude is LOOKING FOR this version. Only put questions here that ONLY the user can answer (real GPU frame rate, phone feel, 'does X look right'). Then run: node tools/build-claude-check.mjs --version <Vnnn> --categories \"<names>\" . kinds: text | yesno | choice (needs choices) | number. device: any | desktop | phone | touch | gpu.",
-  "version": "V198",
-  "date": "2026-10-13",
-  "summary": "V198: SongNode (timeline arrangement + mixer), Audio library (import any audio file), piano roll, Song tile in the OmniDraw menu",
+  "version": "V203",
+  "date": "2026-10-15",
+  "summary": "V203: DocNode, a flat sheet in the space that shows a PDF, markdown, text, image or guide page (a 2D canvas texture: no CSS3D, no extra GPU context, drawn only as sharp as the distance needs); V199-V202 questions still open",
   "asks": [
+    {
+      "id": "v200-hand-menus",
+      "question": "Open the OmniHand tool menu (key 3 or its ⬢ button) and the ConsciousHand tool menu (key 4). Are they now far enough out of the corner, and do they get in the way of anything (the pad, the ribbon, the LH / RH tool menus if you open them together)?",
+      "why": "They now sit like the LH / RH menus (200 px inward and 250 px down). Opened together with LH / RH they will overlap each other; I only checked positions with numbers, not with my eyes.",
+      "kind": "choice",
+      "choices": [
+        "Good as it is",
+        "Still too close to the corner",
+        "Too far in",
+        "They overlap the LH / RH menus and that bothers me"
+      ],
+      "device": "desktop",
+      "version": "V200"
+    },
+    {
+      "id": "v200-groups",
+      "question": "Developer > Claude Check now groups the checks and the questions by version (newest first, this version open). Is that the organisation you wanted?",
+      "why": "Older versions start closed; carried-over items stay in their own section on top.",
+      "kind": "yesno",
+      "device": "any",
+      "version": "V200"
+    },
+    {
+      "id": "v199-scale",
+      "question": "A skybox is a smaller context inside the wallpaper 'at a scale of 25 from the original size of a node'. Do you mean 25 times BIGGER or 1/25 of a normal node?",
+      "why": "It decides the size of every sky and how it sits in the wallpaper sphere.",
+      "kind": "choice",
+      "choices": [
+        "25 times bigger",
+        "1/25 of the size",
+        "Something else (tell me)"
+      ],
+      "device": "any",
+      "version": "V199"
+    },
+    {
+      "id": "v199-double",
+      "question": "'Double sided' for a skybox: do you want to see it from OUTSIDE like a snow globe and also step INSIDE it?",
+      "why": "It decides whether the sky is rendered from both sides and when its light switches on and off.",
+      "kind": "yesno",
+      "device": "any",
+      "version": "V199"
+    },
+    {
+      "id": "v199-orbit",
+      "question": "Which should the first OmniOrbitNode do: ride the CAMERA around a reality (outside view), or move a NODE around another node?",
+      "why": "The model supports both; the first one built gets the polish.",
+      "kind": "choice",
+      "choices": [
+        "Camera around a reality",
+        "Node around a node",
+        "Both at once"
+      ],
+      "device": "any",
+      "version": "V199"
+    },
+    {
+      "id": "v199-hold",
+      "question": "At a time point, do you want a real HOLD (time stands still for N seconds) in addition to slow / fast?",
+      "why": "The clock model allows speeds from 0.05 to 16 only; a true hold needs a separate 'dwell' field.",
+      "kind": "yesno",
+      "device": "any",
+      "version": "V199"
+    },
     {
       "id": "v198-song",
       "question": "Create a Song node (OmniDraw > Song), add a lane, drop in a pattern and an audio clip, press Play. Does the arrangement play in time and does the mixer (volume, pan, mute, solo) do what you expect?",
       "why": "Timing was verified with clocks and meters on software-rendered Chromium; nobody listened.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V198"
     },
     {
       "id": "v198-import",
       "question": "Import your own WAV and MP3 (and anything else you have) in the Audio library. Which formats work, and does it keep them after a reload?",
       "why": "The browser decides what it can decode; AAC/M4A could not be tested here.",
       "kind": "text",
-      "device": "desktop"
+      "device": "desktop",
+      "version": "V198"
     },
     {
       "id": "v198-roll",
       "question": "Open a Music node sequencer, switch a track to Roll and draw some notes. Is the piano roll comfortable (mouse and touch)?",
       "why": "Only synthetic pointer events were used.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V198"
     },
     {
       "id": "v198-layout",
       "question": "Is the song timeline too cramped at your screen size (it opened about 393 px tall at 720 px)? What would you move or hide?",
       "why": "The toolbar and clip bar take several rows on small windows.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V198"
     },
     {
       "id": "v198-pan",
@@ -42,7 +110,8 @@
         "later",
         "fine as is"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V198"
     },
     {
       "id": "v198-voices",
@@ -54,7 +123,8 @@
         "keep 8",
         "make it a setting"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V198"
     },
     {
       "id": "v195-keys",
@@ -68,56 +138,64 @@
         "some keys dead",
         "other (notes)"
       ],
-      "device": "desktop"
+      "device": "desktop",
+      "version": "V195"
     },
     {
       "id": "v195-midi",
       "question": "Plug in your MIDI controller, open Expression settings and enable MIDI. Do notes, pitch bend, mod and sustain work?",
       "why": "No real MIDI hardware was available. Needs Chrome, Edge or Firefox; Safari and iOS have no Web MIDI.",
       "kind": "text",
-      "device": "desktop"
+      "device": "desktop",
+      "version": "V195"
     },
     {
       "id": "v195-panel",
       "question": "Open OmniExpression, then maximize it. Do the four quadrants look like the Start HUD you wanted?",
       "why": "Built from the Start HUD look but never seen by you.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V195"
     },
     {
       "id": "v195-phone",
       "question": "On a phone: can you play the on-screen keyboard with several fingers, and is the BeatPad usable?",
       "why": "Multi-touch and the phone layout were only simulated.",
       "kind": "text",
-      "device": "phone"
+      "device": "phone",
+      "version": "V195"
     },
     {
       "id": "v195-dj",
       "question": "Load a track into a deck in OmniDJ. Do volume, EQ and the crossfader do what you expect? Does the circle spin?",
       "why": "Checked only with a generated test tone; jog scrubbing moves the position, it is not true scratching.",
       "kind": "text",
-      "device": "desktop"
+      "device": "desktop",
+      "version": "V195"
     },
     {
       "id": "v195-seq",
       "question": "Create a Music node, put steps in the sequencer and press Play, then try Record from the keys. Do the timing and the quantize feel right?",
       "why": "Timing was checked by clock only, never by ear.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V195"
     },
     {
       "id": "v195-boot",
       "question": "How does the new opening look (title, credits, shooting stars toward 5 o'clock)?",
       "why": "First pass; you said animations come later.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V195"
     },
     {
       "id": "v195-names",
       "question": "There are now two things called OmniExpression (the old drawer panel and the new window). Rename one?",
       "why": "Both open from the nav by the same name.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V195"
     },
     {
       "id": "v194-hear",
@@ -131,7 +209,8 @@
         "no sound",
         "other (describe in notes)"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V194"
     },
     {
       "id": "v194-dynamics",
@@ -144,14 +223,16 @@
         "ffff too loud",
         "uneven steps"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V194"
     },
     {
       "id": "v194-presets",
       "question": "Try presets (pad, pluck, arp, heartbeat, swell). Which sound wrong or boring?",
       "why": "15 presets were tuned by numbers, not by ear.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V194"
     },
     {
       "id": "v194-spatial",
@@ -164,14 +245,16 @@
         "no panning",
         "other"
       ],
-      "device": "desktop"
+      "device": "desktop",
+      "version": "V194"
     },
     {
       "id": "v194-particles",
       "question": "Do the particles look good and follow the sound? How many particles can you run before it lags?",
       "why": "Particles were seen only on software GL (about 1 fps); real frame rate unknown. Cap is 4000 per node and 20000 total.",
       "kind": "number",
-      "device": "gpu"
+      "device": "gpu",
+      "version": "V194"
     },
     {
       "id": "v194-amount",
@@ -183,14 +266,16 @@
         "add an Advanced fold",
         "too many, cut"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V194"
     },
     {
       "id": "v194-phone",
       "question": "On a phone, does the first tap enable sound, and are the settings window and viewers usable?",
       "why": "iOS/Android autoplay unlock and touch were never tested.",
       "kind": "text",
-      "device": "phone"
+      "device": "phone",
+      "version": "V194"
     },
     {
       "id": "v194-mixer",
@@ -201,7 +286,8 @@
         "yes",
         "no, keep separate"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V194"
     },
     {
       "id": "v193-forward-backward",
@@ -213,14 +299,16 @@
         "want real 3D depth motion",
         "want something else"
       ],
-      "device": "any"
+      "device": "any",
+      "version": "V193"
     },
     {
       "id": "v193-resethud",
       "question": "Does Reset HUD reset what you expected?",
       "why": "It resets window sizes, re-docks OmniNotify and returns the compass; it does not touch the dock row, hands, or the CryptX keyboard. Tell me what else belongs.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V193"
     },
     {
       "id": "v192-orbit-feel",
@@ -233,7 +321,8 @@
         "jerky",
         "wrong centre",
         "upside-down problems"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-orbit-roll",
@@ -244,21 +333,24 @@
       "choices": [
         "roll upright is fine",
         "stay rolled"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-lh-keys",
       "question": "Are U / V the right keys for the LH vertical orbit?",
       "why": "X/Y/Z are StrictAlign, WASDEQ taken.",
       "kind": "yesno",
-      "device": "any"
+      "device": "any",
+      "version": "V192"
     },
     {
       "id": "v192-bindpulse",
       "question": "Which buttons were 'Bind' and 'Pulse'?",
       "why": "I found no button with those names; I lifted the LH/RH ammo-name chips and settings circles above the Realities row. If you meant something else, tell me where it is.",
       "kind": "text",
-      "device": "any"
+      "device": "any",
+      "version": "V192"
     },
     {
       "id": "v192-strictalign2",
@@ -270,7 +362,8 @@
         "good",
         "not exact",
         "confusing"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-fire-delete",
@@ -282,7 +375,8 @@
         "fixed",
         "still fires",
         "keep anchors"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-cryptx",
@@ -294,7 +388,8 @@
         "good",
         "key problem",
         "drag problem"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-terminal",
@@ -306,7 +401,8 @@
         "good",
         "theme mismatch",
         "typing problem"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-terminal-toggle",
@@ -318,7 +414,8 @@
         "good",
         "some stay",
         "none appear"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-ruler",
@@ -330,14 +427,16 @@
         "good",
         "not what I meant",
         "needs changes"
-      ]
+      ],
+      "version": "V192"
     },
     {
       "id": "v192-ruler-nodes",
       "question": "Should nodes appear as marks on the TimeData ruler?",
       "why": "The registry stores seconds since app start, not dates.",
       "kind": "yesno",
-      "device": "any"
+      "device": "any",
+      "version": "V192"
     },
     {
       "id": "v191-pad-circles",
@@ -350,7 +449,8 @@
         "too small",
         "too big",
         "touching"
-      ]
+      ],
+      "version": "V191"
     },
     {
       "id": "v191-orbit-dir",
@@ -361,7 +461,8 @@
       "choices": [
         "right",
         "reverse it"
-      ]
+      ],
+      "version": "V191"
     },
     {
       "id": "v191-hand-tools",
@@ -372,7 +473,8 @@
       "choices": [
         "good",
         "want circles around the pad"
-      ]
+      ],
+      "version": "V191"
     },
     {
       "id": "v191-dock-row",
@@ -385,14 +487,335 @@
         "too big",
         "too small",
         "overlaps something"
-      ]
+      ],
+      "version": "V191"
     },
     {
       "id": "v191-dock-tap",
       "question": "On touch: tap once = tip, tap again = open panel. OK?",
       "why": "",
       "kind": "yesno",
-      "device": "touch"
+      "device": "touch",
+      "version": "V191"
+    },
+    {
+      "id": "v201-command-palette",
+      "question": "OmniKeys > Command mode now shows a strip of shortcut buttons (plus Tab, Backspace, Delete, Home, End, PageUp, PageDown). Is a strip of buttons what you meant by 'the same commands in OmniKey/command', or did you want the shortcuts on the keys themselves (or the text terminal only)?",
+      "why": "I read 'OmniKey/command' as Command mode and built a palette because the key grid has no room for ~30 named shortcuts. The terminal also got `key` and `shortcut` commands.",
+      "kind": "choice",
+      "choices": [
+        "The palette is what I meant",
+        "I wanted them on the keys",
+        "I meant the text terminal only",
+        "I wanted both the palette and key labels"
+      ],
+      "device": "desktop",
+      "version": "V201"
+    },
+    {
+      "id": "v201-mix-sound",
+      "question": "Make a mix node, add a sound-node strip and an audio-clip strip, press Play. Move the faders, the crossfader and do a Crossfade → B over 8 s. Does it sound right (no clicks, no jump in loudness in the middle)?",
+      "why": "The mixing graph was only tested with a mock audio context. I have never heard it.",
+      "kind": "choice",
+      "choices": [
+        "Sounds right",
+        "Clicks or pops when moving controls",
+        "Loudness jumps during the crossfade",
+        "Nothing plays",
+        "Something else (say in the note)"
+      ],
+      "device": "any",
+      "version": "V201"
+    },
+    {
+      "id": "v201-mix-song",
+      "question": "Put a song node on a mix strip and play it. Does the song play through the strip (fader, EQ and filter change it)? Then add a second song strip: it should say only one song can play at a time. Is that limit OK?",
+      "why": "The song player plays one song at a time; the mix feeds its output into the strip. Several songs at once would need the player to be reworked.",
+      "kind": "choice",
+      "choices": [
+        "Works, and one song at a time is fine",
+        "Works, but I need several songs at once",
+        "The song did not go through the strip",
+        "Nothing played"
+      ],
+      "device": "any",
+      "version": "V201"
+    },
+    {
+      "id": "v201-pattern-lanes",
+      "question": "In a song with pattern lanes, turn a lane's pan fully left, lower its filter and raise its reverb send. Do you hear each change? Then stop the song and play a sound node: is everything back to normal?",
+      "why": "Before V201 pan, filter and sends did not act on pattern lanes. The instruments are now routed through the lane buses while a song plays.",
+      "kind": "choice",
+      "choices": [
+        "All three change the sound and it is normal after Stop",
+        "Some do not change the sound",
+        "Sound stays odd after Stop",
+        "I did not hear a difference"
+      ],
+      "device": "any",
+      "version": "V201"
+    },
+    {
+      "id": "v201-dj-direction",
+      "question": "What should the DJ side of the mix node be next?",
+      "why": "The mix node has strips, a crossfader and recorded moves. A fuller DJ would add two big decks A / B (reusing the OmniDJ jog wheels), beat-matching with time-stretch, cue points and loops, or a recorded set export.",
+      "kind": "choice",
+      "choices": [
+        "Two decks A / B with jog wheels inside the mix",
+        "Beat-matching with time-stretch (pitch stays)",
+        "Cue points and loop in / out",
+        "Export the finished mix as audio",
+        "Pattern (music node) strips",
+        "None: polish what exists"
+      ],
+      "device": "any",
+      "version": "V201"
+    },
+    {
+      "id": "v201-voice-cap",
+      "question": "The default for 'Sounds at once' is now 16 (was 8). Any slowdown or crackle on your device when a song plays several instruments?",
+      "why": "More voices at once cost more CPU. Phones may need a lower value.",
+      "kind": "choice",
+      "choices": [
+        "No problem",
+        "Crackles or slows down",
+        "I did not test it"
+      ],
+      "device": "phone",
+      "version": "V201"
+    },
+    {
+      "id": "v202-keylock-quality",
+      "question": "With key lock on (pitch +8 % or a synced strip), how does the music sound?",
+      "why": "The time-stretch is a first version. Sine tones keep their pitch exactly, but drum hits can get softer and bass or vocals can wobble. Only your ears can say if it is good enough or needs a better method.",
+      "kind": "choice",
+      "choices": [
+        "Clean, I cannot tell",
+        "Drums are softer or smeared",
+        "Wobble or warble on bass or vocals",
+        "It took too long before it switched in",
+        "I did not test it"
+      ],
+      "device": "any",
+      "version": "V202"
+    },
+    {
+      "id": "v202-deck-layout",
+      "question": "Is the deck block in a strip usable on your phone?",
+      "why": "Each audio strip gained a waveform and about 20 small buttons, so strips are taller. A phone may need a different layout (for example one deck at a time).",
+      "kind": "choice",
+      "choices": [
+        "Fine",
+        "Too crowded or too small to press",
+        "Needs scrolling too much",
+        "I did not test it on a phone"
+      ],
+      "device": "phone",
+      "version": "V202"
+    },
+    {
+      "id": "v202-command-tab",
+      "question": "Is the Command button in the Kryptx keyboard what you meant by the OmniKey Command tab?",
+      "why": "V201 put the shortcut buttons in the QWERTY view's Command mode. V202 adds a Command button to the Kryptx header that opens it. If you meant something else (shortcuts on the keys themselves, a tab inside the Kryptx view) say so.",
+      "kind": "choice",
+      "choices": [
+        "Yes, that is it",
+        "Put them inside the Kryptx view itself",
+        "Put them on the keys",
+        "Something else (tell Claude)"
+      ],
+      "device": "any",
+      "version": "V202"
+    },
+    {
+      "id": "v202-next",
+      "question": "What should come next after the decks?",
+      "why": "Still open for the mix: export the mix as an audio file, pattern (music node) strips, an automation lane editor, jog wheels in the mix, two songs at once. Or move on to the orbit / time tunnel / skybox nodes of V199.",
+      "kind": "choice",
+      "choices": [
+        "Export the mix as audio",
+        "Pattern strips in the mix",
+        "Automation lane editor",
+        "Jog wheels",
+        "OmniOrbitNode / TimeTunnelNode / SkyboxNode",
+        "Polish what exists"
+      ],
+      "device": "any",
+      "version": "V202"
+    },
+    {
+      "id": "v203-doc-pdf",
+      "question": "Import a PDF into a doc node. Does it look right?",
+      "why": "The PDF is drawn with pdf.js onto a 2D canvas, then used as a texture. I saw it render correctly in headless Chromium with a generated 3-page PDF (text, shapes), but I have not seen your real documents (scans, fonts, forms, big files).",
+      "kind": "choice",
+      "choices": [
+        "Looks right",
+        "Text is blurry up close",
+        "Some fonts or images are wrong or missing",
+        "It was slow to appear",
+        "It failed to open",
+        "I did not test it"
+      ],
+      "device": "any",
+      "version": "V203"
+    },
+    {
+      "id": "v203-doc-phone",
+      "question": "On your phone, with a doc node or three in the scene: is it smooth, and does the phone stay cool?",
+      "why": "The big difference from a CSS3D iframe is that nothing is drawn unless the sheet is near and in view, and the texture is capped at 1024 px wide on phones. I measured logic and one desktop Chromium run, not a real phone GPU.",
+      "kind": "choice",
+      "choices": [
+        "Smooth and cool",
+        "Smooth but the page looks soft",
+        "Laggy",
+        "Hot or the page reloaded",
+        "I did not test it on a phone"
+      ],
+      "device": "phone",
+      "version": "V203"
+    },
+    {
+      "id": "v203-doc-facing",
+      "question": "A new doc node is turned to face you (top edge up on screen). Is that where and how you want it?",
+      "why": "It appears 7 units in front of the camera, facing the camera, also when looking straight down. Other choices: stand it upright on the ground, or lay it flat on the floor grid.",
+      "kind": "choice",
+      "choices": [
+        "Good as it is",
+        "Always stand it upright",
+        "Put it on the floor grid",
+        "Closer to me",
+        "Further from me"
+      ],
+      "device": "any",
+      "version": "V203"
+    },
+    {
+      "id": "v203-doc-interact",
+      "question": "How should you turn pages and scroll a long document inside the space?",
+      "why": "Today you turn pages with the ⟐OmniDoc buttons or the Inspector. Options for in the space itself: clicking the sheet's right / left half, a hand gesture, the mouse wheel while the pointer is on the sheet.",
+      "kind": "choice",
+      "choices": [
+        "Click the right / left half of the sheet",
+        "Mouse wheel on the sheet",
+        "Hand gesture",
+        "The buttons are enough",
+        "All of these"
+      ],
+      "device": "any",
+      "version": "V203"
+    },
+    {
+      "id": "v203-next",
+      "question": "What should come next after DocNode?",
+      "why": "Open: page turning inside the space, links and selection on the sheet itself, a continuous scroll mode, Office files (.docx / .pptx need conversion), export the mix as audio, pattern strips, orbit / time tunnel / skybox nodes.",
+      "kind": "choice",
+      "choices": [
+        "Page turning and links inside the space",
+        "Continuous scroll mode",
+        "Export the mix as audio",
+        "Orbit / Time tunnel / Skybox nodes",
+        "Polish what exists"
+      ],
+      "device": "any",
+      "version": "V203"
+    },
+    {
+      "id": "v204-poly-menu",
+      "question": "Tap a face of the new poly node. Is the menu that opens (Select / Open face settings / Remove …) easy to hit and in a good place?",
+      "why": "I picked a small menu at the tap point with only the options that fit the face. I could only check its position with numbers, not on a real screen or finger.",
+      "kind": "choice",
+      "choices": [
+        "Good as it is",
+        "Too small to hit",
+        "Covers what I wanted to see",
+        "I expected something else (tell me)"
+      ],
+      "device": "any",
+      "version": "V204"
+    },
+    {
+      "id": "v204-poly-content",
+      "question": "Put an image, a document and a sound on three faces. Which of them worked?",
+      "why": "Each is built (library image, guide page / PDF page, sound node or audio clip) but I only tested them with fakes and one headless browser; I never heard any sound.",
+      "kind": "choice",
+      "choices": [
+        "All three worked",
+        "Image and document worked, sound did not",
+        "Sound worked, image or document did not",
+        "Something looked wrong (tell me which)"
+      ],
+      "device": "desktop",
+      "version": "V204"
+    },
+    {
+      "id": "v204-poly-back",
+      "question": "Look at a face from behind. Does its text / label read the right way round?",
+      "why": "I draw the back as its own mirrored copy so it reads correctly; I have not seen it with my eyes.",
+      "kind": "choice",
+      "choices": [
+        "Reads correctly",
+        "Mirrored",
+        "The back looks wrong in another way"
+      ],
+      "device": "desktop",
+      "version": "V204"
+    },
+    {
+      "id": "v204-poly-phone",
+      "question": "On a phone, make a dodecahedron or icosahedron with an image or document on several faces and fly around it. How does it run?",
+      "why": "Atlas cells are capped at 1024 px total texture on phones and the budget is 8 M pixels; those numbers are estimates.",
+      "kind": "choice",
+      "choices": [
+        "Smooth",
+        "A bit slow but fine",
+        "Slow",
+        "Crashed / went black"
+      ],
+      "device": "phone",
+      "version": "V204"
+    },
+    {
+      "id": "v204-poly-name",
+      "question": "Is OmniPolyNode the name you want, or OmniComplexityNode?",
+      "why": "You said either works. The code and windows say PolyNode / ⟐OmniPoly. Renaming later is a find-and-replace but easier early.",
+      "kind": "choice",
+      "choices": [
+        "Keep OmniPolyNode",
+        "Rename to OmniComplexityNode",
+        "Keep both (complexity node = poly node with scripts later)"
+      ],
+      "device": "any",
+      "version": "V204"
+    },
+    {
+      "id": "v204-poly-shapes-next",
+      "question": "Which shapes next?",
+      "why": "Done: cube, tetrahedron, octahedron, dodecahedron, icosahedron, plane, strip, ring. Next could be solids that mix shapes (soccer ball, cuboctahedron), prisms / pyramids, or a free editor where you join faces.",
+      "kind": "choice",
+      "choices": [
+        "Mixed-shape solids (soccer ball, etc.)",
+        "Prisms and pyramids",
+        "Free face editor (join faces yourself)",
+        "Fold animation (open and close)",
+        "Polish what exists"
+      ],
+      "device": "any",
+      "version": "V204"
+    },
+    {
+      "id": "v204-next",
+      "question": "What should come next after the PolyNode?",
+      "why": "Open: page turning and links inside the space, face gestures, fold animation, export the mix as audio, orbit / time tunnel / skybox nodes.",
+      "kind": "choice",
+      "choices": [
+        "Gestures and links on faces and sheets",
+        "Fold animation",
+        "Export the mix as audio",
+        "Orbit / Time tunnel / Skybox nodes",
+        "Polish what exists"
+      ],
+      "device": "any",
+      "version": "V204"
     }
   ],
   "knownIssues": [
@@ -407,6 +830,19 @@
     "Real GIF and video playback on a floor panel, and real IndexedDB media save/load, were not verified.",
     "The Realities dock row can be covered by open windows and the MiniMap corners.",
     "Phone heights under about 842 px: second-ring pad chips can touch.",
-    "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet."
+    "Perspectives in the toolbar is a Planned notice only; no perspectives panel exists yet.",
+    "V200: the OmniHand / ConsciousHand tool menus now sit like the LH / RH ones, so opening all four tool menus at once makes them overlap (positions checked with numbers, not by eye).",
+    "V199: the sim clock and orbit models exist but nothing in the app uses them yet.",
+    "V201: the mix engine and the pattern-lane routing were tested with a mock audio context in jsdom; nothing was heard on a real device.",
+    "V201: tempo sync changes the playback rate, so the pitch changes with it (no time-stretch).",
+    "V201: an instrument used in two song lanes is routed through the first lane's bus only.",
+    "V201: only one song strip can sound at a time in a mix (the song player plays one song).",
+    "V201: automation can be recorded, written by the DJ moves and cleared, but its points cannot be edited by hand yet (no lane editor).",
+    "V202: key lock softens drum hits (up to about 6 dB) above rate 1.1; the stretch is a first version.",
+    "V202: key lock needs about half a second after the pitch fader stops, plus the stretch time (a few seconds for a 3-minute clip), before it swaps in; until then the clip plays pitch-shifted at the right tempo. Clips over 10 minutes are not stretched.",
+    "V202: decks work on audio-library clips only; song and sound strips have no cue or loop. One loop, one cue and 4 hot cues per strip.",
+    "V203: doc nodes show one page at a time and cannot yet be clicked, scrolled or selected on the sheet itself (use ⟐OmniDoc or the Inspector). PDF forms, annotations and links are not interactive. .docx / .pptx are not supported (export to PDF first). A PDF needs the internet the first time to load the PDF reader (pdf.js from a CDN); markdown, text, images and guide pages do not.",
+    "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none.",
+    "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active."
   ]
 }

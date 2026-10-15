@@ -1,6 +1,6 @@
 # 10. Keyboard and Touch Cheatsheet
 
-Applies to: V195 · Status: verified against code on 2026-10-12 (V195 rows for Q, Ctrl/Cmd+K and Expression typing written from the V195 code) · Real devices: not verified.
+Applies to: V195 (V201 additions below) · Status: verified against code on 2026-10-12 (V195 rows for Q, Ctrl/Cmd+K and Expression typing written from the V195 code) · Real devices: not verified.
 
 [Guide index](README.md) · Previous: [Settings and Admin](09_Settings_and_Admin.md) · Next: [Troubleshooting](11_Troubleshooting.md)
 
@@ -108,6 +108,14 @@ The ⟐ quick launcher's **Keyboard** entry opens a keyboard that slides out fro
 | Maximize / restore | ⛶ button or double-click the title bar | ⛶ button (36 px) |
 
 No key was added for maximize (Esc and Alt+Enter already have other uses).
+
+## Firing shortcuts without a physical keyboard (V201)
+
+Every shortcut in the Keyboard Shortcuts list can be fired three ways. They all send the same real key press, so the app cannot tell them from the keyboard.
+
+- **OmniKeys > Command** (V202: the **Command** button in the header of the Kryptx keyboard opens it; or switch to the QWERTY view with the keyboard button and pick the Command tab): a strip of buttons under the mode note, one per shortcut. It also has Tab, Backspace, Delete, Home, End, Page Up and Page Down, which the key grid has no button for (dashed). The key grid still works as before: click a modifier to hold it, then a key.
+- **The command terminal:** `key q`, `key ctrl+k`, `key pagedown`, `key numpad7` send one key press; `shortcut fullscreen` fires a listed shortcut by words; `shortcut` alone lists them all.
+- **The list itself:** Ribbon Home > Assistance > Keyboard Shortcuts. All three read one table (`utils/OmniShortcutTable.js`), so a new shortcut added there shows up in all of them.
 
 ## Touch
 
