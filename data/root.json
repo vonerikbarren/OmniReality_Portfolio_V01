@@ -1,0 +1,22 @@
+{
+  "id": "omni_root01",
+  "label": "Root",
+  "geometry": "CylinderGeometry",
+  "primitive": "objective",
+  "color": "#ffffff",
+  "position": [0, 28, 0],
+  "parentId": null,
+  "rootId": null,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+
+  "_notes": {
+    "position": "World origin [0, 28, 0] — matches CYLINDER_Y = 28 from RootSpace.js. Camera rests at Y=2 inside the cylinder interior.",
+    "geometry": "CylinderGeometry declares the Root as a cylindrical space node. RootSpace.js owns the actual Three.js mesh construction (outer r=38, middle r=30, inner r=22, height=260). This schema entry is the logical identity record, not the geometry factory call.",
+    "primitive": "objective — the Root is the origin axiom. Confirmed, deterministic, the foundational premise. Color #ffffff matches PRIMITIVE_COLORS.objective in OmniNode.",
+    "parentId": "null — Root has no parent. It is the top of every logic tree.",
+    "rootId": "null — Root nodes reference themselves as their own root. null is the sentinel value OmniInspector displays as '—' when no rootId is set, which is correct for the Root node.",
+    "stationary": "The Root is always stationary — it cannot be moved by the user. This constraint is enforced at the application level (NodeLoader sets mesh.userData.stationary = true) rather than in this schema, since the Shape 1 flat format does not include a stationary field.",
+    "NodeLoader": "NodeLoader.js parses this file and calls OmniNode._createNode(data) or its equivalent bootstrap path. It does NOT call the full PLACE flow — the Root is pre-placed, not user-placed.",
+    "depth": "depth = 0. Not stored in this record — NodeManager computes depth dynamically from the edge graph. For the Root, NodeManager._tree will assign depth 0."
+  }
+}

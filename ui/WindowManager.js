@@ -1,0 +1,383 @@
+/**
+ * ui/WindowManager.js — shared "OS window" behavior for panels
+ *
+ * Not a module in the BaseScene sense (no init/update/destroy, nothing
+ * registered with addModule) — just a small set of functions any panel
+ * calls into to get consistent behavior without duplicating it per
+ * panel. Currently used by ui/OmniDraw.js and systems/OmniInspector.js.
+ *
+ * Provides:
+ *   register(id, el, label, opts) — bring-to-front on click, enforces a window
+ *                            cap, and (V187) gives the window resize handles + a
+ *                            maximize button via utils/OmniWindowChrome.js
+ *                            (opts: { onWindowResize(rect), min:{w,h}, header, noButton })
+ *   unregister(id)        — call from a panel's destroy()
+ *   makeMaximizable(el, btn) — (V187) adopts the panel's own header button as
+ *                            the window's maximize control; the work is done by
+ *                            utils/OmniWindowChrome.js (fills the free area below
+ *                            the ribbon / above the dock, restores the exact
+ *                            previous inline styles).
+ *   toggleMaximize(id) / isMaximized(id) / resetWindowSizes() — window chrome API
+ *   wireSaveButton(btn, panelId, onSave) — flashes a ✓, timestamps the
+ *                            save, persists "last saved" to localStorage
+ *                            under omni:panel-lastsaved:{panelId}, and
+ *                            updates the button's tooltip with it.
+ *   getLastSaved(panelId)  — reads that timestamp back (e.g. on panel open)
+ *   getFrontmost()          — id of the most-recently-focused panel
+ *   registerContextMenu(contextId, categories) — a panel declares what it
+ *                            contributes to the Global Context Menu (see
+ *                            ui/GlobalBar.js) — { Objects: [{label,action}], ... }
+ *   unregisterContextMenu(contextId)
+ *   getContextMenu(contextId)
+ */
+
+import gsap from 'gsap'
+import { getRibbonHeight, estimateRibbonHeight } from '../utils/OmniLayout.js'
+import * as Chrome from '../utils/OmniWindowChrome.js'
+
+const MAX_WINDOWS  = 200  // V187: was 50, which the real panel count (~85 distinct panels, most of them registering on first open) can reach in one session; windows over the cap used to lose bring-to-front and now still get resize + maximize
+const BASE_Z       = 200
+const STORE_PREFIX = 'omni:panel-lastsaved:'
+
+const registry = new Map()   // id -> { el }
+let topZ = BASE_Z
+let currentFrontmost = null
+
+function injectStyles () {
+  if (document.getElementById('omni-window-manager-styles')) return
+  const tag = document.createElement('style')
+  tag.id = 'omni-window-manager-styles'
+  tag.textContent = /* css */`
+    .win-maximized {
+      opacity: 0.94 !important;
+    }
+    .win-max-btn {
+      transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    }
+  `
+  document.head.appendChild(tag)
+}
+
+/** Register a panel's root element for bring-to-front stacking. `label`
+ *  is an optional human-readable name (e.g. 'OmniDraw') — used by the
+ *  Global Context Menu's Windows category and app-title display; falls
+ *  back to `id` if omitted. Returns false (and logs a warning) if the
+ *  10-window cap is already full. */
+export function register (id, el, label, opts = {}) {
+  injectStyles()
+  if (registry.has(id)) { bringToFront(id); return true }
+  if (registry.size >= MAX_WINDOWS) {
+    console.warn(`⟐ WindowManager — window cap (${MAX_WINDOWS}) reached, refusing to register "${id}".`)
+    // Still give it a real z-index directly, even though it won't be
+    // tracked for future bring-to-front stacking — the actual bug this
+    // is guarding against was a panel silently stranded with no
+    // z-index at all, rendered but completely unclickable underneath
+    // something else. A panel outside the registry should degrade to
+    // "can't be brought to front later," never to "can't be used at all."
+    topZ += 1
+    el.style.zIndex = String(topZ)
+    Chrome.enhanceWindow(el, { id, ...opts })   // resize + maximize still apply to a window outside the registry
+    return false
+  }
+  // Cascade positioning — every panel that registers gets this
+  // automatically now, current and future, with zero per-panel code
+  // needed. Computed here, before this window joins the registry
+  // below, so it doesn't count itself in its own cascade math. Only
+  // applies when nothing has already set an inline position — a
+  // panel with deliberate positioning logic of its own (built before
+  // this existed, or with a real reason to opt out) is left alone.
+  if (!el.style.left && !el.style.top) {
+    const cascade = getCascadePosition()
+    el.style.left = `${cascade.left}px`
+    el.style.top = `${cascade.top}px`
+  }
+  const disposeChrome = Chrome.enhanceWindow(el, { id, ...opts })
+  registry.set(id, { el, label: label ?? id, disposeChrome })
+  bringToFront(id, false)   // z-index only — not a real user focus event
+  el.addEventListener('mousedown', () => bringToFront(id))
+  return true
+}
+
+export function unregister (id) {
+  const entry = registry.get(id)
+  if (entry) { try { entry.disposeChrome?.() } catch (_) { /* already gone */ } stopWatchingOpacity(entry.el) }
+  registry.delete(id)
+}
+
+// ── Window chrome (V187): resize + maximize for every registered window ─────
+export function toggleMaximize (id) { const e = registry.get(id); return e ? Chrome.toggleMaximize(e.el) : false }
+export function isMaximized (id) { const e = registry.get(id); return e ? Chrome.isMaximized(e.el) : false }
+export function resetWindowSizes () { return Chrome.resetWindowSizes() }
+export { enhanceWindow, reapplySavedSize } from '../utils/OmniWindowChrome.js'
+
+/** { id, label, isOpen } for every currently-registered panel — feeds
+ *  the Global Context Menu's Windows category. isOpen is a best-effort
+ *  guess from the element's own visibility, since WindowManager doesn't
+ *  track each panel's open/closed state itself. */
+export function getRegisteredWindows () {
+  return [...registry.entries()].map(([id, { el, label }]) => ({
+    id, label, el,
+    isOpen: el.style.visibility !== 'hidden',
+    maximized: Chrome.isMaximized(el),
+  }))
+}
+
+/**
+ * Universal restore — unhides a registered panel's element directly and
+ * brings it to front, regardless of whether that panel has its own
+ * `omni:panel-restore` listener.
+ *
+ * Real gap found while building OmniPanelTray: minimize is dispatched
+ * consistently by every panel (`omni:panel-minimized`), but the restore
+ * side never was — only `ui/Panel.js`'s base class (the generic lh/rh
+ * Panels) and a couple of others actually listen for `omni:panel-restore`
+ * and call their own `restore()`. Every other standalone system (⟐Chronos,
+ * ⟐Keys, Admin, ⟐p, and most of the rest) minimizes but was never
+ * reachable again from the old floating-orb click — a real, pre-existing
+ * dead end this ran into directly, not something introduced here.
+ *
+ * This still dispatches `omni:panel-restore` (for the handful of panels
+ * that do listen and need their own internal state — e.g. Panel.js's
+ * `_state` — kept in sync, not just the DOM), and no longer depends on
+ * registration to do so: directly toggling the registered element's
+ * visibility covers every WindowManager-registered panel, but the event
+ * is dispatched unconditionally so a panel that only listens for
+ * `omni:panel-restore` (e.g. Panel.js's lh/rh, OmniNode, OmniPocket,
+ * OmniPresenter — none of which call WindowManager.register) is still
+ * reachable from OmniPanelTray.js's "maximize" click.
+ *
+ * Real bug found and fixed in the same pass as OmniPanelTray.js (2026-10-04):
+ * this used to `return false` on an unregistered id BEFORE the dispatch
+ * below, which silently skipped it — so clicking a tab in the tray for
+ * any of those four event-only panels just removed the tab with no
+ * panel ever reappearing. See docs/dev/Roles/Developer/BuildLog.md.
+ */
+export function restorePanel (id) {
+  const entry = registry.get(id)
+  if (entry) {
+    entry.el.style.visibility = 'visible'
+    bringToFront(id)
+  }
+  // Dispatched either way — see the real-bug note above.
+  window.dispatchEvent(new CustomEvent('omni:panel-restore', { detail: { id } }))
+  return true
+}
+
+// ── Cascade positioning — "windows within windows," offset in the same
+// direction consecutive opens always come out in, so each new one stays
+// reachable without fully hiding whatever's behind it ────────────────
+const CASCADE_LEFT_MARGIN = 170  // clears OmniHand's own top-left area (flush at left:0, several 50px cells wide), leaving real space rather than spawning on top of it
+const CASCADE_TOP_GAP     = 20   // below the header, not flush against it
+const CASCADE_STEP        = 32   // px right + down per additional open window
+const CASCADE_MAX_STEPS   = 8    // wraps back to the base position after this many
+
+function _headerHeight () {
+  // Measures the real header rather than hardcoding its height, so this
+  // keeps working correctly even if the header's own height ever changes.
+  const header = document.getElementById('omni-global-bar')
+  // V169: the ribbon sits under the bar — new panels must cascade below both.
+  // (Panels registered before ui.init() build the ribbon use the estimate: same viewport + saved fold state.)
+  return (header ? header.getBoundingClientRect().height : 48) + (getRibbonHeight() || estimateRibbonHeight())
+}
+
+/**
+ * Computes where a newly-opened panel should land: just under the
+ * header (not centered), with a left margin, cascading diagonally
+ * offset from however many other windows are already open — the same
+ * placement order consecutive window opens are meant to come out in.
+ * Call once, on a panel's first open, and apply the result as its
+ * inline left/top — never call on every open, or a panel the user
+ * already dragged would jump back into the cascade instead of staying
+ * where they put it.
+ */
+export function getCascadePosition () {
+  const openCount = [...registry.values()].filter(({ el }) => el.style.visibility !== 'hidden').length
+  const step = openCount % CASCADE_MAX_STEPS
+  return {
+    left: CASCADE_LEFT_MARGIN + step * CASCADE_STEP,
+    top: _headerHeight() + CASCADE_TOP_GAP + step * CASCADE_STEP,
+  }
+}
+
+export function getLabel (id) {
+  return registry.get(id)?.label ?? id
+}
+
+export function bringToFront (id, isUserAction = true) {
+  const entry = registry.get(id)
+  if (!entry) return
+  topZ += 1
+  entry.el.style.zIndex = String(topZ)
+  Chrome.ensureInView(entry.el)   // a saved size must never leave a window partly off-screen
+
+  // Only real user interaction (opening a panel, clicking into one)
+  // should change what the Global Context Menu considers "focused."
+  // Registration itself also needs a z-index bump (so a freshly built
+  // panel renders above the background), but that's a layout concern,
+  // not the user choosing to focus it — without this distinction, every
+  // panel registering during boot would silently overwrite the context
+  // menu's default with whichever one happened to register last.
+  if (!isUserAction) return
+
+  if (id && id !== currentFrontmost) {
+    currentFrontmost = id
+    window.dispatchEvent(new CustomEvent('omni:frontmost-changed', { detail: { id } }))
+  }
+}
+
+/** The id most recently brought to front, or null if nothing has been
+ *  focused yet. This is today's proxy for "current dimensional level" —
+ *  see OmniDimensionalApps.md. Once apps grow real levels, a panel can
+ *  register a more specific context id (e.g. 'omnidraw:edit-mode')
+ *  instead of just its own panel id, without this function changing. */
+export function getFrontmost () {
+  return currentFrontmost
+}
+
+// ── Global Context Menu — per-context action registry ─────────────────────
+// Panels register what they contribute under each of the 8 fixed
+// categories (see ui/GlobalBar.js). Keyed by a context id — normally a
+// panel's own id, but deliberately not required to be, so a panel with
+// multiple dimensional levels can register a different action set per
+// level later without this API changing.
+
+const contextMenus = new Map()   // contextId -> { CategoryName: [{label, action}] }
+const globalItems = new Map()    // CategoryName -> [{label, action}] — shown regardless of frontmost context
+
+/**
+ * @param {string} contextId   — usually a panel's own id (e.g. 'omnidraw')
+ * @param {object} categories  — { Objects: [{label, action}], ... } —
+ *        only the categories this context actually contributes need be present
+ */
+export function registerContextMenu (contextId, categories) {
+  contextMenus.set(contextId, categories)
+}
+
+export function unregisterContextMenu (contextId) {
+  contextMenus.delete(contextId)
+}
+
+/** Registers an item into a category (e.g. 'Assistance') that shows
+ *  up regardless of which panel is currently frontmost — for real,
+ *  global actions like keyboard shortcuts, not tied to any one
+ *  panel's own context. */
+export function registerGlobalItem (category, item) {
+  if (!globalItems.has(category)) globalItems.set(category, [])
+  globalItems.get(category).push(item)
+}
+
+/** Categories contributed by the given context id, merged with any
+ *  real, registered global items — {} (plus globals) if the context
+ *  itself has registered nothing. */
+export function getContextMenu (contextId) {
+  const own = contextMenus.get(contextId) ?? {}
+  if (globalItems.size === 0) return own
+  const merged = { ...own }
+  for (const [category, items] of globalItems) {
+    merged[category] = [...items, ...(merged[category] ?? [])]
+  }
+  return merged
+}
+
+/**
+ * Adopts `btn` (a panel's own header button) as the window's maximize / restore control. The size mechanics, the
+ * exact-restore snapshot and the glyph / tooltip swap live in utils/OmniWindowChrome.js; optional `onMaximize` /
+ * `onRestore` let the panel convert its own content (see ui/GridWidgets.js). The window also carries the
+ * `win-maximized` class while maximized (panels style against it).
+ */
+export function makeMaximizable (el, btn, { onMaximize, onRestore } = {}) {
+  Chrome.enhanceWindow(el, { id: el.dataset?.winId || undefined, onMaximize, onRestore })
+  const st = Chrome.getWindowState(el)
+  if (st && btn) Chrome.adoptButton(el, btn)
+}
+
+/**
+ * Wires a Save button: flashes a ✓, calls `onSave()` (panel-specific
+ * persistence logic), then records + persists a "last saved" timestamp
+ * for that panel, shown as the button's tooltip.
+ */
+export function wireSaveButton (btn, panelId, onSave) {
+  const applyTooltip = () => {
+    const last = getLastSaved(panelId)
+    btn.title = last ? `Save to local storage — last saved ${last}` : 'Save to local storage'
+  }
+  applyTooltip()
+
+  btn.addEventListener('click', () => {
+    try { onSave?.() } catch (err) { console.warn(`⟐ WindowManager — save failed for "${panelId}":`, err) }
+
+    const now = new Date()
+    const stamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    try { localStorage.setItem(STORE_PREFIX + panelId, stamp) } catch (_) {}
+
+    const original = btn.textContent
+    btn.classList.add('is-saved')
+    btn.textContent = '✓'
+    applyTooltip()
+    setTimeout(() => {
+      btn.classList.remove('is-saved')
+      btn.textContent = original
+    }, 900)
+  })
+}
+
+export function getLastSaved (panelId) {
+  try { return localStorage.getItem(STORE_PREFIX + panelId) } catch (_) { return null }
+}
+
+// ── Panel opacity — shared "UI Settings" control from the Admin Panel ──────
+// Panels already animate their own `opacity` via GSAP for open/close, so
+// applying this as a plain CSS rule would conflict (inline styles set by
+// GSAP always win over a CSS class). Instead, panels read this value and
+// use it as their own open-animation TARGET instead of a hardcoded 1 —
+// see getPanelOpacity() usage in ui/OmniDraw.js, systems/OmniInspector.js,
+// and ui/AdminPanel.js's own open().
+
+const DEFAULT_PANEL_OPACITY = 0.92
+
+export function getPanelOpacity () {
+  try {
+    const raw = localStorage.getItem('omni:admin:settings')
+    const v = raw ? JSON.parse(raw)?.uiSettings?.panelOpacity : undefined
+    if (v === undefined || v === null) return DEFAULT_PANEL_OPACITY
+    const n = Number(v)
+    // A stored 0 (or anything too close to it) would make every panel
+    // open fully invisible while still occupying space and still
+    // blocking clicks to whatever's underneath — indistinguishable
+    // from a "stuck, unresponsive" panel to the person using it.
+    return Number.isFinite(n) && n >= 0.1 && n <= 1 ? n : DEFAULT_PANEL_OPACITY
+  } catch (_) {
+    return DEFAULT_PANEL_OPACITY
+  }
+}
+
+/**
+ * Wires a panel to live-update its opacity if Admin's Panel Opacity
+ * setting changes while it's currently open (rather than only applying
+ * on the next open). `isOpenFn` lets the caller report its own open
+ * state without this module needing to know each panel's internals.
+ */
+const opacityWatchers = new WeakMap()   // el -> listener
+
+function stopWatchingOpacity (el) {
+  const fn = opacityWatchers.get(el)
+  if (fn) { window.removeEventListener('omni:admin-settings-saved', fn); opacityWatchers.delete(el) }
+}
+
+/** Returns a function that stops watching. Never leaks: calling it again for the same element replaces the old
+ *  listener, unregister() removes it, and it removes itself once the element has left the document (V187; before,
+ *  every built panel added one window listener that was never removed). */
+export function watchPanelOpacity (el, isOpenFn) {
+  stopWatchingOpacity(el)
+  const fn = (e) => {
+    if (!el.isConnected) { stopWatchingOpacity(el); return }
+    const raw = e.detail?.uiSettings?.panelOpacity
+    if (raw === undefined || !isOpenFn()) return
+    const v = Number(raw)
+    if (!Number.isFinite(v) || v < 0.1 || v > 1) return   // same guard as getPanelOpacity — a bad live value should be ignored, not applied
+    gsap.to(el, { opacity: v, duration: 0.25 })
+  }
+  opacityWatchers.set(el, fn)
+  window.addEventListener('omni:admin-settings-saved', fn)
+  return () => stopWatchingOpacity(el)
+}

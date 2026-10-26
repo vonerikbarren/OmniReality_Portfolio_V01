@@ -1,0 +1,472 @@
+/**
+ * modules/OmniBrowserSpace.js — ⟐mniReality OmniBrowserSpace
+ *
+ * Rebuilt from the CSS3D version — that approach put live iframes on
+ * the cube's faces, but CSS3DRenderer and WebGLRenderer are two
+ * separate rendering pipelines stitched together by plain DOM
+ * z-index, with no shared depth buffer at all. A CSS3D iframe can
+ * never be correctly occluded by WebGL geometry "in front of" it —
+ * only approximated with per-frame raycasting — and it visually
+ * dominates the scene regardless of what's actually in front of it.
+ * That's a real, structural limitation, not a bug to fix.
+ *
+ * This version drops CSS3D and iframes entirely: a shape-changeable
+ * cube with 4 simple, real WebGL objects — styled like typical
+ * OmniDraw primitives, varied geometry and PRIMITIVE_COLORS — sitting
+ * at the center of 4 of its faces (front/back/left/right; top/bottom
+ * stay plain). These are genuine geometry, parented to the same group
+ * as the cube itself, so they rotate/scale with it correctly and
+ * participate in the normal depth buffer like everything else in the
+ * scene — no compositing quirks, because there's no DOM content
+ * involved at all.
+ *
+ * Because there's no longer anything expensive to defer (no CSS3D
+ * layer, no live iframes), the earlier click-to-activate / Put Away
+ * mechanism is gone too — it existed specifically to defer that cost,
+ * which doesn't exist in this version. The whole thing is cheap real
+ * geometry, present from boot, same as WallpaperSphere/ParticleField.
+ *
+ * Not literally created via the global OmniNode creation pipeline —
+ * that system positions nodes independently in world space and isn't
+ * designed to stay rigidly attached to another object's own rotating
+ * transform. These 4 objects are plain child meshes of this module's
+ * own group instead, so they inherit its position/rotation/scale
+ * directly and correctly.
+ *
+ * Follows the standard module contract (constructor / init / update / destroy).
+ */
+
+import * as THREE from 'three'
+import { WALLPAPER_SHAPES, CUBEMAP_SHAPE, RECT_SHAPE } from './WallpaperSphere.js'
+import { createWallpaperStore } from '../utils/WallpaperStorage.js'
+
+// A local list, not a direct re-export — Grid is exclusive to
+// OmniBrowserSpace's own dropdown, inserted right after Box. The
+// shared WALLPAPER_SHAPES itself stays completely untouched, so
+// WallpaperSphere and its own settings panel never see Grid at all.
+// CUBEMAP_SHAPE is filtered back out for the same reason in reverse:
+// it's WallpaperSphere-exclusive (needs its 6-material slicing logic,
+// which this module's own, separate SHAPE_BUILDERS below doesn't
+// have — a live browser view is one texture, not a sliced skybox
+// image), so it's excluded here rather than showing up as a
+// dropdown option that silently does nothing when picked.
+const boxIndex = WALLPAPER_SHAPES.indexOf('BoxGeometry')
+const REAL_WALLPAPER_SHAPES = WALLPAPER_SHAPES.filter(sh => sh !== CUBEMAP_SHAPE && sh !== RECT_SHAPE)   // V191: the Rectangle room is WallpaperSphere-exclusive too
+export const BROWSERSPACE_SHAPES = [
+  ...REAL_WALLPAPER_SHAPES.slice(0, boxIndex + 1),
+  'Grid',
+  ...REAL_WALLPAPER_SHAPES.slice(boxIndex + 1),
+]
+
+const ROOM_Y = 15               // lifted above the platform, not sitting inside it
+const DEFAULT_EDGE = 10         // world units — see sizing-reference note below
+const REFERENCE_RADIUS = DEFAULT_EDGE / 2   // 5 — the cube's own half-edge, the target "reach" every shape aims for
+const MIN_SCALE = 0.5
+const MAX_SCALE = 2.5
+const DEFAULT_SHAPE = 'BoxGeometry'
+
+/**
+ * Per-shape construction, each tuned to reach REFERENCE_RADIUS along
+ * the 6 cardinal axes where the face objects sit — "the dimensions
+ * have to match the circumference." Clean for shapes that are
+ * genuinely uniform in all 6 cardinal directions (Box, Sphere,
+ * Cylinder, Octahedron). An honest best-effort approximation for
+ * shapes that aren't naturally 6-way-symmetric (Cone, Torus/TorusKnot,
+ * Tetrahedron) — some face objects will sit slightly proud of or
+ * recessed into the actual surface there. A real geometric limit, not
+ * a bug.
+ */
+const SHAPE_BUILDERS = {
+  BoxGeometry:          (r) => new THREE.BoxGeometry(r * 2, r * 2, r * 2),
+  // A subdivided Box, not a new geometry family — same cube, just a
+  // fine lattice of internal vertices for judging measurements across
+  // its faces, the way graph paper does. 10 segments per axis, a
+  // dense-enough grid to actually be useful without turning into
+  // visual noise.
+  Grid:                 (r) => new THREE.BoxGeometry(r * 2, r * 2, r * 2, 10, 10, 10),
+  SphereGeometry:       (r) => new THREE.SphereGeometry(r, 32, 32),
+  CylinderGeometry:     (r) => new THREE.CylinderGeometry(r, r, r * 2, 32),
+  ConeGeometry:         (r) => new THREE.ConeGeometry(r, r * 2, 32),
+  TorusGeometry:        (r) => new THREE.TorusGeometry(r * 0.75, r * 0.3, 16, 48),
+  TorusKnotGeometry:    (r) => new THREE.TorusKnotGeometry(r * 0.6, r * 0.2, 128, 16),
+  OctahedronGeometry:   (r) => new THREE.OctahedronGeometry(r),
+  TetrahedronGeometry:  (r) => new THREE.TetrahedronGeometry(r),
+  IcosahedronGeometry:  (r) => new THREE.IcosahedronGeometry(r, 1),
+  DodecahedronGeometry: (r) => new THREE.DodecahedronGeometry(r),
+  CapsuleGeometry:      (r) => new THREE.CapsuleGeometry(r * 0.6, r, 16, 32),
+}
+
+// The 4 face objects — varied geometry + OmniDraw's own PRIMITIVE_COLORS
+// (systems/OmniNode.js), for visual consistency with real OmniDraw objects.
+const FACE_OBJECTS = [
+  { axis: 'z', sign:  1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0xffffff }, // objective
+  { axis: 'z', sign: -1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x88aaff }, // subjective
+  { axis: 'x', sign:  1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x888888 }, // undefined
+  { axis: 'x', sign: -1, geometry: () => new THREE.BoxGeometry(0.7, 0.7, 0.7), color: 0x88aaff }, // subjective
+]
+
+// Deliberately separate from REFERENCE_RADIUS (which shapes the main
+// object itself) — this is only how far the 4 face cubes sit from
+// center. Keeping them independent means toggling room scale spreads
+// the cubes out without also resizing the central shape.
+const FACE_DISTANCE_NORMAL = REFERENCE_RADIUS   // 5 — tight, close around the shape
+const FACE_DISTANCE_ROOM = 25                     // spans a genuinely large room
+
+// The layer system — Object (the existing single shape, unchanged) is
+// layer 0; four more layers of the SAME geometry, progressively
+// larger, step evenly from Object's own size up to the existing room
+// scale distance. Reality intentionally lands exactly where Room
+// Scale already puts things — one shared number, not a second one
+// that could drift out of sync with it.
+// The full 9-layer system: Point -> Core -> Object -> Class -> Domain
+// -> Realm -> Reality -> InfiniteReality -> OmniReality. Object is the
+// original, pre-existing single shape (still driven by this._color/
+// this._alpha, unchanged) — every other layer is genuinely new.
+// Point gets its own distinct visual treatment (a literal small dot,
+// not a wireframe — "the point of the whole reality" reads as a
+// marker, not a container) than every other layer, which is the SAME
+// geometry as Object, just a different size — Core smaller, the rest
+// progressively larger, moving outward "like the atmosphere."
+// Radii are explicit, not a formula, since Point/Core sit inside
+// Object's own size rather than continuing its ladder outward.
+// Reality intentionally still lands on the pre-existing room-scale
+// distance (25) — the same number Room Scale already used for the
+// face cubes, not a second, different number to keep in sync.
+export const OTHER_LAYER_NAMES = ['Point', 'Core', 'Class', 'Domain', 'Realm', 'Reality', 'InfiniteReality', 'OmniReality']
+const LAYER_RADII = { Point: 0.5, Core: 2, Class: 10, Domain: 15, Realm: 20, Reality: FACE_DISTANCE_ROOM, InfiniteReality: 30, OmniReality: 35 }
+export const DEFAULT_LAYER_ALPHAS = { Point: 0.9, Core: 0.5, Class: 0.42, Domain: 0.34, Realm: 0.26, Reality: 0.20, InfiniteReality: 0.14, OmniReality: 0.10 }
+
+function defaultLayers () {
+  // Every layer starts hidden, including Object's siblings — the
+  // point of a real toggle system is the user turning things on
+  // deliberately, not everything appearing automatically.
+  return OTHER_LAYER_NAMES.map(name => ({ color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }))
+}
+
+const CUBE_TEXTURE_SLOTS = 5
+const cubeTextureStore = createWallpaperStore('browserspace-cube', CUBE_TEXTURE_SLOTS)
+
+const STORE_KEY = 'omni:browserspace:settings'
+function loadSettings () {
+  const defaults = {
+    shape: DEFAULT_SHAPE,
+    rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+    color: '#8cc4ff', alpha: 0.6,
+    activeSlot: null,
+    roomScale: false,
+    objectVisible: true,
+    layers: defaultLayers(),
+  }
+  try {
+    const raw = localStorage.getItem(STORE_KEY)
+    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
+  } catch (_) { return defaults }
+}
+function saveSettings (s) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch (_) {}
+}
+
+export default class OmniBrowserSpace {
+  constructor (context) {
+    this.ctx = context
+    this._glGroup = null
+    this._wireframe = null
+    this._solidMesh = null
+    this._faceMeshes = []
+    this._extraLayerMeshes = []   // Class/Domain/Realm/Reality — Object itself is this._wireframe, above
+    this._texture = null
+    this._shape = DEFAULT_SHAPE
+    this._rotation = { x: 0, y: 0, z: 0 }
+    this._position = { x: 0, y: 0, z: 0 }
+    this._scale = { x: 1, y: 1, z: 1 }
+    this._color = '#8cc4ff'
+    this._alpha = 0.6
+    this._activeSlot = null
+    this._roomScale = false
+    this._objectVisible = true
+    this._layers = defaultLayers()
+    this._onSettingsSet = null
+  }
+
+  init () {
+    const saved = loadSettings()
+    this._shape = saved.shape
+    this._rotation = { ...saved.rotation }
+    this._position = { ...(saved.position ?? { x: 0, y: 0, z: 0 }) }
+    this._scale = { ...(saved.scale ?? { x: 1, y: 1, z: 1 }) }
+    this._color = saved.color
+    this._alpha = saved.alpha
+    this._activeSlot = saved.activeSlot
+    this._roomScale = !!saved.roomScale
+    this._objectVisible = saved.objectVisible ?? true
+    this._layers = saved.layers ?? defaultLayers()
+
+    this._glGroup = new THREE.Group()
+    this._glGroup.position.set(0, ROOM_Y, 0)
+    this.ctx.scene.add(this._glGroup)
+
+    this._buildShapeMesh()
+    this._applyObjectVisibility()
+    this._buildFaceObjects()
+    this._buildExtraLayers()
+    this._applyRotation()
+    this._applyPosition()
+    this._applyScale()
+
+    if (this._activeSlot) this._applySlotTexture(this._activeSlot)
+
+    // From ui/OmniBrowserSpacePanel.js — "instant save," applies and
+    // persists immediately, no staged Save button.
+    this._onSettingsSet = (e) => {
+      const patch = e.detail ?? {}
+      if (patch.shape !== undefined && patch.shape !== this._shape) this._changeShape(patch.shape)
+      if (patch.rotation) { this._rotation = { ...this._rotation, ...patch.rotation }; this._applyRotation() }
+      if (patch.position) { this._position = { ...this._position, ...patch.position }; this._applyPosition() }
+      if (patch.scale) { this._scale = { ...this._scale, ...patch.scale }; this._applyScale() }
+      if (patch.color !== undefined) { this._color = patch.color; this._applyColor() }
+      if (patch.alpha !== undefined) { this._alpha = patch.alpha; this._applyColor() }
+      if (patch.activeSlot !== undefined) {
+        this._activeSlot = patch.activeSlot
+        if (this._activeSlot) this._applySlotTexture(this._activeSlot)
+        else this._clearTexture()
+      }
+      if (patch.roomScale !== undefined) {
+        this._roomScale = !!patch.roomScale
+        this._applyFaceDistance()
+      }
+      if (patch.objectVisible !== undefined) { this._objectVisible = !!patch.objectVisible; this._applyObjectVisibility() }
+      if (patch.layers) { this._layers = patch.layers; this._applyLayerColors(); this._applyLayerVisibility() }
+    }
+    window.addEventListener('omni:browserspace-set', this._onSettingsSet)
+  }
+
+  update () {}
+  onResize () {}
+
+  destroy () {
+    window.removeEventListener('omni:browserspace-set', this._onSettingsSet)
+    this._texture?.dispose()
+    if (this._glGroup) {
+      this.ctx.scene.remove(this._glGroup)
+      this._glGroup.traverse(obj => { obj.geometry?.dispose(); obj.material?.dispose() })
+    }
+  }
+
+  // ── Geometry ─────────────────────────────────────────────────────────────
+
+  _buildShapeMesh () {
+    const builder = SHAPE_BUILDERS[this._shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE]
+    const geo = builder(REFERENCE_RADIUS)
+
+    // Grid's whole point is showing its internal subdivision lines —
+    // EdgesGeometry would collapse every one of them (adjacent segments
+    // on a flat face share the same normal, well under its default
+    // threshold), leaving only the outer cube silhouette and defeating
+    // the purpose entirely. WireframeGeometry keeps every edge,
+    // internal grid lines included. Every other shape keeps
+    // EdgesGeometry exactly as before — that silhouette-only look is
+    // correct and intentional for them.
+    const edges = this._shape === 'Grid' ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo)
+    const lineMat = new THREE.LineBasicMaterial({ color: this._color, transparent: true, opacity: this._alpha })
+    this._wireframe = new THREE.LineSegments(edges, lineMat)
+    this._glGroup.add(this._wireframe)
+
+    // Hidden until a texture slot is actually selected — "the option
+    // of undoing the wireframe and adding a texture."
+    const solidMat = new THREE.MeshBasicMaterial({ color: this._color, transparent: true, opacity: this._alpha, side: THREE.DoubleSide })
+    this._solidMesh = new THREE.Mesh(geo.clone(), solidMat)
+    this._solidMesh.visible = false
+    this._glGroup.add(this._solidMesh)
+
+    geo.dispose()
+  }
+
+  /** 4 small, real WebGL objects at the center of 4 faces — varied
+   *  geometry and OmniDraw's own PRIMITIVE_COLORS, genuine child
+   *  meshes of this module's own group (not the global OmniNode
+   *  pipeline, which positions nodes independently and wouldn't stay
+   *  attached to this group's own rotation/scale). */
+  _buildFaceObjects () {
+    FACE_OBJECTS.forEach(face => {
+      const geo = face.geometry()
+      const mat = new THREE.MeshStandardMaterial({ color: face.color, roughness: 0.4, metalness: 0.1 })
+      const mesh = new THREE.Mesh(geo, mat)
+      this._glGroup.add(mesh)
+      this._faceMeshes.push(mesh)
+    })
+    this._applyFaceDistance()
+  }
+
+  /** Single source of truth for how far the 4 face cubes sit from
+   *  center — used both at initial build and whenever the room-scale
+   *  toggle changes, so there's exactly one place this math lives. */
+  _applyFaceDistance () {
+    const distance = this._roomScale ? FACE_DISTANCE_ROOM : FACE_DISTANCE_NORMAL
+    FACE_OBJECTS.forEach((face, i) => {
+      const mesh = this._faceMeshes[i]
+      if (mesh) mesh.position[face.axis] = distance * face.sign
+    })
+  }
+
+  /** Class/Domain/Realm/Reality — the same geometry as Object, just
+   *  progressively larger, per LAYER_RADII. Wireframe-only by
+   *  design: a room-sized SOLID, textured shape would visually
+   *  swallow everything inside it, which defeats the point of a
+   *  boundary you're meant to see through. Hidden by default —
+   *  visibility is tied to the existing Room Scale toggle, not a
+   *  second switch. */
+  _buildExtraLayers () {
+    this._disposeExtraLayers()
+    const builder = SHAPE_BUILDERS[this._shape] ?? SHAPE_BUILDERS[DEFAULT_SHAPE]
+    OTHER_LAYER_NAMES.forEach((name, i) => {
+      const settings = this._layers[i] ?? { color: '#8cc4ff', alpha: DEFAULT_LAYER_ALPHAS[name], visible: false }
+      let mesh
+      if (name === 'Point') {
+        // "The point of the whole reality" reads as a literal marker,
+        // not a container — a small solid dot, not a wireframe shape
+        // like every other layer (including Core, its own immediate
+        // neighbor) uses.
+        const dotGeo = new THREE.SphereGeometry(LAYER_RADII.Point, 8, 8)
+        const dotMat = new THREE.MeshBasicMaterial({ color: settings.color, transparent: true, opacity: settings.alpha })
+        mesh = new THREE.Mesh(dotGeo, dotMat)
+      } else {
+        const geo = builder(LAYER_RADII[name])
+        const lineGeo = this._shape === 'Grid' ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo)
+        const mat = new THREE.LineBasicMaterial({ color: settings.color, transparent: true, opacity: settings.alpha })
+        mesh = new THREE.LineSegments(lineGeo, mat)
+        geo.dispose()
+      }
+      mesh.visible = !!settings.visible
+      this._glGroup.add(mesh)
+      this._extraLayerMeshes.push(mesh)
+    })
+  }
+
+  _disposeExtraLayers () {
+    this._extraLayerMeshes.forEach(mesh => {
+      this._glGroup?.remove(mesh)
+      mesh.geometry.dispose()
+      mesh.material.dispose()
+    })
+    this._extraLayerMeshes = []
+  }
+
+  _applyObjectVisibility () {
+    if (this._wireframe) this._wireframe.visible = this._objectVisible && !this._activeSlot
+    if (this._solidMesh) this._solidMesh.visible = this._objectVisible && !!this._activeSlot
+  }
+
+  /** Independent per-layer visibility — real design-software-style
+   *  toggles, not one master switch gating all of them together. */
+  _applyLayerVisibility () {
+    this._extraLayerMeshes.forEach((mesh, i) => {
+      const settings = this._layers[i]
+      if (settings) mesh.visible = !!settings.visible
+    })
+  }
+
+  _applyLayerColors () {
+    this._extraLayerMeshes.forEach((mesh, i) => {
+      const settings = this._layers[i]
+      if (!settings) return
+      mesh.material.color.set(settings.color)
+      mesh.material.opacity = settings.alpha
+    })
+  }
+
+  _changeShape (shape) {
+    if (!SHAPE_BUILDERS[shape]) return
+    this._glGroup.remove(this._wireframe)
+    this._glGroup.remove(this._solidMesh)
+    this._wireframe.geometry.dispose(); this._wireframe.material.dispose()
+    this._solidMesh.geometry.dispose(); this._solidMesh.material.dispose()
+
+    this._shape = shape
+    this._buildShapeMesh()
+    this._buildExtraLayers()   // same geometry, all five layers — these update together, not just Object
+    // Re-add the (unaffected) face objects on top, since removing the
+    // shape mesh doesn't touch them, but a fresh _buildShapeMesh call
+    // inserts the new shape at the end of _glGroup's children — order
+    // doesn't matter for rendering here, so no reordering needed.
+    if (this._activeSlot) { this._solidMesh.visible = true; this._wireframe.visible = false }
+    if (this._texture) { this._solidMesh.material.map = this._texture; this._solidMesh.material.color.set(0xffffff); this._solidMesh.material.needsUpdate = true }
+    this._applyObjectVisibility()   // final authority — must run after the activeSlot-based visibility above, or it would be silently overridden
+
+    this._saveAll()
+  }
+
+  _applyRotation () {
+    if (!this._glGroup) return
+    this._glGroup.rotation.set(this._rotation.x, this._rotation.y, this._rotation.z)
+    this._saveAll()
+  }
+
+  _applyPosition () {
+    if (!this._glGroup) return
+    // Offsets from the base ROOM_Y height rather than replacing it —
+    // the default (0,0,0) keeps the existing room-scale placement
+    // completely unchanged.
+    this._glGroup.position.set(this._position.x, ROOM_Y + this._position.y, this._position.z)
+    this._saveAll()
+  }
+
+  _applyScale () {
+    if (!this._glGroup) return
+    this._glGroup.scale.set(this._scale.x, this._scale.y, this._scale.z)
+    this._saveAll()
+  }
+
+  _saveAll () {
+    const current = loadSettings()
+    saveSettings({
+      ...current,
+      shape: this._shape, rotation: this._rotation, position: this._position,
+      scale: this._scale, color: this._color, alpha: this._alpha, activeSlot: this._activeSlot,
+      roomScale: this._roomScale, objectVisible: this._objectVisible, layers: this._layers,
+    })
+  }
+
+  _applyColor () {
+    if (!this._wireframe) return
+    this._wireframe.material.color.set(this._color)
+    this._wireframe.material.opacity = this._alpha
+    if (!this._texture) this._solidMesh.material.color.set(this._color)
+    this._solidMesh.material.opacity = this._alpha
+    this._saveAll()
+  }
+
+  async _applySlotTexture (slot) {
+    try {
+      const record = await cubeTextureStore.loadWallpaper(slot)
+      if (!record) return
+      const url = URL.createObjectURL(record.blob)
+      new THREE.TextureLoader().load(url, (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace
+        this._texture?.dispose()
+        this._texture = texture
+        this._solidMesh.material.map = texture
+        this._solidMesh.material.color.set(0xffffff)
+        this._solidMesh.material.needsUpdate = true
+        this._solidMesh.visible = true
+        this._wireframe.visible = false
+      })
+      this._activeSlot = slot
+      this._applyObjectVisibility()   // final authority — must run after the visibility set above
+      this._saveAll()
+    } catch (err) {
+      console.warn('⟐OmniBrowserSpace — failed to load cube texture slot', slot, err)
+    }
+  }
+
+  _clearTexture () {
+    this._texture?.dispose()
+    this._texture = null
+    this._solidMesh.visible = false
+    this._wireframe.visible = true
+    this._activeSlot = null
+    this._applyObjectVisibility()   // final authority — must run after the visibility set above
+    this._saveAll()
+  }
+}

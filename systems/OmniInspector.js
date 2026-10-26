@@ -1,0 +1,6168 @@
+/**
+ * systems/OmniInspector.js — ⟐i OmniInspector
+ *
+ * The per-node property inspector for the ⟐mniReality. Every attribute of
+ * a node is readable and editable here. ⟐N creates and places nodes — ⟐i
+ * is where they are fully defined.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Panel
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   Self-contained system panel anchored top-right, below the GlobalBar.
+ *   Mirrors OmniNode's panel but slides in from the right.
+ *   Auto-opens when a node is selected (omni:node-selected).
+ *
+ *   Opens via:
+ *     window.dispatchEvent(new CustomEvent('omni:system-toggle', {
+ *       detail: { system: 'omniinspector' }
+ *     }))
+ *   Or directly: omniInspector.open() / close() / toggle()
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Four accordion sections (all independently collapsible)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   IDENTITY
+ *     ID         — auto-generated, read-only + copy button
+ *     Label      — editable text input
+ *     Text       — surface text textarea (rendered on node geometry in Phase 6)
+ *     Primitive  — epistemological type buttons (objective/subjective/undefined/false)
+ *
+ *   HIERARCHY
+ *     Parent Node — read-only ID (set via PATH mode in ⟐N)
+ *     Root Node   — read-only ID
+ *     Depth       — integer depth from root
+ *
+ *   APPEARANCE
+ *     Color picker  — RGBA: large swatch + hex input + R/G/B/A sliders
+ *     Material      — dropdown (Standard/Physical/Basic/Lambert/Phong/Toon/Normal/Depth)
+ *     Geometry      — dropdown (all 20 native Three.js types)
+ *     Wireframe     — toggle
+ *     Scale         — X / Y / Z number inputs
+ *     Texture slot  — file drop zone + URL input + apply/clear
+ *
+ *   MEDIA
+ *     Images  — drop zone + URL input per item, list of applied items
+ *     Sound   — drop zone + URL input per item
+ *     Media   — drop zone + URL input per item
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Color picker design
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   Large swatch (click → triggers native <input type="color">)
+ *   Hex text input — bidirectionally synced
+ *   R / G / B sliders — 0–255, individually controlled
+ *   A slider — 0–100% (maps to 0–1 opacity)
+ *
+ *   State: { r, g, b, a }  — single source of truth.
+ *   All UI elements sync from this state on every change.
+ *   Changes propagate live to the Three.js mesh material.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Persistence
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   Core node fields (label, color, geometry, position) — saved via events
+ *   dispatched to OmniNode, which owns the omni:nodes localStorage key.
+ *
+ *   Extended inspector fields (text, wireframe, material type, scale, texture,
+ *   media) — saved in the inspector's own key:
+ *     localStorage: 'omni:inspector:{nodeId}'
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Events dispatched (window)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   omni:node-label-set    { id, label }           → OmniNode syncs its data
+ *   omni:node-color-set    { id, color }           → OmniNode syncs material
+ *   omni:node-geo-set      { id, geometry }        → OmniNode swaps mesh
+ *   omni:node-material-set { id, material }        → OmniNode syncs material type
+ *   omni:node-scale-set    { id, scale: {x,y,z} }  → OmniNode syncs scale
+ *
+ * Events consumed (window)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   omni:node-selected    { node, mesh } — load node into inspector (auto-open)
+ *   omni:node-deselected  {}             — show empty state
+ *   omni:node-created     { node, mesh } — same as node-selected
+ *   omni:node-deleted     { id }         — clear if this node was loaded
+ *   omni:system-toggle    { system: 'omniinspector' } — open / close panel
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Usage in main.js
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ *   import OmniInspector from './systems/OmniInspector.js'
+ *   const omniInspector = new OmniInspector(base.context)
+ *   omniInspector.init()
+ *   // update() call not required — inspector is event-driven, not frame-driven
+ *
+ * Follows the standard module contract (constructor / init / update / destroy).
+ */
+
+import * as THREE from 'three'
+import gsap       from 'gsap'
+import { generateId, GEOMETRY_DEFS } from './OmniNode.js'
+import * as WindowManager from '../ui/WindowManager.js'
+import * as GridWidgets   from '../ui/GridWidgets.js'
+import { goToObject } from '../utils/CameraTravel.js'
+import { getTopOffset, PHONE_MAX } from '../utils/OmniLayout.js'
+import { INSPECTOR_SECTIONS } from '../utils/OmniInspectorSections.js'
+import { isKindData } from '../utils/OmniNodeKinds.js'                       // V183: StoreItemNode / OmniValueNode keep their block in Appearance, like Sequence / Group / Essence
+import { kindOptionsHTML, wireKindOptions } from '../ui/OmniNodeKindInspector.js'
+import { isExtraKind } from '../utils/OmniExtraKinds.js'                      // V191: OmniPathNode / floorPanelNode keep their block in Appearance too
+import { extraOptionsHTML, wireExtraOptions } from '../ui/OmniExtraKindInspector.js'
+import { soundSectionHTML, wireSoundSection } from '../ui/OmniSoundInspector.js'   // V194: the 'Sound' section every node has
+import { CHANGED_EVENT as STORE_CHANGED } from '../utils/OmniStoreModel.js'
+import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
+import { BEHAVIOR_TABLE, BEHAVIOR_CLASSES, behaviorDefaults } from './OmniNodeBehavior.js'
+import { createBehaviorForm } from '../ui/OmniNodeBehaviorForm.js'
+import * as TL from '../utils/OmniTimeline.js'
+import { getPlayer as getTimelinePlayer, getNodeValue as getTimelineNodeValue } from './OmniTimelinePlayer.js'
+import { PROGRAM_COMMANDS, defaultStep, stepRowHTML, runProgram, resolveStepPath } from './OmniProgramCommands.js'
+// this._programTimeline (per-Inspector, not per-node — only one node's
+// Program section can be open at a time) tracks a currently-running
+// gsap timeline so the Begin button can flip to Stop and actually
+// kill an 'infinite' run instead of leaving it looping forever with
+// no way to cancel from the UI.
+
+// ── Layout constants (must match OmniNode.js and GlobalBar.js) ────────────────
+
+const BAR_H     = 48    // px — GlobalBar height; V169: only the fallback now — the live value is --omni-top-offset (bar + ribbon, utils/OmniLayout.js). Was a stale 36.
+const DOCK_H    = 52    // px — Dock height
+const PANEL_W   = 340   // px — inspector panel width
+const SLIDE_DUR = 0.30  // s  — slide animation
+const GLITCH_DUR = 0.20 // s  — glitch sequence
+
+// ── Material type registry ────────────────────────────────────────────────────
+
+const MATERIALS = {
+  MeshStandardMaterial : THREE.MeshStandardMaterial,
+  MeshPhysicalMaterial : THREE.MeshPhysicalMaterial,
+  MeshBasicMaterial    : THREE.MeshBasicMaterial,
+  MeshLambertMaterial  : THREE.MeshLambertMaterial,
+  MeshPhongMaterial    : THREE.MeshPhongMaterial,
+  MeshToonMaterial     : THREE.MeshToonMaterial,
+  MeshNormalMaterial   : THREE.MeshNormalMaterial,
+  MeshDepthMaterial    : THREE.MeshDepthMaterial,
+}
+
+// Materials that don't support color / map (render as-is)
+const COLORLESS_MATS = new Set(['MeshNormalMaterial', 'MeshDepthMaterial'])
+
+// Materials that support the full PBR property set
+const PBR_MATS = new Set(['MeshStandardMaterial', 'MeshPhysicalMaterial'])
+
+// Deeper, material-specific property sets — shown as a dynamic panel
+// under the Material dropdown, swapping to match whichever type is
+// currently selected. MeshPhysicalMaterial gets the richest set since
+// it's the most-requested; MeshToonMaterial's real differentiator
+// (stepped gradient shading via gradientMap) is texture-based and isn't
+// exposed here since object-mesh texture mapping isn't built yet (see
+// BACKLOG.md) — its slot below is intentionally sparse for that reason,
+// not an oversight.
+const MATERIAL_EXTRA_PROPS = {
+  MeshStandardMaterial: [
+    { key: 'roughness', label: 'Roughness', min: 0, max: 1, step: 0.01, default: 0.35 },
+    { key: 'metalness', label: 'Metalness', min: 0, max: 1, step: 0.01, default: 0.08 },
+    { key: 'emissiveIntensity', label: 'Emissive Intensity', min: 0, max: 3, step: 0.05, default: 0 },
+  ],
+  MeshPhysicalMaterial: [
+    { key: 'roughness', label: 'Roughness', min: 0, max: 1, step: 0.01, default: 0.35 },
+    { key: 'metalness', label: 'Metalness', min: 0, max: 1, step: 0.01, default: 0.08 },
+    { key: 'clearcoat', label: 'Clearcoat', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'clearcoatRoughness', label: 'Clearcoat Roughness', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'transmission', label: 'Transmission (⚠ can crash on some GPUs — real, confirmed issue)', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'ior', label: 'IOR', min: 1, max: 2.33, step: 0.01, default: 1.5 },
+    { key: 'thickness', label: 'Thickness', min: 0, max: 5, step: 0.05, default: 0 },
+    { key: 'sheen', label: 'Sheen', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'sheenRoughness', label: 'Sheen Roughness', min: 0, max: 1, step: 0.01, default: 1 },
+    { key: 'specularIntensity', label: 'Specular Intensity', min: 0, max: 1, step: 0.01, default: 1 },
+    { key: 'iridescence', label: 'Iridescence', min: 0, max: 1, step: 0.01, default: 0 },
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 0.5 },
+  ],
+  MeshPhongMaterial: [
+    { key: 'shininess', label: 'Shininess', min: 0, max: 200, step: 1, default: 30 },
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshLambertMaterial: [
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshToonMaterial: [],
+  MeshBasicMaterial: [
+    { key: 'reflectivity', label: 'Reflectivity', min: 0, max: 1, step: 0.01, default: 1 },
+  ],
+  MeshNormalMaterial: [],
+  MeshDepthMaterial: [],
+}
+
+// ── Geometry type list (matches OmniNode.js) ──────────────────────────────────
+
+const GEO_TYPES = [
+  'BoxGeometry', 'SphereGeometry', 'CylinderGeometry', 'ConeGeometry',
+  'TorusGeometry', 'TorusKnotGeometry', 'OctahedronGeometry', 'TetrahedronGeometry',
+  'IcosahedronGeometry', 'DodecahedronGeometry', 'PlaneGeometry', 'CircleGeometry',
+  'RingGeometry', 'CapsuleGeometry', 'LatheGeometry', 'TubeGeometry',
+  'ExtrudeGeometry', 'ShapeGeometry', 'EdgesGeometry', 'WireframeGeometry',
+]
+
+// ── Primitive type definitions ────────────────────────────────────────────────
+
+const PRIMITIVES = [
+  { key: 'objective',  label: '⟐objective',  color: '#ffffff', title: 'Confirmed, deterministic' },
+  { key: 'subjective', label: '⟐subjective', color: '#88aaff', title: 'Perspectival, expressive' },
+  { key: 'undefined',  label: '⟐undefined',  color: '#888888', title: 'Unknown, unresolved' },
+  { key: 'false',      label: '⟐false',      color: '#111111', title: 'Negated, null' },
+]
+
+// ── Texture loader (shared instance) ─────────────────────────────────────────
+
+const texLoader = new THREE.TextureLoader()
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+
+const STORE_PREFIX = 'omni:inspector:'
+const OPEN_KEY     = 'omni:inspector-open-v1'   // V170: { d: {sectionId: bool} (desktop), m: sectionId|null (phone) }
+const DESKTOP_OPEN_DEFAULT = { identity: true, location: true, appearance: true }   // what was open before V170 — desktop expectations unchanged
+
+// ── Color utilities ───────────────────────────────────────────────────────────
+
+function rgbToHex (r, g, b) {
+  return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')
+}
+
+function hexToRgb (hex) {
+  const clean = hex.replace('#', '')
+  if (clean.length < 6) return null
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  }
+}
+
+function clamp (v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
+
+// ── Stylesheet ────────────────────────────────────────────────────────────────
+
+const STYLES = /* css */`
+
+/* ── Inspector panel root ─────────────────────────────────────────────────── */
+
+.oi-panel {
+  --oi-bg           : var(--omni-theme-bg, rgba(6, 6, 10, 0.93));
+  --oi-border       : var(--omni-theme-border, rgba(255, 255, 255, 0.09));
+  --oi-sep          : var(--omni-theme-border, rgba(255, 255, 255, 0.05));
+  --oi-header-bg    : var(--omni-theme-header-bg, rgba(255, 255, 255, 0.03));
+  --oi-text         : var(--omni-theme-text, rgba(255, 255, 255, 1));
+  --oi-text-dim     : var(--omni-theme-text-dim, rgba(255, 255, 255, 0.88));
+  --oi-text-muted   : var(--omni-theme-text-muted, rgba(255, 255, 255, 0.68));
+  --oi-accent       : var(--omni-theme-accent, rgba(255, 255, 255, 0.96));
+  --oi-ctrl-hover   : rgba(255, 255, 255, 0.08);
+  --oi-ctrl-active  : rgba(255, 255, 255, 0.16);
+  --oi-input-bg     : var(--omni-theme-input-bg, rgba(255, 255, 255, 0.11));
+  --oi-input-border : var(--omni-theme-input-border, rgba(255, 255, 255, 0.20));
+  --oi-focus-border : var(--omni-theme-accent, rgba(255, 255, 255, 0.45));
+  --oi-r-color      : rgba(255, 100, 100, 0.85);
+  --oi-g-color      : rgba(100, 220, 130, 0.85);
+  --oi-b-color      : rgba(100, 150, 255, 0.85);
+  --oi-a-color      : rgba(255, 255, 255, 0.50);
+  --mono            : 'Courier New', Courier, monospace;
+
+  position          : fixed;
+  top               : var(--omni-top-offset, ${BAR_H}px);
+  left              : 0;
+  width             : ${PANEL_W}px;
+  min-width         : 260px;
+  max-width         : 640px;
+  /* V170: content-sized (header + icon strip + whatever sections are open), capped at the free height.
+     With no section open it collapses to header + strip (+ node badge). Phones cap lower, see the media query. */
+  height            : auto;
+  min-height        : 0;
+  max-height        : var(--oi-cap-h, calc(100vh - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px));   /* --oi-cap-h: free height below the panel's real top (set by _updateCap) */
+
+  display           : flex;
+  flex-direction    : column;
+
+  background        : var(--oi-bg);
+  backdrop-filter   : blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border-right      : 1px solid var(--oi-border);
+  border-bottom     : 1px solid var(--oi-border);
+  border-radius     : 0 0 10px 0;
+
+  font-family       : var(--mono);
+  color             : var(--oi-text);
+  font-size         : 11px;
+  z-index           : 46;
+  pointer-events    : auto;
+  user-select       : none;
+  overflow          : hidden;
+  -webkit-font-smoothing: antialiased;
+
+  visibility        : hidden;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.oi-header {
+  flex-shrink       : 0;
+  display           : flex;
+  align-items       : center;
+  padding           : 0 14px 0 10px;
+  height            : 38px;
+  background        : var(--oi-header-bg);
+  border-bottom     : 1px solid var(--oi-sep);
+  gap               : 8px;
+  cursor            : grab;
+  user-select       : none;
+}
+
+.oi-header.is-dragging { cursor: grabbing; }
+
+/* ── Resize handle — bottom-left corner (panel is right-anchored) ─────────── */
+
+.oi-resize-handle {
+  position          : absolute;
+  right             : 0;
+  bottom            : 0;
+  width             : 16px;
+  height            : 16px;
+  cursor            : nwse-resize;
+  z-index           : 2;
+}
+
+.oi-resize-handle::before {
+  content           : '';
+  position          : absolute;
+  left              : 3px;
+  bottom            : 3px;
+  width             : 8px;
+  height            : 8px;
+  border-left       : 2px solid rgba(255, 255, 255, 0.25);
+  border-bottom     : 2px solid rgba(255, 255, 255, 0.25);
+  border-radius     : 0 0 0 2px;
+  transition        : border-color 0.12s ease;
+}
+
+.oi-resize-handle:hover::before {
+  border-color      : rgba(255, 255, 255, 0.6);
+}
+
+/* ── Parent picker ─────────────────────────────────────────────────────────── */
+
+.oi-parent-picker-btn {
+  text-align        : left;
+  cursor            : pointer;
+  transition        : border-color 0.12s ease, background 0.12s ease;
+}
+.oi-parent-picker-btn:hover {
+  border-color      : var(--oi-focus-border);
+  background        : rgba(255, 255, 255, 0.15);
+}
+
+.oi-parent-picker {
+  position          : absolute;
+  left              : 14px;
+  right             : 14px;
+  top               : 40px;
+  max-height        : 220px;
+  background        : rgba(10, 10, 14, 0.98);
+  border            : 1px solid rgba(255, 255, 255, 0.18);
+  border-radius     : 8px;
+  box-shadow        : 0 12px 32px rgba(0,0,0,0.6);
+  z-index           : 5;
+  display           : flex;
+  flex-direction    : column;
+  overflow          : hidden;
+}
+
+.oi-parent-picker-header {
+  display           : flex;
+  align-items       : center;
+  justify-content   : space-between;
+  padding           : 8px 10px;
+  font-size         : 10px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-dim);
+  border-bottom     : 1px solid var(--oi-sep);
+  flex-shrink       : 0;
+}
+
+.oi-parent-picker-close {
+  background        : none;
+  border            : none;
+  color             : var(--oi-text-dim);
+  cursor            : pointer;
+  font-size         : 11px;
+}
+.oi-parent-picker-close:hover { color: var(--oi-text); }
+
+.oi-parent-picker-list {
+  overflow-y        : auto;
+  padding           : 4px;
+}
+
+.oi-parent-picker-item {
+  display           : flex;
+  align-items       : center;
+  justify-content   : space-between;
+  padding           : 7px 9px;
+  border-radius     : 5px;
+  font-size         : 10.5px;
+  color             : var(--oi-text);
+  cursor            : pointer;
+}
+.oi-parent-picker-item:hover { background: rgba(255,255,255,0.08); }
+.oi-parent-picker-item.is-disabled {
+  color             : var(--oi-text-muted);
+  cursor            : not-allowed;
+}
+.oi-parent-picker-item.is-disabled:hover { background: none; }
+
+.oi-parent-picker-item-geo {
+  font-size         : 9px;
+  color             : var(--oi-text-muted);
+}
+
+.oi-parent-picker-empty {
+  padding           : 14px;
+  text-align        : center;
+  color             : var(--oi-text-muted);
+  font-size         : 10px;
+}
+
+.oi-parent-picker-none {
+  border-bottom     : 1px solid var(--oi-sep);
+  margin-bottom     : 4px;
+  padding-bottom    : 6px;
+}
+
+/* ── Genealogy tree explorer ──────────────────────────────────────────────── */
+
+.oi-geneo-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 12px 0 4px;
+}
+
+.oi-geneo-root { max-height: 220px; overflow-y: auto; }
+
+.oi-geneo-node { margin-left: 4px; }
+.oi-geneo-node .oi-geneo-node { margin-left: 14px; border-left: 1px solid rgba(255,255,255,0.08); padding-left: 6px; }
+
+.oi-geneo-row {
+  display           : flex;
+  align-items       : center;
+  gap               : 6px;
+  padding           : 4px 6px;
+  border-radius     : 4px;
+  font-size         : 10px;
+  color             : var(--oi-text-dim);
+}
+.oi-geneo-row:hover { background: rgba(255,255,255,0.05); }
+.oi-geneo-row.is-current { color: var(--oi-accent); font-weight: bold; }
+
+.oi-geneo-arrow { width: 10px; flex-shrink: 0; color: var(--oi-text-muted); font-size: 8px; }
+.oi-geneo-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oi-geneo-count {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  background        : rgba(255,255,255,0.08);
+  border-radius     : 8px;
+  padding           : 1px 6px;
+}
+
+/* ── Domain section ────────────────────────────────────────────────────────── */
+
+.oi-domain-status {
+  font-size         : 9.5px;
+  color             : var(--oi-text-muted);
+  padding           : 6px 8px;
+  border             : 1px solid var(--oi-sep);
+  border-radius     : 5px;
+  background        : rgba(255,255,255,0.02);
+}
+.oi-domain-status.is-current {
+  color             : rgba(190, 160, 255, 0.95);
+  border-color      : rgba(190, 160, 255, 0.3);
+  background        : rgba(190, 160, 255, 0.08);
+}
+
+.oi-domain-btn {
+  flex              : 1;
+  height            : 28px;
+  border-radius     : 5px;
+  border            : 1px solid rgba(190, 160, 255, 0.28);
+  background        : rgba(190, 160, 255, 0.08);
+  color             : rgba(210, 185, 255, 0.95);
+  font-family       : var(--mono);
+  font-size         : 9.5px;
+  cursor            : pointer;
+  transition        : background 0.12s ease;
+}
+.oi-domain-btn:hover:not(:disabled) { background: rgba(190, 160, 255, 0.18); }
+.oi-domain-btn:disabled {
+  opacity           : 0.3;
+  cursor            : not-allowed;
+}
+.oi-domain-btn--exit {
+  border-color      : rgba(255, 150, 150, 0.28);
+  background        : rgba(255, 150, 150, 0.08);
+  color             : rgba(255, 180, 180, 0.95);
+}
+.oi-domain-btn--exit:hover:not(:disabled) { background: rgba(255, 150, 150, 0.18); }
+
+.oi-domain-note {
+  font-size         : 9px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding-top       : 2px;
+}
+
+/* ── Create section ───────────────────────────────────────────────────────── */
+
+.oi-create-preview-wrap {
+  display           : flex;
+  flex-direction    : column;
+  align-items       : center;
+  gap               : 8px;
+}
+
+.oi-create-canvas {
+  width             : 120px;
+  height            : 120px;
+  border-radius     : 8px;
+  border            : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.02);
+}
+
+.oi-create-btns {
+  display           : flex;
+  gap               : 6px;
+  width             : 100%;
+}
+
+.oi-create-btn {
+  flex              : 1;
+  height            : 26px;
+  border-radius     : 5px;
+  border            : 1px solid rgba(var(--omni-color-accent-blue-rgb), 0.28);
+  background        : rgba(var(--omni-color-accent-blue-rgb), 0.08);
+  color             : rgba(150, 220, 255, 0.95);
+  font-family       : var(--mono);
+  font-size         : 9px;
+  cursor            : pointer;
+  transition        : background 0.12s ease;
+}
+.oi-create-btn:hover { background: rgba(var(--omni-color-accent-blue-rgb), 0.18); }
+
+.oi-create-btn--export {
+  border-color      : rgba(140, 255, 180, 0.28);
+  background        : rgba(140, 255, 180, 0.08);
+  color             : rgba(160, 255, 195, 0.95);
+}
+.oi-create-btn--export:hover { background: rgba(140, 255, 180, 0.18); }
+
+.oi-create-transform-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 12px 0 4px;
+}
+
+.oi-create-range {
+  flex              : 1;
+  accent-color      : var(--oi-accent);
+}
+
+.oi-create-range-val {
+  width             : 42px;
+  font-size         : 9.5px;
+  color             : var(--oi-text-dim);
+  text-align        : right;
+}
+
+.oi-controls {
+  display           : flex;
+  align-items       : center;
+  gap               : 3px;
+  flex-shrink       : 0;
+}
+
+.oi-ctrl {
+  width             : 26px;
+  height            : 26px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  background        : none;
+  border            : 1px solid rgba(255,255,255,0.08);
+  border-radius     : 5px;
+  font-family       : var(--mono);
+  font-size         : 11px;
+  color             : var(--oi-text-dim);
+  cursor            : pointer;
+  transition        : background 0.12s, color 0.12s, border-color 0.12s;
+}
+.oi-ctrl:hover   { background: var(--oi-ctrl-hover); color: var(--oi-accent); border-color: rgba(255,255,255,0.18); }
+.oi-ctrl:active  { background: var(--oi-ctrl-active); }
+.oi-ctrl--close:hover {
+  background    : rgba(255, 80, 80, 0.14);
+  border-color  : rgba(255, 80, 80, 0.28);
+  color         : rgba(255, 150, 150, 0.90);
+}
+
+.oi-ctrl--save {
+  color         : rgba(140, 255, 180, 0.85);
+  border-color  : rgba(140, 255, 180, 0.22);
+}
+.oi-ctrl--save:hover {
+  background    : rgba(140, 255, 180, 0.14);
+  border-color  : rgba(140, 255, 180, 0.35);
+  color         : rgba(180, 255, 205, 1);
+}
+.oi-ctrl--save.is-saved {
+  background    : rgba(140, 255, 180, 0.22);
+  border-color  : rgba(140, 255, 180, 0.5);
+}
+
+.oi-ctrl--genealogy {
+  color         : rgba(190, 160, 255, 0.85);
+  border-color  : rgba(190, 160, 255, 0.22);
+}
+.oi-ctrl--genealogy:hover {
+  background    : rgba(190, 160, 255, 0.14);
+  border-color  : rgba(190, 160, 255, 0.35);
+  color         : rgba(210, 185, 255, 1);
+}
+.oi-ctrl--genealogy.is-active {
+  background    : rgba(190, 160, 255, 0.22);
+  border-color  : rgba(190, 160, 255, 0.5);
+}
+
+.oi-ctrl--snap-right {
+  color         : rgba(160, 210, 255, 0.85);
+  border-color  : rgba(160, 210, 255, 0.22);
+}
+.oi-ctrl--snap-right:hover {
+  background    : rgba(160, 210, 255, 0.14);
+  border-color  : rgba(160, 210, 255, 0.35);
+  color         : rgba(190, 225, 255, 1);
+}
+.oi-ctrl--snap-right.is-active {
+  background    : rgba(160, 210, 255, 0.22);
+  border-color  : rgba(160, 210, 255, 0.5);
+}
+
+.oi-ctrl--delete {
+  color         : rgba(255, 140, 140, 0.7);
+  border-color  : rgba(255, 140, 140, 0.18);
+}
+.oi-ctrl--delete:hover {
+  background    : rgba(255, 100, 100, 0.14);
+  border-color  : rgba(255, 100, 100, 0.35);
+  color         : rgba(255, 160, 160, 1);
+}
+/* Armed — click once to arm, click again within a few seconds to
+   actually delete. Avoids an accidental single misclick destroying a
+   node with no way back. */
+.oi-ctrl--delete.is-armed {
+  background    : rgba(255, 70, 70, 0.35);
+  border-color  : rgba(255, 90, 90, 0.8);
+  color         : #fff;
+  animation     : oi-delete-pulse 0.8s ease-in-out infinite;
+}
+@keyframes oi-delete-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 70, 70, 0); }
+  50%      { box-shadow: 0 0 10px rgba(255, 70, 70, 0.6); }
+}
+
+.oi-title {
+  flex              : 1 1 auto;
+  font-size         : 10px;
+  color             : var(--oi-accent);
+  letter-spacing    : 0.12em;
+  text-transform    : uppercase;
+  text-align        : right;
+}
+
+/* ── Node identity badge (below header, shown when node loaded) ───────────── */
+
+.oi-notify-banner {
+  flex-shrink      : 0;
+  max-height       : 0;
+  overflow         : hidden;
+  display          : flex;
+  align-items      : center;
+  justify-content  : center;
+  font-size        : 9.5px;
+  letter-spacing   : 0.04em;
+  text-align       : center;
+  transition       : max-height 0.22s ease, padding 0.22s ease;
+}
+.oi-notify-banner.is-visible {
+  max-height       : 28px;
+  padding          : 6px;
+}
+.oi-notify-banner.is-saved {
+  color            : rgba(160, 255, 195, 0.95);
+  background       : rgba(140, 255, 180, 0.10);
+  border-bottom    : 1px solid rgba(140, 255, 180, 0.22);
+}
+.oi-notify-banner.is-delete {
+  color            : rgba(255, 170, 170, 0.95);
+  background       : rgba(255, 90, 90, 0.12);
+  border-bottom    : 1px solid rgba(255, 90, 90, 0.25);
+}
+
+.oi-node-badge {
+  flex-shrink       : 0;
+  display           : none;
+  align-items       : center;
+  gap               : 8px;
+  padding           : 7px 12px;
+  border-bottom     : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.02);
+}
+.oi-node-badge.is-visible { display: flex; }
+
+.oi-badge-dot {
+  width             : 8px;
+  height            : 8px;
+  border-radius     : 50%;
+  flex-shrink       : 0;
+  border            : 1px solid rgba(255,255,255,0.15);
+}
+
+.oi-badge-label {
+  flex              : 1 1 auto;
+  font-size         : 9px;
+  color             : var(--oi-accent);
+  letter-spacing    : 0.06em;
+  overflow          : hidden;
+  text-overflow     : ellipsis;
+  white-space       : nowrap;
+}
+
+.oi-badge-geo {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  flex-shrink       : 0;
+}
+
+.oi-inspect-preview-wrap {
+  flex-shrink       : 0;
+  display           : none;
+  align-items       : center;
+  justify-content   : center;
+  padding           : 10px 0;
+  border-bottom     : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.015);
+}
+.oi-inspect-preview-wrap.is-visible { display: flex; }
+
+.oi-inspect-canvas {
+  width             : 90px;
+  height            : 90px;
+  border-radius     : 8px;
+  border            : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.02);
+}
+
+/* ── Scrollable content body ──────────────────────────────────────────────── */
+
+.oi-body {
+  flex              : 1 1 auto;
+  overflow-y        : auto;
+  overflow-x        : hidden;
+
+  scrollbar-width   : thin;
+  scrollbar-color   : rgba(255,255,255,0.06) transparent;
+}
+.oi-body::-webkit-scrollbar       { width: 3px; }
+.oi-body::-webkit-scrollbar-track { background: transparent; }
+.oi-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.oi-empty {
+  display           : flex;
+  flex-direction    : column;
+  align-items       : center;
+  justify-content   : center;
+  height            : 100%;
+  min-height        : 160px;
+  gap               : 10px;
+  color             : var(--oi-text-muted);
+  font-size         : 9px;
+  letter-spacing    : 0.10em;
+  text-align        : center;
+  padding           : 24px;
+}
+
+.oi-empty-glyph {
+  font-size         : 24px;
+  opacity           : 0.15;
+  display           : block;
+}
+
+/* ── Accordion section ────────────────────────────────────────────────────── */
+
+.oi-section {
+  border-bottom     : 1px solid var(--oi-sep);
+}
+
+.oi-section-toggle {
+  display           : flex;
+  align-items       : center;
+  gap               : 6px;
+  padding           : 8px 12px;
+  cursor            : pointer;
+  background        : rgba(255,255,255,0.01);
+  border            : none;
+  font-family       : var(--mono);
+  color             : var(--oi-text-muted);
+  font-size         : 8px;
+  letter-spacing    : 0.14em;
+  text-transform    : uppercase;
+  width             : 100%;
+  text-align        : left;
+  transition        : background 0.10s, color 0.10s;
+}
+.oi-section-toggle:hover { background: rgba(255,255,255,0.03); color: var(--oi-text-dim); }
+
+.oi-section-arrow {
+  font-size         : 8px;
+  transition        : transform 0.18s ease;
+  display           : inline-block;
+  flex-shrink       : 0;
+}
+.oi-section-toggle.is-open .oi-section-arrow { transform: rotate(90deg); }
+
+.oi-section-content {
+  overflow          : hidden;
+  max-height        : 0;
+  padding           : 0;
+  transition        : none; /* GSAP handles animation */
+}
+.oi-section-content.is-open {
+  max-height        : 2000px; /* large enough */
+}
+
+.oi-section-inner {
+  position          : relative;
+  padding           : 10px 12px 14px;
+  display           : flex;
+  flex-direction    : column;
+  gap               : 10px;
+}
+
+/* ── Form rows ────────────────────────────────────────────────────────────── */
+
+.oi-row {
+  display           : flex;
+  align-items       : center;
+  gap               : 8px;
+}
+
+.oi-label {
+  font-size         : 10px;
+  color             : var(--oi-text-dim);
+  text-transform    : uppercase;
+  letter-spacing    : 0.12em;
+  flex-shrink       : 0;
+  width             : 54px;
+}
+
+.oi-label--full {
+  width             : auto;
+  flex              : 1 1 auto;
+}
+
+/* ── Custom per-node-type options (see _customOptionsHTML) ─────────────────── */
+
+.oi-custom-section {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 8px;
+  padding           : 10px;
+  margin            : 2px 0 4px;
+  background        : rgba(255, 179, 71, 0.06);
+  border             : 1px solid rgba(255, 179, 71, 0.22);
+  border-radius     : 8px;
+}
+.oi-custom-title {
+  font-size         : 10px;
+  letter-spacing    : 0.10em;
+  text-transform    : uppercase;
+  color             : rgba(255, 179, 71, 0.9);
+}
+.oi-custom-note {
+  font-size         : 9.5px;
+  line-height       : 1.4;
+  color             : var(--oi-text-muted);
+}
+
+.oi-essence-state {
+  display           : inline-block;
+  font-size         : 10px;
+  font-weight       : 700;
+  letter-spacing    : 0.08em;
+  padding           : 3px 10px;
+  border-radius     : 4px;
+  border            : 1px solid;
+  margin-bottom     : 8px;
+}
+.oi-essence-list { display: flex; flex-direction: column; gap: 10px; }
+.oi-essence-row {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 4px;
+  padding           : 8px;
+  background        : rgba(255,255,255,0.03);
+  border            : 1px solid rgba(255,255,255,0.06);
+  border-radius     : 6px;
+}
+.oi-essence-question { font-size: 10px; color: var(--oi-text-dim); font-weight: 600; }
+
+/* ── Text inputs ──────────────────────────────────────────────────────────── */
+
+.oi-input {
+  flex              : 1 1 auto;
+  height            : 26px;
+  padding           : 0 8px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 10.5px;
+  color             : var(--oi-text);
+  outline           : none;
+  transition        : border-color 0.12s;
+  min-width         : 0;
+}
+.oi-input:focus     { border-color: var(--oi-focus-border); }
+.oi-input:read-only { color: var(--oi-text-muted); cursor: default; }
+.oi-input--sm       { width: 60px; flex: 0 0 60px; }
+
+.oi-textarea {
+  flex              : 1 1 auto;
+  min-height        : 52px;
+  resize            : vertical;
+  padding           : 6px 8px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+  transition        : border-color 0.12s;
+  line-height       : 1.5;
+}
+.oi-textarea:focus { border-color: var(--oi-focus-border); }
+
+.oi-btn-small {
+  background       : rgba(140, 255, 180, 0.1);
+  border           : 1px solid rgba(140, 255, 180, 0.3);
+  color            : rgba(160, 255, 195, 0.95);
+  border-radius    : 6px;
+  padding          : 4px 10px;
+  font-family      : var(--mono, 'Courier New', monospace);
+  font-size        : 9.5px;
+  cursor           : pointer;
+}
+.oi-btn-small:hover { background: rgba(140, 255, 180, 0.18); }
+.oi-btn-small--danger {
+  background       : rgba(255, 90, 90, 0.1);
+  border-color     : rgba(255, 90, 90, 0.35);
+  color            : rgba(255, 140, 140, 0.95);
+}
+.oi-btn-small--danger:hover { background: rgba(255, 90, 90, 0.2); }
+.oi-btn-small--full { width: 100%; text-align: center; box-sizing: border-box; }
+.oi-btn-small:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Program section — shared visual language with ui/OmniProgramEditorPanel.js
+   (same class names, each file injects its own copy of these rules,
+   matching this project's existing per-file STYLES convention). */
+.oi-program-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.oi-program-empty { font-size: 9.5px; color: rgba(255,255,255,0.35); padding: 8px 2px; text-align: center; }
+.op-step {
+  background       : rgba(255,255,255,0.04);
+  border           : 1px solid rgba(255,255,255,0.10);
+  border-radius    : 8px;
+  padding          : 7px 8px;
+}
+.op-step-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.op-step-num { font-size: 9px; color: rgba(255,255,255,0.4); width: 14px; }
+.op-step-cmd {
+  flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 5px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 4px;
+}
+.op-step-del { background: none; border: none; color: rgba(255,255,255,0.3); font-size: 10.5px; cursor: pointer; padding: 0 2px; }
+.op-step-del:hover { color: rgba(255,120,120,0.85); }
+.op-step-fields { display: flex; flex-wrap: wrap; gap: 6px; }
+.op-field { display: flex; flex-direction: column; gap: 2px; flex: 1 1 60px; min-width: 56px; }
+.op-field-label { font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.op-field-input {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 4px; color: #fff; font-size: 9.5px; font-family: inherit; padding: 3px 5px; width: 100%;
+  box-sizing: border-box;
+}
+/* Group step — a step whose body is its own nested step list, shown
+   as an indented container inside the parent row (same op-step
+   classes recursively, so nesting needs no extra rules beyond the
+   indent/border call-out below). */
+.op-step--group { border-color: rgba(255, 238, 0, 0.18); }
+.op-step-collapse {
+  background: none; border: none; color: rgba(255,255,255,0.45); font-size: 10px;
+  cursor: pointer; padding: 0 2px; width: 12px;
+}
+.op-step-collapse:hover { color: #fff; }
+.op-group-body {
+  margin: 6px 0 2px 14px; padding: 8px 0 0 10px;
+  border-left: 2px solid rgba(255, 238, 0, 0.16);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.op-group-steps { display: flex; flex-direction: column; gap: 8px; }
+.op-step-add-nested {
+  align-self: flex-start; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.75); border-radius: 5px; font-family: inherit; font-size: 9px;
+  padding: 4px 8px; cursor: pointer;
+}
+.op-step-add-nested:hover { background: rgba(255,255,255,0.1); }
+.oi-program-begin {
+  width: 100%; margin-top: 2px; text-align: center; font-size: 10px; padding: 7px;
+  background: rgba(255, 238, 0, 0.12); border-color: rgba(255, 238, 0, 0.35); color: #ffee00;
+}
+.oi-program-begin:hover { background: rgba(255, 238, 0, 0.2); }
+.oi-program-begin:disabled { opacity: 0.35; cursor: not-allowed; }
+.oi-program-begin.is-running { background: rgba(255, 90, 90, 0.14); border-color: rgba(255, 90, 90, 0.4); color: rgba(255, 140, 140, 0.95); }
+.oi-program-begin.is-running:hover { background: rgba(255, 90, 90, 0.22); }
+
+.oi-data-field {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 4px;
+  margin-bottom     : 4px;
+}
+.oi-data-field .oi-textarea { min-height: 64px; width: 100%; }
+.oi-textarea--mono {
+  background        : rgba(0,0,0,0.25);
+  color             : rgba(150, 255, 190, 0.9);
+}
+.oi-data-note {
+  font-size         : 9px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding-top       : 2px;
+}
+
+/* ── Copy button ──────────────────────────────────────────────────────────── */
+
+.oi-copy-btn {
+  flex-shrink       : 0;
+  height            : 22px;
+  padding           : 0 7px;
+  background        : rgba(255,255,255,0.04);
+  border            : 1px solid rgba(255,255,255,0.08);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  cursor            : pointer;
+  transition        : background 0.10s, color 0.10s;
+}
+.oi-copy-btn:hover { background: rgba(255,255,255,0.08); color: var(--oi-accent); }
+
+/* ── Primitive type buttons ───────────────────────────────────────────────── */
+
+.oi-primitives {
+  display           : flex;
+  gap               : 4px;
+}
+
+.oi-primitive {
+  flex              : 1;
+  height            : 24px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  background        : rgba(255,255,255,0.03);
+  border            : 1px solid rgba(255,255,255,0.08);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 7px;
+  color             : var(--oi-text-muted);
+  cursor            : pointer;
+  letter-spacing    : 0.04em;
+  transition        : background 0.10s, border-color 0.10s, color 0.10s;
+  white-space       : nowrap;
+  overflow          : hidden;
+  text-overflow     : ellipsis;
+  padding           : 0 3px;
+}
+.oi-primitive:hover { background: rgba(255,255,255,0.07); color: var(--oi-text); }
+.oi-primitive.is-active {
+  border-color      : rgba(255,255,255,0.35);
+  color             : var(--oi-accent);
+  background        : rgba(255,255,255,0.10);
+}
+
+/* ── RGBA color picker ────────────────────────────────────────────────────── */
+
+.oi-color-block {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 8px;
+}
+
+.oi-color-top {
+  display           : flex;
+  align-items       : center;
+  gap               : 8px;
+}
+
+/* The large swatch with checkerboard transparency indicator */
+.oi-swatch-wrap {
+  position          : relative;
+  width             : 38px;
+  height            : 38px;
+  border-radius     : 5px;
+  overflow          : hidden;
+  cursor            : pointer;
+  flex-shrink       : 0;
+  border            : 1px solid rgba(255,255,255,0.12);
+  transition        : border-color 0.12s;
+}
+.oi-swatch-wrap:hover { border-color: rgba(255,255,255,0.30); }
+
+/* Checkerboard layer (shows through for alpha < 1) */
+.oi-swatch-check {
+  position          : absolute;
+  inset             : 0;
+  background        : repeating-conic-gradient(
+    rgba(255,255,255,0.12) 0% 25%,
+    rgba(0,0,0,0.20) 0% 50%
+  ) 0 0 / 8px 8px;
+}
+
+/* Colour fill layer on top */
+.oi-swatch-fill {
+  position          : absolute;
+  inset             : 0;
+  transition        : background-color 0.05s;
+}
+
+/* Hidden native color input — triggered by swatch click */
+.oi-native-color {
+  position          : absolute;
+  inset             : 0;
+  opacity           : 0;
+  cursor            : pointer;
+  width             : 100%;
+  height            : 100%;
+  padding           : 0;
+  border            : none;
+}
+
+.oi-hex-input {
+  width             : 76px;
+  flex-shrink       : 0;
+  height            : 26px;
+  padding           : 0 7px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+  letter-spacing    : 0.04em;
+  transition        : border-color 0.12s;
+}
+.oi-hex-input:focus { border-color: var(--oi-focus-border); }
+
+/* Alpha percentage readout next to swatch */
+.oi-alpha-readout {
+  font-size         : 9px;
+  color             : var(--oi-text-muted);
+  flex-shrink       : 0;
+  min-width         : 32px;
+  text-align        : right;
+}
+
+/* RGBA sliders */
+.oi-slider-grid {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 5px;
+}
+
+.oi-slider-row {
+  display           : flex;
+  align-items       : center;
+  gap               : 6px;
+}
+
+.oi-slider-label {
+  width             : 12px;
+  font-size         : 8px;
+  flex-shrink       : 0;
+  letter-spacing    : 0.05em;
+}
+.oi-slider-label--r { color: var(--oi-r-color); }
+.oi-slider-label--g { color: var(--oi-g-color); }
+.oi-slider-label--b { color: var(--oi-b-color); }
+.oi-slider-label--a { color: var(--oi-a-color); }
+
+.oi-slider {
+  flex              : 1 1 auto;
+  -webkit-appearance: none;
+  appearance        : none;
+  height            : 3px;
+  border-radius     : 2px;
+  outline           : none;
+  cursor            : pointer;
+  background        : rgba(255,255,255,0.10);
+}
+.oi-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width             : 11px;
+  height            : 11px;
+  border-radius     : 50%;
+  background        : rgba(255,255,255,0.85);
+  border            : 1px solid rgba(255,255,255,0.30);
+  cursor            : pointer;
+  box-shadow        : 0 0 4px rgba(0,0,0,0.40);
+}
+.oi-slider::-moz-range-thumb {
+  width             : 11px;
+  height            : 11px;
+  border-radius     : 50%;
+  background        : rgba(255,255,255,0.85);
+  border            : 1px solid rgba(255,255,255,0.30);
+  cursor            : pointer;
+  box-shadow        : 0 0 4px rgba(0,0,0,0.40);
+}
+
+.oi-slider-val {
+  font-size         : 8px;
+  color             : var(--oi-text-dim);
+  width             : 28px;
+  text-align        : right;
+  flex-shrink       : 0;
+}
+
+/* Gradient tracks for each channel */
+.oi-slider--r { background: linear-gradient(to right, #000, #ff4444); }
+.oi-slider--g { background: linear-gradient(to right, #000, #44dd66); }
+.oi-slider--b { background: linear-gradient(to right, #000, #4488ff); }
+.oi-slider--a { background: linear-gradient(to right, transparent, #fff); }
+
+/* ── Select / dropdown ────────────────────────────────────────────────────── */
+
+.oi-num-input {
+  flex              : 1 1 auto;
+  height            : 26px;
+  padding           : 0 8px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+}
+
+.oi-select {
+  flex              : 1 1 auto;
+  height            : 26px;
+  padding           : 0 6px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+  cursor            : pointer;
+  transition        : border-color 0.12s;
+  -webkit-appearance: none;
+  appearance        : none;
+  background-image  : url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,0.3)'/%3E%3C/svg%3E");
+  background-repeat : no-repeat;
+  background-position: right 8px center;
+  padding-right     : 22px;
+}
+.oi-select:focus { border-color: var(--oi-focus-border); }
+
+/* ── Toggle (wireframe) ───────────────────────────────────────────────────── */
+
+.oi-toggle-wrap {
+  display           : flex;
+  align-items       : center;
+  gap               : 8px;
+  cursor            : pointer;
+}
+
+.oi-toggle {
+  position          : relative;
+  width             : 30px;
+  height            : 16px;
+  flex-shrink       : 0;
+}
+
+.oi-toggle input {
+  opacity           : 0;
+  width             : 0;
+  height            : 0;
+  position          : absolute;
+}
+
+.oi-toggle-track {
+  position          : absolute;
+  inset             : 0;
+  background        : rgba(255,255,255,0.10);
+  border            : 1px solid rgba(255,255,255,0.14);
+  border-radius     : 8px;
+  transition        : background 0.18s, border-color 0.18s;
+}
+
+.oi-toggle-thumb {
+  position          : absolute;
+  top               : 2px;
+  left              : 2px;
+  width             : 10px;
+  height            : 10px;
+  background        : rgba(255,255,255,0.45);
+  border-radius     : 50%;
+  transition        : transform 0.18s, background 0.18s;
+}
+
+.oi-toggle input:checked + .oi-toggle-track { background: rgba(255,255,255,0.20); border-color: rgba(255,255,255,0.35); }
+.oi-toggle input:checked + .oi-toggle-track + .oi-toggle-thumb {
+  transform         : translateX(14px);
+  background        : rgba(255,255,255,0.90);
+}
+
+.oi-toggle-label {
+  font-size         : 9px;
+  color             : var(--oi-text-dim);
+}
+
+/* ── Scale XYZ inputs ─────────────────────────────────────────────────────── */
+
+.oi-xyz-row {
+  display           : flex;
+  align-items       : center;
+  gap               : 5px;
+}
+
+.oi-xyz-field {
+  flex              : 1;
+  display           : flex;
+  flex-direction    : column;
+  gap               : 3px;
+}
+
+.oi-xyz-label {
+  font-size         : 7px;
+  color             : var(--oi-text-muted);
+  text-align        : center;
+  letter-spacing    : 0.10em;
+}
+
+.oi-xyz-input {
+  height            : 26px;
+  padding           : 0 5px;
+  background        : var(--oi-input-bg);
+  border            : 1px solid var(--oi-input-border);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 9px;
+  color             : var(--oi-text);
+  outline           : none;
+  text-align        : center;
+  transition        : border-color 0.12s;
+  width             : 100%;
+}
+.oi-xyz-input:focus { border-color: var(--oi-focus-border); }
+
+/* ── Texture / media slots ────────────────────────────────────────────────── */
+
+.oi-slot {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 5px;
+}
+
+.oi-material-props-title {
+  font-size         : 9px;
+  letter-spacing    : 0.08em;
+  text-transform    : uppercase;
+  color             : var(--oi-text-muted);
+  margin            : 10px 0 4px;
+}
+
+.oi-material-props-empty {
+  font-size         : 9.5px;
+  line-height       : 1.5;
+  color             : var(--oi-text-muted);
+  padding           : 6px 0;
+  font-style        : italic;
+}
+
+.oi-mat-prop-range {
+  flex              : 1;
+  accent-color      : var(--oi-accent);
+}
+
+.oi-mat-prop-val {
+  width             : 34px;
+  font-size         : 9.5px;
+  color             : var(--oi-text-dim);
+  text-align        : right;
+}
+
+.oi-slot-label {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  text-transform    : uppercase;
+  letter-spacing    : 0.12em;
+}
+
+.oi-drop-zone {
+  height            : 46px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  gap               : 6px;
+  background        : rgba(255,255,255,0.02);
+  border            : 1px dashed rgba(255,255,255,0.12);
+  border-radius     : 5px;
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  cursor            : pointer;
+  letter-spacing    : 0.08em;
+  transition        : background 0.12s, border-color 0.12s, color 0.12s;
+  text-align        : center;
+  padding           : 0 8px;
+}
+.oi-drop-zone:hover,
+.oi-drop-zone.drag-over {
+  background        : rgba(255,255,255,0.05);
+  border-color      : rgba(255,255,255,0.25);
+  color             : var(--oi-text);
+}
+
+.oi-drop-zone-icon {
+  font-size         : 14px;
+  opacity           : 0.35;
+}
+
+.oi-slot-url-row {
+  display           : flex;
+  gap               : 5px;
+}
+
+.oi-slot-apply {
+  flex-shrink       : 0;
+  height            : 26px;
+  padding           : 0 9px;
+  background        : rgba(255,255,255,0.05);
+  border            : 1px solid rgba(255,255,255,0.12);
+  border-radius     : 4px;
+  font-family       : var(--mono);
+  font-size         : 8px;
+  color             : var(--oi-text-dim);
+  cursor            : pointer;
+  letter-spacing    : 0.08em;
+  transition        : background 0.10s, color 0.10s;
+}
+.oi-slot-apply:hover { background: rgba(255,255,255,0.09); color: var(--oi-accent); }
+
+/* Applied item list */
+.oi-slot-items {
+  display           : flex;
+  flex-direction    : column;
+  gap               : 3px;
+}
+
+.oi-slot-item {
+  display           : flex;
+  align-items       : center;
+  gap               : 6px;
+  padding           : 4px 7px;
+  background        : rgba(255,255,255,0.03);
+  border            : 1px solid rgba(255,255,255,0.06);
+  border-radius     : 4px;
+  font-size         : 8px;
+  color             : var(--oi-text-dim);
+}
+
+.oi-slot-item-name {
+  flex              : 1 1 auto;
+  overflow          : hidden;
+  text-overflow     : ellipsis;
+  white-space       : nowrap;
+  letter-spacing    : 0.04em;
+}
+
+.oi-slot-item-rm {
+  flex-shrink       : 0;
+  width             : 16px;
+  height            : 16px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  background        : none;
+  border            : none;
+  font-size         : 10px;
+  color             : rgba(255,255,255,0.20);
+  cursor            : pointer;
+  border-radius     : 3px;
+  transition        : background 0.10s, color 0.10s;
+}
+.oi-slot-item-rm:hover { background: rgba(255,80,80,0.12); color: rgba(255,150,150,0.70); }
+
+/* Texture preview thumbnail */
+.oi-tex-preview {
+  display           : none;
+  width             : 100%;
+  height            : 60px;
+  border-radius     : 4px;
+  border            : 1px solid rgba(255,255,255,0.08);
+  object-fit        : cover;
+}
+.oi-tex-preview.is-visible { display: block; }
+
+.oi-tex-clear {
+  align-self        : flex-start;
+  height            : 20px;
+  padding           : 0 7px;
+  background        : rgba(255,80,80,0.08);
+  border            : 1px solid rgba(255,80,80,0.18);
+  border-radius     : 3px;
+  font-family       : var(--mono);
+  font-size         : 7px;
+  color             : rgba(255,150,150,0.70);
+  cursor            : pointer;
+  letter-spacing    : 0.06em;
+  transition        : background 0.10s;
+  display           : none;
+}
+.oi-tex-clear.is-visible { display: block; }
+.oi-tex-clear:hover { background: rgba(255,80,80,0.16); }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+
+.oi-footer {
+  flex-shrink       : 0;
+  height            : 26px;
+  padding           : 0 12px;
+  display           : flex;
+  align-items       : center;
+  border-top        : 1px solid var(--oi-sep);
+  gap               : 8px;
+}
+
+.oi-footer-badge {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  text-transform    : uppercase;
+  letter-spacing    : 0.10em;
+  margin-left       : auto;
+}
+
+.oi-footer-id {
+  font-size         : 8px;
+  color             : var(--oi-text-muted);
+  letter-spacing    : 0.04em;
+  flex              : 1 1 auto;
+  overflow          : hidden;
+  text-overflow     : ellipsis;
+  white-space       : nowrap;
+  min-width         : 0;
+}
+
+/* ── Glitch scan line ─────────────────────────────────────────────────────── */
+
+.oi-glitch-line {
+  position          : absolute;
+  left              : 0;
+  width             : 100%;
+  height            : 2px;
+  background        : rgba(255,255,255,0.30);
+  pointer-events    : none;
+  z-index           : 10;
+  opacity           : 0;
+}
+
+/* ── Section icon strip (V170) — one icon per section, same list/glyphs as the ribbon's Inspector tab ── */
+
+.oi-strip {
+  flex-shrink       : 0;
+  display           : flex;
+  align-items       : stretch;
+  gap               : 2px;
+  padding           : 3px 6px;
+  border-bottom     : 1px solid var(--oi-sep);
+  background        : rgba(255,255,255,0.015);
+  overflow-x        : auto;
+  scrollbar-width   : none;
+}
+.oi-strip::-webkit-scrollbar { display: none; }
+
+.oi-strip-btn {
+  flex              : 1 1 0;
+  min-width         : 26px;
+  height            : 30px;
+  display           : flex;
+  align-items       : center;
+  justify-content   : center;
+  padding           : 0;
+  font-family       : var(--mono);
+  font-size         : 14px;
+  line-height       : 1;
+  color             : var(--oi-text-dim);
+  background        : transparent;
+  border            : 1px solid transparent;
+  border-radius     : 6px;
+  cursor            : pointer;
+  transition        : background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.oi-strip-btn:hover { background: var(--oi-ctrl-hover); color: var(--oi-text); }
+.oi-strip-btn.is-open {
+  color             : var(--oi-text);
+  background        : var(--oi-ctrl-active);
+  border-color      : var(--oi-focus-border);
+}
+.oi-strip-btn.is-dim { opacity: 0.38; }
+
+/* Maximized (ui/WindowManager.js makeMaximizable sets an inline 94vh height): same 90vh ceiling the panel always had. */
+.oi-panel.win-maximized { max-height: 90vh; }
+.oi-panel.win-maximized .oi-strip { display: none; }   /* the dashboard grid shows every section as a card */
+
+/* Thin-bar state: no section open -> header + strip (+ node badge) only. */
+.oi-panel[data-collapsed="true"] .oi-body,
+.oi-panel[data-collapsed="true"] .oi-inspect-preview-wrap,
+.oi-panel[data-collapsed="true"] .oi-footer { display: none; }
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .oi-panel { width: min(${PANEL_W}px, 90vw); }
+}
+
+/* Phones (same breakpoint as utils/OmniLayout.js PHONE_MAX): the panel never covers more than 45% of the screen
+   and scrolls inside; the live preview shrinks so it does not eat the little room there is. */
+@media (max-width: ${PHONE_MAX}px) {
+  .oi-panel { max-height: min(45vh, var(--oi-cap-h, calc(100vh - var(--omni-top-offset, ${BAR_H}px) - ${DOCK_H}px))); }
+  .oi-strip-btn { height: 34px; }
+  .oi-inspect-preview-wrap { padding: 4px 0; }
+  .oi-inspect-canvas { width: 48px; height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oi-strip-btn { transition: none; }
+}
+
+`
+
+// ── Style injection ───────────────────────────────────────────────────────────
+
+function injectStyles () {
+  if (document.getElementById('omni-inspector-styles')) return
+  const tag = document.createElement('style')
+  tag.id          = 'omni-inspector-styles'
+  tag.textContent = STYLES
+  document.head.appendChild(tag)
+}
+
+// ── Glitch helper ─────────────────────────────────────────────────────────────
+
+function glitch (el) {
+  return new Promise(resolve => {
+    const line = el.querySelector('.oi-glitch-line')
+    const tl   = gsap.timeline({ onComplete: resolve })
+    tl.to(el, { x:  3, duration: 0.030, ease: 'none' })
+      .to(el, { x: -4, duration: 0.025, ease: 'none' })
+      .to(el, { x:  2, opacity: 0.70, duration: 0.020, ease: 'none' })
+      .to(el, { x:  0, opacity: 1,    duration: 0.030, ease: 'power1.out' })
+    if (line) {
+      gsap.fromTo(line,
+        { top: '-2px', opacity: 0.80 },
+        { top: '100%', opacity: 0,    duration: GLITCH_DUR, ease: 'power1.in' }
+      )
+    }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OmniInspector class
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default class OmniInspector {
+
+  /**
+   * @param {object} context  — { scene, camera, renderer, sizes, ticker, Sound? }
+   */
+  constructor (context) {
+    this.ctx = context
+
+    // ── Panel state ────────────────────────────────────────────────────
+    this._el     = null
+    this._isOpen = false
+    this._isMaximized = false
+    this._gridEl = null
+    this._gridWidgets = null
+    this._drag   = { active: false, startX: 0, startY: 0, originX: 0, originY: 0 }
+    this._allNodes = []   // cached from omni:nodes-updated — feeds the parent picker
+    this._allEdges = []   // V183: cached from omni:nodes-updated — feeds the conversion routes of a value node
+    this._currentSpaceId = null   // cached from omni:space-entered/exited
+    this._createPreview = null   // the Create section's own tiny renderer/scene/mesh
+    this._createTransform = { px: 0, py: 0, pz: 0, rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, sz: 1 }
+    this._deleteArmTimer = null
+    this._bannerTimer = null
+    this._inspectPreview = null   // spinning preview of the ACTUAL loaded node
+    this._infoPlanes = new Map()   // nodeId -> { mesh, canvas, ctx2d, texture, offset, targetMesh } — floating planes showing External Display/Code; a Map (not a single ref) because Persistent mode lets more than one coexist
+
+    // ── Loaded node ────────────────────────────────────────────────────
+    this._currentId   = null   // node ID currently loaded
+    this._currentMesh = null   // THREE.Mesh reference
+    this._currentData = null   // raw node data from OmniNode
+
+    // ── Color state — single source of truth ───────────────────────────
+    this._color = { r: 255, g: 255, b: 255, a: 1.0 }
+
+    // ── Extended data (persisted per-node in inspector's own store) ─────
+    // { text, wireframe, material, scale:{x,y,z}, texture, images:[], sound:[], media:[] }
+    this._ext = null
+
+    // ── Section open states ────────────────────────────────────────────
+    // Desktop default (unchanged): Identity, Location (only rendered for a locationNode — open so a freshly
+    // "Highlight and Edit"'d OmniPointing node shows its coordinate immediately) and Appearance.
+    // V170: phones start with NO section open (the scene stays visible) and keep ONE at a time; the last
+    // choice per device is remembered in localStorage OPEN_KEY.
+    this._sectionOpen = {}
+    this._lastOpened  = null
+    this._onResizeWin = null
+    this._wasPhone    = this._isPhone()
+    this._loadOpenState()
+
+    // ── Bound event handlers for cleanup ────────────────────────────────
+    this._onToggle    = null
+    this._onSelected  = null
+    this._onDeselect  = null
+    this._onCreated   = null
+    this._onDeleted   = null
+    this._onNodesUpdated = null
+    this._onSpaceEntered = null
+    this._onSpaceExited  = null
+  }
+
+  // ── Module contract ──────────────────────────────────────────────────────
+
+  init () {
+    injectStyles()
+    this._buildPanel()
+    this._bindEvents()
+    this._showEmpty()
+
+    this._onAdminStepsSaved = (e) => {
+      const steps = e.detail?.steps
+      if (!steps || !this._el) return
+      const ids = { px: 'oi-px', py: 'oi-py', pz: 'oi-pz' }
+      for (const [axis, id] of Object.entries(ids)) {
+        if (steps[axis] === undefined) continue
+        const input = this._el.querySelector(`#${id}`)
+        const slider = this._el.querySelector(`#${id}-slider`)
+        if (input) input.step = steps[axis]
+        if (slider) slider.step = steps[axis]
+      }
+    }
+    window.addEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
+
+    // Real fix — flush any still-debounced rotation/scale edit before the
+    // page can actually go away. _wireAppearance() (where the debounced
+    // handlers above live) re-runs on every node selection, so a listener
+    // placed there directly would pile up one per node ever inspected.
+    // Storing the CURRENT node's pending-commit functions on `this` and
+    // registering exactly one class-level listener here avoids that.
+    this._onForceSaveFlush = () => {
+      this._pendingCommitRotation?.()
+      this._pendingCommitScale?.()
+    }
+    window.addEventListener('omni:force-save', this._onForceSaveFlush)
+
+    // Gallery texture pick — same single-class-level-listener reasoning as
+    // _onForceSaveFlush just above: _wireAppearance() (where the texture
+    // slot's body/ext closures live) re-runs on every node selection, so
+    // this listener is registered exactly once here and reads whichever
+    // body/ext the texture slot last wired via this._texSlotBody/_texSlotExt
+    // rather than piling up one listener per node ever inspected.
+    this._onGalleryTextureSelect = (e) => {
+      const { path } = e.detail ?? {}
+      if (!path || !this._texSlotBody || !this._currentMesh) return
+      this._applyTextureUrl(path, this._texSlotBody, this._texSlotExt)
+      const urlInput = this._texSlotBody.querySelector('#oi-tex-url')
+      if (urlInput) urlInput.value = path
+    }
+    window.addEventListener('omni:gallery-texture-select', this._onGalleryTextureSelect)
+  }
+
+  update (delta) {
+    if (this._createPreview) {
+      // No idle auto-spin here — this preview now has explicit rx/ry/rz
+      // sliders tied to the node being created; an uncontrollable spin
+      // would fight with them and make "ry = 0" meaningless.
+      this._createPreview.renderer.render(this._createPreview.scene, this._createPreview.camera)
+    }
+    if (this._inspectPreview) {
+      this._inspectPreview.mesh.rotation.y += delta * 0.4
+      this._inspectPreview.renderer.render(this._inspectPreview.scene, this._inspectPreview.camera)
+    }
+    this._infoPlanes.forEach(plane => {
+      if (!plane.targetMesh) return
+      // Follows the node in case it moves/rotates. Facing the camera
+      // (billboard) is now optional — static planes keep whatever
+      // orientation they had when created, per the Face Camera toggle.
+      const worldPos = plane.targetMesh.getWorldPosition(new THREE.Vector3())
+      const mOffset = plane.manualOffset ?? { x: 0, y: 0, z: 0 }
+      plane.mesh.position.copy(worldPos).add(plane.offset)
+      plane.mesh.position.x += mOffset.x
+      plane.mesh.position.y += mOffset.y
+      plane.mesh.position.z += mOffset.z
+      if (plane.faceCamera) {
+        plane.mesh.lookAt(this.ctx.camera.position)
+      } else if (plane.manualRotation) {
+        plane.mesh.rotation.set(plane.manualRotation.x, plane.manualRotation.y, plane.manualRotation.z)
+      }
+    })
+  }
+
+  destroy () {
+    this._teardownCreatePreview()
+    this._teardownInspectPreview()
+    this._infoPlanes.forEach((_, nodeId) => this._hideInfoPlane(nodeId))
+    this._el?.parentNode?.removeChild(this._el)
+    WindowManager.unregister('omniinspector')
+    window.removeEventListener('omni:system-toggle', this._onToggle)
+    window.removeEventListener('resize', this._onResizeWin)
+    window.removeEventListener('omni:inspector-section-open', this._onSectionOpen)
+    window.removeEventListener('omni:inspector-state-request', this._onStateRequest)
+    window.removeEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+    window.removeEventListener('omni:node-program-set', this._onProgramSet)
+    window.removeEventListener('omni:admin-settings-saved', this._onAdminStepsSaved)
+    window.removeEventListener('omni:force-save', this._onForceSaveFlush)
+    window.removeEventListener('omni:gallery-texture-select', this._onGalleryTextureSelect)
+    window.removeEventListener('omni:node-selected', this._onSelected)
+    window.removeEventListener('omni:node-restored', this._onNodeRestored)
+    window.removeEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
+    window.removeEventListener('wheel', this._onWheel)
+    window.removeEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
+    window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+    window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+    window.removeEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+    window.removeEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+    window.removeEventListener('omni:timeline-changed', this._onTimelineChanged)
+    window.removeEventListener('omni:node-deselected', this._onDeselect)
+    window.removeEventListener('omni:node-created',  this._onCreated)
+    window.removeEventListener('omni:node-deleted',  this._onDeleted)
+    window.removeEventListener('omni:nodes-updated', this._onNodesUpdated)
+    window.removeEventListener(STORE_CHANGED, this._onKindModelChanged)
+    window.removeEventListener(VALUE_CHANGED, this._onKindModelChanged)
+    window.removeEventListener('omni:space-entered', this._onSpaceEntered)
+    window.removeEventListener('omni:space-exited', this._onSpaceExited)
+  }
+
+  // ── Public API ───────────────────────────────────────────────────────────
+
+  open () {
+    if (this._isOpen) return
+    this._isOpen = true
+    this._placeForViewport()
+    this._el.style.visibility = 'visible'
+    const targetOpacity = WindowManager.getPanelOpacity()
+    gsap.fromTo(this._el,
+      { x: '100%', opacity: targetOpacity },
+      {
+        x        : '0%',
+        opacity  : targetOpacity,
+        duration : SLIDE_DUR,
+        ease     : 'power3.out',
+        onComplete: () => glitch(this._el)
+      }
+    )
+    this._playSound('open')
+    this._announceState()
+  }
+
+  close () {
+    if (!this._isOpen) return
+    glitch(this._el).then(() => {
+      gsap.to(this._el, {
+        x        : '100%',
+        duration : SLIDE_DUR * 0.85,
+        ease     : 'power2.in',
+        onComplete: () => {
+          this._el.style.visibility = 'hidden'
+          gsap.set(this._el, { x: '100%' })
+        }
+      })
+    })
+    this._isOpen = false
+    this._playSound('close')
+    this._announceState()
+  }
+
+  toggle () {
+    this._isOpen ? this.close() : this.open()
+  }
+
+  /** V169: the ribbon's Inspector tab mirrors this (dim icons when nothing is loaded, which sections
+   *  exist — Location only for a location node — and which are expanded). Event only, no polling. */
+  _announceState () {
+    const body = this._el?.querySelector('#oi-body')
+    const sections = this._currentData
+      ? [...(body?.querySelectorAll('.oi-section-toggle') ?? [])].map(b => b.dataset.section)
+      : []
+    const openSections = {}
+    sections.forEach(id => { openSections[id] = !!this._sectionOpen[id] })
+    this._syncStrip()
+    this._applyCollapsed()
+    window.dispatchEvent(new CustomEvent('omni:inspector-state', {
+      detail: { open: this._isOpen, loaded: !!this._currentData, nodeId: this._currentId, sections, openSections },
+    }))
+  }
+
+  /** V169/V170: open the panel if closed, expand one section (never toggles it off) and scroll to it.
+   *  Returns false when nothing is loaded or the section does not exist for this node (e.g. location). */
+  openSection (id) {
+    if (!this._currentData) return false
+    if (!this._el?.querySelector(`[data-section="${id}"]`)) return false
+    if (!this._isOpen) this.open()
+    if (!this._sectionOpen[id]) this._toggleSection(id)
+    else this._scrollToSection(id)
+    return true
+  }
+
+  /** V170: THE entry point for the strip icons and the ribbon's Inspector-tab buttons. Opens the panel if it
+   *  is closed, then toggles that section (phones: exclusive — opening one closes the others, tapping the open
+   *  one closes it; desktop: sections stay independent). Dim / unavailable sections explain themselves in
+   *  OmniNotify instead. Returns true when a section was toggled. */
+  activateSection (id) {
+    const sec = INSPECTOR_SECTIONS.find(x => x.id === id)
+    if (!sec) return false
+    const exists = !!this._currentData && !!this._el?.querySelector(`[data-section="${id}"]`)
+    if (!exists) {
+      const why = !this._currentData
+        ? 'Select a node first — the Inspector sections appear once a node is loaded.'
+        : `The selected node is not a ${sec.onlyFor ?? 'node that has this section'}.`
+      window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: `Inspector · ${sec.label}`, desc: why, holdMs: 3500 } }))
+      if (!this._isOpen) this.open()
+      return false
+    }
+    if (!this._isOpen) this.open()
+    this._toggleSection(id)
+    return true
+  }
+
+  // ── V170: open-section state (per device), phone exclusivity ──────────────
+
+  _isPhone () { return (typeof window !== 'undefined' ? (window.innerWidth || 1024) : 1024) <= PHONE_MAX }
+
+  _reducedMotion () {
+    try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches } catch (_) { return false }
+  }
+
+  _loadOpenState () {
+    let saved = null
+    try { saved = JSON.parse(localStorage.getItem(OPEN_KEY) ?? 'null') } catch (_) {}
+    this._savedDesktop = saved && typeof saved.d === 'object' && saved.d ? { ...saved.d } : { ...DESKTOP_OPEN_DEFAULT }
+    this._savedPhone   = typeof saved?.m === 'string' ? saved.m : null
+    if (this._isPhone()) {
+      this._sectionOpen = this._savedPhone ? { [this._savedPhone]: true } : {}
+      this._lastOpened = this._savedPhone
+    } else {
+      this._sectionOpen = { ...this._savedDesktop }
+    }
+  }
+
+  _persistOpenState () {
+    if (this._isPhone()) {
+      this._savedPhone = Object.keys(this._sectionOpen).find(k => this._sectionOpen[k]) ?? null
+    } else {
+      this._savedDesktop = { ...this._sectionOpen }
+    }
+    try { localStorage.setItem(OPEN_KEY, JSON.stringify({ d: this._savedDesktop, m: this._savedPhone })) } catch (_) {}
+  }
+
+  /** On a phone keep at most one section open: the one opened last (else the first in panel order). */
+  _enforcePhoneExclusive (stateOnly = false) {
+    if (!this._isPhone()) return
+    const open = INSPECTOR_SECTIONS.map(s => s.id).filter(id => this._sectionOpen[id])
+    if (open.length <= 1) return
+    const keep = open.includes(this._lastOpened) ? this._lastOpened : open[0]
+    open.forEach(id => { if (id === keep) return; if (stateOnly) this._sectionOpen[id] = false; else this._setSectionOpen(id, false) })
+  }
+
+  /** V170: WindowManager.register() cascades the panel to an inline left/top (about x=202 on a fresh load),
+   *  which pushed the 340px panel half off a 390px phone screen. On a phone it is docked at the left edge under
+   *  the bar + ribbon; on any screen it is kept inside the viewport horizontally. */
+  _placeForViewport () {
+    const el = this._el
+    if (!el) return
+    const w = el.getBoundingClientRect().width || PANEL_W
+    if (this._isPhone()) {
+      gsap.set(el, { left: 0, top: getTopOffset(), right: 'auto' })
+    } else {
+      const left = parseFloat(el.style.left)
+      if (Number.isFinite(left) && left + w > window.innerWidth) gsap.set(el, { left: Math.max(0, window.innerWidth - w) })
+    }
+    this._updateCap()
+  }
+
+  /** The height cap is "free height below where the panel really is" (it is cascaded / dragged, not always at the
+   *  top offset), so a tall panel never runs under the Dock. Re-run after open, drag, snap and window resize. */
+  _updateCap () {
+    const el = this._el
+    if (!el) return
+    const top = el.getBoundingClientRect().top
+    const free = Math.max(160, window.innerHeight - (Number.isFinite(top) ? top : getTopOffset()) - DOCK_H)
+    el.style.setProperty('--oi-cap-h', `${Math.round(free)}px`)
+  }
+
+  /** Crossing the phone breakpoint (rotate / resize): collapse to one section, re-sync the strip. */
+  _onViewportChange () {
+    const phone = this._isPhone()
+    this._updateCap()
+    if (phone === this._wasPhone) return
+    this._wasPhone = phone
+    if (phone) { this._enforcePhoneExclusive(); this._persistOpenState() }
+    if (this._isOpen) this._placeForViewport()
+    else this._updateCap()
+    this._announceState()
+  }
+
+  /** Scroll the (single) scrolling body so the section header is at the top — manual, because
+   *  scrollIntoView could also scroll the overflow:hidden panel itself. */
+  _scrollToSection (id) {
+    const body = this._el?.querySelector('#oi-body')
+    const sec  = this._el?.querySelector(`[data-section="${id}"]`)?.closest('.oi-section')
+    if (!body || !sec || this._gridEl) return
+    const top = sec.offsetTop - body.offsetTop
+    if (typeof body.scrollTo === 'function') body.scrollTo({ top, behavior: this._reducedMotion() ? 'auto' : 'smooth' })
+    else body.scrollTop = top
+  }
+
+  /** Strip icons: dim = does not apply right now (no node, or Location on a non-location node); lit = open. */
+  _syncStrip () {
+    const strip = this._el?.querySelector('#oi-strip')
+    if (!strip) return
+    strip.querySelectorAll('.oi-strip-btn').forEach(btn => {
+      const id = btn.dataset.strip
+      const exists = !!this._currentData && !!this._el.querySelector(`.oi-section-toggle[data-section="${id}"]`)
+      const open = exists && !!this._sectionOpen[id]
+      btn.classList.toggle('is-dim', !exists)
+      btn.classList.toggle('is-open', open)
+      btn.setAttribute('aria-pressed', String(open))
+    })
+  }
+
+  /** Thin bar (header + strip + badge) when a node is loaded and no section is open. Expanding applies at
+   *  once; collapsing waits until the closing tween is done so the body does not vanish mid-animation. */
+  _applyCollapsed () {
+    const anyOpen = !!this._currentData && !!this._el?.querySelector('.oi-section-toggle.is-open')
+    const collapsed = !!this._currentData && !anyOpen
+    // a section whose toggle is off but whose content still carries is-open is mid-close: wait for it
+    const closing = this._el.querySelectorAll('.oi-section-content.is-open').length > this._el.querySelectorAll('.oi-section-toggle.is-open').length
+    if (collapsed && closing) return
+    this._el.dataset.collapsed = String(collapsed)
+  }
+
+  /**
+   * Load a node into the inspector.
+   * Called when omni:node-selected fires, or externally.
+   *
+   * @param {{ id, label, geometry, primitive, color, position, parentId, createdAt }} data
+   * @param {THREE.Mesh | THREE.LineSegments} mesh
+   */
+  /** Real, reusable re-application of a node's saved extended state
+   *  onto its actual mesh — wireframe, material type, material
+   *  properties, AND the texture itself. Extracted from loadNode so
+   *  a silent restore path (no panel open, no active selection) can
+   *  call exactly this, without loadNode's other side effects
+   *  (opening the panel, syncing UI state).
+   *
+   *  The texture URL specifically was the real, missing piece: this
+   *  block already re-applied wireframe/material-type/materialProps
+   *  on load, but never the texture map itself — so a saved texture
+   *  never visually returned to the mesh at all, even when this
+   *  method's own caller (loadNode) already ran. */
+  _reapplyExtToMesh (mesh, ext) {
+    if ('wireframe' in mesh.material) mesh.material.wireframe = !!ext.wireframe
+    // Only ever upgrades to DoubleSide here, never forces back to
+    // FrontSide — "Is Domain" nodes (see OmniNode._setDomain/restore)
+    // set DoubleSide independently of this ext flag, for their own
+    // reason (camera ends up inside them), and this generic restore
+    // path has no way to tell a domain node from here. Forcing
+    // FrontSide when ext.doubleSide is merely unset/false would stomp
+    // that. The explicit Inspector toggle (below) still turns it off
+    // correctly for the live, non-domain case the user is looking at.
+    if ('side' in mesh.material && ext.doubleSide) {
+      mesh.material.side = THREE.DoubleSide
+      mesh.material.needsUpdate = true
+    }
+    const currentType = mesh.material.constructor?.name
+    if (ext.material && ext.material !== currentType) {
+      const prevMesh = this._currentMesh
+      this._currentMesh = mesh   // _applyMaterial reads this
+      this._applyMaterial(ext.material)
+      this._currentMesh = prevMesh
+    }
+    for (const [key, value] of Object.entries(ext.materialProps ?? {})) {
+      if (key in mesh.material) mesh.material[key] = value
+    }
+    if (ext.texture && !COLORLESS_MATS.has(ext.material)) {
+      texLoader.load(ext.texture, (texture) => {
+        mesh.material.map = texture
+        mesh.material.needsUpdate = true
+      })
+    }
+    mesh.material.needsUpdate = true
+  }
+
+  loadNode (data, mesh) {
+    clearTimeout(this._deleteArmTimer)
+    this._el?.querySelector('.oi-ctrl--delete')?.classList.remove('is-armed')
+
+    this._currentId   = data.id
+    this._currentMesh = mesh
+    this._currentData = data
+
+    // Load extended inspector data from localStorage
+    this._ext = { ...this._defaultExt(data), ...(this._loadExt(data.id) ?? {}) }
+
+    // Apply that extended state TO the real mesh — this was the actual
+    // "material/texture doesn't stick" bug: the Inspector's own preview
+    // reads ext directly (so it always looked correct), but nothing
+    // re-synced the REAL world mesh's live material to match, so it
+    // silently reverted to its default look whenever this panel wasn't
+    // the thing that had just changed it in the same session.
+    // Dimensional Text nodes are THREE.Sprite, not THREE.Mesh — they use
+    // SpriteMaterial, a fundamentally different material system that
+    // isn't part of the regular MATERIALS registry at all. Applying any
+    // of this reapply logic to one would swap its SpriteMaterial for an
+    // incompatible Mesh material (e.g. MeshStandardMaterial), which
+    // breaks Three.js's dedicated sprite renderer — this was the actual
+    // "clicking a Dimensional Text node doesn't open the Inspector" bug:
+    // the corrupted material broke rendering before the panel could
+    // meaningfully show.
+    if (mesh?.material && !(mesh instanceof THREE.Sprite)) this._reapplyExtToMesh(mesh, this._ext)
+
+    // Sync color state from node data
+    const meshColor = mesh?.material?.color
+    if (meshColor) {
+      this._color = {
+        r : Math.round(meshColor.r * 255),
+        g : Math.round(meshColor.g * 255),
+        b : Math.round(meshColor.b * 255),
+        a : mesh.material.opacity ?? 1.0,
+      }
+    } else {
+      this._color = { r: 255, g: 255, b: 255, a: 1.0 }
+    }
+
+    // Sync scale from mesh
+    if (mesh?.scale) {
+      this._ext.scale = {
+        x: parseFloat(mesh.scale.x.toFixed(3)),
+        y: parseFloat(mesh.scale.y.toFixed(3)),
+        z: parseFloat(mesh.scale.z.toFixed(3)),
+      }
+    }
+
+    this._renderLoaded()
+    this._updateFooter()
+
+    if (this._ext.showOnPlane) this._showInfoPlane(data, this._ext)
+    else this._hideInfoPlane()
+
+    if (!this._isOpen) this.open()
+  }
+
+  /** Clear the inspector back to its empty state. */
+  clearNode () {
+    // Persistent mode — the whole point of the option — means the
+    // plane should survive deselection, so only hide it if this node
+    // wasn't marked persistent.
+    if (!this._ext?.persistent) this._hideInfoPlane(this._currentId)
+
+    this._currentId   = null
+    this._currentMesh = null
+    this._currentData = null
+    this._ext         = null
+    this._teardownCreatePreview()
+    this._teardownInspectPreview()
+    this._el?.querySelector('#oi-inspect-preview-wrap')?.classList.remove('is-visible')
+    this._showEmpty()
+    this._updateFooter()
+    this._announceState()
+  }
+
+  // ── Panel DOM ────────────────────────────────────────────────────────────
+
+  _buildPanel () {
+    const el = document.createElement('div')
+    el.className = 'oi-panel'
+    el.id        = 'omni-inspector-panel'
+
+    el.innerHTML = /* html */`
+      <div class="oi-glitch-line" aria-hidden="true"></div>
+
+      <!-- Header — controls on left, title on right (mirrors ⟐N top-left) -->
+      <div class="oi-header">
+        <div class="oi-controls">
+          <button class="oi-ctrl oi-ctrl--close"    data-action="close"    title="✕ Close"         >✕</button>
+          <button class="oi-ctrl oi-ctrl--minimize" data-action="minimize" title="_ Minimize"      >_</button>
+          <button class="oi-ctrl oi-ctrl--attach"   data-action="attach"   title="⟐ Pocket attach" >⟐</button>
+          <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">💾</button>
+          <button class="oi-ctrl oi-ctrl--genealogy" data-action="genealogy" title="Select whole genealogy tree">Ξ</button>
+          <button class="oi-ctrl oi-ctrl--delete" data-action="delete" title="Delete this node">🗑</button>
+          <button class="oi-ctrl oi-ctrl--snap-right" data-action="snap-right" title="⇥ Snap to right edge">⇥</button>
+          <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
+        </div>
+        <span class="oi-title">OmniInspector ⟐i</span>
+      </div>
+
+      <!-- V170: section icon strip — one button per section (utils/OmniInspectorSections.js, same list as the ribbon) -->
+      <div class="oi-strip" id="oi-strip" data-omni-tip-source="OmniInspector" role="toolbar" aria-label="Inspector sections">
+        ${INSPECTOR_SECTIONS.map(sec => /* html */`
+          <button class="oi-strip-btn is-dim" data-strip="${sec.id}" aria-label="${sec.label}" aria-pressed="false"
+                  data-omni-tip="${sec.label}" data-omni-tip-key="—"
+                  data-omni-tip-desc="${sec.desc}${sec.onlyFor ? ' Only for a ' + sec.onlyFor + '.' : ''} Tap to open or close it.">${sec.glyph}</button>
+        `).join('')}
+      </div>
+
+      <!-- Change/action notification — same idea as Admin's unsaved banner,
+           but confirming AFTER a save (Inspector auto-saves) rather than
+           warning before one -->
+      <div class="oi-notify-banner" id="oi-notify-banner"></div>
+
+      <!-- Node identity badge — visible when node is loaded -->
+      <div class="oi-node-badge" id="oi-node-badge">
+        <span class="oi-badge-dot" id="oi-badge-dot"></span>
+        <span class="oi-badge-label" id="oi-badge-label">—</span>
+        <span class="oi-badge-geo"  id="oi-badge-geo">—</span>
+      </div>
+
+      <!-- Live spinning preview of the actual object being inspected —
+           same visual language as ⟐Objects' preview, but reflecting the
+           real selected node's geometry/color, not a blank new object. -->
+      <div class="oi-inspect-preview-wrap" id="oi-inspect-preview-wrap">
+        <canvas class="oi-inspect-canvas" id="oi-inspect-canvas" width="90" height="90"></canvas>
+      </div>
+
+      <!-- Scrollable content -->
+      <div class="oi-body" id="oi-body">
+        <!-- populated by _showEmpty() or _renderLoaded() -->
+      </div>
+
+      <!-- Footer -->
+      <div class="oi-footer">
+        <span class="oi-footer-id"    id="oi-footer-id">—</span>
+        <span class="oi-footer-badge" id="oi-footer-badge">⟐i</span>
+      </div>
+
+      <div class="oi-resize-handle" aria-hidden="true"></div>
+    `
+
+    gsap.set(el, { x: '100%' })
+    this._el = el
+
+    const shell = document.getElementById('omni-ui') ?? document.body
+    shell.appendChild(el)
+
+    // Header controls
+    el.querySelector('.oi-controls').addEventListener('click', (e) => {
+      const btn = e.target.closest('.oi-ctrl')
+      if (!btn) return
+      this._playSound('click')
+      switch (btn.dataset.action) {
+        case 'close':      this.close();     break
+        case 'minimize':   this._minimize(); break
+        case 'attach':     this._attach();   break
+        case 'genealogy':  this._selectGenealogy(btn); break
+        case 'delete':     this._confirmDelete(btn); break
+        case 'snap-right': this._snapToRight(btn); break
+      }
+    })
+
+    el.querySelector('#oi-strip').addEventListener('click', (e) => {
+      const btn = e.target.closest('.oi-strip-btn')
+      if (btn) this.activateSection(btn.dataset.strip)
+    })
+    this._onResizeWin = () => this._onViewportChange()
+    window.addEventListener('resize', this._onResizeWin)
+
+    this._bindDrag(el)
+
+    el.dataset.winId = 'omniinspector'
+    WindowManager.register('omniinspector', el, 'Inspector')
+    WindowManager.watchPanelOpacity(el, () => this._isOpen)
+    WindowManager.makeMaximizable(el, el.querySelector('.oi-ctrl--maximize'), {
+      onMaximize: () => { this._isMaximized = true; this._toGridDashboard() },
+      onRestore : () => { this._isMaximized = false; this._fromGridDashboard() },
+    })
+    WindowManager.wireSaveButton(el.querySelector('.oi-ctrl--save'), 'omniinspector', () => this._explicitSave())
+  }
+
+  /**
+   * Header drag — same left/top approach as ui/OmniDraw.js. This is a
+   * separate CSS property from the open/close slide (which animates
+   * `transform: translateX` via GSAP's `x`), so the two compose safely:
+   * dragging only ever happens while the panel is open (x: '0%'), and the
+   * slide animation always resolves back to x:'0%'/'100%' without leaving
+   * a lingering transform offset for drag to fight with.
+   */
+  _bindDrag (el) {
+    const header = el.querySelector('.oi-header')
+
+    const onDown = (e) => {
+      if (e.target.closest('.oi-ctrl')) return   // don't drag when clicking a button
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const rect = el.getBoundingClientRect()
+      this._drag = { active: true, startX: cx, startY: cy, originX: rect.left, originY: rect.top }
+      header.classList.add('is-dragging')
+    }
+    const onMove = (e) => {
+      if (!this._drag.active) return
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const dx = cx - this._drag.startX
+      const dy = cy - this._drag.startY
+      // Now left-docked by default, so dragging just moves left/top
+      // directly — no right-anchor CSS to override anymore.
+      gsap.set(el, { left: this._drag.originX + dx, top: this._drag.originY + dy, right: 'auto' })
+    }
+    const onUp = () => {
+      const wasDragging = this._drag.active
+      this._drag.active = false
+      header.classList.remove('is-dragging')
+      if (wasDragging) this._updateCap()
+    }
+
+    header.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    header.addEventListener('touchstart', onDown, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onUp)
+
+    this._bindResize(el)
+  }
+
+  /**
+   * Resize via the bottom-left corner handle. Dragging left grows width
+   * (panel is right-anchored, so width grows toward the left); dragging
+   * down grows height. Clamped to the min/max bounds set in .oi-panel's
+   * CSS (min-width/max-width/min-height/max-height) so it can't be
+   * resized into something unusably small or off-screen.
+   */
+  _bindResize (el) {
+    const handle = el.querySelector('.oi-resize-handle')
+    if (!handle) return
+
+    const resize = { active: false, startX: 0, startY: 0, startW: 0, startH: 0 }
+
+    const onDown = (e) => {
+      e.stopPropagation()   // don't also trigger header drag
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const rect = el.getBoundingClientRect()
+      resize.active = true
+      resize.startX = cx
+      resize.startY = cy
+      resize.startW = rect.width
+      resize.startH = rect.height
+    }
+    const onMove = (e) => {
+      if (!resize.active) return
+      const cx = e.touches?.[0]?.clientX ?? e.clientX
+      const cy = e.touches?.[0]?.clientY ?? e.clientY
+      const newW = resize.startW + (cx - resize.startX)   // left-docked now — dragging right grows it
+      // V170: the panel is content-sized now, so the handle sets the height CAP (max-height), not a fixed height —
+      // it still collapses to the thin bar when no section is open. Clamped to the free height (phones: 45vh).
+      const free = window.innerHeight - getTopOffset() - DOCK_H
+      const cap  = this._isPhone() ? Math.min(0.45 * window.innerHeight, free) : free
+      const newH = Math.max(120, Math.min(cap, resize.startH + (cy - resize.startY)))   // dragging down grows it
+      gsap.set(el, { width: newW, maxHeight: newH })
+    }
+    const onUp = () => { resize.active = false }
+
+    handle.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    handle.addEventListener('touchstart', onDown, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onUp)
+  }
+
+  // ── Maximize → grid dashboard ────────────────────────────────────────────
+  // Each accordion section's content becomes a draggable, reorderable
+  // card (see ui/GridWidgets.js). The section elements themselves are
+  // MOVED into the grid, not cloned, so everything already wired inside
+  // them (inputs, the parent picker, the create-preview canvas, etc.)
+  // keeps working untouched. Restoring puts them back exactly where
+  // they came from.
+
+  _toGridDashboard () {
+    if (this._gridEl) return
+    const body = this._el.querySelector('#oi-body')
+    if (!body) return
+
+    const labels = {
+      identity: 'Identity', hierarchy: 'Hierarchy', domain: 'Domain',
+      appearance: 'Appearance', automation: 'Automation', behavior: 'Behavior', media: 'Media', create: 'Create New',
+    }
+
+    const widgets = []
+    body.querySelectorAll('.oi-section').forEach(section => {
+      const toggleBtn = section.querySelector('.oi-section-toggle')
+      const id    = toggleBtn?.dataset.section
+      const inner = section.querySelector('.oi-section-inner')
+      if (!id || !inner) return
+      widgets.push({ id, title: labels[id] ?? id, el: inner })
+    })
+    if (widgets.length === 0) return
+
+    this._gridWidgets = widgets
+    body.style.display = 'none'
+    this._gridEl = GridWidgets.mountGrid(body.parentElement, widgets, 'omniinspector')
+  }
+
+  _fromGridDashboard () {
+    if (!this._gridEl) return
+    GridWidgets.unmountGrid(this._gridEl, this._gridWidgets ?? [])
+    this._gridEl = null
+    this._gridWidgets = null
+    const body = this._el.querySelector('#oi-body')
+    if (body) body.style.display = ''
+  }
+
+  /**
+   * Explicit Save button. Every field already autosaves to localStorage
+   * on change (OmniNode._save() per node-level edit, _saveExt() per
+   * Inspector-only field) — this exists for a visible, deliberate "yes,
+   * it's saved" confirmation rather than trusting a silent background
+   * write. Also broadcasts omni:force-save so OmniNode flushes its
+   * current in-memory state unconditionally, covering anything that
+   * hasn't triggered its own save yet. Button flash + last-saved
+   * timestamp are handled generically by WindowManager.wireSaveButton.
+   */
+  _explicitSave () {
+    this._saveExt()
+    window.dispatchEvent(new CustomEvent('omni:force-save'))
+  }
+
+  /**
+   * Ξ button — selects (visually pulses) the entire genealogy tree the
+   * currently loaded node belongs to: its root, and every descendant of
+   * that root. The actual pulse logic lives in OmniNode (it owns the
+   * meshes/edges); this just requests it and gives a brief active-state
+   * flash on the button itself as confirmation the click landed.
+   */
+  _selectGenealogy (btn) {
+    if (!this._currentId) return
+    window.dispatchEvent(new CustomEvent('omni:genealogy-select-request', {
+      detail: { id: this._currentId }
+    }))
+    this._playSound('click')
+
+    if (!btn) return
+    btn.classList.add('is-active')
+    setTimeout(() => btn.classList.remove('is-active'), 900)
+  }
+
+  /**
+   * ⇥ button — docks the panel against the right edge of the viewport.
+   * The panel loads left-docked by default (see .oi-panel's `left: 0`
+   * and _bindDrag's comment above), and once dragged anywhere it stays
+   * exactly where it was left — there was never a way back to either
+   * edge without a page reload. This gives the right edge explicitly,
+   * on demand, without changing the left-docked default.
+   */
+  _snapToRight (btn) {
+    const width = this._el?.getBoundingClientRect().width || PANEL_W
+    gsap.set(this._el, { left: `calc(100vw - ${width}px)`, top: getTopOffset(), right: 'auto' })
+    this._updateCap()
+    this._playSound('click')
+
+    const target = btn ?? this._el?.querySelector('.oi-ctrl--snap-right')
+    if (!target) return
+    target.classList.add('is-active')
+    setTimeout(() => target.classList.remove('is-active'), 400)
+  }
+
+  /** Deletes immediately on click — a confirm-then-click pattern was
+   *  here before, but it meant nothing visibly happened on the first
+   *  press, which read as "the button doesn't work." Gives clear
+   *  after-the-fact feedback (red flash) instead of a before-the-fact
+   *  gate. */
+  _confirmDelete (btn) {
+    if (!this._currentId || !btn) return
+
+    const id = this._currentId
+    window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id } }))
+
+    btn.classList.add('is-armed')
+    setTimeout(() => btn.classList.remove('is-armed'), 400)
+
+    this._flashBanner('🗑 Node deleted', 'delete')
+    this.clearNode()
+  }
+
+  // ── Empty state ───────────────────────────────────────────────────────────
+
+  _showEmpty () {
+    if (this._gridEl) this._fromGridDashboard()
+
+    const body  = this._el.querySelector('#oi-body')
+    const badge = this._el.querySelector('#oi-node-badge')
+    badge?.classList.remove('is-visible')
+
+    body.innerHTML = /* html */`
+      <div class="oi-empty">
+        <span class="oi-empty-glyph">⟐i</span>
+        <span>No node selected</span>
+        <span style="font-size:8px;opacity:0.7">Click a node in the scene<br>or select one in ⟐N</span>
+      </div>
+    `
+  }
+
+  // ── Loaded state — render all four sections ───────────────────────────────
+
+  _renderLoaded () {
+    // If the dashboard grid is currently active, the section elements
+    // have been MOVED out of #oi-body into grid cards — rebuilding
+    // #oi-body's innerHTML right now would happen in a disconnected,
+    // hidden element while the visible grid keeps showing the previous
+    // node's stale content. Restore to the plain accordion first, rebuild,
+    // then re-grid the fresh sections at the end of this method.
+    const wasGridded = !!this._gridEl
+    if (wasGridded) this._fromGridDashboard()
+
+    const body  = this._el.querySelector('#oi-body')
+    const badge = this._el.querySelector('#oi-node-badge')
+    const data  = this._currentData
+    const ext   = this._ext
+    // V183: on a phone only one section is open; a store item / value node keeps its block in Appearance, so open that
+    // when such a node is first shown (once per node, the user can close it again).
+    if (data && (isKindData(data) || isExtraKind(data)) && this._isPhone() && this._kindOpenedFor !== data.id) {
+      this._kindOpenedFor = data.id
+      this._sectionOpen = { appearance: true }; this._lastOpened = 'appearance'
+    }
+
+    // Update node badge
+    if (badge) {
+      const prim = PRIMITIVES.find(p => p.key === data.primitive) ?? PRIMITIVES[0]
+      badge.classList.add('is-visible')
+      badge.querySelector('#oi-badge-dot').style.background   = prim.color
+      badge.querySelector('#oi-badge-dot').style.borderColor  = prim.color + '50'
+      badge.querySelector('#oi-badge-label').textContent      = data.label ?? data.id
+      badge.querySelector('#oi-badge-geo').textContent        = (data.geometry ?? '').replace('Geometry', '')
+    }
+
+    this._el.querySelector('#oi-inspect-preview-wrap')?.classList.add('is-visible')
+    this._updateInspectPreview(data, ext)
+
+    // Build accordion sections
+    body.innerHTML = /* html */`
+      ${this._sectionHTML('identity',   '▶ Identity',   this._identityHTML(data, ext))}
+      ${data.isLocationNode ? this._sectionHTML('location', '▶ Location (OmniPointing)', this._locationHTML(data)) : ''}
+      ${this._sectionHTML('hierarchy',  '▶ Hierarchy',  this._hierarchyHTML(data))}
+      ${this._sectionHTML('domain',     '▶ Domain',     this._domainHTML(data))}
+      ${this._sectionHTML('appearance', '▶ Appearance', this._appearanceHTML(data, ext))}
+      ${this._sectionHTML('automation', '▶ Automation', this._automationHTML(data))}
+      ${this._sectionHTML('behavior',   '▶ Behavior',   this._behaviorHTML(data))}
+      ${this._sectionHTML('time',       '▶ Time',       this._timeHTML(data))}
+      ${this._sectionHTML('program',    '▶ Program',    this._programHTML(data, ext))}
+      ${this._sectionHTML('media',      '▶ Media',      this._mediaHTML(ext))}
+      ${this._sectionHTML('sound',      '▶ Sound',      soundSectionHTML(data))}
+      ${this._sectionHTML('data',       '▶ Data',       this._dataHTML(ext))}
+      ${this._sectionHTML('create',     '▶ Create New', this._createSectionHTML())}
+    `
+
+    // Restore open states (phones: at most one)
+    this._enforcePhoneExclusive(true)
+    Object.entries(this._sectionOpen).forEach(([id, isOpen]) => {
+      const toggle  = body.querySelector(`[data-section="${id}"]`)
+      const content = body.querySelector(`#oisec-${id}`)
+      if (!toggle || !content) return
+      if (isOpen) {
+        toggle.classList.add('is-open')
+        content.classList.add('is-open')
+        gsap.set(content, { maxHeight: 2000 })
+      } else {
+        gsap.set(content, { maxHeight: 0 })
+      }
+    })
+
+    // Wire all section toggles
+    body.querySelectorAll('.oi-section-toggle').forEach(btn => {
+      btn.addEventListener('click', () => this._toggleSection(btn.dataset.section))
+    })
+
+    // Wire all interactive controls
+    this._wireIdentity(body, data, ext)
+    if (data.isLocationNode) this._wireLocation(body, data)
+    this._wireHierarchy(body, data)
+    this._wireDomain(body, data)
+    this._wireAppearance(body, data, ext)
+    this._wireAutomation(body, data)
+    this._wireBehavior(body, data)
+    this._wireTime(body, data)
+    this._wireProgram(body, data, ext)
+    this._wireMedia(body, ext)
+    wireSoundSection(body, data)
+    this._wireData(body, data, ext)
+    this._wireCreateSection(body)
+
+    if (this._isMaximized) this._toGridDashboard()
+    this._announceState()
+  }
+
+  // ── Section scaffold HTML ─────────────────────────────────────────────────
+
+  _sectionHTML (id, label, innerHtml) {
+    return /* html */`
+      <div class="oi-section">
+        <button class="oi-section-toggle" data-section="${id}">
+          <span class="oi-section-arrow">▶</span>
+          ${label.replace('▶ ', '')}
+        </button>
+        <div class="oi-section-content" id="oisec-${id}">
+          <div class="oi-section-inner">
+            ${innerHtml}
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  /** Open or close one section (state + DOM + animation). Does not enforce exclusivity — _toggleSection does. */
+  _setSectionOpen (id, open) {
+    const btn     = this._el.querySelector(`[data-section="${id}"]`)
+    const content = this._el.querySelector(`#oisec-${id}`)
+    this._sectionOpen[id] = open
+    if (!btn || !content) return
+    const dur = this._reducedMotion() ? 0 : 1
+    gsap.killTweensOf(content)
+    if (!open) {
+      btn.classList.remove('is-open')
+      gsap.to(content, { maxHeight: 0, duration: 0.22 * dur, ease: 'power2.in',
+        onComplete: () => { content.classList.remove('is-open'); this._applyCollapsed() } })
+    } else {
+      content.classList.add('is-open')
+      btn.classList.add('is-open')
+      gsap.fromTo(content, { maxHeight: content.style.maxHeight ? parseFloat(content.style.maxHeight) || 0 : 0 }, { maxHeight: 2000, duration: 0.28 * dur, ease: 'power2.out',
+        onComplete: () => { if (id === this._scrollTarget) { this._scrollTarget = null; this._scrollToSection(id) } } })
+    }
+  }
+
+  _toggleSection (id) {
+    if (!this._el.querySelector(`[data-section="${id}"]`) || !this._el.querySelector(`#oisec-${id}`)) return
+    const open = !this._sectionOpen[id]
+    if (open) {
+      this._lastOpened = id
+      this._scrollTarget = id
+      if (this._isPhone()) {
+        // exclusive: close every other open section first
+        INSPECTOR_SECTIONS.forEach(s => { if (s.id !== id && this._sectionOpen[s.id]) this._setSectionOpen(s.id, false) })
+      }
+    }
+    this._setSectionOpen(id, open)
+    this._persistOpenState()
+    this._playSound('click')
+    this._announceState()
+    if (open && this._reducedMotion()) this._scrollToSection(id)
+  }
+
+  // ── IDENTITY section HTML ─────────────────────────────────────────────────
+
+  _identityHTML (data, ext) {
+    const primBtns = PRIMITIVES.map(p => /* html */`
+      <button class="oi-primitive ${data.primitive === p.key ? 'is-active' : ''}"
+              data-primitive="${p.key}"
+              title="${p.title}"
+              style="${data.primitive === p.key ? `border-color:${p.color}40;color:${p.color};background:${p.color}14` : ''}">
+        ${p.label}
+      </button>
+    `).join('')
+
+    return /* html */`
+      <!-- ID (read-only) -->
+      <div class="oi-row">
+        <span class="oi-label">ID</span>
+        <input class="oi-input" id="oi-id" value="${data.id}" readonly tabindex="-1">
+        <button class="oi-copy-btn" id="oi-copy-id" title="Copy ID">copy</button>
+      </div>
+
+      <!-- Label -->
+      <div class="oi-row">
+        <span class="oi-label">Label</span>
+        <input class="oi-input" id="oi-label" type="text"
+               value="${(data.label ?? '').replace(/"/g, '&quot;')}"
+               placeholder="Node label…">
+      </div>
+
+      <!-- Text (surface content) -->
+      <div class="oi-row" style="align-items:flex-start">
+        <span class="oi-label" style="padding-top:6px">Text</span>
+        <textarea class="oi-textarea" id="oi-text"
+                  placeholder="Surface text rendered on node geometry…">${ext?.text ?? ''}</textarea>
+      </div>
+
+      <!-- Primitive type -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:5px">
+        <span class="oi-label oi-label--full">Primitive</span>
+        <div class="oi-primitives" id="oi-primitives">${primBtns}</div>
+      </div>
+    `
+  }
+
+  // ── LOCATION section HTML — real, new node-type handling for the
+  // `locationNode` type OmniPointing's "Highlight and Edit" action
+  // creates (systems/OmniPointing.js). Follows the exact same
+  // section-scaffold pattern as every other section here rather than
+  // a parallel/competing inspector. Per the user's own spec: "at
+  // minimum its title/label, color, and coordinate." Title and color
+  // are already fully editable above (Identity → Label, Appearance →
+  // color picker/XYZ position) since OmniInspector's own fields are
+  // generic across every node type — this section doesn't duplicate
+  // those controls, it surfaces them together as a single, honest
+  // read-only summary specific to a location node, with a coordinate
+  // readout (synced to the real, live position OmniPointing snapped
+  // to at creation). ────────────────────────────────────────────────
+
+  _locationHTML (data) {
+    const [x, y, z] = (data.position ?? [0, 0, 0]).map(n => Number(n).toFixed(2))
+    const colorHex = data.color
+      ? (typeof data.color === 'number' ? '#' + data.color.toString(16).padStart(6, '0') : data.color)
+      : '#ffe14d'
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label">Type</span>
+        <input class="oi-input" value="locationNode — OmniPointing" readonly tabindex="-1">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Title</span>
+        <input class="oi-input" value="${(data.label ?? '').replace(/"/g, '&quot;')}" readonly tabindex="-1">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Color</span>
+        <input type="color" id="oi-loc-color-readout" value="${colorHex}" disabled style="width:28px;height:22px;padding:0;border-radius:4px;border:1px solid rgba(255,255,255,0.15)">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Coordinate</span>
+        <input class="oi-input" value="(${x}, ${y}, ${z})" readonly tabindex="-1">
+      </div>
+      <div class="oi-domain-status">
+        Title edits in Identity → Label and color edits in Appearance apply here too — this section is a combined readout, not a separate copy.
+      </div>
+    `
+  }
+
+  _wireLocation (body, data) {
+    // Nothing to wire yet — every field here is a read-only readout of
+    // state owned (and made editable) by the Identity/Appearance
+    // sections above. Kept as its own wire function to match this
+    // file's established per-section pattern (HTML fn + wire fn) even
+    // though it's currently a no-op, so a future locationNode-specific
+    // control (e.g. a "re-snap to grid" button) has an obvious home.
+  }
+
+  // ── DOMAIN section HTML — mark as space, enter/exit ─────────────────────
+
+  _domainHTML (data) {
+    const isDomain   = !!data.isDomain
+    const spaceImage = data.spaceImage ?? ''
+    const isCurrent  = this._currentSpaceId === data.id
+
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label">Is Domain</span>
+        <button class="oi-toggle ${isDomain ? 'is-on' : ''}" id="oi-is-domain" role="switch" aria-checked="${isDomain}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Space Img</span>
+        <input class="oi-input" id="oi-space-image" value="${spaceImage}"
+               placeholder="Image URL for this space's theme…">
+      </div>
+      <div class="oi-domain-status ${isCurrent ? 'is-current' : ''}">
+        ${isCurrent
+          ? '⟐ This is the currently entered space'
+          : (isDomain ? 'Marked as a domain — not currently entered' : 'Not yet marked as a domain')}
+      </div>
+      <div class="oi-row" style="gap:8px">
+        <button class="oi-domain-btn oi-domain-btn--enter" id="oi-enter-space" ${(!isDomain || isCurrent) ? 'disabled' : ''}>
+          ⟐ Enter as Space
+        </button>
+        <button class="oi-domain-btn oi-domain-btn--exit" id="oi-exit-space" ${!isCurrent ? 'disabled' : ''}>
+          Exit Space
+        </button>
+      </div>
+      <div class="oi-domain-note">
+        Objects created (below, or via the ⟐Objects panel) while this
+        space is entered will belong to it — parented to its geometry,
+        positioned relative to its own origin.
+      </div>
+    `
+  }
+
+  // ── HIERARCHY section HTML ────────────────────────────────────────────────
+
+  /** Rotation automation for an already-placed object — same fields
+   *  ui/OmniDraw.js offers at creation time, but editable anytime here
+   *  instead of being locked in once at creation. Same pattern as
+   *  WallpaperSphere's own always-adjustable rotation. */
+  _automationHTML (data) {
+    const d = data
+    const rangeRow = (label, key, val, min = -5, max = 5, step = 0.1) => /* html */`
+      <div class="oi-row">
+        <span class="oi-row-label">${label}</span>
+        <input type="range" class="oi-mat-prop-range" data-auto-key="${key}" min="${min}" max="${max}" step="${step}" value="${val}">
+        <span class="oi-mat-prop-val" data-auto-val-for="${key}">${Number(val).toFixed(2)}</span>
+      </div>
+    `
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Auto-Rotate</span>
+        <button class="oi-toggle ${d.autoRotation ? 'is-on' : ''}" id="oi-auto-rotation" role="switch" aria-checked="${!!d.autoRotation}"></button>
+      </div>
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">X (vertical)</span>
+        <button class="oi-toggle ${d.autoRotationAxisX ? 'is-on' : ''}" data-auto-axis="X" role="switch" aria-checked="${!!d.autoRotationAxisX}"></button>
+      </div>
+      ${rangeRow('Speed X', 'autoRotationSpeedX', d.autoRotationSpeedX ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Y (horizontal)</span>
+        <button class="oi-toggle ${d.autoRotationAxisY ? 'is-on' : ''}" data-auto-axis="Y" role="switch" aria-checked="${!!d.autoRotationAxisY}"></button>
+      </div>
+      ${rangeRow('Speed Y', 'autoRotationSpeedY', d.autoRotationSpeedY ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Z (depth)</span>
+        <button class="oi-toggle ${d.autoRotationAxisZ ? 'is-on' : ''}" data-auto-axis="Z" role="switch" aria-checked="${!!d.autoRotationAxisZ}"></button>
+      </div>
+      ${rangeRow('Speed Z', 'autoRotationSpeedZ', d.autoRotationSpeedZ ?? 1)}
+
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Look At</span>
+        <select class="oi-select" id="oi-lookat-mode">
+          ${['None', 'Camera', 'Coordinate'].map(m => `<option value="${m}" ${(d.lookAtMode ?? 'None') === m ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div id="oi-lookat-coord" style="${(d.lookAtMode ?? 'None') === 'Coordinate' ? '' : 'display:none'}">
+        <div class="oi-row">
+          <span class="oi-row-label">X</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="0" step="0.1" value="${d.lookAtCoordinate?.[0] ?? 0}">
+          <span class="oi-row-label">Y</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="1" step="0.1" value="${d.lookAtCoordinate?.[1] ?? 0}">
+          <span class="oi-row-label">Z</span>
+          <input type="number" class="oi-num-input" data-lookat-coord="2" step="0.1" value="${d.lookAtCoordinate?.[2] ?? 0}">
+        </div>
+      </div>
+    `
+  }
+
+  _wireAutomation (body, data) {
+    const dispatch = (patch) => {
+      Object.assign(data, patch)
+      window.dispatchEvent(new CustomEvent('omni:node-rotation-automation-set', {
+        detail: { id: data.id, ...patch }
+      }))
+    }
+
+    body.querySelector('#oi-auto-rotation')?.addEventListener('click', (e) => {
+      const next = !e.currentTarget.classList.contains('is-on')
+      e.currentTarget.classList.toggle('is-on', next)
+      e.currentTarget.setAttribute('aria-checked', String(next))
+      dispatch({ autoRotation: next })
+    })
+
+    body.querySelectorAll('[data-auto-axis]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const axis = btn.dataset.autoAxis
+        const next = !btn.classList.contains('is-on')
+        btn.classList.toggle('is-on', next)
+        btn.setAttribute('aria-checked', String(next))
+        dispatch({ [`autoRotationAxis${axis}`]: next })
+      })
+    })
+
+    body.querySelectorAll('[data-auto-key]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const key = input.dataset.autoKey
+        const value = Number(e.target.value)
+        const valEl = body.querySelector(`[data-auto-val-for="${key}"]`)
+        if (valEl) valEl.textContent = value.toFixed(2)
+        dispatch({ [key]: value })
+      })
+    })
+
+    body.querySelector('#oi-lookat-mode')?.addEventListener('change', (e) => {
+      const mode = e.target.value
+      dispatch({ lookAtMode: mode })
+      const coordWrap = body.querySelector('#oi-lookat-coord')
+      if (coordWrap) coordWrap.style.display = mode === 'Coordinate' ? '' : 'none'
+    })
+
+    body.querySelectorAll('[data-lookat-coord]').forEach(input => {
+      input.addEventListener('input', () => {
+        const idx = Number(input.dataset.lookatCoord)
+        const coord = [...(data.lookAtCoordinate ?? [0, 0, 0])]
+        coord[idx] = Number(input.value)
+        dispatch({ lookAtCoordinate: coord })
+      })
+    })
+  }
+
+
+  // ── TIME section (V172) — puts the node on the OmniChronos timeline. The clip / keyframes live in
+  // utils/OmniTimeline.js (NOT in node data), so this works the same for nodes of either registry; the
+  // timeline view and this section stay in step through omni:timeline-changed (two-way). ──────────────────
+
+  _timeHTML (data) {
+    return /* html */`<div id="oi-time-root" data-node="${data.id}"></div>
+      <div class="oi-domain-note">A node with a clip is shown only while the playhead (Primary Time) is inside it; keyframes animate position, scale, rotation Y, opacity and colour. Nodes without a clip are never touched. Edit here or drag the clip in ⟐OmniChronos.</div>`
+  }
+
+  _wireTime (body, data) {
+    this._timeRoot = body.querySelector('#oi-time-root')
+    this._renderTime()
+  }
+
+  /** Re-render only the Time section's inner DOM (cheap; keeps the other sections and their open state). */
+  _renderTime () {
+    const root = this._timeRoot?.isConnected ? this._timeRoot : this._el?.querySelector('#oi-time-root')
+    const id = this._currentId
+    if (!root || !id) return
+    this._timeRoot = root
+    root.textContent = ''
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e }
+    const row = (label) => { const r = mk('div', 'oi-row'); const l = mk('span', 'oi-label', label); l.style.width = 'auto'; r.appendChild(l); return r }
+    const player = getTimelinePlayer()
+    const clips = TL.getClipsForNode(id)
+    if (!this._timeClipId || !clips.some(c => c.id === this._timeClipId)) this._timeClipId = clips[0]?.id ?? null
+    const clip = clips.find(c => c.id === this._timeClipId) ?? null
+    const refresh = () => this._renderTime()
+
+    // switch rows use the Inspector's own label + checkbox structure (the .oi-toggle button style used by older sections has no CSS)
+    const switchRow = (label, id, checked, onChange) => {
+      const r = row(label)
+      const wrap = mk('div', 'oi-toggle-wrap'); const lab = mk('label', 'oi-toggle')
+      const inp = mk('input'); inp.type = 'checkbox'; inp.id = id; inp.checked = !!checked; inp.setAttribute('role', 'switch')
+      lab.append(inp, mk('div', 'oi-toggle-track'), mk('div', 'oi-toggle-thumb'))
+      inp.addEventListener('change', () => onChange(inp.checked))
+      wrap.appendChild(lab); r.appendChild(wrap); root.appendChild(r)
+    }
+    switchRow('On timeline', 'oi-time-on', clips.length > 0, (on) => {
+      if (!on) TL.removeClipsForNode(id)
+      else {
+        const c = TL.addClip({ nodeId: id, start: TL.getT(), duration: 5, label: this._currentData?.label ?? id })
+        if (c) this._timeClipId = c.id
+      }
+      player?.evaluateNow()
+      refresh()
+    })
+    if (!clip) {
+      root.appendChild(mk('div', 'oi-domain-note', 'Not on the timeline. Switch it on to create a 5-second clip at the playhead.'))
+      return
+    }
+    // several clips of this node: pick one
+    if (clips.length > 1) {
+      const r = row('Clip')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-clip'
+      clips.forEach((c, i) => { const o = mk('option', null, `${i + 1} / ${clips.length} · ${TL.toTimecode(c.start)}`); o.value = c.id; sel.appendChild(o) })
+      sel.value = clip.id
+      sel.addEventListener('change', () => { this._timeClipId = sel.value; refresh() })
+      r.appendChild(sel); root.appendChild(r)
+    }
+    // Track
+    {
+      const r = row('Track')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-track'
+      for (const t of TL.getTracks().filter(x => x.kind === 'node')) { const o = mk('option', null, t.name + (t.locked ? ' 🔒' : '')); o.value = t.id; sel.appendChild(o) }
+      const nw = mk('option', null, '＋ New track'); nw.value = '__new'; sel.appendChild(nw)
+      sel.value = clip.trackId
+      sel.addEventListener('change', () => {
+        let tid = sel.value
+        if (tid === '__new') tid = TL.addTrack()?.id ?? clip.trackId
+        TL.updateClip(clip.id, { trackId: tid })
+        player?.evaluateNow(); refresh()
+      })
+      r.appendChild(sel); root.appendChild(r)
+    }
+    // Start / Duration (seconds, with the timecode beside them)
+    const numRow = (label, key, min, idSuffix) => {
+      const r = row(label)
+      const i = mk('input', 'oi-num-input'); i.type = 'number'; i.step = '0.1'; i.min = String(min); i.id = `oi-time-${idSuffix}`
+      i.value = String(+clip[key].toFixed(3))
+      const tc = mk('span', 'oi-row-label', TL.toTimecode(clip[key]))
+      i.addEventListener('change', () => {
+        const v = parseFloat(i.value)
+        if (Number.isFinite(v)) TL.updateClip(clip.id, { [key]: v })
+        player?.evaluateNow(); refresh()
+      })
+      r.append(i, tc); root.appendChild(r)
+    }
+    numRow('Start (s)', 'start', 0, 'start')
+    numRow('Duration (s)', 'duration', TL.MIN_DUR, 'duration')
+    switchRow('Loop', 'oi-time-loop', clip.loop, (on) => { TL.updateClip(clip.id, { loop: on }); player?.evaluateNow(); refresh() })
+    // Keyframes
+    {
+      const r = row('Keyframe')
+      const sel = mk('select', 'oi-select'); sel.id = 'oi-time-prop'
+      for (const p of TL.KEY_PROPS) { const o = mk('option', null, p.label); o.value = p.id; sel.appendChild(o) }
+      sel.value = this._timeProp ?? 'position.y'
+      sel.addEventListener('change', () => { this._timeProp = sel.value })
+      const add = mk('button', 'oi-btn-small', '◇ At playhead'); add.id = 'oi-time-addkey'
+      add.title = 'Add a keyframe at the playhead with the node\'s current value (the playhead must be inside the clip)'
+      add.addEventListener('click', () => {
+        const prop = sel.value; this._timeProp = prop
+        const t = TL.getT()
+        const list = TL.getKeysForClip(clip.id).filter(k => k.property === prop)
+        const v = list.length ? TL.evalKeyList(list, TL.sourceTime(clip, t, clip.loop ? TL.cycleLength(clip) : 0), prop) : getTimelineNodeValue(id, prop)
+        const k = v == null ? null : TL.addKeyAtTime(clip.id, prop, t, v)
+        if (!k) window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: 'Inspector · Time', desc: v == null ? 'That node is not in the scene, so there is no value to key.' : 'Move the playhead inside the clip first.', holdMs: 3000 } }))
+        player?.evaluateNow(); refresh()
+      })
+      r.append(sel, add); root.appendChild(r)
+    }
+    const keys = TL.getKeysForClip(clip.id)
+    for (const k of keys.slice(0, 60)) {
+      const p = TL.getKeyProp(k.property)
+      const r = mk('div', 'oi-row'); r.dataset.key = k.id
+      const tt = clip.start + (k.t - clip.inPoint)
+      const go = mk('button', 'oi-btn-small', TL.toTimecode(tt)); go.title = 'Move the playhead to this keyframe'
+      go.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:timeline-seek', { detail: { t: tt } })))
+      const lab = mk('span', 'oi-row-label', p?.label ?? k.property)
+      const vi = mk('input', 'oi-num-input'); vi.type = p?.kind === 'color' ? 'color' : 'number'
+      if (p?.kind === 'color') vi.value = k.value; else { vi.step = String(p?.step ?? 0.1); vi.value = String(+k.value.toFixed(3)) }
+      vi.addEventListener('change', () => { TL.updateKey(k.id, { value: p?.kind === 'color' ? vi.value : parseFloat(vi.value) }); player?.evaluateNow(); refresh() })
+      const del = mk('button', 'oi-btn-small oi-btn-small--danger', '✕'); del.title = 'Delete this keyframe'
+      del.addEventListener('click', () => { TL.removeKey(k.id); player?.evaluateNow(); refresh() })
+      r.append(go, lab, vi, del); root.appendChild(r)
+    }
+    if (!keys.length) root.appendChild(mk('div', 'oi-domain-note', 'No keyframes on this clip yet.'))
+    const rv = mk('button', 'oi-btn-small oi-btn-small--full', 'Reveal on timeline'); rv.id = 'oi-time-reveal'
+    rv.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { drawer: 'inspector', item: '⟐OmniChronos', parent: null, path: 'inspector/⟐OmniChronos' } }))
+      window.dispatchEvent(new CustomEvent('omni:timeline-reveal', { detail: { nodeId: id } }))
+    })
+    root.appendChild(rv)
+  }
+
+  /** omni:timeline-changed (a clip was dragged in the timeline, a key was added ...): refresh the Time section unless
+   *  the user is typing in it right now. */
+  _refreshTimeSection () {
+    if (!this._currentId || !this._isOpen) return
+    const root = this._el?.querySelector('#oi-time-root')
+    if (!root) return
+    const a = document.activeElement
+    if (a && root.contains(a) && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) return
+    this._renderTime()
+  }
+
+  // ── BEHAVIOR section — NodeBehavior (systems/OmniNodeBehavior.js). Works for
+  // ANY node, in either registry (OmniNode's or NodeLoader's): it only talks to the
+  // behaviour engine by event; the engine persists through the same
+  // omni:node-rotation-automation-set path the Automation section uses. ─────────
+
+  _behaviorHTML (data) {
+    return /* html */`<div id="oi-bhv-root" data-node="${data.id}"></div>
+      <div class="oi-domain-note">Behaviours the engine runs: motion, rotation and scale of real nodes. "Signal" ones (Transform, Amplify … Mediate) are a visual metaphor only. Stopped nodes return to their saved spot.</div>`
+  }
+
+  _wireBehavior (body, data) {
+    const root = body.querySelector('#oi-bhv-root')
+    if (!root) return
+    this._bhvForm?.destroy()
+    this._bhvForm = null
+    const send = (behavior) => {
+      data.behavior = behavior
+      window.dispatchEvent(new CustomEvent('omni:node-behavior-set', { detail: { nodeId: data.id, behavior } }))
+    }
+    const render = () => {
+      this._bhvForm?.destroy(); this._bhvForm = null
+      root.textContent = ''
+      const cfg = data.behavior
+      const row = document.createElement('div'); row.className = 'oi-row'
+      const lab = document.createElement('span'); lab.className = 'oi-label'; lab.style.width = 'auto'; lab.textContent = 'Behavior'
+      const sel = document.createElement('select'); sel.className = 'oi-select'; sel.id = 'oi-bhv-type'
+      const none = document.createElement('option'); none.value = ''; none.textContent = '— none —'; sel.appendChild(none)
+      for (const cls of BEHAVIOR_CLASSES) {
+        const g = document.createElement('optgroup'); g.label = cls
+        for (const n of Object.keys(BEHAVIOR_TABLE)) if (BEHAVIOR_TABLE[n].cls === cls) { const o = document.createElement('option'); o.value = n; o.textContent = n + (BEHAVIOR_TABLE[n].tier === 'B' ? ' ≈' : ''); g.appendChild(o) }
+        sel.appendChild(g)
+      }
+      sel.value = cfg?.type ?? ''
+      row.append(lab, sel)
+      root.appendChild(row)
+      sel.addEventListener('change', () => {
+        if (!sel.value) { send(null); render(); return }
+        const prev = data.behavior
+        send({ type: sel.value, params: behaviorDefaults(sel.value), targets: prev?.targets ?? [], enabled: true, role: BEHAVIOR_TABLE[sel.value]?.role ?? null })
+        render()
+      })
+      if (!cfg) return
+      const en = document.createElement('div'); en.className = 'oi-row'
+      const el2 = document.createElement('span'); el2.className = 'oi-label'; el2.style.width = 'auto'; el2.textContent = 'Enabled'
+      const tg = document.createElement('button'); tg.className = 'oi-toggle' + (cfg.enabled !== false ? ' is-on' : ''); tg.id = 'oi-bhv-enabled'; tg.setAttribute('role', 'switch'); tg.setAttribute('aria-checked', String(cfg.enabled !== false))
+      tg.addEventListener('click', () => {
+        const next = !(data.behavior.enabled !== false)
+        tg.classList.toggle('is-on', next); tg.setAttribute('aria-checked', String(next))
+        send({ ...data.behavior, enabled: next })
+      })
+      en.append(el2, tg)
+      const rm = document.createElement('button'); rm.className = 'oi-domain-btn'; rm.id = 'oi-bhv-remove'; rm.textContent = 'Remove behavior'; rm.style.marginLeft = 'auto'
+      rm.addEventListener('click', () => { send(null); render() })
+      en.appendChild(rm)
+      root.appendChild(en)
+      this._bhvForm = createBehaviorForm({ cfg, hostId: data.id, onChange: (c) => send({ ...c, enabled: data.behavior?.enabled !== false }) })
+      root.appendChild(this._bhvForm.el)
+    }
+    render()
+  }
+
+  // ── PROGRAM section — real, per-object step sequence. Applies to
+  // any OmniDraw object (not gated to a specific data.label the way
+  // _customOptionsHTML's MasterClock block is), per direct request.
+  // See systems/OmniProgramCommands.js for the shared command
+  // definitions, step-row markup and the actual gsap-timeline runner.
+
+  _programHTML (data, ext) {
+    const prog = ext?.program ?? { enabled: false, steps: [], autoPersist: false, repeat: 'once' }
+    const steps = prog.steps ?? []
+    const repeat = prog.repeat ?? 'once'
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Program</span>
+        <div class="oi-toggle-wrap">
+          <label class="oi-toggle">
+            <input type="checkbox" id="oi-program-enabled" ${prog.enabled ? 'checked' : ''}>
+            <div class="oi-toggle-track"></div>
+            <div class="oi-toggle-thumb"></div>
+          </label>
+          <span class="oi-toggle-label">Enabled</span>
+        </div>
+      </div>
+      <div class="oi-data-note">
+        A real step sequence for this object — Move / Rotate / Scale
+        genuinely tween it; Communicate / Notify push through the real
+        ⟐OmniNotify pipeline. Group bundles an ordered set of steps
+        (including further Groups) into one container, run in order
+        like any other step. Works on any OmniDraw object. Running a
+        program plays it live — it doesn't overwrite this object's
+        saved position/rotation/scale.
+      </div>
+      <div id="oi-program-body" style="${prog.enabled ? '' : 'display:none'}">
+        <div class="oi-program-steps" id="oi-program-steps">
+          ${steps.length ? steps.map((s, i) => stepRowHTML(s, i)).join('') : '<div class="oi-program-empty">No steps yet — add one below.</div>'}
+        </div>
+        <div class="oi-row">
+          <button class="oi-btn-small" id="oi-program-add-step">+ Add Step</button>
+          <button class="oi-btn-small" id="oi-program-add-group">+ Add Group</button>
+          <button class="oi-btn-small" id="oi-program-open-editor">Open Full Editor ⟐</button>
+        </div>
+
+        <div class="oi-row">
+          <span class="oi-label" style="width:auto">Run Mode</span>
+          <select class="oi-select" id="oi-program-repeat">
+            <option value="once" ${repeat === 'once' ? 'selected' : ''}>Once</option>
+            <option value="infinite" ${repeat === 'infinite' ? 'selected' : ''}>Infinite (loop)</option>
+          </select>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label" style="width:auto">Auto-Persist</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-program-autopersist" ${prog.autoPersist ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+              <div class="oi-toggle-thumb"></div>
+            </label>
+            <span class="oi-toggle-label">Save end state</span>
+          </div>
+        </div>
+        <div class="oi-data-note">
+          Auto-Persist writes the object's position/rotation/scale back
+          to its saved data — once, when a "Once" run finishes, or
+          after every lap when Run Mode is "Infinite". Off by default:
+          without it, a run is a live animation only.
+        </div>
+
+        <button class="oi-btn-small oi-program-begin" id="oi-program-begin" ${steps.length ? '' : 'disabled'}>⟐OmniBegin(Program)</button>
+      </div>
+    `
+  }
+
+  _wireProgram (body, data, ext) {
+    ext.program = { enabled: false, steps: [], autoPersist: false, repeat: 'once', ...ext.program }
+    const prog = ext.program
+
+    // Steps can now nest (Group), so every row is addressed by its
+    // dotted-index path ("0", "0.2", "0.2.1", ...) via
+    // resolveStepPath() rather than a flat array index — this handles
+    // a step at any depth, top-level or inside any number of nested
+    // Groups, with the same handful of listeners rather than one set
+    // per nesting level.
+    const wireStepRows = () => {
+      body.querySelectorAll('.op-step-cmd').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const hit = resolveStepPath(prog.steps, sel.dataset.path)
+          if (!hit) return
+          hit.arr[hit.index] = defaultStep(e.target.value)
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-field-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const hit = resolveStepPath(prog.steps, input.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
+          const field = input.dataset.field
+          step[field] = input.type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value
+          this._saveExt()
+        })
+      })
+      body.querySelectorAll('.op-step-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(prog.steps, btn.dataset.path)
+          if (!hit) return
+          hit.arr.splice(hit.index, 1)
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-collapse').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(prog.steps, btn.dataset.path)
+          if (!hit) return
+          const step = hit.arr[hit.index]
+          step.collapsed = !step.collapsed
+          this._saveExt()
+          rerenderSteps()
+        })
+      })
+      body.querySelectorAll('.op-step-add-nested').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hit = resolveStepPath(prog.steps, btn.dataset.groupPath)
+          if (!hit) return
+          const group = hit.arr[hit.index]
+          if (!Array.isArray(group.steps)) group.steps = []
+          group.steps.push(defaultStep('move'))
+          this._saveExt()
+          rerenderSteps()
+          this._playSound('click')
+        })
+      })
+    }
+
+    const rerenderSteps = () => {
+      const container = body.querySelector('#oi-program-steps')
+      if (container) {
+        container.innerHTML = prog.steps.length
+          ? prog.steps.map((s, i) => stepRowHTML(s, i)).join('')
+          : '<div class="oi-program-empty">No steps yet — add one below.</div>'
+      }
+      const beginBtn = body.querySelector('#oi-program-begin')
+      if (beginBtn) beginBtn.disabled = prog.steps.length === 0
+      wireStepRows()
+    }
+    wireStepRows()
+    // Exposed so _onProgramSet (the full Editor Panel's cross-panel
+    // Save notification, below) can re-wire freshly-rendered rows
+    // after it replaces #oi-program-steps' innerHTML — otherwise the
+    // new rows (including any nested group rows) would render but
+    // have no click/input listeners attached to them at all.
+    this._programRewireSteps = wireStepRows
+
+    body.querySelector('#oi-program-enabled')?.addEventListener('change', (e) => {
+      prog.enabled = e.target.checked
+      const progBody = body.querySelector('#oi-program-body')
+      if (progBody) progBody.style.display = prog.enabled ? '' : 'none'
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-add-step')?.addEventListener('click', () => {
+      prog.steps.push(defaultStep('move'))
+      this._saveExt()
+      rerenderSteps()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-add-group')?.addEventListener('click', () => {
+      prog.steps.push(defaultStep('group'))
+      this._saveExt()
+      rerenderSteps()
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-repeat')?.addEventListener('change', (e) => {
+      prog.repeat = e.target.value
+      this._saveExt()
+    })
+
+    body.querySelector('#oi-program-autopersist')?.addEventListener('change', (e) => {
+      prog.autoPersist = e.target.checked
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    const beginBtnEl = body.querySelector('#oi-program-begin')
+    beginBtnEl?.addEventListener('click', () => {
+      // Second click while a program is running stops it — the only
+      // real way to cancel an 'infinite' run, which otherwise loops
+      // forever with no UI to cancel it from.
+      if (this._programTimeline && this._programTimeline.isActive()) {
+        this._programTimeline.kill()
+        this._programTimeline = null
+        beginBtnEl.textContent = '⟐OmniBegin(Program)'
+        beginBtnEl.classList.remove('is-running')
+        this._playSound('click')
+        return
+      }
+      if (!this._currentMesh || prog.steps.length === 0) return
+      this._programTimeline = runProgram(this._currentMesh, prog.steps, data.label ?? data.id, {
+        repeat: prog.repeat, autoPersist: prog.autoPersist, nodeId: data.id,
+      })
+      beginBtnEl.textContent = '⟐ Stop'
+      beginBtnEl.classList.add('is-running')
+      this._programTimeline.eventCallback('onComplete', () => {
+        this._programTimeline = null
+        beginBtnEl.textContent = '⟐OmniBegin(Program)'
+        beginBtnEl.classList.remove('is-running')
+      })
+      this._playSound('click')
+    })
+
+    body.querySelector('#oi-program-open-editor')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:program-panel-open-request', {
+        detail: {
+          id: data.id,
+          label: data.label ?? data.id,
+          program: structuredClone(prog),
+        }
+      }))
+    })
+  }
+
+  _hierarchyHTML (data) {
+    const parentId = data.parentId ?? '—'
+    const rootId   = data.rootId   ?? '—'
+    const depth    = data.depth    ?? 0
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label">Parent</span>
+        <button class="oi-input oi-parent-picker-btn" id="oi-parent-picker-btn"
+                title="Click to choose a parent from all created objects">${parentId}</button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Root</span>
+        <input class="oi-input" value="${rootId}" readonly tabindex="-1">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label">Depth</span>
+        <input class="oi-input oi-input--sm" value="${depth}" readonly tabindex="-1">
+      </div>
+
+      <!-- Parent picker — populated live from the full node array on open -->
+      <div class="oi-parent-picker" id="oi-parent-picker" style="display:none">
+        <div class="oi-parent-picker-header">
+          <span>Choose parent</span>
+          <button class="oi-parent-picker-close" id="oi-parent-picker-close">✕</button>
+        </div>
+        <div class="oi-parent-picker-list" id="oi-parent-picker-list"></div>
+      </div>
+
+      <div class="oi-geneo-title">Genealogy — click to expand</div>
+      <div class="oi-geneo-root" id="oi-geneo-root"></div>
+    `
+  }
+
+  // ── APPEARANCE section HTML ───────────────────────────────────────────────
+
+  /** Mirrors OmniDraw's own _readAdminSteps — falls back to 0.1 per
+   *  axis (the value this field used to have hardcoded) if the Admin
+   *  setting doesn't exist yet or only partially specifies an axis. */
+  _readAdminSteps () {
+    const fallback = { px: 0.1, py: 0.1, pz: 0.1 }
+    try {
+      const raw = localStorage.getItem('omni:admin:settings')
+      const saved = raw ? JSON.parse(raw)?.steps : null
+      return saved ? { ...fallback, ...saved } : fallback
+    } catch (_) { return fallback }
+  }
+
+  /**
+   * Per-node-type custom options — a small, deliberately open-ended
+   * registry keyed by node label. Most nodes match nothing and render
+   * an empty string (the section simply doesn't appear). A node type
+   * that needs its own real controls — not generic shape/material/
+   * transform fields — adds an entry here instead of a one-off special
+   * case scattered through the rest of this file.
+   *
+   * MasterClock (modules/ChronosFloorClock.js) is the first real
+   * entry: its actual settings (time format, tunnel enabled, Z-axis
+   * mode) live in `omni:chronos:settings` / ui/OmniChronos.js, which
+   * used to be the only way to reach them — this surfaces the same
+   * settings right where the clock node itself is already open, so
+   * opening OmniChronos separately is no longer required for the
+   * common case of just wanting to check/change them.
+   */
+  _customOptionsHTML (data) {
+    if (isKindData(data)) return kindOptionsHTML(data, { edges: this._allEdges, nodes: this._allNodes }) + this._sequenceOptionsHTML(data)
+    if (isExtraKind(data)) return extraOptionsHTML(data) + this._sequenceOptionsHTML(data)   // V191
+    if (data?.isGroupNode) return this._groupOptionsHTML(data)
+    if (data?.isEssenceNode) return this._essenceOptionsHTML(data) + this._sequenceOptionsHTML(data)
+    if (data?.label !== 'MasterClock') return this._sequenceOptionsHTML(data)
+
+    let chronos = { enabled: true, zAxis: false, timeFormat: 'military' }
+    try {
+      const raw = localStorage.getItem('omni:chronos:settings')
+      if (raw) chronos = { ...chronos, ...JSON.parse(raw) }
+    } catch (_) { /* falls back to the defaults above */ }
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-masterclock">
+        <div class="oi-custom-title">⏱ Clock Settings</div>
+        <div class="oi-row">
+          <span class="oi-label">Tunnel enabled</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-clock-enabled" ${chronos.enabled ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label">Z-axis mode</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-clock-zaxis" ${chronos.zAxis ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        <div class="oi-row">
+          <span class="oi-label">Time format</span>
+          <select class="oi-select" id="oi-clock-format">
+            <option value="military" ${chronos.timeFormat === 'military' ? 'selected' : ''}>Military (24h)</option>
+            <option value="ampm"     ${chronos.timeFormat === 'ampm'     ? 'selected' : ''}>AM / PM</option>
+          </select>
+        </div>
+        <div class="oi-custom-note">The full ⟐Chronos panel still has the tunnel's transparency option and teleport transition — this covers the settings that belong to the clock itself.</div>
+      </div>
+    `
+  }
+
+  /** Sequence Node — "the spatial equivalent of a slide/keyframe"
+   *  (direct request). Any node, any geometry, can carry this flag.
+   *  cameraMode decides what the camera does once OmniPresenter arrives
+   *  here: Focus keeps orbit controls suspended (the scripted "presenter
+   *  talking to camera" framing, right for tutorials), Free hands orbit
+   *  back to the user immediately (look around while still at this
+   *  step). What it "changes to" isn't set here — it's drawn as an edge
+   *  in ⟐N's PATH mode, same as any connection; this section just
+   *  explains that rather than duplicating the picker.
+   */
+  _sequenceOptionsHTML (data) {
+    if (data?.isGroupNode) return ''
+    const on = !!data.isSequenceNode
+    const cameraMode = data.cameraMode ?? 'focus'
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-sequence">
+        <div class="oi-custom-title">⟐p Sequence Node</div>
+        <div class="oi-row">
+          <span class="oi-label">Sequence Node</span>
+          <div class="oi-toggle-wrap">
+            <label class="oi-toggle">
+              <input type="checkbox" id="oi-seq-enabled" ${on ? 'checked' : ''}>
+              <div class="oi-toggle-track"></div>
+            </label>
+          </div>
+        </div>
+        ${on ? /* html */`
+          <div class="oi-row">
+            <span class="oi-label">Camera on arrival</span>
+            <select class="oi-select" id="oi-seq-camera">
+              <option value="focus" ${cameraMode === 'focus' ? 'selected' : ''}>Focus (scripted)</option>
+              <option value="free"  ${cameraMode === 'free'  ? 'selected' : ''}>Free (user looks around)</option>
+            </select>
+          </div>
+          <div class="oi-custom-note">Draw an edge from this node in ⟐N's PATH mode to set what it changes to — only one at a time; drawing a new one replaces the old target. ⟐OmniPresenter walks the chain automatically.</div>
+        ` : /* html */`
+          <div class="oi-custom-note">A Sequence Node is one stop in a spatial presentation — any geometry, ⟐OmniPresenter walks a chain of them in order.</div>
+        `}
+      </div>
+    `
+  }
+
+  _wireSequenceOptions (body, data) {
+    body.querySelector('#oi-seq-enabled')?.addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:sequence-node-set', {
+        detail: { id: data.id, isSequenceNode: e.target.checked, cameraMode: data.cameraMode ?? 'focus' }
+      }))
+      // Re-render this section in place so the camera-mode row appears/
+      // disappears immediately, same pattern Essence Data uses.
+      const section = body.querySelector('#oi-custom-sequence')
+      if (section) {
+        const pseudo = { ...data, isSequenceNode: e.target.checked }
+        section.outerHTML = this._sequenceOptionsHTML(pseudo)
+        this._wireSequenceOptions(body, pseudo)
+      }
+    })
+    body.querySelector('#oi-seq-camera')?.addEventListener('change', (e) => {
+      window.dispatchEvent(new CustomEvent('omni:sequence-node-set', {
+        detail: { id: data.id, isSequenceNode: true, cameraMode: e.target.value }
+      }))
+    })
+  }
+
+  /** GroupNode section — member list plus Ungroup/Merge/Duplicate, the
+   *  CRUD set from the ⟐OmniSelect "Group These" feature. A group is a
+   *  real node (systems/OmniNode.js's _createGroup et al.) whose mesh
+   *  is the actual parent of every member mesh, so this is genuinely
+   *  editing structure, not just a label. */
+  _groupOptionsHTML (data) {
+    const memberIds = data.groupMemberIds ?? []
+    const members = memberIds.map(id => (this._allNodes ?? []).find(n => n.id === id)).filter(Boolean)
+    const otherGroups = (this._allNodes ?? []).filter(n => n.isGroupNode && n.id !== data.id)
+
+    const memberRows = members.length
+      ? members.map(m => `<div class="oi-custom-note" style="margin:0 0 4px;">• ${m.label ?? m.id}</div>`).join('')
+      : `<div class="oi-custom-note">No members — this group is empty.</div>`
+
+    const mergeOptions = otherGroups.length
+      ? otherGroups.map(g => `<option value="${g.id}">${g.label ?? g.id}</option>`).join('')
+      : `<option value="" disabled selected>No other groups yet</option>`
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-group">
+        <div class="oi-custom-title">⟐ Group (${members.length})</div>
+        ${memberRows}
+
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-ungroup" style="margin-top:8px;">Ungroup</button>
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-duplicate" style="margin-top:6px;">Duplicate Group</button>
+
+        <div class="oi-row" style="margin-top:10px;">
+          <span class="oi-label">Merge with</span>
+          <select class="oi-select" id="oi-group-merge-target" ${otherGroups.length ? '' : 'disabled'}>
+            ${mergeOptions}
+          </select>
+        </div>
+        <button class="oi-btn-small oi-btn-small--full" id="oi-group-merge" ${otherGroups.length ? '' : 'disabled'}>Merge</button>
+
+        <div class="oi-custom-note">Ungroup releases every member back to where it was before grouping. Merge dissolves both groups and re-groups everything into one. Duplicate clones the whole group, members included.</div>
+      </div>
+    `
+  }
+
+  _wireGroupOptions (body, data) {
+    body.querySelector('#oi-group-ungroup')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:group-ungroup-request', { detail: { groupId: data.id } }))
+    })
+    body.querySelector('#oi-group-duplicate')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:group-duplicate-request', { detail: { groupId: data.id } }))
+    })
+    body.querySelector('#oi-group-merge')?.addEventListener('click', () => {
+      const targetId = body.querySelector('#oi-group-merge-target')?.value
+      if (!targetId) return
+      window.dispatchEvent(new CustomEvent('omni:group-merge-request', { detail: { groupIds: [data.id, targetId] } }))
+    })
+  }
+
+  /** Essence Data — the Omni Claim section. Domain (the declared
+   *  perspective/story) plus one row per evidence question: an answer
+   *  and a stance (Truth/False/Neutral). State is a read-only computed
+   *  badge — never an input — because it's a tally of the evidence
+   *  below, not something the user sets directly (see
+   *  systems/OmniNode.js's _computeEssenceState). */
+  _essenceOptionsHTML (data) {
+    const domain = data.domain ?? { name: '', story: '' }
+    const questions = data.essenceQuestions ?? []
+    const evidence  = data.evidence ?? []
+    const state = data.essenceState ?? 'undefined'
+    const stateLabel = state === 'truth' ? 'TRUTH' : state === 'false' ? 'FALSE' : 'UNDEFINED'
+    const stateColor = state === 'truth' ? '#4caf50' : state === 'false' ? '#ff4444' : '#8899aa'
+
+    const rows = questions.map((q, i) => {
+      const ev = evidence[i]
+      const answer = ev?.answer ?? ''
+      const stance = ev?.stance ?? 'neutral'
+      return /* html */`
+        <div class="oi-essence-row" data-q-idx="${i}">
+          <div class="oi-essence-question">${q}</div>
+          <textarea class="oi-textarea" data-essence-answer="${i}" placeholder="Answer…">${answer}</textarea>
+          <div class="oi-row">
+            <select class="oi-select" data-essence-stance="${i}">
+              <option value="neutral" ${stance === 'neutral' ? 'selected' : ''}>Neutral / context</option>
+              <option value="truth"   ${stance === 'truth'   ? 'selected' : ''}>Supports Truth</option>
+              <option value="false"   ${stance === 'false'   ? 'selected' : ''}>Supports False</option>
+            </select>
+            <button class="oi-btn-small oi-btn-small--danger" data-essence-remove="${i}" title="Remove this question">✕</button>
+          </div>
+        </div>
+      `
+    }).join('')
+
+    return /* html */`
+      <div class="oi-custom-section" id="oi-custom-essence">
+        <div class="oi-custom-title">◈ Omni Claim</div>
+        <div class="oi-essence-state" style="color:${stateColor}; border-color:${stateColor}88;">${stateLabel}</div>
+
+        <div class="oi-row">
+          <span class="oi-label">Domain</span>
+          <input class="oi-input" id="oi-essence-domain-name" type="text" value="${domain.name ?? ''}" placeholder="Perspective / domain name">
+        </div>
+        <textarea class="oi-textarea" id="oi-essence-domain-story" placeholder="The story — what perspective is this claim being made from?">${domain.story ?? ''}</textarea>
+
+        <div class="oi-custom-title" style="margin-top:10px;">Evidence</div>
+        <div class="oi-essence-list" id="oi-essence-list">${rows}</div>
+
+        <div class="oi-row" style="margin-top:8px;">
+          <input class="oi-input" id="oi-essence-new-question" type="text" placeholder="Add a question…">
+          <button class="oi-btn-small" id="oi-essence-add-question">+ Add</button>
+        </div>
+
+        <div class="oi-custom-note">State is computed, not set — it's the tally of every answer's stance below. Undefined until there's evidence; a tie stays Undefined rather than guessing a side.</div>
+      </div>
+    `
+  }
+
+  _wireEssenceOptions (body, data) {
+    const questions = [...(data.essenceQuestions ?? [])]
+    const evidence  = [...(data.evidence ?? [])]
+    let domain = { ...(data.domain ?? { name: '', story: '' }) }
+
+    const computeState = () => {
+      let t = 0, f = 0
+      evidence.forEach(e => { if (e?.stance === 'truth') t++; else if (e?.stance === 'false') f++ })
+      if (t === 0 && f === 0) return 'undefined'
+      if (t > f) return 'truth'
+      if (f > t) return 'false'
+      return 'undefined'
+    }
+
+    const commit = () => {
+      window.dispatchEvent(new CustomEvent('omni:essence-evidence-set', {
+        detail: { id: data.id, domain, questions: [...questions], evidence: [...evidence] }
+      }))
+    }
+
+    const rerenderSection = () => {
+      const section = body.querySelector('#oi-custom-essence')
+      if (!section) return
+      const pseudo = { ...data, domain, essenceQuestions: questions, evidence, essenceState: computeState() }
+      section.outerHTML = this._essenceOptionsHTML(pseudo)
+      this._wireEssenceOptions(body, pseudo)
+    }
+
+    let domainTimer = null
+    body.querySelector('#oi-essence-domain-name')?.addEventListener('input', (e) => {
+      domain = { ...domain, name: e.target.value }
+      clearTimeout(domainTimer)
+      domainTimer = setTimeout(commit, 250)
+    })
+    body.querySelector('#oi-essence-domain-story')?.addEventListener('input', (e) => {
+      domain = { ...domain, story: e.target.value }
+      clearTimeout(domainTimer)
+      domainTimer = setTimeout(commit, 250)
+    })
+
+    let evidenceTimer = null
+    const scheduleEvidenceCommit = () => {
+      clearTimeout(evidenceTimer)
+      evidenceTimer = setTimeout(commit, 250)
+    }
+
+    body.querySelectorAll('[data-essence-answer]').forEach(ta => {
+      ta.addEventListener('input', () => {
+        const i = Number(ta.dataset.essenceAnswer)
+        const stance = body.querySelector(`[data-essence-stance="${i}"]`)?.value ?? 'neutral'
+        evidence[i] = ta.value.trim() ? { answer: ta.value, stance, ts: new Date().toISOString() } : null
+        scheduleEvidenceCommit()
+      })
+    })
+    body.querySelectorAll('[data-essence-stance]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const i = Number(sel.dataset.essenceStance)
+        const answerVal = body.querySelector(`[data-essence-answer="${i}"]`)?.value ?? ''
+        evidence[i] = answerVal.trim() ? { answer: answerVal, stance: sel.value, ts: new Date().toISOString() } : null
+        commit()
+      })
+    })
+    body.querySelectorAll('[data-essence-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.essenceRemove)
+        questions.splice(i, 1)
+        evidence.splice(i, 1)
+        commit()
+        rerenderSection()
+      })
+    })
+    body.querySelector('#oi-essence-add-question')?.addEventListener('click', () => {
+      const input = body.querySelector('#oi-essence-new-question')
+      const text = input?.value?.trim()
+      if (!text) return
+      questions.push(text)
+      evidence.push(null)
+      commit()
+      rerenderSection()
+    })
+  }
+
+  /** Wires whatever _customOptionsHTML rendered for this node's type.
+   *  Mirrors OmniChronos's own event contract exactly (see
+   *  modules/RootSpace.js's listeners) rather than duplicating it —
+   *  this is a second surface for the same settings, not a second
+   *  source of truth. */
+  _wireCustomOptions (body, data) {
+    if (isKindData(data)) { wireKindOptions(body, data); this._wireSequenceOptions(body, data); return }
+    if (isExtraKind(data)) { wireExtraOptions(body, data); this._wireSequenceOptions(body, data); return }   // V191
+    if (data?.isGroupNode) return this._wireGroupOptions(body, data)
+    if (data?.isEssenceNode) { this._wireEssenceOptions(body, data); this._wireSequenceOptions(body, data); return }
+    if (data?.label !== 'MasterClock') return this._wireSequenceOptions(body, data)
+
+    const readChronos = () => {
+      try {
+        const raw = localStorage.getItem('omni:chronos:settings')
+        return raw ? JSON.parse(raw) : {}
+      } catch (_) { return {} }
+    }
+    const writeChronos = (patch) => {
+      const merged = { ...readChronos(), ...patch }
+      try { localStorage.setItem('omni:chronos:settings', JSON.stringify(merged)) } catch (_) { /* ignore */ }
+      return merged
+    }
+
+    body.querySelector('#oi-clock-enabled')?.addEventListener('change', (e) => {
+      writeChronos({ enabled: e.target.checked })
+      window.dispatchEvent(new CustomEvent('omni:chronos-toggle', { detail: { enabled: e.target.checked } }))
+    })
+    body.querySelector('#oi-clock-zaxis')?.addEventListener('change', (e) => {
+      writeChronos({ zAxis: e.target.checked })
+      window.dispatchEvent(new CustomEvent('omni:chronos-axis-set', { detail: { axis: e.target.checked ? 'z' : 'y' } }))
+    })
+    body.querySelector('#oi-clock-format')?.addEventListener('change', (e) => {
+      // No live-broadcast event needed — ChronosFloorClock's own
+      // readTimeFormatPreference() re-reads this key from localStorage
+      // on every label update (every frame), same as OmniChronos's
+      // panel itself does on open.
+      writeChronos({ timeFormat: e.target.value })
+    })
+  }
+
+  _appearanceHTML (data, ext) {
+    const isSprite = data.geometry === 'DimensionalText'
+    const { r, g, b, a } = this._color
+    const hex = rgbToHex(r, g, b)
+    const apc = Math.round(a * 100)
+    const swatchBg = `rgba(${r},${g},${b},${a})`
+    // The actual root fix: this used to be a hardcoded 0.1, completely
+    // disconnected from Admin's px/py/pz step setting — that setting
+    // only ever reached OmniDraw's create-flow fields, never here,
+    // where editing an already-placed object's position actually
+    // happens. Falls back to 0.1 (the previous hardcoded value) if
+    // the admin setting was never touched, so existing behavior is
+    // unchanged for anyone who hasn't configured it.
+    const posStep = this._readAdminSteps()
+
+    // Material options
+    const matOptions = Object.keys(MATERIALS).map(m => /* html */`
+      <option value="${m}" ${(ext?.material ?? 'MeshStandardMaterial') === m ? 'selected' : ''}>${m.replace('Mesh', '').replace('Material', '')}</option>
+    `).join('')
+
+    // Geometry options
+    const geoOptions = GEO_TYPES.map(g => /* html */`
+      <option value="${g}" ${(data.geometry ?? 'SphereGeometry') === g ? 'selected' : ''}>${g.replace('Geometry', '')}</option>
+    `).join('')
+
+    const scl = ext?.scale ?? { x: 1, y: 1, z: 1 }
+    const wf  = ext?.wireframe ?? false
+    const ds  = ext?.doubleSide ?? false
+    const pos = data?.position
+      ? { x: data.position[0], y: data.position[1], z: data.position[2] }
+      : { x: 0, y: 0, z: 0 }
+    const rot = data?.rotation
+      ? { x: data.rotation[0], y: data.rotation[1], z: data.rotation[2] }
+      : { x: 0, y: 0, z: 0 }
+
+    return /* html */`
+      <!-- RGBA Color picker -->
+      <div class="oi-slot-label">Color</div>
+      <div class="oi-color-block" id="oi-color-block">
+
+        <!-- Swatch + hex + alpha readout row -->
+        <div class="oi-color-top">
+          <div class="oi-swatch-wrap" id="oi-swatch-wrap" title="Click to open color picker">
+            <div class="oi-swatch-check"></div>
+            <div class="oi-swatch-fill" id="oi-swatch-fill" style="background:${swatchBg}"></div>
+            <input class="oi-native-color" id="oi-native-color" type="color" value="${hex}">
+          </div>
+          <input class="oi-hex-input" id="oi-hex-input" type="text"
+                 value="${hex}" maxlength="7" spellcheck="false" placeholder="#rrggbb">
+          <span class="oi-alpha-readout" id="oi-alpha-readout">${apc}%</span>
+        </div>
+
+        <!-- RGBA sliders -->
+        <div class="oi-slider-grid">
+          <div class="oi-slider-row">
+            <span class="oi-slider-label oi-slider-label--r">R</span>
+            <input class="oi-slider oi-slider--r" id="oi-r" type="range" min="0" max="255" value="${r}">
+            <span class="oi-slider-val" id="oi-r-val">${r}</span>
+          </div>
+          <div class="oi-slider-row">
+            <span class="oi-slider-label oi-slider-label--g">G</span>
+            <input class="oi-slider oi-slider--g" id="oi-g" type="range" min="0" max="255" value="${g}">
+            <span class="oi-slider-val" id="oi-g-val">${g}</span>
+          </div>
+          <div class="oi-slider-row">
+            <span class="oi-slider-label oi-slider-label--b">B</span>
+            <input class="oi-slider oi-slider--b" id="oi-b" type="range" min="0" max="255" value="${b}">
+            <span class="oi-slider-val" id="oi-b-val">${b}</span>
+          </div>
+          <div class="oi-slider-row">
+            <span class="oi-slider-label oi-slider-label--a">A</span>
+            <input class="oi-slider oi-slider--a" id="oi-a" type="range" min="0" max="100" value="${apc}">
+            <span class="oi-slider-val" id="oi-a-val">${apc}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Material selector -->
+      <div class="oi-row">
+        <span class="oi-label">Material</span>
+        <select class="oi-select" id="oi-material" ${isSprite ? 'disabled title="Dimensional Text uses a Sprite + canvas texture — not a swappable material"' : ''}>${matOptions}</select>
+      </div>
+
+      <!-- Deeper material-specific properties — swaps to match whichever
+           type is selected above -->
+      <div id="oi-material-props">${isSprite ? '<div class="oi-material-props-empty">Dimensional Text renders via a canvas texture, not a swappable material — color is set above.</div>' : this._materialPropsHTML(ext?.material ?? 'MeshStandardMaterial', ext)}</div>
+
+      <!-- Custom, per-node-type options — only rendered for node types
+           that register something here (see _customOptionsHTML); an
+           ordinary node renders nothing and this whole block collapses
+           to nothing visible. Placed before Geometry, per explicit
+           request, so a node's own special controls read as "about
+           this specific node" rather than buried under its generic
+           shape/material fields. -->
+      ${this._customOptionsHTML(data)}
+
+      <!-- Geometry selector -->
+      <div class="oi-row">
+        <span class="oi-label">Geometry</span>
+        <select class="oi-select" id="oi-geometry" ${isKindData(data) ? 'disabled title="A store item / value node takes its shape from the product / type"' : ''}>${geoOptions}</select>
+      </div>
+
+      <!-- Wireframe toggle -->
+      <div class="oi-row">
+        <span class="oi-label">Wire</span>
+        <div class="oi-toggle-wrap">
+          <label class="oi-toggle">
+            <input type="checkbox" id="oi-wireframe" ${wf ? 'checked' : ''} ${isSprite ? 'disabled title="Not applicable to Dimensional Text"' : ''}>
+            <div class="oi-toggle-track"></div>
+            <div class="oi-toggle-thumb"></div>
+          </label>
+          <span class="oi-toggle-label">Wireframe</span>
+        </div>
+      </div>
+
+      <!-- Double-sided toggle — THREE.DoubleSide vs the material's
+           default THREE.FrontSide. Useful for anything meant to be
+           seen from the inside (a wallpaper-style shell around the
+           camera) or a thin/open geometry (Plane, Ring, an
+           ExtrudeGeometry with open ends) that otherwise culls away
+           to nothing from the "wrong" side. -->
+      <div class="oi-row">
+        <span class="oi-label">Sides</span>
+        <div class="oi-toggle-wrap">
+          <label class="oi-toggle">
+            <input type="checkbox" id="oi-double-side" ${ds ? 'checked' : ''} ${isSprite ? 'disabled title="Not applicable to Dimensional Text"' : ''}>
+            <div class="oi-toggle-track"></div>
+            <div class="oi-toggle-thumb"></div>
+          </label>
+          <span class="oi-toggle-label">Double-Sided</span>
+        </div>
+      </div>
+
+      <!-- Position XYZ -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="oi-label">Position</span>
+        <div class="oi-xyz-row">
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">X</span>
+            <input class="oi-xyz-input" id="oi-px" type="number"
+                   value="${pos.x}" step="${posStep.px}">
+            <input class="oi-mat-prop-range" id="oi-px-slider" type="range" min="-50" max="50" step="${posStep.px}" value="${pos.x}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Y</span>
+            <input class="oi-xyz-input" id="oi-py" type="number"
+                   value="${pos.y}" step="${posStep.py}">
+            <input class="oi-mat-prop-range" id="oi-py-slider" type="range" min="-50" max="50" step="${posStep.py}" value="${pos.y}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Z</span>
+            <input class="oi-xyz-input" id="oi-pz" type="number"
+                   value="${pos.z}" step="${posStep.pz}">
+            <input class="oi-mat-prop-range" id="oi-pz-slider" type="range" min="-50" max="50" step="${posStep.pz}" value="${pos.z}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Rotation XYZ (radians) -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="oi-label">Rotation</span>
+        <div class="oi-xyz-row">
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">X</span>
+            <input class="oi-xyz-input" id="oi-rx" type="number"
+                   value="${rot.x}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-rx-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.x}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Y</span>
+            <input class="oi-xyz-input" id="oi-ry" type="number"
+                   value="${rot.y}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-ry-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.y}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Z</span>
+            <input class="oi-xyz-input" id="oi-rz" type="number"
+                   value="${rot.z}" step="0.05">
+            <input class="oi-mat-prop-range" id="oi-rz-slider" type="range" min="-3.14159" max="3.14159" step="0.01" value="${rot.z}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale XYZ -->
+      <div class="oi-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="oi-label">Scale</span>
+        <div class="oi-xyz-row">
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">X</span>
+            <input class="oi-xyz-input" id="oi-sx" type="number"
+                   value="${scl.x}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sx-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.x}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Y</span>
+            <input class="oi-xyz-input" id="oi-sy" type="number"
+                   value="${scl.y}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sy-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.y}">
+          </div>
+          <div class="oi-xyz-field">
+            <span class="oi-xyz-label">Z</span>
+            <input class="oi-xyz-input" id="oi-sz" type="number"
+                   value="${scl.z}" step="0.01" min="0.001">
+            <input class="oi-mat-prop-range" id="oi-sz-slider" type="range" min="0.001" max="20" step="0.01" value="${scl.z}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Texture slot -->
+      <div class="oi-slot">
+        <span class="oi-slot-label">Texture</span>
+        <div class="oi-drop-zone" id="oi-tex-drop">
+          <span class="oi-drop-zone-icon">🖼</span>
+          Drop image file or enter URL
+        </div>
+        <img class="oi-tex-preview" id="oi-tex-preview" alt="Texture preview">
+        <div class="oi-slot-url-row">
+          <input class="oi-input" id="oi-tex-url" type="url"
+                 placeholder="https://…" value="${ext?.texture ?? ''}">
+          <button class="oi-slot-apply" id="oi-tex-apply">Apply</button>
+          <button class="oi-slot-apply" id="oi-tex-gallery" title="Choose from OmniGallery">⟐g Gallery</button>
+        </div>
+        <button class="oi-tex-clear ${ext?.texture ? 'is-visible' : ''}" id="oi-tex-clear">✕ Clear texture</button>
+        <input type="file" id="oi-tex-file" accept="image/*" style="display:none">
+      </div>
+    `
+  }
+
+  /** The dynamic property panel shown under the Material dropdown —
+   *  swaps to whichever set MATERIAL_EXTRA_PROPS defines for the given
+   *  type. Values come from ext.materialProps, falling back to each
+   *  property's own default. */
+  _materialPropsHTML (materialType, ext) {
+    const props = MATERIAL_EXTRA_PROPS[materialType] ?? []
+    const saved = ext?.materialProps ?? {}
+
+    if (props.length === 0) {
+      const note = materialType === 'MeshToonMaterial'
+        ? 'Toon shading\'s real control (stepped gradient bands) is texture-based (gradientMap) — needs the texture pipeline, not built yet.'
+        : 'No additional properties for this material type.'
+      return `<div class="oi-material-props-empty">${note}</div>`
+    }
+
+    return /* html */`
+      <div class="oi-material-props-title">Material Properties — ${materialType.replace('Mesh', '').replace('Material', '')}</div>
+      ${props.map(p => {
+        const val = saved[p.key] ?? p.default
+        return /* html */`
+          <div class="oi-row">
+            <span class="oi-row-label">${p.label}</span>
+            <input type="range" class="oi-mat-prop-range" data-mat-key="${p.key}"
+                   min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+            <span class="oi-mat-prop-val" data-mat-val-for="${p.key}">${Number(val).toFixed(2)}</span>
+          </div>
+        `
+      }).join('')}
+    `
+  }
+
+  _wireMaterialProps (body, ext) {
+    const container = body.querySelector('#oi-material-props')
+    if (!container) return
+
+    container.querySelectorAll('[data-mat-key]').forEach(input => {
+      input.addEventListener('input', () => {
+        const key = input.dataset.matKey
+        const value = Number(input.value)
+
+        if (this._currentMesh?.material && key in this._currentMesh.material) {
+          this._currentMesh.material[key] = value
+          this._currentMesh.material.needsUpdate = true
+        }
+
+        ext.materialProps = { ...(ext.materialProps ?? {}), [key]: value }
+        this._saveExt()
+
+        const valEl = container.querySelector(`[data-mat-val-for="${key}"]`)
+        if (valEl) valEl.textContent = value.toFixed(2)
+      })
+    })
+  }
+
+  // ── MEDIA section HTML ────────────────────────────────────────────────────
+
+  // ── CREATE section HTML — mini live preview, create while inspecting ────
+  // Mirrors ui/OmniDraw.js's preview+export, embedded here so you don't
+  // have to leave the Inspector to make a new object while looking at
+  // another one. Uses the exact same omni:node-create-request event, so
+  // it automatically respects space-scoping (OmniNode parents into
+  // whatever space is currently entered, same as OmniDraw's button).
+
+  // ── DATA section HTML — Internal/External Display/Code + plane toggle ───
+  // "Internal" = shown here, in the flat panel. "External" = shown
+  // spatially, on the floating plane mesh (toggle below) — the plane
+  // renders whatever's currently in External Display + External Code.
+
+  _dataHTML (ext) {
+    const ta = (label, key, value, mono = false) => /* html */`
+      <div class="oi-data-field">
+        <span class="oi-label" style="width:auto">${label}</span>
+        <textarea class="oi-textarea ${mono ? 'oi-textarea--mono' : ''}" data-data-key="${key}"
+                  placeholder="${label}…">${value ?? ''}</textarea>
+      </div>
+    `
+    return /* html */`
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">GoTo / TravelTo</span>
+        <button class="oi-btn-small" id="oi-goto-object">🎯 Take Me There</button>
+      </div>
+      <div class="oi-data-note">
+        Moves the camera to a spot right in front of this object,
+        facing it — from wherever you currently are.
+      </div>
+      <div class="oi-row" id="oi-delete-system-row" style="display:none">
+        <span class="oi-label" style="width:auto">This is an OmniCore</span>
+        <button class="oi-btn-small oi-btn-small--danger" id="oi-delete-system">🗑 Delete Entire System</button>
+      </div>
+      <div class="oi-data-note" id="oi-delete-system-note" style="display:none">
+        Removes every node created together with this one in the same
+        "Create System" click — not just this single node. Cannot be
+        undone.
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Internal Data</span>
+        <button class="oi-btn-small" id="oi-internal-panel-open">Open Panel ⟐</button>
+      </div>
+      <div class="oi-data-note">
+        Internal Display/Code are edited in their own panel now, not
+        inline here. Saving there saves for real — no need to also
+        save in this Inspector.
+      </div>
+
+      ${ta('External Display', 'externalDisplay', ext.externalDisplay)}
+      ${ta('External Code', 'externalCode', ext.externalCode, true)}
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Show External on plane</span>
+        <button class="oi-toggle ${ext.showOnPlane ? 'is-on' : ''}" id="oi-show-on-plane" role="switch" aria-checked="${ext.showOnPlane}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Persistent (survives deselect)</span>
+        <button class="oi-toggle ${ext.persistent ? 'is-on' : ''}" id="oi-plane-persistent" role="switch" aria-checked="${ext.persistent}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Face Camera</span>
+        <button class="oi-toggle ${ext.planeFaceCamera !== false ? 'is-on' : ''}" id="oi-plane-face-camera" role="switch" aria-checked="${ext.planeFaceCamera !== false}"></button>
+      </div>
+      <div class="oi-data-note">
+        On by default — the plane always turns to face you. Turn this
+        off to leave it at a fixed, static orientation instead (set
+        once, at whatever angle it happened to be created at).
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Auto-size to Content</span>
+        <button class="oi-toggle ${ext.planeAutoSize ? 'is-on' : ''}" id="oi-plane-autosize" role="switch" aria-checked="${ext.planeAutoSize}"></button>
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Scrollable</span>
+        <button class="oi-toggle ${ext.planeScrollable ? 'is-on' : ''}" id="oi-plane-scrollable" role="switch" aria-checked="${ext.planeScrollable}"></button>
+      </div>
+      <div class="oi-row" id="oi-open-panelcontrol-row" style="${ext.planeScrollable ? '' : 'display:none'}">
+        <span class="oi-label" style="width:auto">Scroll Controls</span>
+        <button class="oi-btn-small" id="oi-open-panelcontrol">Open ⟐PanelControl</button>
+      </div>
+      <div class="oi-data-note">
+        Text always wraps to fit the Width you set below — the plane
+        itself never stretches or distorts to squeeze more in. For
+        content longer than the configured Height: Auto-size grows the
+        plane's actual height to fit everything, no cutoff. Scrollable
+        keeps the size you set and lets you scroll through it instead —
+        mouse wheel while looking at it, or open ⟐PanelControl for
+        button-based scrolling (works on mobile). With both off, content
+        past the configured height just clips at the edge.
+      </div>
+      <div class="oi-data-note">
+        Off by default — the plane normally disappears when you click
+        away from this object, same as before. Turn this on to leave
+        it floating in place, so you can build up different pieces of
+        information scattered through the space as you move around,
+        instead of losing each one the moment you look elsewhere.
+      </div>
+      <div class="oi-data-note">
+        External fields render onto a floating plane next to the object
+        in the 3D world while this is on. The data in this field is
+        rarely uniform in length — resize the plane below to fit it.
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Width (X)</span>
+        <input type="number" class="oi-num-input" id="oi-plane-width" min="0.5" max="20" step="0.1" value="${ext.planeWidth ?? 2.4}">
+      </div>
+      <div class="oi-row">
+        <span class="oi-label" style="width:auto">Height (Y)</span>
+        <input type="number" class="oi-num-input" id="oi-plane-height" min="0.5" max="20" step="0.1" value="${ext.planeHeight ?? 2.4}">
+      </div>
+      <div class="oi-data-note">
+        No Z field here — this is a flat plane, so depth wouldn't do
+        anything visually. Say the word if you'd rather it be a thin
+        box instead, so Z actually means something.
+      </div>
+    `
+  }
+
+  _wireData (body, data, ext) {
+    body.querySelector('#oi-goto-object')?.addEventListener('click', () => this._goToObject())
+
+    if (data?.isOmniCore && data?.systemInstanceId) {
+      const row = body.querySelector('#oi-delete-system-row')
+      const note = body.querySelector('#oi-delete-system-note')
+      if (row) row.style.display = ''
+      if (note) note.style.display = ''
+      body.querySelector('#oi-delete-system')?.addEventListener('click', () => {
+        const ok = window.confirm('Delete this entire system? Every node created together with this OmniCore will be removed. This cannot be undone.')
+        if (!ok) return
+        window.dispatchEvent(new CustomEvent('omni:delete-system-request', { detail: { systemInstanceId: data.systemInstanceId } }))
+      })
+    }
+
+    body.querySelectorAll('[data-data-key]').forEach(textarea => {
+      let timer = null
+      textarea.addEventListener('input', () => {
+        ext[textarea.dataset.dataKey] = textarea.value
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+          this._saveExt()
+          if (ext.showOnPlane && (textarea.dataset.dataKey === 'externalDisplay' || textarea.dataset.dataKey === 'externalCode')) {
+            this._updateInfoPlaneTexture()
+          }
+        }, 300)
+      })
+    })
+
+    const planeToggle = body.querySelector('#oi-show-on-plane')
+    planeToggle?.addEventListener('click', () => {
+      const next = !planeToggle.classList.contains('is-on')
+      planeToggle.classList.toggle('is-on', next)
+      planeToggle.setAttribute('aria-checked', String(next))
+      ext.showOnPlane = next
+      this._saveExt()
+      if (next) this._showInfoPlane(data, ext)
+      else this._hideInfoPlane()
+    })
+
+    const persistentToggle = body.querySelector('#oi-plane-persistent')
+    persistentToggle?.addEventListener('click', () => {
+      const next = !persistentToggle.classList.contains('is-on')
+      persistentToggle.classList.toggle('is-on', next)
+      persistentToggle.setAttribute('aria-checked', String(next))
+      ext.persistent = next
+      this._saveExt()
+    })
+
+    const faceCameraToggle = body.querySelector('#oi-plane-face-camera')
+    faceCameraToggle?.addEventListener('click', () => {
+      const next = !faceCameraToggle.classList.contains('is-on')
+      faceCameraToggle.classList.toggle('is-on', next)
+      faceCameraToggle.setAttribute('aria-checked', String(next))
+      ext.planeFaceCamera = next
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) plane.faceCamera = next
+    })
+
+    const autoSizeToggle = body.querySelector('#oi-plane-autosize')
+    autoSizeToggle?.addEventListener('click', () => {
+      const next = !autoSizeToggle.classList.contains('is-on')
+      autoSizeToggle.classList.toggle('is-on', next)
+      autoSizeToggle.setAttribute('aria-checked', String(next))
+      ext.planeAutoSize = next
+      if (next) {
+        ext.planeScrollable = false
+        const scrollToggle = body.querySelector('#oi-plane-scrollable')
+        scrollToggle?.classList.remove('is-on')
+        scrollToggle?.setAttribute('aria-checked', 'false')
+        const pcRow = body.querySelector('#oi-open-panelcontrol-row')
+        if (pcRow) pcRow.style.display = 'none'
+      }
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) { plane.autoSize = next; plane.scrollable = ext.planeScrollable; plane.scrollOffset = 0 }
+      if (ext.showOnPlane) this._resizeInfoPlane(ext)
+    })
+
+    const scrollableToggle = body.querySelector('#oi-plane-scrollable')
+    scrollableToggle?.addEventListener('click', () => {
+      const next = !scrollableToggle.classList.contains('is-on')
+      scrollableToggle.classList.toggle('is-on', next)
+      scrollableToggle.setAttribute('aria-checked', String(next))
+      ext.planeScrollable = next
+      if (next) {
+        ext.planeAutoSize = false
+        autoSizeToggle?.classList.remove('is-on')
+        autoSizeToggle?.setAttribute('aria-checked', 'false')
+      }
+      this._saveExt()
+      const plane = this._infoPlanes.get(this._currentId)
+      if (plane) { plane.scrollable = next; plane.autoSize = ext.planeAutoSize; plane.scrollOffset = 0 }
+      if (ext.showOnPlane) this._resizeInfoPlane(ext)
+      const pcRow = body.querySelector('#oi-open-panelcontrol-row')
+      if (pcRow) pcRow.style.display = next ? '' : 'none'
+    })
+
+    // Opens the exact same way the drawer does — PanelControl already
+    // listens for this, so no new event/plumbing is needed just to
+    // surface an existing shortcut here.
+    body.querySelector('#oi-open-panelcontrol')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐PanelControl' } }))
+    })
+
+    let planeSizeTimer = null
+    const onPlaneSizeChange = () => {
+      const w = parseFloat(body.querySelector('#oi-plane-width')?.value)
+      const h = parseFloat(body.querySelector('#oi-plane-height')?.value)
+      ext.planeWidth = Number.isFinite(w) && w > 0 ? w : 2.4
+      ext.planeHeight = Number.isFinite(h) && h > 0 ? h : 2.4
+      clearTimeout(planeSizeTimer)
+      planeSizeTimer = setTimeout(() => {
+        this._saveExt()
+        if (ext.showOnPlane) this._resizeInfoPlane(ext)
+      }, 250)
+    }
+    body.querySelector('#oi-plane-width')?.addEventListener('input', onPlaneSizeChange)
+    body.querySelector('#oi-plane-height')?.addEventListener('input', onPlaneSizeChange)
+
+    body.querySelector('#oi-internal-panel-open')?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:internal-panel-open-request', {
+        detail: { id: data.id, internalDisplay: ext.internalDisplay, internalCode: ext.internalCode }
+      }))
+    })
+  }
+
+  _createSectionHTML () {
+    const t = this._createTransform
+    const row = (label, key, val, min, max, step) => /* html */`
+      <div class="oi-row">
+        <span class="oi-row-label" style="width:26px">${label}</span>
+        <input type="range" class="oi-create-range" data-transform-key="${key}"
+               min="${min}" max="${max}" step="${step}" value="${val}">
+        <span class="oi-create-range-val" data-transform-val-for="${key}">${Number(val).toFixed(step < 1 ? 2 : 0)}</span>
+      </div>
+    `
+    return /* html */`
+      <div class="oi-create-preview-wrap">
+        <canvas class="oi-create-canvas" id="oi-create-canvas" width="120" height="120"></canvas>
+        <div class="oi-create-btns">
+          <button class="oi-create-btn" id="oi-create-morph">⟐ Morph → Sphere</button>
+          <button class="oi-create-btn oi-create-btn--export" id="oi-create-export">⟐ Export to Scene</button>
+        </div>
+        <div class="oi-row" style="justify-content:flex-start;gap:8px">
+          <button class="oi-toggle" id="oi-create-as-space" role="switch" aria-checked="false"></button>
+          <span class="oi-label" style="width:auto">Mark + enter as new space on export</span>
+        </div>
+      </div>
+
+      <div class="oi-create-transform-title">
+        Transform — tied to this node, applied on Export
+      </div>
+      ${row('px', 'px', t.px, -100, 100, 1)}
+      ${row('py', 'py', t.py, -100, 100, 1)}
+      ${row('pz', 'pz', t.pz, -100, 100, 1)}
+      ${row('rx', 'rx', t.rx, -3.14, 3.14, 0.01)}
+      ${row('ry', 'ry', t.ry, -3.14, 3.14, 0.01)}
+      ${row('rz', 'rz', t.rz, -3.14, 3.14, 0.01)}
+      ${row('sx', 'sx', t.sx, -10, 10, 0.1)}
+      ${row('sy', 'sy', t.sy, -10, 10, 0.1)}
+      ${row('sz', 'sz', t.sz, -10, 10, 0.1)}
+    `
+  }
+
+  _mediaHTML (ext) {
+    const slots = [
+      { key: 'images', label: 'Images', icon: '🖼',  accept: 'image/*'  },
+      { key: 'sound',  label: 'Sound',  icon: '🔊',  accept: 'audio/*'  },
+      { key: 'media',  label: 'Media',  icon: '📎',  accept: '*/*'      },
+    ]
+
+    return slots.map(slot => {
+      const items    = (ext?.[slot.key] ?? [])
+      const itemHtml = items.map((item, idx) => /* html */`
+        <div class="oi-slot-item">
+          <span class="oi-slot-item-name" title="${item.src}">${item.label || item.src}</span>
+          <button class="oi-slot-item-rm"
+                  data-media-key="${slot.key}"
+                  data-media-idx="${idx}">✕</button>
+        </div>
+      `).join('')
+
+      return /* html */`
+        <div class="oi-slot" id="oi-slot-${slot.key}">
+          <span class="oi-slot-label">${slot.label}</span>
+          <div class="oi-drop-zone" data-media-drop="${slot.key}">
+            <span class="oi-drop-zone-icon">${slot.icon}</span>
+            Drop file or enter URL
+          </div>
+          <div class="oi-slot-url-row">
+            <input class="oi-input" type="url" id="oi-url-${slot.key}"
+                   placeholder="https://…">
+            <button class="oi-slot-apply" data-media-apply="${slot.key}">Add</button>
+          </div>
+          <div class="oi-slot-items" id="oi-items-${slot.key}">${itemHtml}</div>
+          <input type="file" id="oi-file-${slot.key}" accept="${slot.accept}" style="display:none">
+        </div>
+      `
+    }).join('')
+  }
+
+  // ── Wire IDENTITY controls ────────────────────────────────────────────────
+
+  _wireIdentity (body, data, ext) {
+    // Copy ID
+    body.querySelector('#oi-copy-id')?.addEventListener('click', () => {
+      navigator.clipboard?.writeText(data.id).catch(() => {})
+      const btn = body.querySelector('#oi-copy-id')
+      if (btn) { btn.textContent = 'copied'; setTimeout(() => { btn.textContent = 'copy' }, 1200) }
+      this._playSound('click')
+    })
+
+    // Label input — debounced dispatch
+    let labelTimer = null
+    body.querySelector('#oi-label')?.addEventListener('input', (e) => {
+      clearTimeout(labelTimer)
+      labelTimer = setTimeout(() => {
+        const label = e.target.value.trim()
+        this._currentData.label = label
+        this._updateBadge()
+        window.dispatchEvent(new CustomEvent('omni:node-label-set', {
+          detail: { id: data.id, label }
+        }))
+        this._saveExt()
+      }, 300)
+    })
+
+    // Text textarea
+    let textTimer = null
+    body.querySelector('#oi-text')?.addEventListener('input', (e) => {
+      clearTimeout(textTimer)
+      textTimer = setTimeout(() => {
+        ext.text = e.target.value
+        this._saveExt()
+      }, 400)
+    })
+
+    // Primitive buttons
+    body.querySelector('#oi-primitives')?.addEventListener('click', (e) => {
+      const btn  = e.target.closest('.oi-primitive')
+      if (!btn) return
+      const prim = btn.dataset.primitive
+      const def  = PRIMITIVES.find(p => p.key === prim)
+      if (!def) return
+
+      // Update active state
+      body.querySelectorAll('.oi-primitive').forEach(b => {
+        const isThis = b.dataset.primitive === prim
+        b.classList.toggle('is-active', isThis)
+        b.style.borderColor = isThis ? def.color + '40' : ''
+        b.style.color       = isThis ? def.color        : ''
+        b.style.background  = isThis ? def.color + '14' : ''
+      })
+
+      this._currentData.primitive = prim
+      this._playSound('click')
+
+      // If the primitive changes, update the color picker to match its base color
+      const rgb = hexToRgb(def.color)
+      if (rgb) {
+        this._color = { ...rgb, a: this._color.a }
+        this._syncColorUI(body)
+        this._applyColorToMesh()
+      }
+
+      window.dispatchEvent(new CustomEvent('omni:node-color-set', {
+        detail: { id: data.id, color: rgbToHex(this._color.r, this._color.g, this._color.b) }
+      }))
+    })
+  }
+
+  // ── Wire HIERARCHY controls — parent picker ─────────────────────────────
+
+  _wireHierarchy (body, data) {
+    const btn    = body.querySelector('#oi-parent-picker-btn')
+    const picker = body.querySelector('#oi-parent-picker')
+    const list   = body.querySelector('#oi-parent-picker-list')
+    const close  = body.querySelector('#oi-parent-picker-close')
+    if (!btn || !picker || !list) return
+
+    btn.addEventListener('click', () => {
+      const isOpen = picker.style.display !== 'none'
+      if (isOpen) { picker.style.display = 'none'; return }
+      this._renderParentPickerList(list, data)
+      picker.style.display = 'flex'
+    })
+
+    close?.addEventListener('click', () => { picker.style.display = 'none' })
+
+    const geneoRoot = body.querySelector('#oi-geneo-root')
+    if (geneoRoot) {
+      geneoRoot.innerHTML = ''
+      const rootId   = data.rootId ?? data.id
+      const rootNode = (this._allNodes ?? []).find(n => n.id === rootId) ?? data
+      const expandPath = this._ancestorPathIds(data.id)
+      geneoRoot.appendChild(this._buildGeneoNode(rootNode, { expandPath, currentId: data.id }))
+      geneoRoot.querySelector('.oi-geneo-row.is-current')?.scrollIntoView({ block: 'center' })
+    }
+  }
+
+  /** Every id from the given node up to its root, inclusive — used to
+   *  auto-expand the tree down to whichever node is currently loaded,
+   *  so ancestors are visible without needing to click through them. */
+  _ancestorPathIds (id) {
+    const path = new Set([id])
+    let current = (this._allNodes ?? []).find(n => n.id === id)
+    let guard = 0
+    while (current?.parentId && guard++ < 500) {
+      if (path.has(current.parentId)) break   // cycle guard
+      path.add(current.parentId)
+      current = (this._allNodes ?? []).find(n => n.id === current.parentId)
+    }
+    return path
+  }
+
+  /**
+   * One row of the genealogy tree explorer — auto-generated from real
+   * hierarchy data (this._allNodes, kept in sync via omni:nodes-updated),
+   * NOT the freeform Data fields. Rendered from the absolute root down,
+   * with the ancestor path to the currently loaded node auto-expanded
+   * (so you see the full lineage immediately) while every other branch
+   * stays collapsed until clicked. Clicking a row with children expands/
+   * collapses it in place; it never re-selects a different node in the
+   * Inspector — "the reality becomes discoverable" by drilling down
+   * through the same view, not by navigating away from it.
+   */
+  _buildGeneoNode (node, { expandPath = new Set(), currentId = null } = {}) {
+    const children = (this._allNodes ?? []).filter(n => n.parentId === node.id)
+    const wrap = document.createElement('div')
+    wrap.className = 'oi-geneo-node'
+
+    const isCurrent = node.id === currentId
+    const row = document.createElement('div')
+    row.className = 'oi-geneo-row' + (isCurrent ? ' is-current' : '')
+    row.innerHTML = /* html */`
+      <span class="oi-geneo-arrow">${children.length ? '▶' : '·'}</span>
+      <span class="oi-geneo-label" title="Click to view this node's own data">${node.label || node.id}</span>
+      ${children.length ? `<span class="oi-geneo-count">${children.length}</span>` : ''}
+    `
+    wrap.appendChild(row)
+
+    if (!isCurrent) {
+      row.querySelector('.oi-geneo-label').addEventListener('click', (e) => {
+        e.stopPropagation()
+        window.dispatchEvent(new CustomEvent('omni:node-select-by-id', { detail: { id: node.id } }))
+      })
+    }
+
+    const childContainer = document.createElement('div')
+    childContainer.className = 'oi-geneo-children'
+    wrap.appendChild(childContainer)
+
+    let built = false
+    const buildChildren = () => {
+      children.forEach(c => childContainer.appendChild(this._buildGeneoNode(c, { expandPath, currentId })))
+      built = true
+    }
+
+    const autoExpand = expandPath.has(node.id) && children.length > 0
+    if (autoExpand) {
+      buildChildren()
+      childContainer.style.display = 'block'
+    } else {
+      childContainer.style.display = 'none'
+    }
+
+    if (children.length) {
+      row.style.cursor = 'pointer'
+      if (autoExpand) row.querySelector('.oi-geneo-arrow').textContent = '▼'
+      row.addEventListener('click', () => {
+        const isOpen = childContainer.style.display !== 'none'
+        if (!built) buildChildren()
+        childContainer.style.display = isOpen ? 'none' : 'block'
+        row.querySelector('.oi-geneo-arrow').textContent = isOpen ? '▶' : '▼'
+      })
+    }
+
+    return wrap
+  }
+
+  /**
+   * Populates the parent-picker list from the full node array (kept in
+   * sync via omni:nodes-updated — see _bindEvents). Excludes the node
+   * itself and anything already downstream of it (would create a cycle;
+   * OmniNode also refuses this server-side, but disabling it here avoids
+   * a confusing round-trip).
+   */
+  _renderParentPickerList (list, data) {
+    const all = this._allNodes ?? []
+    const descendantIds = this._descendantIdsOf(data.id, all)
+
+    const options = all.filter(n => n.id !== data.id)
+
+    let html = /* html */`
+      <div class="oi-parent-picker-item oi-parent-picker-none" data-parent-id="">
+        <span>— None (make root) —</span>
+      </div>
+    `
+
+    if (options.length === 0) {
+      list.innerHTML = html + `<div class="oi-parent-picker-empty">No other objects created yet.</div>`
+    } else {
+      html += options.map(n => {
+        const disabled = descendantIds.has(n.id)
+        return /* html */`
+          <div class="oi-parent-picker-item ${disabled ? 'is-disabled' : ''}"
+               data-parent-id="${disabled ? '' : n.id}"
+               title="${disabled ? 'Would create a cycle — this is a descendant' : ''}">
+            <span>${n.label || n.id}</span>
+            <span class="oi-parent-picker-item-geo">${(n.geometry ?? '').replace('Geometry', '')}</span>
+          </div>
+        `
+      }).join('')
+      list.innerHTML = html
+    }
+
+    list.querySelectorAll('.oi-parent-picker-item:not(.is-disabled)').forEach(item => {
+      item.addEventListener('click', () => {
+        const parentId = item.dataset.parentId || null
+        window.dispatchEvent(new CustomEvent('omni:node-parent-set', {
+          detail: { id: data.id, parentId }
+        }))
+        this._playSound('click')
+        list.closest('.oi-parent-picker').style.display = 'none'
+      })
+    })
+  }
+
+  _descendantIdsOf (id, allNodes) {
+    const out = new Set()
+    const walk = (parentId) => {
+      for (const n of allNodes) {
+        if (n.parentId === parentId && !out.has(n.id)) {
+          out.add(n.id)
+          walk(n.id)
+        }
+      }
+    }
+    walk(id)
+    return out
+  }
+
+  // ── Wire DOMAIN controls — mark as space, enter/exit ────────────────────
+
+  _wireDomain (body, data) {
+    const toggle = body.querySelector('#oi-is-domain')
+    const imgInput = body.querySelector('#oi-space-image')
+    const enterBtn = body.querySelector('#oi-enter-space')
+    const exitBtn  = body.querySelector('#oi-exit-space')
+
+    toggle?.addEventListener('click', () => {
+      const next = !toggle.classList.contains('is-on')
+      toggle.classList.toggle('is-on', next)
+      toggle.setAttribute('aria-checked', String(next))
+      data.isDomain = next
+      window.dispatchEvent(new CustomEvent('omni:node-set-domain', {
+        detail: { id: data.id, isDomain: next }
+      }))
+      this._refreshDomainSection()
+    })
+
+    let imgTimer = null
+    imgInput?.addEventListener('input', (e) => {
+      clearTimeout(imgTimer)
+      const value = e.target.value.trim()
+      imgTimer = setTimeout(() => {
+        data.spaceImage = value
+        window.dispatchEvent(new CustomEvent('omni:node-set-domain', {
+          detail: { id: data.id, isDomain: !!data.isDomain, spaceImage: value }
+        }))
+      }, 350)
+    })
+
+    enterBtn?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:enter-space-request', { detail: { id: data.id } }))
+      this._playSound('click')
+    })
+
+    exitBtn?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:exit-space-request', { detail: {} }))
+      this._playSound('click')
+    })
+  }
+
+  /** V183: rebuild the Store item / Value block in place (store or value model changed, or an edge was drawn). Coalesced to one rebuild per frame. */
+  _refreshKindBlock () {
+    if (!this._currentData || !isKindData(this._currentData) || !this._isOpen) return
+    if (this._kindRefreshQ) return
+    this._kindRefreshQ = true
+    const run = () => {
+      this._kindRefreshQ = false
+      const d = this._currentData
+      const body = this._el?.querySelector('#oi-body')
+      const sec = body?.querySelector('#oi-custom-kind')
+      if (!d || !isKindData(d) || !sec) return
+      const tmp = document.createElement('div')
+      tmp.innerHTML = kindOptionsHTML(d, { edges: this._allEdges, nodes: this._allNodes })
+      sec.replaceWith(tmp.firstElementChild)
+      wireKindOptions(body, d)
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run); else setTimeout(run, 0)
+  }
+
+  /** Re-render just the Domain section's HTML — used after entering/
+   *  exiting a space, or toggling Is Domain, so button enabled-state and
+   *  the status line stay accurate without a full panel re-render. */
+  _refreshDomainSection () {
+    if (!this._currentData || !this._isOpen) return
+    const body = this._el?.querySelector('#oi-body')
+    const section = body?.querySelector('#oisec-domain .oi-section-inner')
+    if (!section) return
+    section.innerHTML = this._domainHTML(this._currentData)
+    this._wireDomain(body, this._currentData)
+  }
+
+  // ── Wire APPEARANCE controls ──────────────────────────────────────────────
+
+  _wireAppearance (body, data, ext) {
+    this._wireMaterialProps(body, ext)
+    this._wireCustomOptions(body, data)
+    // ── Color picker ─────────────────────────────────────────────────
+
+    // Native color input (triggered by swatch click via z-stacked input)
+    body.querySelector('#oi-native-color')?.addEventListener('input', (e) => {
+      const rgb = hexToRgb(e.target.value)
+      if (!rgb) return
+      this._color = { ...rgb, a: this._color.a }
+      this._syncColorUI(body)
+      this._applyColorToMesh()
+      this._dispatchColor()
+    })
+
+    // Hex text input
+    body.querySelector('#oi-hex-input')?.addEventListener('change', (e) => {
+      let val = e.target.value.trim()
+      if (!val.startsWith('#')) val = '#' + val
+      const rgb = hexToRgb(val)
+      if (!rgb) return
+      this._color = { ...rgb, a: this._color.a }
+      this._syncColorUI(body)
+      this._applyColorToMesh()
+      this._dispatchColor()
+    })
+
+    // R / G / B sliders
+    const channels = ['r', 'g', 'b']
+    channels.forEach(ch => {
+      body.querySelector(`#oi-${ch}`)?.addEventListener('input', (e) => {
+        this._color[ch] = parseInt(e.target.value, 10)
+        this._syncColorUI(body)
+        this._applyColorToMesh()
+        this._dispatchColor()
+      })
+    })
+
+    // Alpha slider
+    body.querySelector('#oi-a')?.addEventListener('input', (e) => {
+      this._color.a = clamp(parseInt(e.target.value, 10) / 100, 0, 1)
+      this._syncColorUI(body)
+      this._applyColorToMesh()
+    })
+
+    // ── Material selector ─────────────────────────────────────────────
+
+    body.querySelector('#oi-material')?.addEventListener('change', (e) => {
+      const matName = e.target.value
+      this._applyMaterial(matName)
+      ext.material = matName
+      ext.materialProps = {}   // fresh set of defaults for the new type — old sliders don't apply
+      this._saveExt()
+      this._playSound('click')
+
+      const container = body.querySelector('#oi-material-props')
+      if (container) {
+        container.innerHTML = this._materialPropsHTML(matName, ext)
+        this._wireMaterialProps(body, ext)
+      }
+    })
+
+    // ── Geometry selector ─────────────────────────────────────────────
+
+    body.querySelector('#oi-geometry')?.addEventListener('change', (e) => {
+      const geoType = e.target.value
+      this._currentData.geometry = geoType
+      window.dispatchEvent(new CustomEvent('omni:node-geo-set', {
+        detail: { id: data.id, geometry: geoType }
+      }))
+      this._updateBadge()
+      this._playSound('click')
+    })
+
+    // ── Wireframe toggle ──────────────────────────────────────────────
+
+    body.querySelector('#oi-wireframe')?.addEventListener('change', (e) => {
+      ext.wireframe = e.target.checked
+      if (this._currentMesh?.material) {
+        // MeshBasicMaterial and MeshStandardMaterial support wireframe
+        const mat = this._currentMesh.material
+        if ('wireframe' in mat) {
+          mat.wireframe = e.target.checked
+          mat.needsUpdate = true
+        }
+      }
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    // ── Double-Sided toggle ─────────────────────────────────────────────
+
+    body.querySelector('#oi-double-side')?.addEventListener('change', (e) => {
+      ext.doubleSide = e.target.checked
+      if (this._currentMesh?.material) {
+        const mat = this._currentMesh.material
+        if ('side' in mat) {
+          mat.side = e.target.checked ? THREE.DoubleSide : THREE.FrontSide
+          mat.needsUpdate = true
+        }
+      }
+      this._saveExt()
+      this._playSound('click')
+    })
+
+    // ── Position XYZ ──────────────────────────────────────────────────
+
+    let posTimer = null
+    const posHandler = () => {
+      clearTimeout(posTimer)
+      posTimer = setTimeout(() => {
+        const x = parseFloat(body.querySelector('#oi-px')?.value) || 0
+        const y = parseFloat(body.querySelector('#oi-py')?.value) || 0
+        const z = parseFloat(body.querySelector('#oi-pz')?.value) || 0
+        const position = [x, y, z]
+
+        if (this._currentMesh) {
+          this._currentMesh.position.set(x, y, z)
+        }
+        data.position = position
+
+        window.dispatchEvent(new CustomEvent('omni:node-pos-set', {
+          detail: { id: data.id, position }
+        }))
+        this._flashBanner('✓ Saved', 'saved')
+      }, 200)
+    }
+
+    body.querySelector('#oi-px')?.addEventListener('input', posHandler)
+    body.querySelector('#oi-py')?.addEventListener('input', posHandler)
+    body.querySelector('#oi-pz')?.addEventListener('input', posHandler)
+
+    // Slider <-> number sync for Position/Rotation/Scale — the slider
+    // drives its paired number field's value then re-dispatches
+    // 'input' on it, so the existing debounced handlers above (which
+    // read from the number fields by id) fire exactly as if the user
+    // had typed there. The number field also updates the slider on
+    // direct typing, so they never visibly disagree.
+    const syncSliderAndNumber = (numId, sliderId) => {
+      const numEl = body.querySelector(`#${numId}`)
+      const sliderEl = body.querySelector(`#${sliderId}`)
+      if (!numEl || !sliderEl) return
+      sliderEl.addEventListener('input', () => {
+        numEl.value = sliderEl.value
+        numEl.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      numEl.addEventListener('input', () => {
+        const v = parseFloat(numEl.value)
+        if (Number.isFinite(v)) sliderEl.value = v
+      })
+    }
+    ;['px', 'py', 'pz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz'].forEach(k => syncSliderAndNumber(`oi-${k}`, `oi-${k}-slider`))
+
+    // ── Rotation XYZ (radians) ───────────────────────────────────────
+
+    // Named + stored on `this` (not just a local closure) so a global,
+    // class-level omni:force-save listener (wired once in init(), see
+    // below) can flush whichever node's debounced edit is pending when
+    // the tab closes/refreshes/hides — that race is the real cause of
+    // "rotation/scale sometimes doesn't persist": the 200ms debounce
+    // below is what actually commits the value to data/ext and dispatches
+    // the omni:node-*-set event OmniNode._save() depends on, and closing
+    // within that window used to drop the edit silently.
+    let rotTimer = null
+    const commitRotation = this._pendingCommitRotation = () => {
+      const x = parseFloat(body.querySelector('#oi-rx')?.value) || 0
+      const y = parseFloat(body.querySelector('#oi-ry')?.value) || 0
+      const z = parseFloat(body.querySelector('#oi-rz')?.value) || 0
+      const rotation = [x, y, z]
+
+      if (this._currentMesh) {
+        this._currentMesh.rotation.set(x, y, z)
+      }
+      data.rotation = rotation
+
+      window.dispatchEvent(new CustomEvent('omni:node-rotation-set', {
+        detail: { id: data.id, rotation }
+      }))
+      this._flashBanner('✓ Saved', 'saved')
+    }
+    const rotHandler = () => {
+      clearTimeout(rotTimer)
+      rotTimer = setTimeout(commitRotation, 200)
+    }
+
+    body.querySelector('#oi-rx')?.addEventListener('input', rotHandler)
+    body.querySelector('#oi-ry')?.addEventListener('input', rotHandler)
+    body.querySelector('#oi-rz')?.addEventListener('input', rotHandler)
+
+    // ── Scale XYZ ─────────────────────────────────────────────────────
+
+    let scaleTimer = null
+    const commitScale = this._pendingCommitScale = () => {
+      const x = parseFloat(body.querySelector('#oi-sx')?.value) || 1
+      const y = parseFloat(body.querySelector('#oi-sy')?.value) || 1
+      const z = parseFloat(body.querySelector('#oi-sz')?.value) || 1
+      const scale = {
+        x: clamp(x, 0.001, 1000),
+        y: clamp(y, 0.001, 1000),
+        z: clamp(z, 0.001, 1000),
+      }
+
+      if (this._currentMesh) {
+        this._currentMesh.scale.set(scale.x, scale.y, scale.z)
+      }
+
+      ext.scale = scale
+      this._saveExt()
+
+      // Dispatched as an array, not the {x,y,z} object above — every
+      // other consumer of data.scale (OmniNode's _baseScale, _load,
+      // mesh.scale.set(...data.scale) via spread) expects the array
+      // shape posHandler/rotHandler already use correctly. Sending an
+      // object here made _baseScale throw the next time hover/select/
+      // deselect ran (array-destructuring a plain object throws) —
+      // which is what caused the scale to appear to revert AND made
+      // the object stop responding to clicks afterward, since the
+      // throw interrupted the deselect flow's own cleanup.
+      window.dispatchEvent(new CustomEvent('omni:node-scale-set', {
+        detail: { id: data.id, scale: [scale.x, scale.y, scale.z] }
+      }))
+    }
+    const scaleHandler = () => {
+      clearTimeout(scaleTimer)
+      scaleTimer = setTimeout(commitScale, 200)
+    }
+
+    body.querySelector('#oi-sx')?.addEventListener('input', scaleHandler)
+    body.querySelector('#oi-sy')?.addEventListener('input', scaleHandler)
+    body.querySelector('#oi-sz')?.addEventListener('input', scaleHandler)
+
+    // ── Texture slot ──────────────────────────────────────────────────
+
+    // Stashed so the single class-level 'omni:gallery-texture-select'
+    // listener (registered once in init()) always has the current node's
+    // live body/ext to apply a gallery pick into — see that listener's
+    // own comment for why this isn't wired fresh here instead.
+    this._texSlotBody = body
+    this._texSlotExt  = ext
+
+    // Drop zone — click opens file picker
+    const texDrop    = body.querySelector('#oi-tex-drop')
+    const texFile     = body.querySelector('#oi-tex-file')
+    const texUrl      = body.querySelector('#oi-tex-url')
+    const texApply    = body.querySelector('#oi-tex-apply')
+    const texGallery  = body.querySelector('#oi-tex-gallery')
+    const texClear    = body.querySelector('#oi-tex-clear')
+
+    // Opens OmniGallery in "pick a texture" mode — any panel/inspector can
+    // do this the same way, per OmniGallery's own documented contract.
+    texGallery?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('omni:gallery-toggle', { detail: { select: true } }))
+      this._playSound('click')
+    })
+
+    texDrop?.addEventListener('click', () => texFile?.click())
+
+    texDrop?.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      texDrop.classList.add('drag-over')
+    })
+    texDrop?.addEventListener('dragleave', () => texDrop.classList.remove('drag-over'))
+    texDrop?.addEventListener('drop', (e) => {
+      e.preventDefault()
+      texDrop.classList.remove('drag-over')
+      const file = e.dataTransfer?.files?.[0]
+      if (file) this._loadTextureFile(file, body, ext)
+    })
+
+    texFile?.addEventListener('change', () => {
+      const file = texFile.files?.[0]
+      if (file) this._loadTextureFile(file, body, ext)
+      texFile.value = ''
+    })
+
+    texApply?.addEventListener('click', () => {
+      const url = texUrl?.value?.trim()
+      if (url) {
+        this._applyTextureUrl(url, body, ext)
+        this._playSound('click')
+      }
+    })
+
+    texClear?.addEventListener('click', () => {
+      this._clearTexture(body, ext)
+      this._playSound('close')
+    })
+
+    // Restore texture preview if one exists
+    if (ext?.texture) {
+      const preview = body.querySelector('#oi-tex-preview')
+      if (preview) {
+        preview.src = ext.texture
+        preview.classList.add('is-visible')
+      }
+    }
+  }
+
+  // ── Wire MEDIA controls ───────────────────────────────────────────────────
+
+  _wireMedia (body, ext) {
+    const ext_ = ext ?? this._ext
+    const slots = ['images', 'sound', 'media']
+
+    slots.forEach(key => {
+      const dropZone = body.querySelector(`[data-media-drop="${key}"]`)
+      const fileInp  = body.querySelector(`#oi-file-${key}`)
+      const urlInp   = body.querySelector(`#oi-url-${key}`)
+      const addBtn   = body.querySelector(`[data-media-apply="${key}"]`)
+
+      // Drop zone click → file picker
+      dropZone?.addEventListener('click', () => fileInp?.click())
+
+      // Drag events
+      dropZone?.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        dropZone.classList.add('drag-over')
+      })
+      dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'))
+      dropZone?.addEventListener('drop', (e) => {
+        e.preventDefault()
+        dropZone.classList.remove('drag-over')
+        const file = e.dataTransfer?.files?.[0]
+        if (file) this._addMediaFile(key, file, body, ext_)
+      })
+
+      // File input change
+      fileInp?.addEventListener('change', () => {
+        const file = fileInp.files?.[0]
+        if (file) this._addMediaFile(key, file, body, ext_)
+        fileInp.value = ''
+      })
+
+      // URL add button
+      addBtn?.addEventListener('click', () => {
+        const url = urlInp?.value?.trim()
+        if (!url) return
+        this._addMediaItem(key, { src: url, label: url.split('/').pop() || url }, body, ext_)
+        if (urlInp) urlInp.value = ''
+        this._playSound('click')
+      })
+    })
+
+    // Remove item buttons (delegated from body)
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('.oi-slot-item-rm')
+      if (!btn) return
+      const key = btn.dataset.mediaKey
+      const idx = parseInt(btn.dataset.mediaIdx, 10)
+      if (key && !isNaN(idx)) {
+        ext_[key].splice(idx, 1)
+        this._saveExt()
+        this._refreshMediaList(key, body, ext_)
+        this._playSound('close')
+      }
+    })
+  }
+
+  // ── Wire CREATE section — mini preview, morph, export ────────────────────
+
+  _wireCreateSection (body) {
+    this._teardownCreatePreview()
+
+    const canvas = body.querySelector('#oi-create-canvas')
+    if (!canvas) return
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setSize(120, 120, false)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10)
+    camera.position.set(0, 0.6, 2.2)
+    camera.lookAt(0, 0, 0)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    const key = new THREE.DirectionalLight(0xffffff, 1.0)
+    key.position.set(2, 3, 2)
+    scene.add(key)
+
+    const geo  = new THREE.BoxGeometry(1, 1, 1)
+    const mat  = new THREE.MeshStandardMaterial({ color: 0xb99cff, roughness: 0.4, metalness: 0.1 })
+    const mesh = new THREE.Mesh(geo, mat)
+    scene.add(mesh)
+
+    this._createPreview = { renderer, scene, camera, mesh, geoType: 'BoxGeometry' }
+    this._applyCreateTransform()
+
+    body.querySelector('#oi-create-morph')?.addEventListener('click', () => this._createMorph())
+    body.querySelector('#oi-create-export')?.addEventListener('click', (e) => this._createExport(e.currentTarget))
+
+    const spaceToggle = body.querySelector('#oi-create-as-space')
+    spaceToggle?.addEventListener('click', () => {
+      const next = !spaceToggle.classList.contains('is-on')
+      spaceToggle.classList.toggle('is-on', next)
+      spaceToggle.setAttribute('aria-checked', String(next))
+    })
+
+    body.querySelectorAll('[data-transform-key]').forEach(input => {
+      input.addEventListener('input', () => {
+        const key = input.dataset.transformKey
+        this._createTransform[key] = Number(input.value)
+        const valEl = body.querySelector(`[data-transform-val-for="${key}"]`)
+        if (valEl) valEl.textContent = Number(input.value).toFixed(Number(input.step) < 1 ? 2 : 0)
+        this._applyCreateTransform()
+      })
+    })
+  }
+
+  /** Pushes _createTransform onto the live preview mesh — px/py/pz are
+   *  scaled down (matching ui/OmniDraw.js's convention) since the
+   *  preview's tiny scene uses much smaller units than the main world. */
+  _applyCreateTransform () {
+    const mesh = this._createPreview?.mesh
+    if (!mesh) return
+    const t = this._createTransform
+    mesh.position.set(t.px / 20, t.py / 20, t.pz / 20)
+    mesh.rotation.set(t.rx, t.ry, t.rz)
+    mesh.scale.set(t.sx, t.sy, t.sz)
+  }
+
+  _teardownCreatePreview () {
+    if (!this._createPreview) return
+    this._createPreview.mesh.geometry?.dispose()
+    this._createPreview.mesh.material?.dispose()
+    this._createPreview.renderer.dispose()
+    try { this._createPreview.renderer.forceContextLoss() } catch (_) {}   // V183: free the GL context now; many quick node loads otherwise exhaust the browser's context limit and lose the MAIN canvas
+    this._createPreview = null
+  }
+
+  // ── Inspect preview — spinning view of the ACTUAL loaded node ───────────
+  // Same visual language as the Create section (and ui/OmniDraw's own
+  // preview), but reflects the real selected node's geometry/color/
+  // wireframe rather than a blank new object. One renderer is created
+  // lazily and reused across node switches — just its mesh's geometry/
+  // material gets updated, rather than tearing the whole thing down and
+  // rebuilding it every time you select something different.
+
+  _setupInspectPreviewIfNeeded () {
+    if (this._inspectPreview) return
+    const canvas = this._el?.querySelector('#oi-inspect-canvas')
+    if (!canvas) return
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+    renderer.setSize(90, 90, false)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+    const scene  = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10)
+    camera.position.set(0, 0.5, 2.1)
+    camera.lookAt(0, 0, 0)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    const key = new THREE.DirectionalLight(0xffffff, 1.0)
+    key.position.set(2, 3, 2)
+    scene.add(key)
+
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.1 })
+    )
+    scene.add(mesh)
+
+    this._inspectPreview = { renderer, scene, camera, mesh, geoType: 'BoxGeometry' }
+  }
+
+  /** Syncs the inspect-preview mesh to match the currently loaded node's
+   *  geometry/color/wireframe. Called every time _renderLoaded() runs. */
+  _updateInspectPreview (data, ext) {
+    this._setupInspectPreviewIfNeeded()
+    const p = this._inspectPreview
+    if (!p) return
+
+    if (data.geometry && data.geometry !== p.geoType) {
+      const builder = GEOMETRY_DEFS[data.geometry]
+      p.mesh.geometry.dispose()
+      p.mesh.geometry = builder ? builder() : new THREE.BoxGeometry(1, 1, 1)
+      p.geoType = data.geometry
+    }
+    if (data.color) {
+      try { p.mesh.material.color.set(data.color) } catch (_) {}
+    }
+    p.mesh.material.wireframe = !!ext?.wireframe
+    p.mesh.material.needsUpdate = true
+  }
+
+  _teardownInspectPreview () {
+    if (!this._inspectPreview) return
+    this._inspectPreview.mesh.geometry?.dispose()
+    this._inspectPreview.mesh.material?.dispose()
+    this._inspectPreview.renderer.dispose()
+    this._inspectPreview = null
+  }
+
+  // ── Info plane — floating plane showing External Display/Code ──────────
+  // One plane, positioned just beside the selected node, billboarded to
+  // face the camera every frame (see update()). Content is drawn onto a
+  // plain 2D canvas and uploaded as a CanvasTexture — cheap, and easy to
+  // redraw on every edit without touching Three.js geometry at all.
+
+  _showInfoPlane (data, ext) {
+    if (!this._currentMesh) return
+
+    if (!this._infoPlanes.has(data.id)) {
+      const width = ext.planeWidth ?? 2.4
+      const height = ext.planeHeight ?? 2.4
+      const canvas = document.createElement('canvas')
+      // Canvas resolution stays proportional to the plane's aspect
+      // ratio — otherwise a non-square plane would stretch the text.
+      canvas.width = 512
+      canvas.height = Math.round(512 * (height / width))
+      const texture = new THREE.CanvasTexture(canvas)
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture, transparent: true, side: THREE.DoubleSide, depthTest: false,
+      })
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat)
+      mesh.renderOrder = 999   // always draw on top, like a HUD label
+      this.ctx.scene.add(mesh)
+
+      // Offset to the side of the node in world space, roughly matching
+      // its own scale so it doesn't overlap a large object.
+      const scale = this._currentMesh.scale
+      const offset = new THREE.Vector3(2 + Math.max(scale.x, scale.y, scale.z), 0, 0)
+
+      // targetMesh is captured here, not read from this._currentMesh
+      // later — once Persistent mode lets this plane outlive the
+      // Inspector moving on to a different node, this._currentMesh
+      // will no longer refer to the right object.
+      this._infoPlanes.set(data.id, {
+        mesh, canvas, ctx2d: canvas.getContext('2d'), texture, offset, targetMesh: this._currentMesh,
+        faceCamera: ext.planeFaceCamera !== false,
+        autoSize: !!ext.planeAutoSize,
+        scrollable: !!ext.planeScrollable,
+        scrollOffset: 0,
+        manualOffset: { ...(ext.planeOffset ?? { x: 0, y: 0, z: 0 }) },
+        manualRotation: { ...(ext.planeRotation ?? { x: 0, y: 0, z: 0 }) },
+        manualScale: { ...(ext.planeScale ?? { x: 1, y: 1, z: 1 }) },
+      })
+      mesh.scale.set(this._infoPlanes.get(data.id).manualScale.x, this._infoPlanes.get(data.id).manualScale.y, this._infoPlanes.get(data.id).manualScale.z)
+    }
+
+    this._updateInfoPlaneTexture(data.id)
+  }
+
+  /** Called when the Width/Height fields change — rebuilds the plane
+   *  geometry and proportionally resizes the canvas, since a plain
+   *  scale transform would stretch the rendered text instead of
+   *  reflowing it at the new size. */
+  _resizeInfoPlane (ext, nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    const width = ext.planeWidth ?? 2.4
+    const height = ext.planeHeight ?? 2.4
+
+    plane.mesh.geometry.dispose()
+    plane.mesh.geometry = new THREE.PlaneGeometry(width, height)
+
+    plane.canvas.width = 512
+    plane.canvas.height = Math.round(512 * (height / width))
+    // Canvas resize clears its content — recreate the 2D context
+    // reference and let _updateInfoPlaneTexture redraw everything.
+    plane.ctx2d = plane.canvas.getContext('2d')
+
+    this._updateInfoPlaneTexture(nodeId)
+  }
+
+  /** Removes ONE specific plane (by node id) — never all of them, since
+   *  Persistent mode means other nodes' planes may still be showing.
+   *  Defaults to the currently-loaded node for old call sites that
+   *  don't pass an id explicitly. */
+  _hideInfoPlane (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    this.ctx.scene.remove(plane.mesh)
+    plane.mesh.geometry.dispose()
+    plane.mesh.material.dispose()
+    plane.texture.dispose()
+    this._infoPlanes.delete(nodeId)
+  }
+
+  /** Builds the full content as a flat list of drawable line-items —
+   *  headers, wrapped text lines (indent preserved), dividers, blanks —
+   *  without drawing anything yet. This measurement pass is what makes
+   *  auto-size and scrolling both possible: we need to know the total
+   *  content height BEFORE deciding whether to grow the plane to fit
+   *  it, or keep the configured size and let the user scroll through
+   *  it instead. Text wrapping only ever depends on canvas WIDTH,
+   *  which stays fixed regardless of mode — nothing here stretches the
+   *  plane horizontally to fit more; only height changes, per mode.
+   */
+  _buildInfoPlaneLayout (ctx2d, contentWidth, ext) {
+    const items = []   // { type, text, indent, color, font, height }
+    const LINE_H = 20
+    const HEADER_H = 34
+    const DIVIDER_H = 30
+
+    const wrapInto = (text, color, font) => {
+      ctx2d.font = font
+      const rawLines = (text ?? '').replace(/\t/g, '  ').split('\n')
+      for (const rawLine of rawLines) {
+        const indentMatch = rawLine.match(/^ */)
+        const indent = indentMatch ? indentMatch[0] : ''
+        const content = rawLine.slice(indent.length)
+
+        if (content === '') { items.push({ type: 'blank', height: LINE_H }); continue }
+
+        const words = content.split(' ')
+        let line = ''
+        for (const word of words) {
+          const test = line ? line + ' ' + word : word
+          if (ctx2d.measureText(indent + test).width > contentWidth && line) {
+            items.push({ type: 'text', text: indent + line, color, font, height: LINE_H })
+            line = word
+          } else {
+            line = test
+          }
+        }
+        items.push({ type: 'text', text: indent + line, color, font, height: LINE_H })
+      }
+    }
+
+    const t = ext.planeTextColor ?? { r: 220, g: 230, b: 255, a: 0.9 }
+    const bodyColor = `rgba(${t.r}, ${t.g}, ${t.b}, ${t.a})`
+    const headerColor = `rgba(${t.r}, ${t.g}, ${t.b}, ${Math.min(1, t.a + 0.08)})`
+
+    items.push({ type: 'header', text: 'DISPLAY', color: headerColor, font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalDisplay || '(empty)', bodyColor, '16px "Courier New", monospace')
+    items.push({ type: 'divider', height: DIVIDER_H })
+    items.push({ type: 'header', text: 'CODE', color: headerColor, font: 'bold 20px "Courier New", monospace', height: HEADER_H })
+    wrapInto(ext.externalCode || '(empty)', bodyColor, '14px "Courier New", monospace')
+
+    return items
+  }
+
+  /** Scrolls whichever plane is currently loaded in the Inspector, by
+   *  a raw pixel amount — shared by the mouse-wheel handler and
+   *  ui/PanelControl.js's button commands, so there's one real
+   *  scrolling mechanism, not two that could drift apart. */
+  /** GoTo / TravelTo — moves the camera to a point offset from the
+   *  object back toward wherever the camera currently is (so the
+   *  approach direction matches whatever side the viewer was already
+   *  on, rather than snapping to some arbitrary fixed side of the
+   *  object), then faces the object. Standoff distance scales with the
+   *  object's own size so large objects aren't approached too closely
+   *  and tiny ones aren't viewed from oddly far away. */
+  _goToObject (mesh = this._currentMesh) {
+    goToObject(this.ctx, mesh)
+  }
+
+  _scrollInfoPlane (amount, nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane || !plane.scrollable || plane.autoSize) return
+    plane.scrollOffset = (plane.scrollOffset ?? 0) + amount
+    this._updateInfoPlaneTexture(nodeId)
+  }
+
+  _infoPlanePageHeight (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    return (plane?.canvas.height ?? 300) * 0.7
+  }
+
+  _updateInfoPlaneTexture (nodeId = this._currentId) {
+    const plane = this._infoPlanes.get(nodeId)
+    if (!plane) return
+    const { ctx2d: c } = plane
+    const ext = this._ext ?? {}
+    const TOP = 40
+    const SIDE = 24
+    const BOTTOM = 20
+
+    const items = this._buildInfoPlaneLayout(c, plane.canvas.width - SIDE * 2, ext)
+    const contentHeight = items.reduce((sum, i) => sum + i.height, 0)
+
+    if (plane.autoSize) {
+      // Grow the REAL plane height to fit everything — width is never
+      // touched, so text never stretches, only the canvas/plane gets
+      // taller to hold more of it.
+      const neededHeight = TOP + contentHeight + BOTTOM
+      const aspect = ext.planeWidth && ext.planeHeight ? ext.planeHeight / ext.planeWidth : 1
+      const currentPixelHeight = plane.canvas.width * aspect
+      if (Math.abs(neededHeight - plane.canvas.height) > 4) {
+        plane.canvas.height = Math.max(neededHeight, 64)
+        plane.ctx2d = plane.canvas.getContext('2d')
+        const worldWidth = ext.planeWidth ?? 2.4
+        const worldHeight = worldWidth * (plane.canvas.height / plane.canvas.width)
+        plane.mesh.geometry.dispose()
+        plane.mesh.geometry = new THREE.PlaneGeometry(worldWidth, worldHeight)
+        return this._updateInfoPlaneTexture(nodeId)   // canvas was replaced — redraw against the fresh context
+      }
+    }
+
+    const { ctx2d: c2, canvas } = plane
+    const bg = ext.planeBgColor ?? { r: 8, g: 8, b: 14, a: 0.88 }
+    const border = ext.planeBorderColor ?? { r: 255, g: 255, b: 255, a: 0.25 }
+    c2.clearRect(0, 0, canvas.width, canvas.height)
+    c2.fillStyle = `rgba(${bg.r}, ${bg.g}, ${bg.b}, ${bg.a})`
+    c2.strokeStyle = `rgba(${border.r}, ${border.g}, ${border.b}, ${border.a})`
+    c2.lineWidth = 3
+    c2.fillRect(0, 0, canvas.width, canvas.height)
+    c2.strokeRect(1.5, 1.5, canvas.width - 3, canvas.height - 3)
+
+    const visibleHeight = canvas.height - TOP - BOTTOM
+    const maxScroll = Math.max(0, contentHeight - visibleHeight)
+    const clipPadding = 4
+
+    if (plane.scrollable && !plane.autoSize) {
+      plane.scrollOffset = Math.min(Math.max(plane.scrollOffset ?? 0, 0), maxScroll)
+    } else {
+      plane.scrollOffset = 0
+    }
+
+    // Clip to the plane's own bounds so scrolled/overflowing content
+    // never draws outside it — otherwise a scrolled-past line would
+    // visibly poke out past the border.
+    c2.save()
+    c2.beginPath()
+    c2.rect(0, TOP - clipPadding, canvas.width, visibleHeight + clipPadding)
+    c2.clip()
+
+    let y = TOP - plane.scrollOffset
+    for (const item of items) {
+      if (item.type === 'divider') {
+        if (y > TOP - 20 && y < canvas.height) {
+          c2.strokeStyle = 'rgba(255,255,255,0.15)'
+          c2.beginPath(); c2.moveTo(SIDE, y); c2.lineTo(canvas.width - SIDE, y); c2.stroke()
+        }
+      } else if (item.type === 'text' || item.type === 'header') {
+        if (y > TOP - item.height && y < canvas.height) {
+          c2.fillStyle = item.color
+          c2.font = item.font
+          c2.fillText(item.text, SIDE, y)
+        }
+      }
+      y += item.height
+    }
+    c2.restore()
+
+    // Scrollable-with-overflow gets a visible scrollbar affordance —
+    // otherwise there's no indication there's more content below.
+    if (plane.scrollable && !plane.autoSize && maxScroll > 0) {
+      const barTrackH = visibleHeight
+      const barH = Math.max(20, barTrackH * (visibleHeight / contentHeight))
+      const barY = TOP + (barTrackH - barH) * (plane.scrollOffset / maxScroll)
+      c2.fillStyle = 'rgba(255,255,255,0.3)'
+      c2.fillRect(canvas.width - 10, barY, 5, barH)
+    }
+
+    plane.texture.needsUpdate = true
+  }
+
+  /** Same squash-swap-restore approximation as OmniDraw's Domain
+   *  Expansion — see that file's comment for why it's not true
+   *  vertex-interpolated morphing. */
+  _createMorph () {
+    if (!this._createPreview) return
+    const mesh = this._createPreview.mesh
+    const toSphere = this._createPreview.geoType !== 'SphereGeometry'
+    const nextType = toSphere ? 'SphereGeometry' : 'BoxGeometry'
+
+    gsap.timeline()
+      .to(mesh.scale, { x: 0.01, y: 0.01, z: 1.4, duration: 0.22, ease: 'power2.in' })
+      .call(() => {
+        mesh.geometry.dispose()
+        mesh.geometry = toSphere
+          ? new THREE.SphereGeometry(0.62, 32, 32)
+          : new THREE.BoxGeometry(1, 1, 1)
+        this._createPreview.geoType = nextType
+      })
+      .to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.35, ease: 'elastic.out(1, 0.55)' })
+  }
+
+  /**
+   * Export to Scene — identical event contract to OmniDraw's button
+   * (omni:node-create-request), so it automatically respects whatever
+   * space is currently entered (OmniNode handles the parenting) without
+   * this code needing to know anything about spaces itself. If "mark +
+   * enter as new space on export" is checked, also flags the new node as
+   * a domain and immediately enters it.
+   */
+  _createExport (btn) {
+    if (!this._createPreview) return
+    const mesh = this._createPreview.mesh
+    const t    = this._createTransform
+    const cam  = this.ctx.camera
+    const dir  = new THREE.Vector3()
+    cam.getWorldDirection(dir)
+    dir.multiplyScalar(6)
+
+    const id = generateId()
+    const asSpace = this._el?.querySelector('#oi-create-as-space')?.classList.contains('is-on')
+
+    window.dispatchEvent(new CustomEvent('omni:node-create-request', {
+      detail: {
+        id,
+        label    : 'Container_' + Date.now().toString(36).slice(-4),
+        geometry : this._createPreview.geoType,
+        primitive: 'objective',
+        color    : '#' + (mesh.material.color?.getHexString?.() ?? 'ffffff'),
+        position : [
+          cam.position.x + dir.x + t.px / 20,
+          Math.max(0.5, cam.position.y + dir.y + t.py / 20),
+          cam.position.z + dir.z + t.pz / 20,
+        ],
+        rotation : [t.rx, t.ry, t.rz],
+        scale    : [t.sx, t.sy, t.sz],
+        parentId : null,
+      }
+    }))
+
+    if (asSpace) {
+      window.dispatchEvent(new CustomEvent('omni:node-set-domain', { detail: { id, isDomain: true } }))
+      // Give OmniNode a tick to register the node before entering it.
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('omni:enter-space-request', { detail: { id } }))
+      }, 50)
+    }
+
+    if (!btn) return
+    const original = btn.textContent
+    btn.textContent = '⟐ Exported ✓'
+    gsap.fromTo(btn, { scale: 1.08 }, { scale: 1, duration: 0.3, ease: 'back.out(2)' })
+    setTimeout(() => { btn.textContent = original }, 900)
+  }
+
+  // ── Color sync — pushes this._color state to all UI elements ─────────────
+
+  _syncColorUI (body) {
+    const { r, g, b, a } = this._color
+    const hex = rgbToHex(r, g, b)
+    const apc = Math.round(a * 100)
+    const swatchBg = `rgba(${r},${g},${b},${a})`
+
+    const q = (id) => body.querySelector(id)
+
+    const swatchFill = q('#oi-swatch-fill')
+    if (swatchFill) swatchFill.style.background = swatchBg
+
+    const nativeColor = q('#oi-native-color')
+    if (nativeColor) nativeColor.value = hex
+
+    const hexInput = q('#oi-hex-input')
+    if (hexInput && document.activeElement !== hexInput) hexInput.value = hex
+
+    const alphaReadout = q('#oi-alpha-readout')
+    if (alphaReadout) alphaReadout.textContent = apc + '%'
+
+    const rSlider = q('#oi-r')
+    const gSlider = q('#oi-g')
+    const bSlider = q('#oi-b')
+    const aSlider = q('#oi-a')
+    if (rSlider) rSlider.value = r
+    if (gSlider) gSlider.value = g
+    if (bSlider) bSlider.value = b
+    if (aSlider) aSlider.value = apc
+
+    const rVal = q('#oi-r-val')
+    const gVal = q('#oi-g-val')
+    const bVal = q('#oi-b-val')
+    const aVal = q('#oi-a-val')
+    if (rVal) rVal.textContent = r
+    if (gVal) gVal.textContent = g
+    if (bVal) bVal.textContent = b
+    if (aVal) aVal.textContent = apc + '%'
+  }
+
+  // ── Apply color to Three.js mesh material ─────────────────────────────────
+
+  _applyColorToMesh () {
+    const mat = this._currentMesh?.material
+    if (!mat) return
+    const { r, g, b, a } = this._color
+
+    // Skip colorless materials (Normal, Depth)
+    if (!COLORLESS_MATS.has(this._ext?.material)) {
+      if (mat.color) mat.color.setRGB(r / 255, g / 255, b / 255)
+    }
+
+    mat.opacity     = a
+    mat.transparent = a < 1
+    mat.needsUpdate = true
+  }
+
+  _dispatchColor () {
+    if (!this._currentId) return
+    window.dispatchEvent(new CustomEvent('omni:node-color-set', {
+      detail: { id: this._currentId, color: rgbToHex(this._color.r, this._color.g, this._color.b) }
+    }))
+    this._flashBanner('✓ Saved', 'saved')
+  }
+
+  // ── Apply material type swap ──────────────────────────────────────────────
+
+  _applyMaterial (typeName) {
+    const mesh = this._currentMesh
+    if (!mesh) return
+
+    // Sprites (Dimensional Text) use SpriteMaterial, not one of the
+    // regular Mesh material types in MATERIALS — swapping it out breaks
+    // Three.js's sprite renderer. See the matching guard in loadNode().
+    if (mesh instanceof THREE.Sprite) return
+
+    const MatClass = MATERIALS[typeName]
+    if (!MatClass) return
+
+    const { r, g, b, a } = this._color
+    const oldMat = mesh.material
+
+    const newProps = {
+      opacity     : a,
+      transparent : a < 1,
+    }
+
+    // Only add color if the material type supports it
+    if (!COLORLESS_MATS.has(typeName)) {
+      newProps.color = new THREE.Color(r / 255, g / 255, b / 255)
+    }
+
+    // Copy PBR props from old material if applicable
+    if (PBR_MATS.has(typeName) && 'roughness' in oldMat) {
+      newProps.roughness = oldMat.roughness
+      newProps.metalness = oldMat.metalness
+    }
+
+    // Copy wireframe setting
+    if ('wireframe' in oldMat && this._ext?.wireframe) {
+      newProps.wireframe = this._ext.wireframe
+    }
+
+    const newMat = new MatClass(newProps)
+
+    // Transfer texture map if present
+    if (oldMat.map && !COLORLESS_MATS.has(typeName)) newMat.map = oldMat.map
+
+    oldMat.dispose()
+    mesh.material = newMat
+
+    window.dispatchEvent(new CustomEvent('omni:node-material-set', {
+      detail: { id: this._currentId, material: typeName }
+    }))
+  }
+
+  // ── Texture helpers ───────────────────────────────────────────────────────
+
+  _loadTextureFile (file, body, ext) {
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target.result
+      this._applyTextureUrl(dataUrl, body, ext)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  _applyTextureUrl (url, body, ext) {
+    texLoader.load(
+      url,
+      (texture) => {
+        const mat = this._currentMesh?.material
+        if (mat && !COLORLESS_MATS.has(this._ext?.material)) {
+          mat.map = texture
+          mat.needsUpdate = true
+        }
+
+        ext.texture = url
+        this._saveExt()
+
+        // Show preview and clear button
+        const preview = body.querySelector('#oi-tex-preview')
+        const clear   = body.querySelector('#oi-tex-clear')
+        if (preview) { preview.src = url; preview.classList.add('is-visible') }
+        if (clear)   { clear.classList.add('is-visible') }
+
+        // Update drop zone text
+        const drop = body.querySelector('#oi-tex-drop')
+        if (drop) drop.innerHTML = `<span class="oi-drop-zone-icon">✓</span>Texture applied`
+      },
+      undefined,
+      () => {
+        const drop = body.querySelector('#oi-tex-drop')
+        if (drop) drop.innerHTML = `<span class="oi-drop-zone-icon">✗</span>Load failed — check URL`
+      }
+    )
+  }
+
+  _clearTexture (body, ext) {
+    const mat = this._currentMesh?.material
+    if (mat) {
+      mat.map?.dispose()
+      mat.map = null
+      mat.needsUpdate = true
+    }
+
+    ext.texture = null
+    this._saveExt()
+
+    const preview = body.querySelector('#oi-tex-preview')
+    const clear   = body.querySelector('#oi-tex-clear')
+    const urlInp  = body.querySelector('#oi-tex-url')
+    if (preview) { preview.src = ''; preview.classList.remove('is-visible') }
+    if (clear)   { clear.classList.remove('is-visible') }
+    if (urlInp)  { urlInp.value = '' }
+
+    const drop = body.querySelector('#oi-tex-drop')
+    if (drop) drop.innerHTML = `<span class="oi-drop-zone-icon">🖼</span>Drop image file or enter URL`
+  }
+
+  // ── Media helpers ─────────────────────────────────────────────────────────
+
+  _addMediaFile (key, file, body, ext) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const item = { src: e.target.result, label: file.name, type: file.type }
+      this._addMediaItem(key, item, body, ext)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  _addMediaItem (key, item, body, ext) {
+    if (!ext[key]) ext[key] = []
+    ext[key].push(item)
+    this._saveExt()
+    this._refreshMediaList(key, body, ext)
+
+    window.dispatchEvent(new CustomEvent('omni:node-media-set', {
+      detail: { id: this._currentId, type: key, url: item.src, label: item.label }
+    }))
+  }
+
+  _refreshMediaList (key, body, ext) {
+    const list = body.querySelector(`#oi-items-${key}`)
+    if (!list) return
+    const items = ext[key] ?? []
+    list.innerHTML = items.map((item, idx) => /* html */`
+      <div class="oi-slot-item">
+        <span class="oi-slot-item-name" title="${item.src}">${item.label || item.src}</span>
+        <button class="oi-slot-item-rm"
+                data-media-key="${key}"
+                data-media-idx="${idx}">✕</button>
+      </div>
+    `).join('')
+  }
+
+  // ── Extended data — per-node inspector state ──────────────────────────────
+
+  /**
+   * Default extended data structure for a new node.
+   * @param {object} data  — raw node data from OmniNode
+   */
+  _defaultExt (data) {
+    return {
+      text      : '',
+      wireframe : false,
+      material  : 'MeshStandardMaterial',
+      scale     : { x: 1, y: 1, z: 1 },
+      texture   : null,
+      images    : [],
+      sound     : [],
+      media     : [],
+      internalDisplay : '',
+      internalCode    : '',
+      externalDisplay : '',
+      externalCode    : '',
+      showOnPlane     : false,
+      materialProps   : {},
+      planeWidth      : 2.4,
+      planeHeight     : 2.4,
+      persistent      : false,
+      planeFaceCamera : true,
+      // Extra transform on top of the automatic offset-from-target
+      // positioning and (if Face Camera is on) continuous billboard
+      // rotation. Position always applies; rotation only visibly
+      // "sticks" when Face Camera is off, since that overrides
+      // orientation every frame otherwise.
+      planeOffset     : { x: 0, y: 0, z: 0 },
+      planeRotation   : { x: 0, y: 0, z: 0 },
+      planeScale      : { x: 1, y: 1, z: 1 },
+      planeBgColor    : { r: 8, g: 8, b: 14, a: 0.88 },
+      planeBorderColor: { r: 255, g: 255, b: 255, a: 0.25 },
+      planeTextColor  : { r: 220, g: 230, b: 255, a: 0.9 },
+      planeAutoSize   : false,
+      planeScrollable : false,
+      // Real, per-object step-sequence program — see
+      // systems/OmniProgramCommands.js. Applies to any OmniDraw
+      // object, not just OmniNavi/OmniBotProgram bots.
+      program         : { enabled: false, steps: [], autoPersist: false, repeat: 'once' },
+    }
+  }
+
+  _saveExt () {
+    if (!this._currentId || !this._ext) return
+    try {
+      // Don't save full base64 data URIs — too large for localStorage.
+      // Store a flag for file-based textures/media; URL-based ones store as-is.
+      const safe = {
+        ...this._ext,
+        texture : this._ext.texture?.startsWith('data:') ? null : this._ext.texture,
+        images  : (this._ext.images ?? []).filter(i => !i.src?.startsWith('data:')),
+        sound   : (this._ext.sound  ?? []).filter(i => !i.src?.startsWith('data:')),
+        media   : (this._ext.media  ?? []).filter(i => !i.src?.startsWith('data:')),
+      }
+      localStorage.setItem(STORE_PREFIX + this._currentId, JSON.stringify(safe))
+      this._flashBanner('✓ Saved', 'saved')
+    } catch (err) {
+      console.warn('⟐i — localStorage save failed:', err)
+      this._flashBanner('⚠ Save failed', 'delete')
+    }
+  }
+
+  /** Same idea as Admin's unsaved-changes banner — a strip that slides
+   *  down from the header — but Inspector auto-saves, so this confirms
+   *  AFTER the fact rather than warning before one. Reused for the
+   *  delete action too (different color variant). */
+  _flashBanner (text, variant = 'saved') {
+    const banner = this._el?.querySelector('#oi-notify-banner')
+    if (!banner) return
+    banner.textContent = text
+    banner.className = `oi-notify-banner is-visible is-${variant}`
+    clearTimeout(this._bannerTimer)
+    this._bannerTimer = setTimeout(() => banner.classList.remove('is-visible'), 1600)
+  }
+
+  _loadExt (id) {
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + id)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+
+  // ── Badge update ──────────────────────────────────────────────────────────
+
+  _updateBadge () {
+    const data = this._currentData
+    if (!data) return
+
+    const prim = PRIMITIVES.find(p => p.key === data.primitive) ?? PRIMITIVES[0]
+    const dot  = this._el.querySelector('#oi-badge-dot')
+    const lbl  = this._el.querySelector('#oi-badge-label')
+    const geo  = this._el.querySelector('#oi-badge-geo')
+
+    if (dot) { dot.style.background = prim.color; dot.style.borderColor = prim.color + '50' }
+    if (lbl) lbl.textContent = data.label ?? data.id
+    if (geo) geo.textContent = (data.geometry ?? '').replace('Geometry', '')
+  }
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+
+  _updateFooter () {
+    const idEl  = this._el.querySelector('#oi-footer-id')
+    const badge = this._el.querySelector('#oi-footer-badge')
+    if (idEl)  idEl.textContent  = this._currentId ? this._currentId.slice(0, 18) + '…' : '—'
+    if (badge) badge.textContent = this._currentId ? '⟐i  loaded' : '⟐i'
+  }
+
+  // ── Panel controls ────────────────────────────────────────────────────────
+
+  _minimize () {
+    const rect = this._el.getBoundingClientRect()
+    gsap.to(this._el, {
+      scale: 0.88, opacity: 0, duration: 0.18, ease: 'power2.in',
+      onComplete: () => {
+        this._el.style.visibility = 'hidden'
+        gsap.set(this._el, { scale: 1, opacity: 1 })
+      }
+    })
+    this._isOpen = false
+
+    window.dispatchEvent(new CustomEvent('omni:panel-minimized', {
+      detail: {
+        id        : 'omniinspector',
+        label     : '⟐i',
+        iconLabel : '⟐i',
+        fromRect  : { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
+      }
+    }))
+    window.dispatchEvent(new CustomEvent('omni:panel-restore-handler', {
+      detail: { id: 'omniinspector', handler: () => this.open() }
+    }))
+  }
+
+  _attach () {
+    window.dispatchEvent(new CustomEvent('omni:panel-attached', {
+      detail: { id: 'omniinspector' }
+    }))
+    // Phase 5: camera.attach(this._el) for XR follow-mode
+  }
+
+  // ── Event listeners ───────────────────────────────────────────────────────
+
+  _bindEvents () {
+    // Toggle open/close
+    this._onToggle = (e) => {
+      if (e.detail?.system !== 'omniinspector') return
+      this.toggle()
+    }
+
+    // Node selected → load into inspector, auto-open
+    this._onSelected = (e) => {
+      const { node, mesh } = e.detail ?? {}
+      if (node && mesh) this.loadNode(node, mesh)
+    }
+
+    // Node deselected → show empty state
+    this._onDeselect = () => {
+      this.clearNode()
+    }
+
+    // Node created → same as selected (auto-open inspector for new nodes)
+    this._onCreated = (e) => {
+      const { node, mesh, quiet } = e.detail ?? {}
+      if (quiet) return   // V183: a pinned / test node is created without selecting it; loading it would also open the panel over the store
+      if (node && mesh) this.loadNode(node, mesh)
+    }
+
+    // Node deleted → clear if this was the loaded node
+    this._onDeleted = (e) => {
+      const deletedId = e.detail?.id
+      this._hideInfoPlane(deletedId)   // clean up a persistent plane too, if this node had one
+      if (deletedId === this._currentId) this.clearNode()
+    }
+
+    // Full node array — cached for the parent picker, and used to keep
+    // the Root/Parent/Depth display live if this node's place in the
+    // hierarchy changes from elsewhere (e.g. another node re-parented
+    // under it, shifting its own depth).
+    this._onNodesUpdated = (e) => {
+      this._allNodes = e.detail?.nodes ?? []
+      this._allEdges = e.detail?.edges ?? []
+      if (!this._currentId || !this._isOpen) return
+      const updated = this._allNodes.find(n => n.id === this._currentId)
+      if (!updated) return
+      this._currentData = updated
+      if (isKindData(updated)) this._refreshKindBlock()
+      const body = this._el?.querySelector('#oi-body')
+      const section = body?.querySelector('#oisec-hierarchy .oi-section-inner')
+      if (section) section.innerHTML = this._hierarchyHTML(updated)
+      if (section) this._wireHierarchy(body, updated)
+    }
+
+    // Space entered/exited — refresh the Domain section's Enter/Exit
+    // button state if it affects the currently loaded node.
+    this._onSpaceEntered = (e) => {
+      this._currentSpaceId = e.detail?.id ?? null
+      this._refreshDomainSection()
+    }
+    this._onSpaceExited = () => {
+      this._currentSpaceId = null
+      this._refreshDomainSection()
+    }
+
+    window.addEventListener('omni:system-toggle', this._onToggle)
+    // V169: ribbon (ui/OmniRibbon.js) Inspector tab.
+    // toggle:true is what the ribbon's Inspector-tab buttons send — the same activateSection() the strip icons call.
+    this._onSectionOpen = (e) => {
+      const d = e.detail
+      if (!d?.section) return
+      if (d.toggle) this.activateSection(d.section); else this.openSection(d.section)
+    }
+    this._onStateRequest = () => this._announceState()
+    window.addEventListener('omni:inspector-section-open', this._onSectionOpen)
+    window.addEventListener('omni:inspector-state-request', this._onStateRequest)
+    // Internal panel (ui/OmniInternalPanel.js) save — this is a REAL,
+    // unconditional persist the moment it fires, not staged behind
+    // this Inspector's own save/auto-save. Also updates in-memory
+    // state if that same node happens to be currently loaded here,
+    // so a later edit to some other field (e.g. color) can't
+    // overwrite this with stale internal data.
+    this._onInternalDataSet = (e) => {
+      const { id, internalDisplay, internalCode } = e.detail ?? {}
+      if (!id) return
+
+      const existing = this._loadExt(id) ?? {}
+      const merged = { ...existing, internalDisplay, internalCode }
+      try {
+        localStorage.setItem(STORE_PREFIX + id, JSON.stringify(merged))
+      } catch (err) {
+        console.warn('⟐i — Internal panel save failed:', err)
+      }
+
+      if (id === this._currentId && this._ext) {
+        this._ext.internalDisplay = internalDisplay
+        this._ext.internalCode = internalCode
+      }
+    }
+    window.addEventListener('omni:node-internal-data-set', this._onInternalDataSet)
+
+    // ui/OmniProgramEditorPanel.js's Save — same real, unconditional-
+    // persist pattern as Internal Data above: this Inspector owns the
+    // actual localStorage write, and keeps its own in-memory copy (and
+    // the visible step list, if this same node's Program section is
+    // currently open) in sync rather than going stale.
+    this._onProgramSet = (e) => {
+      const { id, program } = e.detail ?? {}
+      if (!id || !program) return
+
+      const existing = this._loadExt(id) ?? {}
+      const merged = { ...existing, program }
+      try {
+        localStorage.setItem(STORE_PREFIX + id, JSON.stringify(merged))
+      } catch (err) {
+        console.warn('⟐i — Program save failed:', err)
+      }
+
+      if (id === this._currentId && this._ext) {
+        this._ext.program = program
+        const container = this._el?.querySelector('#oi-program-steps')
+        if (container) {
+          container.innerHTML = program.steps?.length
+            ? program.steps.map((s, i) => stepRowHTML(s, i)).join('')
+            : '<div class="oi-program-empty">No steps yet — add one below.</div>'
+        }
+        // Re-attach listeners to the rows just rendered above (see the
+        // comment on where this is assigned, in _wireProgram).
+        this._programRewireSteps?.()
+        const enabledBox = this._el?.querySelector('#oi-program-enabled')
+        if (enabledBox) enabledBox.checked = !!program.enabled
+        const progBody = this._el?.querySelector('#oi-program-body')
+        if (progBody) progBody.style.display = program.enabled ? '' : 'none'
+        const beginBtn = this._el?.querySelector('#oi-program-begin')
+        if (beginBtn) beginBtn.disabled = !(program.steps?.length)
+        const repeatSel = this._el?.querySelector('#oi-program-repeat')
+        if (repeatSel) repeatSel.value = program.repeat ?? 'once'
+        const autoPersistBox = this._el?.querySelector('#oi-program-autopersist')
+        if (autoPersistBox) autoPersistBox.checked = !!program.autoPersist
+      }
+    }
+    window.addEventListener('omni:node-program-set', this._onProgramSet)
+
+    window.addEventListener('omni:node-selected', this._onSelected)
+
+    // The actual fix for "texture doesn't stick after refresh": a
+    // restored node's mesh is brand new and starts with none of its
+    // saved material/texture state — omni:node-selected only fires
+    // on an active user click, never automatically during restore,
+    // so nothing else re-applies this silently. Deliberately does
+    // NOT touch _currentId/_currentMesh/_ext or open the panel —
+    // this must stay invisible to any node the user hasn't actually
+    // selected.
+    this._onNodeRestored = (e) => {
+      const { node, mesh } = e.detail ?? {}
+      if (!node?.id || !mesh?.material || mesh instanceof THREE.Sprite) return
+      const ext = { ...this._defaultExt(node), ...(this._loadExt(node.id) ?? {}) }
+      this._reapplyExtToMesh(mesh, ext)
+    }
+    window.addEventListener('omni:node-restored', this._onNodeRestored)
+
+    // Lets any caller (OmniSystemCreatorPanel's per-node "Take Me
+    // There" buttons) trigger a real travel directly, without first
+    // needing this node selected/loaded as this._currentMesh.
+    this._onGotoMeshRequest = (e) => { if (e.detail?.mesh) this._goToObject(e.detail.mesh) }
+    window.addEventListener('omni:goto-mesh-request', this._onGotoMeshRequest)
+
+    // Scroll interaction for Scrollable info-planes — raycasts on
+    // wheel so scrolling only affects a plane the mouse is actually
+    // pointing at, the same way scrolling a real 3D world object
+    // should work, rather than a screen-space hotkey.
+    this._onWheel = (e) => {
+      if (this._infoPlanes.size === 0) return
+      const scrollablePlanes = [...this._infoPlanes.values()].filter(p => p.scrollable && !p.autoSize)
+      if (scrollablePlanes.length === 0) return
+
+      const rect = this.ctx.renderer.domElement.getBoundingClientRect()
+      const ndc = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      )
+      const raycaster = new THREE.Raycaster()
+      raycaster.setFromCamera(ndc, this.ctx.camera)
+      const hits = raycaster.intersectObjects(scrollablePlanes.map(p => p.mesh), false)
+      if (hits.length === 0) return
+
+      e.preventDefault()
+      const hitMesh = hits[0].object
+      const plane = scrollablePlanes.find(p => p.mesh === hitMesh)
+      const nodeId = [...this._infoPlanes.entries()].find(([, p]) => p === plane)?.[0]
+      if (!nodeId) return
+
+      this._scrollInfoPlane(e.deltaY * 0.5, nodeId)
+    }
+    window.addEventListener('wheel', this._onWheel, { passive: false })
+
+    // ui/PanelControl.js's button commands — applies to whichever node
+    // is currently loaded in this Inspector. Kept as an abstract
+    // direction command rather than PanelControl reaching into plane
+    // internals itself, so this Inspector stays the one place that
+    // owns the actual scrolling mechanism.
+    this._onPanelControlScroll = (e) => {
+      const { direction } = e.detail ?? {}
+      const page = this._infoPlanePageHeight()
+      const amounts = { up: -24, down: 24, pageup: -page, pagedown: page }
+      if (amounts[direction] !== undefined) this._scrollInfoPlane(amounts[direction])
+    }
+    window.addEventListener('omni:panel-control-scroll', this._onPanelControlScroll)
+
+    // PanelControl requests the current plane's transform/color state
+    // (position offset, rotation, scale, and the three colors) when it
+    // opens, so its fields reflect whatever this Inspector's currently
+    // loaded node's plane actually has — rather than starting blank or
+    // guessing. Applies to this._currentId, same target resolution as
+    // the scroll commands above.
+    this._onPanelControlStateRequest = () => {
+      const ext = this._ext ?? {}
+      window.dispatchEvent(new CustomEvent('omni:panelcontrol-state-response', {
+        detail: {
+          hasPlane: this._infoPlanes.has(this._currentId),
+          offset: { ...(ext.planeOffset ?? { x: 0, y: 0, z: 0 }) },
+          rotation: { ...(ext.planeRotation ?? { x: 0, y: 0, z: 0 }) },
+          scale: { ...(ext.planeScale ?? { x: 1, y: 1, z: 1 }) },
+          bgColor: { ...(ext.planeBgColor ?? { r: 8, g: 8, b: 14, a: 0.88 }) },
+          borderColor: { ...(ext.planeBorderColor ?? { r: 255, g: 255, b: 255, a: 0.25 }) },
+          textColor: { ...(ext.planeTextColor ?? { r: 220, g: 230, b: 255, a: 0.9 }) },
+        }
+      }))
+    }
+    window.addEventListener('omni:panelcontrol-state-request', this._onPanelControlStateRequest)
+
+    // Live updates from PanelControl — a partial patch, only whichever
+    // top-level keys actually changed (offset/rotation/scale/bgColor/
+    // borderColor/textColor). Applies immediately to the real plane
+    // and persists via the normal debounced _saveExt path.
+    this._onPanelControlTransformSet = (e) => {
+      const patch = e.detail ?? {}
+      const ext = this._ext
+      const plane = this._infoPlanes.get(this._currentId)
+      if (!ext || !plane) return
+
+      if (patch.offset) { ext.planeOffset = { ...ext.planeOffset, ...patch.offset }; plane.manualOffset = { ...ext.planeOffset } }
+      if (patch.rotation) { ext.planeRotation = { ...ext.planeRotation, ...patch.rotation }; plane.manualRotation = { ...ext.planeRotation } }
+      if (patch.scale) {
+        ext.planeScale = { ...ext.planeScale, ...patch.scale }
+        plane.manualScale = { ...ext.planeScale }
+        plane.mesh.scale.set(plane.manualScale.x, plane.manualScale.y, plane.manualScale.z)
+      }
+      if (patch.bgColor) ext.planeBgColor = { ...ext.planeBgColor, ...patch.bgColor }
+      if (patch.borderColor) ext.planeBorderColor = { ...ext.planeBorderColor, ...patch.borderColor }
+      if (patch.textColor) ext.planeTextColor = { ...ext.planeTextColor, ...patch.textColor }
+
+      if (patch.bgColor || patch.borderColor || patch.textColor) this._updateInfoPlaneTexture()
+      this._saveExt()
+    }
+    window.addEventListener('omni:panelcontrol-transform-set', this._onPanelControlTransformSet)
+
+    this._onTimelineChanged = () => this._refreshTimeSection()
+    window.addEventListener('omni:timeline-changed', this._onTimelineChanged)
+
+    // V183: the Store item / Value block reads the models; rebuild it when they change (one rebuild per frame)
+    this._onKindModelChanged = () => this._refreshKindBlock()
+    window.addEventListener(STORE_CHANGED, this._onKindModelChanged)
+    window.addEventListener(VALUE_CHANGED, this._onKindModelChanged)
+
+    window.addEventListener('omni:node-deselected', this._onDeselect)
+    window.addEventListener('omni:node-created',  this._onCreated)
+    window.addEventListener('omni:node-deleted',  this._onDeleted)
+    window.addEventListener('omni:nodes-updated', this._onNodesUpdated)
+    window.addEventListener('omni:space-entered', this._onSpaceEntered)
+    window.addEventListener('omni:space-exited', this._onSpaceExited)
+  }
+
+  // ── Sound ─────────────────────────────────────────────────────────────────
+
+  _playSound (id) {
+    try {
+      const Sound = this.ctx?.Sound
+      if (Sound && typeof Sound.play === 'function') Sound.play(id)
+    } catch (_) {}
+  }
+}

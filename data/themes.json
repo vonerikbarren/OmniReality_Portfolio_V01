@@ -1,0 +1,26 @@
+{
+  "dark": {
+    "label": "Dark",
+    "bg": "rgba(8, 8, 12, 0.92)",
+    "border": "rgba(255, 255, 255, 0.09)",
+    "headerBg": "rgba(255, 255, 255, 0.03)",
+    "text": "rgba(255, 255, 255, 0.95)",
+    "textDim": "rgba(255, 255, 255, 0.70)",
+    "textMuted": "rgba(255, 255, 255, 0.48)",
+    "accent": "#7fd8ff",
+    "inputBg": "rgba(255, 255, 255, 0.10)",
+    "inputBorder": "rgba(255, 255, 255, 0.18)"
+  },
+  "light": {
+    "label": "Light",
+    "bg": "rgba(246, 247, 250, 0.94)",
+    "border": "rgba(20, 20, 30, 0.12)",
+    "headerBg": "rgba(20, 20, 30, 0.04)",
+    "text": "rgba(15, 15, 20, 0.94)",
+    "textDim": "rgba(15, 15, 20, 0.68)",
+    "textMuted": "rgba(15, 15, 20, 0.45)",
+    "accent": "#2f7cd6",
+    "inputBg": "rgba(15, 15, 20, 0.06)",
+    "inputBorder": "rgba(15, 15, 20, 0.16)"
+  }
+}

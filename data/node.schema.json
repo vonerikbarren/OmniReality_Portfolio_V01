@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "omni-node-schema",
+  "title": "⟐mniReality Node",
+  "description": "Data shapes for nodes within the ⟐mniReality logic tree. Two storage keys exist per node — the core record (omni:nodes) owned by OmniNode, and the extended inspector record (omni:inspector:{id}) owned by OmniInspector. NodeLoader reads Shape 1. NodeLoader never touches Shape 2.",
+
+  "$defs": {
+
+    "MediaItem": {
+      "type": "object",
+      "description": "A single media attachment — file or URL",
+      "required": ["src"],
+      "properties": {
+        "src":   { "type": "string", "description": "File path, data URI, or external URL" },
+        "label": { "type": "string", "description": "Display name — filename or URL tail" },
+        "type":  { "type": "string", "description": "MIME type (present on file uploads, absent on URL entries)" }
+      },
+      "additionalProperties": false
+    },
+
+    "OmniNodeExt": {
+      "$id": "omni-node-ext-schema",
+      "title": "⟐mniReality Node — Inspector Extension",
+      "description": "Extended per-node data owned by OmniInspector. Stored at localStorage key omni:inspector:{id}. Never parsed by NodeLoader.",
+      "type": "object",
+
+      "properties": {
+
+        "text": {
+          "type": "string",
+          "description": "Text content embedded on the node surface geometry",
+          "default": ""
+        },
+
+        "material": {
+          "type": "string",
+          "description": "Three.js material type — selected in OmniInspector material dropdown",
+          "enum": [
+            "MeshStandardMaterial",
+            "MeshPhysicalMaterial",
+            "MeshBasicMaterial",
+            "MeshLambertMaterial",
+            "MeshPhongMaterial",
+            "MeshToonMaterial",
+            "MeshNormalMaterial",
+            "MeshDepthMaterial"
+          ],
+          "default": "MeshStandardMaterial"
+        },
+
+        "wireframe": {
+          "type": "boolean",
+          "description": "Whether wireframe mode is active. Supported on MeshBasicMaterial and MeshStandardMaterial only — OmniInspector guards this.",
+          "default": false
+        },
+
+        "scale": {
+          "type": "object",
+          "description": "Per-axis scale controlled by OmniInspector scale inputs. Synced from mesh.scale on node load.",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number", "default": 1 },
+            "y": { "type": "number", "default": 1 },
+            "z": { "type": "number", "default": 1 }
+          },
+          "additionalProperties": false
+        },
+
+        "texture": {
+          "type": ["string", "null"],
+          "description": "URL or file path of applied texture image. Full base64 data URIs are stripped before save (too large for localStorage) — only URL strings persist.",
+          "default": null
+        },
+
+        "images": {
+          "type": "array",
+          "description": "Image attachments. Base64 data URI entries are stripped on save.",
+          "items": {
+            "type": "object",
+            "required": ["src"],
+            "properties": {
+              "src":   { "type": "string" },
+              "label": { "type": "string" },
+              "type":  { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+
+        "sound": {
+          "type": "array",
+          "description": "Audio attachments. Base64 data URI entries are stripped on save.",
+          "items": {
+            "type": "object",
+            "required": ["src"],
+            "properties": {
+              "src":   { "type": "string" },
+              "label": { "type": "string" },
+              "type":  { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+
+        "media": {
+          "type": "array",
+          "description": "General media attachments (video, documents, etc.). Base64 data URI entries are stripped on save.",
+          "items": {
+            "type": "object",
+            "required": ["src"],
+            "properties": {
+              "src":   { "type": "string" },
+              "label": { "type": "string" },
+              "type":  { "type": "string", "description": "MIME type — present on file uploads, absent on URL entries" }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        }
+
+      },
+
+      "additionalProperties": false
+    }
+
+  },
+
+  "description": "Shape 1 — omni:nodes — core node record persisted by OmniNode",
+  "type": "object",
+
+  "required": [
+    "id",
+    "label",
+    "geometry",
+    "primitive",
+    "color",
+    "position",
+    "createdAt"
+  ],
+
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "description": "Auto-generated unique identifier. Format: omni_ + 6 base-36 random chars. Read-only after creation.",
+      "pattern": "^omni_[a-z0-9]{6}$",
+      "examples": ["omni_a3f9c2", "omni_root01"]
+    },
+
+    "label": {
+      "type": "string",
+      "description": "User-defined display name. Editable via OmniInspector. Used as display text in OmniNode list, OmniPresenter sequence, OmniPocket registry, NodeManager tree, and TreeView.",
+      "examples": ["Root Axiom", "Node 1", "Sphere_4x2r"]
+    },
+
+    "geometry": {
+      "type": "string",
+      "description": "Three.js geometry type. Determines which GEOMETRY_DEFS factory is called when building the mesh. EdgesGeometry and WireframeGeometry render as THREE.LineSegments; all others render as THREE.Mesh.",
+      "enum": [
+        "BoxGeometry",
+        "SphereGeometry",
+        "CylinderGeometry",
+        "ConeGeometry",
+        "TorusGeometry",
+        "TorusKnotGeometry",
+        "OctahedronGeometry",
+        "TetrahedronGeometry",
+        "IcosahedronGeometry",
+        "DodecahedronGeometry",
+        "PlaneGeometry",
+        "CircleGeometry",
+        "RingGeometry",
+        "CapsuleGeometry",
+        "LatheGeometry",
+        "TubeGeometry",
+        "ExtrudeGeometry",
+        "ShapeGeometry",
+        "EdgesGeometry",
+        "WireframeGeometry"
+      ],
+      "examples": ["SphereGeometry", "OctahedronGeometry"]
+    },
+
+    "primitive": {
+      "type": "string",
+      "description": "Epistemological classification. Drives the default mesh color via PRIMITIVE_COLORS map in OmniNode. No ⟐ prefix — bare enum keys only.",
+      "enum": ["objective", "subjective", "undefined", "false"],
+      "default": "undefined",
+      "_colorMap": {
+        "objective":  "#ffffff — white  — confirmed, deterministic, factual",
+        "subjective": "#88aaff — blue   — perspectival, expressive, interpretive",
+        "undefined":  "#888888 — gray   — unknown, unresolved, not yet classified",
+        "false":      "#111111 — black  — negated, disproven, null"
+      }
+    },
+
+    "color": {
+      "type": "string",
+      "description": "Hex color string. Set from PRIMITIVE_COLORS on creation. Overridable per-node via OmniInspector color picker. Format: 6-digit lowercase hex with # prefix.",
+      "pattern": "^#[0-9a-f]{6}$",
+      "examples": ["#ffffff", "#88aaff", "#888888", "#111111"]
+    },
+
+    "position": {
+      "type": "array",
+      "description": "World position [x, y, z]. Stored as a 3-element number array. Consumed via array destructuring: const [nx, ny, nz] = node.position. Object form {x,y,z} is NOT used — the array form is canonical.",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3,
+      "examples": [[0, 0.4, 0], [-12.5, 0.4, 8.0]]
+    },
+
+    "parentId": {
+      "type": ["string", "null"],
+      "description": "ID of the direct parent node. null if this node has no parent (root-level nodes). When set on creation, OmniNode draws a LineGeometry edge between parent and child. NodeManager reads this to build the _tree adjacency map.",
+      "default": null,
+      "examples": ["omni_a1b2c3", null]
+    },
+
+    "rootId": {
+      "type": ["string", "null"],
+      "description": "ID of the origin root node of the tree this node belongs to. Read by OmniInspector for display in the hierarchy section. Not computed dynamically — must be set at creation time or by NodeLoader. null for root nodes (they are their own root).",
+      "default": null,
+      "examples": ["omni_root01", null]
+    },
+
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of node creation. Set once at creation via new Date().toISOString(). Never updated.",
+      "examples": ["2024-11-01T12:00:00.000Z"]
+    }
+
+  },
+
+  "additionalProperties": false,
+
+  "_storageNotes": {
+    "omni:nodes":              "JSON array of Shape 1 objects. Written and read by OmniNode.",
+    "omni:edges":              "JSON array of { from: string, to: string } edge records. Written and read by OmniNode.",
+    "omni:inspector:{id}":    "Shape 2 (OmniNodeExt) for node with that id. Written and read by OmniInspector only.",
+    "omni:nodemanager":        "NodeManager internal state: { current, back[], forward[] }. Not a node record.",
+    "splitStorageRationale":   "Shape 1 is the lightweight runtime identity a node always needs. Shape 2 is heavier inspector data loaded only when a node is selected. Keeping them separate avoids bloating omni:nodes with texture/media data."
+  }
+}

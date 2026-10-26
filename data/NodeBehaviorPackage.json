@@ -1,0 +1,181 @@
+{
+  "NodeBehaviorPackage": {
+    "version": "1.0.0",
+    "description": "Behavior primitives for OmniDynamixMechanix node systems.",
+    "behavior_count": 34,
+    "behaviors": [
+      {
+        "name": "Orbit",
+        "class": "Mechanic",
+        "summary": "Node revolves around a target node."
+      },
+      {
+        "name": "Drift",
+        "class": "Mechanic",
+        "summary": "Node moves without strong constraints."
+      },
+      {
+        "name": "Anchor",
+        "class": "Mechanic",
+        "summary": "Node fixes its position relative to a frame."
+      },
+      {
+        "name": "Align",
+        "class": "Mechanic",
+        "summary": "Node matches orientation or direction."
+      },
+      {
+        "name": "Traverse",
+        "class": "Mechanic",
+        "summary": "Node moves along a path or graph."
+      },
+      {
+        "name": "Oscillate",
+        "class": "Mechanic",
+        "summary": "Node performs periodic motion."
+      },
+      {
+        "name": "Attract",
+        "class": "Relational",
+        "summary": "Node pulls another node toward itself."
+      },
+      {
+        "name": "Repel",
+        "class": "Relational",
+        "summary": "Node pushes another node away."
+      },
+      {
+        "name": "Follow",
+        "class": "Relational",
+        "summary": "Node maintains pursuit or tracking."
+      },
+      {
+        "name": "Mirror",
+        "class": "Relational",
+        "summary": "Node copies another node's state."
+      },
+      {
+        "name": "Bind",
+        "class": "Relational",
+        "summary": "Node forms a persistent connection."
+      },
+      {
+        "name": "Gate",
+        "class": "Relational",
+        "summary": "Node allows or blocks interactions."
+      },
+      {
+        "name": "Mediate",
+        "class": "Relational",
+        "summary": "Node regulates interactions between others."
+      },
+      {
+        "name": "Transform",
+        "class": "Transformational",
+        "summary": "Node converts input state to output state."
+      },
+      {
+        "name": "Amplify",
+        "class": "Transformational",
+        "summary": "Node increases magnitude of signals."
+      },
+      {
+        "name": "Dampen",
+        "class": "Transformational",
+        "summary": "Node reduces magnitude of signals."
+      },
+      {
+        "name": "Filter",
+        "class": "Transformational",
+        "summary": "Node passes only certain states."
+      },
+      {
+        "name": "Encode",
+        "class": "Transformational",
+        "summary": "Node compresses or structures data."
+      },
+      {
+        "name": "Decode",
+        "class": "Transformational",
+        "summary": "Node interprets or expands data."
+      },
+      {
+        "name": "Store",
+        "class": "Transformational",
+        "summary": "Node retains state over time."
+      },
+      {
+        "name": "Release",
+        "class": "Transformational",
+        "summary": "Node outputs stored state."
+      },
+      {
+        "name": "Delay",
+        "class": "Temporal",
+        "summary": "Node shifts events forward in time."
+      },
+      {
+        "name": "Pulse",
+        "class": "Temporal",
+        "summary": "Node emits periodic events."
+      },
+      {
+        "name": "Sync",
+        "class": "Temporal",
+        "summary": "Node aligns timing with other nodes."
+      },
+      {
+        "name": "Schedule",
+        "class": "Temporal",
+        "summary": "Node executes at defined intervals."
+      },
+      {
+        "name": "Cascade",
+        "class": "Temporal",
+        "summary": "Node triggers sequential chain reactions."
+      },
+      {
+        "name": "Coalesce",
+        "class": "Emergent",
+        "summary": "Node merges into larger structures."
+      },
+      {
+        "name": "Diffuse",
+        "class": "Emergent",
+        "summary": "Node spreads influence outward."
+      },
+      {
+        "name": "Compete",
+        "class": "Emergent",
+        "summary": "Node vies for resources or priority."
+      },
+      {
+        "name": "Cooperate",
+        "class": "Emergent",
+        "summary": "Node shares resources or goals."
+      },
+      {
+        "name": "Adapt",
+        "class": "Emergent",
+        "summary": "Node modifies behavior based on feedback."
+      },
+      {
+        "name": "Emerge",
+        "class": "Emergent",
+        "summary": "Node produces higher-order patterns."
+      },
+      {
+        "name": "Leader",
+        "class": "Relational",
+        "summary": "Node others pursue or flock around; wanders a smooth path while followers keep formation behind it.",
+        "source": "user"
+      },
+      {
+        "name": "Follower",
+        "class": "Relational",
+        "summary": "Node that pursues a declared leader; the pursuing half of the Leader/Follower role pair (sugar over Follow).",
+        "source": "user"
+      }
+    ]
+  }
+}

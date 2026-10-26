@@ -1,0 +1,31 @@
+{
+  "portfolioCore": {
+    "identity": {
+      "title": "3D Projects",
+      "owner": "[ OWNER NAME ]",
+      "parentNode": "⟐Portfolio",
+      "rootNode": "⟐NavMenu",
+      "primitive": "⟐undefined"
+    },
+    "navigation": {
+      "home": "[ URL ]",
+      "about": "[ URL ]",
+      "portfolio": "[ URL ]",
+      "contact": "[ URL ]"
+    },
+    "categories": {
+      "three_js": [],
+      "blender": [],
+      "webgl": [],
+      "xr": [],
+      "generative": []
+    },
+    "profile": {
+      "message": "[ MESSAGE ]",
+      "contact": {
+        "cell": "[ CELL NUMBER ]",
+        "email": "[ EMAIL ADDRESS ]"
+      }
+    }
+  }
+}
