@@ -306,6 +306,8 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addDocModules(base, omniNode)
   const { addPolyModules } = await import('./ui/OmniPolyModules.js')   // V204: PolyNode — multi-face solids, every face its own content
   addPolyModules(base, omniNode)
+  const { addVoxelModules } = await import('./ui/OmniVoxelModules.js')   // V210: voxel rooms, points, lines and routes (the grid OmniSense stands on)
+  addVoxelModules(base, omniNode)
   // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──
   const { addAudioModules } = await import('./ui/OmniAudioModules.js')
   addAudioModules(base, omniNode)
