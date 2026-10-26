@@ -90,6 +90,7 @@ import gsap from 'gsap'
 import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 import { getEffectiveSpeed } from '../utils/OmniHandSpeed.js'
 import { createTunnelParticles } from './OmniTunnelParticles.js'   // V215
+import { getTimeScale } from '../utils/OmniTimeScale.js'   // V217
 
 // ── Geometry / motion constants (V159 sizes, unchanged) ─────────────────────
 
@@ -1169,7 +1170,7 @@ export default class OmniAxinator {
 
     if (t.particles) {
       const on = this.opts.handSettings === false || getHandSetting(t.def.padHand, 'particles') !== false
-      t.particles.update(delta > 0 ? delta : 0, this._speed(t), on ? grow : 0)
+      t.particles.update(delta > 0 ? delta : 0, this._speed(t) * getTimeScale(), on ? grow : 0)   // V217: the Time axiom scales the stream too
     }
 
     let near = -1

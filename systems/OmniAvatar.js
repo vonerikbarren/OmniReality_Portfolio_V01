@@ -64,7 +64,7 @@ export default class OmniAvatar {
     const p = this._point(pointId); if (!p) return { ok: false, error: 'That point does not exist.' }
     this._legs = []; this._leg = null; this.destination = null
     this.pointId = pointId; this.pos.set(p.world[0], p.world[1], p.world[2]); this._lastPos.copy(this.pos)
-    if (this._mesh) { this._mesh.visible = true; this._mesh.position.copy(this.pos) }
+    if (this._mesh) { this._mesh.visible = true; this._poseMesh() }
     if (this.follow) this._snapCamera(true)
     this._changed(); return { ok: true }
   }
@@ -110,11 +110,15 @@ export default class OmniAvatar {
     if (ctl) { ctl.update?.() }
     this._remember(cam, ctl, head)
   }
-  _remember (cam, ctl, head) { this._expect = { cam: cam.position.clone(), target: (ctl?.target ?? head).clone() } }
+  /** V216: OmniVibration shifts the camera and its target by userCamOffset; that is not you moving the camera, so it is taken out of every comparison */
+  get _vo () { return SERVICES.vibration?.userCamOffset ?? null }
+  _remember (cam, ctl, head) { const vo = this._vo; const c = cam.position.clone(), t = (ctl?.target ?? head).clone(); if (vo) { c.sub(vo); if (ctl?.target) t.sub(vo) } this._expect = { cam: c, target: t } }
   _followStep (delta) {
     const cam = this.ctx.camera, ctl = this._controls(); if (!cam || !this.follow || !this.pointId) return
     if (this._expect) {
-      const moved = cam.position.distanceTo(this._expect.cam) > FOLLOW_EPS || (ctl && ctl.target.distanceTo(this._expect.target) > FOLLOW_EPS)
+      const vo = this._vo
+      const cp = vo ? cam.position.clone().sub(vo) : cam.position, tp = ctl && vo ? ctl.target.clone().sub(vo) : ctl?.target
+      const moved = cp.distanceTo(this._expect.cam) > FOLLOW_EPS || (ctl && tp.distanceTo(this._expect.target) > FOLLOW_EPS)
       if (moved) { this.releaseFollow('moved'); return }
     }
     const d = this.pos.clone().sub(this._lastPos)
@@ -122,6 +126,16 @@ export default class OmniAvatar {
     this._lastPos.copy(this.pos)
     // the controls may nudge the camera (damping / limits) in update(): record what is there NOW as the expected pose
     this._remember(cam, ctl, this.pos)
+  }
+
+  /** the capsule stands on its point, plus whatever OmniVibration is doing to you (bob, sway, turn, squash, glow) */
+  _poseMesh () {
+    const m = this._mesh, vp = SERVICES.vibration?.userPose
+    m.position.copy(this.pos)
+    if (vp?.active) {
+      m.position.add(vp.pos); m.rotation.copy(vp.rot); m.scale.setScalar(Math.max(0.05, 1 + vp.scale))
+      m.material.emissiveIntensity = 0.5 + vp.glow * 2
+    } else if (m.scale.x !== 1 || m.rotation.x || m.rotation.y || m.rotation.z) { m.rotation.set(0, 0, 0); m.scale.setScalar(1); m.material.emissiveIntensity = 0.5 }
   }
 
   update (delta = 0.016) {
@@ -135,7 +149,7 @@ export default class OmniAvatar {
         if (!this._leg) { const id = this.pointId; this._stopAtNext = false; this.destination = null; this._emit('omni:avatar-arrived', { pointId: id }); this._changed() }
       } else this.pos.lerpVectors(this._leg.A, this._leg.B, this._t)
     }
-    if (this._mesh) this._mesh.position.copy(this.pos)
+    if (this._mesh) this._poseMesh()
     this._followStep(delta)
   }
 }

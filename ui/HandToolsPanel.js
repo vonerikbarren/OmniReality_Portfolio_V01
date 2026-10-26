@@ -28,6 +28,7 @@
  */
 
 import { HAND_NAMES } from './HandSpeedPanel.js'
+import { SERVICES } from '../utils/OmniExtraKinds.js'   // V217: axioms
 
 const MARGIN = 8
 const SYMBOL = { conscious: '◬', omnihand: '⟐' }
@@ -74,6 +75,8 @@ const STYLES = `
 .oht-btn:focus-visible { outline: 2px solid rgba(255,255,255,0.9); outline-offset: 1px; }
 .oht-btn.is-on { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.55); }
 .oht-btn .oht-g { font-size: 14px; line-height: 1; min-width: 16px; text-align: center; }
+.oht-axiom { font-size: 10px; color: var(--ht-text); }
+.oht-axiom select, .oht-axiom input { font: inherit; color: inherit; background: rgba(255,255,255,0.07); border: 1px solid var(--ht-border); border-radius: 6px; padding: 3px 4px; }
 .oht-note { font-size: 9px; color: var(--ht-dim); line-height: 1.45; }
 `
 
@@ -131,6 +134,8 @@ export default class HandToolsPanel {
     injectStyles()
     window.addEventListener('keydown', this._onKey)
     window.addEventListener('omni:dimension-state', this._onState)
+    this._onAxiom = () => { if (this.isOpen()) this._sync() }
+    window.addEventListener('omni:axiom-changed', this._onAxiom)
     window.addEventListener('omni:axinator-tunnel-visible', this._onTunnel)
     window.addEventListener('omni:axinator-list', this._onList)
     window.addEventListener('omni:dimension-axes-visible', this._onFollow)
@@ -141,6 +146,7 @@ export default class HandToolsPanel {
   destroy () {
     window.removeEventListener('keydown', this._onKey)
     window.removeEventListener('omni:dimension-state', this._onState)
+    window.removeEventListener('omni:axiom-changed', this._onAxiom)
     window.removeEventListener('omni:axinator-tunnel-visible', this._onTunnel)
     window.removeEventListener('omni:axinator-list', this._onList)
     window.removeEventListener('omni:dimension-axes-visible', this._onFollow)
@@ -239,6 +245,7 @@ export default class HandToolsPanel {
       <div class="oht-body">
         <div class="oht-readout" data-role="readout"></div>
         <div class="oht-grid"></div>
+        <div class="oht-axiom" data-role="axiom"></div>
         <div class="oht-note">Same actions as the axis: the tunnel's node menu, the pad's buttons and ⟐OmniHands. The axis itself is unchanged.</div>
       </div>`
     const grid = root.querySelector('.oht-grid')
@@ -256,6 +263,12 @@ export default class HandToolsPanel {
       b.addEventListener('click', () => this.run(o.id))
       grid.appendChild(b)
     })
+    root.querySelector('[data-role="axiom"]').addEventListener('change', (e) => {   // V217: OmniHand picks the axiom, ConsciousHand a perspective of it
+      const ax = SERVICES.axioms; if (!ax) return
+      if (e.target.dataset.pick === 'axiom') ax.setAxiom(e.target.value); else if (e.target.dataset.pick === 'persp') ax.setPerspective(e.target.value)
+      else if (e.target.dataset.pick === 'mult') ax.setMult(e.target.value)
+      this._sync()
+    })
     root.querySelector('.oht-close').addEventListener('click', () => this.close())
     root.querySelector('.oht-header').addEventListener('pointerdown', (e) => this._dragStart(e))
     return root
@@ -272,12 +285,30 @@ export default class HandToolsPanel {
       const b2 = document.createElement('b'); b2.textContent = st.activeLevel.name
       ro.append('Node ', b1, ` ${st.primaryLabel ?? `${st.primaryIndex + 1}/${st.primaryCount}`}`, document.createElement('br'), 'Υ ', b2, ` ${st.relativeIndex + 1}/${st.relativeCount}`)
     } else ro.textContent = 'The axis is not connected yet.'
+    this._syncAxiom()
     const on = { tunnel: !!this._tunnelOn[this._hand], follow: axes?.isVisible?.() ?? this._follow }
     this._el.querySelectorAll('.oht-btn').forEach(b => {
       const id = b.dataset.option
       if (id in on) { b.classList.toggle('is-on', !!on[id]); b.setAttribute('aria-pressed', String(!!on[id])) }
       b.disabled = !st && id !== 'settings'
     })
+  }
+
+  /** V217: the OmniHand's menu holds the Axiom picker; the ConsciousHand's holds the Perspective picker for the current axiom */
+  _syncAxiom () {
+    const host = this._el?.querySelector('[data-role="axiom"]'); if (!host) return
+    const ax = SERVICES.axioms
+    if (!ax || (this._hand !== 'omnihand' && this._hand !== 'conscious')) { host.textContent = ''; host.style.display = 'none'; return }
+    host.style.display = ''
+    const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+    const a = ax.axiomDef
+    if (this._hand === 'omnihand') {
+      host.innerHTML = `<label>Axiom <select data-pick="axiom">${ax.list().map(x => `<option value="${x.id}"${x.id === ax.axiom ? ' selected' : ''}>${x.symbol} ${esc(x.name)}</option>`).join('')}</select></label>`
+    } else {
+      const pd = ax.perspectiveDef
+      host.innerHTML = `<label>${esc(a.name)} perspective <select data-pick="persp">${a.perspectives.map(p => `<option value="${p.id}"${p.id === ax.perspective ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` +
+        (pd?.mult ? ` <label>${pd.mult.kind === 'loop' ? 's' : '×'} <input data-pick="mult" type="number" min="${pd.mult.min}" max="${pd.mult.max}" step="0.5" value="${ax.mult}" style="width:56px"></label>` : '')
+    }
   }
 
   _emit (hand, open) {

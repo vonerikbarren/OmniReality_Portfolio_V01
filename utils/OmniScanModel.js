@@ -31,7 +31,7 @@ export function pickScanTarget (entries, camera, opts = {}) {
 
 const r2 = (n) => Math.round(Number(n) * 100) / 100
 const vec = (v) => (Array.isArray(v) && v.length >= 3 && v.every(Number.isFinite)) ? v.slice(0, 3).map(r2) : null
-const KIND_NAMES = { omniPath: 'Path node', floorPanel: 'Floor panel', terminalShell: 'Terminal shell', soundNode: 'Sound node', musicNode: 'Music node', songNode: 'Song node', mixNode: 'Mix node', docNode: 'Doc node', polyNode: 'Poly node', voxelNode: 'Voxel node', noteNode: 'Note node' }
+const KIND_NAMES = { omniPath: 'Path node', floorPanel: 'Floor panel', terminalShell: 'Terminal shell', soundNode: 'Sound node', musicNode: 'Music node', songNode: 'Song node', mixNode: 'Mix node', docNode: 'Doc node', polyNode: 'Poly node', voxelNode: 'Voxel node', noteNode: 'Note node', dimensionalNode: 'Dimensional node' }
 export const kindName = (d) => KIND_NAMES[d?.nodeKind] ?? (d?.nodeKind ? String(d.nodeKind) : 'Node')
 
 /** extra = { position?, rotation?, scale?, links? , parent? } read from the live mesh / registry by the system. */

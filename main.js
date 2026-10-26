@@ -310,6 +310,10 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addVoxelModules(base, omniNode, () => orbitMod.controls)   // V214: the avatar's follow camera moves the orbit target
   const { addScanModules } = await import('./ui/OmniScanModules.js')   // V212: OmniScan, what is in the middle circle
   addScanModules(base, omniNode)
+  const { addVibrationModules } = await import('./ui/OmniVibrationModules.js')   // V216: OmniVibration, looped rhythmic motion for you and for nodes
+  addVibrationModules(base, omniNode, () => orbitMod.controls)
+  const { addDimensionsModules } = await import('./ui/OmniDimensionsModules.js')   // V217: axioms (OmniHand) + perspectives (ConsciousHand), dimensional nodes, spaces and planes
+  addDimensionsModules(base, omniNode)
   const { addNoteModules } = await import('./ui/OmniNoteModules.js')   // V213: OmniNote, the rich-text note node
   addNoteModules(base, omniNode)
   // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──

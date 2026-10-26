@@ -58,6 +58,7 @@
  */
 
 import * as THREE from 'three'
+import { getTimeScale } from '../utils/OmniTimeScale.js'   // V217: the Time axiom (hyperlapse, slow-mo, a held moment) scales behaviour time
 
 // ── Limits & constants ───────────────────────────────────────────────────────
 
@@ -1030,7 +1031,7 @@ export default class OmniNodeBehavior {
 
   update (delta) {
     if (typeof document !== 'undefined' && document.hidden) return
-    const dt = Math.min(delta, DT_MAX)
+    const dt = Math.min(delta * getTimeScale(), DT_MAX)
     if (!(dt > 0)) return
     this._frame++
     this.time += dt
@@ -1277,7 +1278,8 @@ export default class OmniNodeBehavior {
   _acquire (st, mesh) {
     let r = this._rest.get(mesh)
     if (!r) {
-      r = { p: mesh.position.clone(), q: mesh.quaternion.clone(), s: mesh.scale.clone(), refs: 0 }
+      const vb = mesh.userData.__vibBase   // V216: OmniVibration's offset is not part of the rest pose
+      r = { p: (vb?.p ?? mesh.position).clone(), q: (vb?.q ?? mesh.quaternion).clone(), s: (vb?.s ?? mesh.scale).clone(), refs: 0 }
       this._rest.set(mesh, r)
       mesh.userData.__brest = r
       mesh.userData.restPosition = r.p      // OmniNode._save writes this instead of the displaced position
