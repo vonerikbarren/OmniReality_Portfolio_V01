@@ -18,7 +18,7 @@
 import * as THREE from 'three'
 import VoxelGrid, * as VG from '../utils/OmniVoxelGrid.js'
 import { geometryGraph } from '../utils/OmniVoxelGeom.js'
-import { SERVICES } from '../utils/OmniExtraKinds.js'
+import { SERVICES, KIND_VOXEL, GEO_VOXEL } from '../utils/OmniExtraKinds.js'
 
 export const STORE_KEY = 'omni:voxel:v1'
 export const VIEW_KEY = 'omni:voxel:view-v1'
@@ -51,13 +51,13 @@ export default class OmniVoxelSpace {
     this._group = new THREE.Group(); this._group.name = 'omni-voxel'; this._group.renderOrder = 5
     this.ctx.scene?.add(this._group)
     const on = (t, fn) => { window.addEventListener(t, fn); this._bound.push([t, fn]) }
-    on('omni:node-selected', (e) => { this.nodeId = e.detail?.node?.id ?? e.detail?.mesh?.userData?.nodeId ?? null; this._emit('node') })
+    on('omni:node-selected', (e) => { this.nodeId = e.detail?.node?.id ?? e.detail?.mesh?.userData?.nodeId ?? null; const rk = this.roomOfNode(this.nodeId); if (rk && rk !== this.selected) this.selectRoom(rk); this._emit('node') })
     on('omni:node-deselected', () => { this.nodeId = null; this._emit('node') })
     on('omni:node-deleted', (e) => { const id = e.detail?.id; if (id && this.grid.geo.has(id)) this.dropNodeShape(id); if (id && id === this.nodeId) this.nodeId = null })
     SERVICES.voxel = this
   }
 
-  update () { if (this._dirty) this._rebuild() }
+  update () { if (!this._nodesSynced) { this._nodesSynced = true; this._syncNodes() } if (this._dirty) this._rebuild() }
   onResize () {}
   destroy () {
     for (const [t, fn] of this._bound) window.removeEventListener(t, fn)
@@ -73,7 +73,7 @@ export default class OmniVoxelSpace {
     try { const v = JSON.parse(localStorage.getItem(VIEW_KEY)); if (v && typeof v === 'object') for (const k of Object.keys(DEFAULT_LAYERS)) if (typeof v[k] === 'boolean') this.layers[k] = v[k] } catch (_) {}
   }
   _save () { try { localStorage.setItem(STORE_KEY, JSON.stringify(this.grid.toJSON())); localStorage.setItem(VIEW_KEY, JSON.stringify(this.layers)) } catch (_) {} }
-  _changed (kind) { this._dirty = true; clearTimeout(this._persistT); this._persistT = setTimeout(() => this._save(), PERSIST_MS); this._emit(kind) }
+  _changed (kind) { if (kind === 'rooms' || kind === 'points' || kind === 'level') this._syncNodes(); this._dirty = true; clearTimeout(this._persistT); this._persistT = setTimeout(() => this._save(), PERSIST_MS); this._emit(kind) }
   _emit (kind) { try { window.dispatchEvent(new CustomEvent('omni:voxel-changed', { detail: { kind } })) } catch (_) {} }
   flush () { clearTimeout(this._persistT); this._save() }
 
@@ -145,6 +145,35 @@ export default class OmniVoxelSpace {
   findRoute (from, to) { const r = this.grid.route(from, to); this.routeIds = r.ok ? r.ids : []; this._dirty = true; this._emit('route'); return r }
   clearRoute () { this.routeIds = []; this._dirty = true; this._emit('route') }
   _pruneRoute () { if (this.routeIds.length) { const idx = this.grid.pointIndex(); if (!this.routeIds.every(id => idx.has(id))) this.routeIds = [] } }
+
+  // ── OmniVoxelNodes (V211) and point nodes (V214): one node at the centre of every room, one at every point of yours ─────
+  nodeIdOf (key) { return 'vx_' + String(key).replace(/-/g, 'm').replace(/,/g, '_') }
+  pointNodeIdOf (pointId) { return 'vp_' + String(pointId).replace(/[^A-Za-z0-9_]/g, '_') }
+  /** the room a voxel node (or point node) belongs to, or null */
+  roomOfNode (id) { const d = id ? this.omniNode?.getNodeData?.(id) : null; return d?.nodeKind === KIND_VOXEL && this.grid.hasCell(d.voxel?.room) ? d.voxel.room : null }
+  /** the grid point a node stands for ('c:x,y,z' for a room node, the point id for a point node), or null */
+  pointOfNode (id) {
+    const d = id ? this.omniNode?.getNodeData?.(id) : null; if (d?.nodeKind !== KIND_VOXEL) return null
+    if (d.voxel?.point) return this.grid.points.has(d.voxel.point) ? d.voxel.point : null
+    return this.grid.hasCell(d.voxel?.room) ? 'c:' + d.voxel.room : null
+  }
+  _syncNodes () {
+    const on = this.omniNode; if (!on?.getAllNodes || typeof window === 'undefined') return
+    try {
+      const have = new Map(on.getAllNodes().filter(d => d?.nodeKind === KIND_VOXEL).map(d => [d.id, d]))
+      const idx = this.grid.pointIndex()
+      const want = (id, voxel, label, point, color) => {
+        if (have.has(id)) { have.delete(id); return }
+        const c = idx.get(point); if (!c) return
+        window.dispatchEvent(new CustomEvent('omni:node-create-request', { detail: {
+          nodeKind: KIND_VOXEL, voxel, id, label, geometry: GEO_VOXEL, primitive: 'objective', color,
+          position: [c.world[0], c.world[1], c.world[2]], rotation: [0, 0, 0], scale: [1, 1, 1], noParent: true, noSelect: true } }))
+      }
+      for (const key of this.grid.cells.keys()) want(this.nodeIdOf(key), { room: key }, 'Voxel ' + key, 'c:' + key, '#ffd36b')
+      for (const p of this.grid.points.values()) want(this.pointNodeIdOf(p.id), { room: p.cell, point: p.id }, 'Point ' + (p.label || p.id), p.id, '#ff7bd5')
+      for (const id of have.keys()) window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id } }))   // rooms / points that no longer exist
+    } catch (_) { /* nodes are a convenience; the grid stays the truth */ }
+  }
   setLayer (name, on) { if (!(name in DEFAULT_LAYERS)) return false; this.layers[name] = !!on; this._dirty = true; clearTimeout(this._persistT); this._persistT = setTimeout(() => this._save(), PERSIST_MS); this._emit('layers'); return true }
   summary () { return { rooms: this.grid.cells.size, points: this.grid.listPoints().length, lines: this.grid.listLines().length, userPoints: this.grid.points.size, shapes: this.grid.geo.size } }
   /** for tests: what is currently drawn */
@@ -197,7 +226,7 @@ export default class OmniVoxelSpace {
     const pts = g.listPoints(), idx = new Map(pts.map(p => [p.id, p]))
     if (L.points) {
       const v = [], col = []; const c = new THREE.Color()
-      for (const p of pts) { v.push(...p.world); c.set(p.kind === 'centre' ? COLORS.centre : p.kind === 'door' ? COLORS.door : p.kind === 'user' ? COLORS.point : COLORS.shape); col.push(c.r, c.g, c.b) }
+      for (const p of pts) { if ((p.kind === 'centre' || p.kind === 'user') && this.omniNode?.getAllNodes) continue; v.push(...p.world); c.set(p.kind === 'centre' ? COLORS.centre : p.kind === 'door' ? COLORS.door : p.kind === 'user' ? COLORS.point : COLORS.shape); col.push(c.r, c.g, c.b) }
       this._mk('points', 'points', v, 0xffffff, 0.95, { colors: col, size: 0.45, order: 7 })
     }
     if (L.lines) {

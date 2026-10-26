@@ -45,3 +45,19 @@ A tunnel shows when it is not switched off AND (it is pinned OR "Tunnels follow 
 | ⟐DimensionalAxesSettings | ⟐Admin slot 17, ribbon Dim. Axes | "Tunnels follow the pads"; "Reset Both Markers to Default" |
 
 Hand settings also have "Pin this tunnel visible" and "Reset marker to the root (origin)".
+
+## V215 — whole-tunnel travel, sliding row, particle stream (OmniHand and ConsciousHand)
+
+**Both sides of the origin.** Left / Right now run the marker along the *whole* tunnel, through 0,0,0 to the far end on each side (OmniHand 11 o'clock ↔ 5 o'clock, ConsciousHand 2 ↔ 8). The chip shows `3/11` on a node and `· /11` on an empty slot.
+
+**Four extra pad buttons** (corners, like RH / LH):
+
+| Button | Does |
+|---|---|
+| ARR+ (top right) | Slides the **whole row** of tunnel nodes toward the far end, through the origin. The marker stays; the nodes move. Hold to keep it flowing. |
+| ARR− (bottom right) | Same, the other way. |
+| — (top left, bottom left) | Reserved pair. Drawn dimmed, does nothing yet. |
+
+The row wraps: a node leaving one end fades out and returns at the other, so the flow never stops. The slide offset is remembered between sessions.
+
+**Particle stream.** A light stream of particles flows through each hand's entire tunnel. Its speed is that hand's existing ⟫ Speed (0.01×–50×), nothing new to set. ⟐OmniHands → hand → Motion → "Tunnel particle stream" turns it off.

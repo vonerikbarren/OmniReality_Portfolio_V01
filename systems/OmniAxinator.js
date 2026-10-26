@@ -89,6 +89,7 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 import { getEffectiveSpeed } from '../utils/OmniHandSpeed.js'
+import { createTunnelParticles } from './OmniTunnelParticles.js'   // V215
 
 // ── Geometry / motion constants (V159 sizes, unchanged) ─────────────────────
 
@@ -435,7 +436,7 @@ export default class OmniAxinator {
     this._travelTween?.kill()
     this._tunnels.forEach(t => {
       t.tl?.kill()
-      t.tweens.p?.kill(); t.tweens.r?.kill()
+      t.tweens.p?.kill(); t.tweens.r?.kill(); t.tweens.sh?.kill()
       gsap.killTweensOf([t.anim, t, ...t.nodeRecs, ...t.ticks])
     })
     if (this._root) {
@@ -563,7 +564,7 @@ export default class OmniAxinator {
     if (direction === 'right') p += 1
     if (direction === 'up')    r += t.def.relDir
     if (direction === 'down')  r -= t.def.relDir
-    p = clamp(p, 0, t.def.nodes.length - 1)
+    p = clamp(p, this._pMin(t), this._pMax(t))   // V215: ring (hand) tunnels run both sides of the origin
     r = clamp(r, 0, t.def.levels.length - 1)
     if (p === t.state.p && r === t.state.r) {
       this._bump(t)   // at the end of the axis: pulse the marker, don't move
@@ -576,9 +577,48 @@ export default class OmniAxinator {
   goTo (id, primaryIndex, relativeIndex) {
     const t = this._tunnels.get(id)
     if (!t || !t.steppable) return
-    const p = clamp(Math.round(primaryIndex ?? t.state.p), 0, t.def.nodes.length - 1)
+    const p = clamp(Math.round(primaryIndex ?? t.state.p), this._pMin(t), this._pMax(t))
     const r = clamp(Math.round(relativeIndex ?? t.state.r), 0, t.def.levels.length - 1)
     this._setState(t, p, r, true)
+  }
+
+  /** V215: go to the SLOT that currently holds node `nodeIndex` (ring tunnels: it may be on either side). */
+  goToNode (id, nodeIndex, relativeIndex) {
+    const t = this._tunnels.get(id)
+    if (!t || !t.steppable || !Number.isInteger(nodeIndex) || !t.def.nodes[nodeIndex]) return
+    this.goTo(id, this._slotOf(t, nodeIndex, t.state.sh), relativeIndex)
+  }
+
+  /** V215: slide the WHOLE ROW of nodes along the tunnel (the marker stays). dir: +1 / 'up' toward the
+   *  far (hour-direction) end, -1 / 'down' back through the origin. Nodes wrap round the ring so the flow
+   *  never stops. -> true if it moved (ring tunnels only). */
+  shiftArray (id, dir) {
+    const t = this._tunnels.get(id)
+    if (!t || !t.steppable || !t.ring) return false
+    const d = dir === 'up' || dir === 1 || dir === 'forward' ? 1 : (dir === 'down' || dir === -1 || dir === 'back' ? -1 : 0)
+    if (!d) return false
+    this._setState(t, t.state.p, t.state.r, true, t.state.sh + d)
+    return true
+  }
+
+  /** V215: the array offset (whole slots, unbounded; only its value mod the ring matters). */
+  getShift (id) { return this._tunnels.get(id)?.state.sh ?? 0 }
+
+  // ── V215 ring helpers (hand tunnels: slots -K..K, nodes ride a wrapping row) ──
+  _pMin (t) { return t.ring ? -t.K : 0 }
+  _pMax (t) { return t.ring ? t.K : t.def.nodes.length - 1 }
+  /** Slot (may be fractional while animating) holding node i for array offset sh. */
+  _slotOf (t, i, sh) {
+    if (!t.ring) return i
+    const P = 2 * t.K + 1
+    return ((((i + sh + t.K + 0.5) % P) + P) % P) - t.K - 0.5
+  }
+  /** Index of the node sitting in integer slot p (or -1 when the slot is empty / not a ring). */
+  _nodeAtSlot (t, p, sh = t.state.sh) {
+    if (!t.ring) return t.def.nodes[p] ? p : -1
+    const P = 2 * t.K + 1
+    const i = ((((p - sh) % P) + P) % P)
+    return i < t.def.nodes.length ? i : -1
   }
 
   getState (id) {
@@ -623,7 +663,7 @@ export default class OmniAxinator {
     const pivot = dest.clone().addScaledVector(fwd, PIVOT_AHEAD)
     const look = dest.clone().addScaledVector(fwd, 400)
 
-    if (t.steppable) this.goTo(t.id, idx)
+    if (t.steppable) this.goToNode(t.id, idx)
 
     window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
     this._travelTween?.kill()
@@ -653,12 +693,14 @@ export default class OmniAxinator {
     const steppable = !!(def.levels && def.levels.length)
     const m = steppable ? def.levels.length : 0
     const st = this.opts.states?.[def.id]
-    const defaults = { p: 0, r: 0 }
+    const ring = !!(def.originRoot && twoSided && n > 1)   // V215
+    const K = ring ? n - 1 : 0
+    const defaults = { p: 0, r: 0, sh: 0 }
     // V163: a hand tunnel's clock hour comes from the ⟐OmniHands store (default ==
     // data/OmniDimensionalAxesData.js CLOCK, so unchanged until edited).
     const hour = def.padHand && this.opts.handSettings !== false ? getHandSetting(def.padHand, 'clockHour') : undefined
     const t = {
-      id: def.id, def, twoSided, steppable,
+      id: def.id, def, twoSided, steppable, ring, K,
       dir: resolveDirection(typeof hour === 'number' ? { clock: hour } : def.direction),
       manual: !!saved.manual?.[def.id],
       off: false,                 // V165: explicit OFF from the Activation button (session only)
@@ -668,14 +710,15 @@ export default class OmniAxinator {
       nodeRecs: [], ticks: [], labels: [], pickMeshes: [],
       defaults,
       state: {
-        p: clamp(Number.isFinite(st?.p) ? Math.round(st.p) : defaults.p, 0, n - 1),
+        p: clamp(Number.isFinite(st?.p) ? Math.round(st.p) : defaults.p, ring ? -K : 0, n - 1),
+        sh: ring && Number.isFinite(st?.sh) ? Math.round(st.sh) : 0,
         r: steppable ? clamp(Number.isFinite(st?.r) ? Math.round(st.r) : defaults.r, 0, m - 1) : 0,
       },
-      anim: { p: 0, r: 0 },
-      tweens: { p: null, r: null },
+      anim: { p: 0, r: 0, sh: 0 },
+      tweens: { p: null, r: null, sh: null },
       bump: 0,
     }
-    t.anim.p = t.state.p; t.anim.r = t.state.r
+    t.anim.p = t.state.p; t.anim.r = t.state.r; t.anim.sh = t.state.sh
     this._tunnels.set(def.id, t)
     this._order.push(def.id)
   }
@@ -820,7 +863,7 @@ export default class OmniAxinator {
   }
 
   _nodeCenter (t, i, out) {
-    return out.copy(t.dir).multiplyScalar(this._sOf(t, i))
+    return out.copy(t.dir).multiplyScalar(this._sOf(t, t.ring ? this._slotOf(t, i, t.state.sh) : i))
   }
 
   _yOf (t, j) {
@@ -918,6 +961,12 @@ export default class OmniAxinator {
         tunnel.add(cl)
         t.contrastSegments = cv.length / 6
       }
+    }
+    // V215: hand tunnels carry a light particle stream whose speed IS the hand's speed multiplier.
+    t.particles = null
+    if (def.padHand && t.steppable) {
+      t.particles = createTunnelParticles({ y0, y1: len, radius: TUNNEL_RADIUS, color: def.color, seed: 215 + (def.padHand === 'conscious' ? 1 : 2), size: 3 * GEO_SCALE })
+      tunnel.add(t.particles.points)
     }
     group.add(tunnel)
 
@@ -1118,6 +1167,11 @@ export default class OmniAxinator {
     t.gridMat.opacity = tunnelGridOpacity(t.def) * grow
     if (t.contrastMat) t.contrastMat.opacity = tunnelGridOpacity(t.def) * grow * CONTRAST_FRAC
 
+    if (t.particles) {
+      const on = this.opts.handSettings === false || getHandSetting(t.def.padHand, 'particles') !== false
+      t.particles.update(delta > 0 ? delta : 0, this._speed(t), on ? grow : 0)
+    }
+
     let near = -1
     if (t.steppable) {
       this._primaryPoint(t, t.anim.p, this._tmpV)
@@ -1134,6 +1188,12 @@ export default class OmniAxinator {
       const f = j - lo
       t.relOrb.position.y = t.ticks[lo].y + (t.ticks[hi].y - t.ticks[lo].y) * f
       near = clamp(Math.round(t.anim.p), 0, t.nodeRecs.length - 1)
+      if (t.ring) {   // V215: the node sitting nearest the marker (none when the slot is empty)
+        near = -1
+        for (let i = 0; i < t.nodeRecs.length; i++) {
+          if (Math.abs(this._slotOf(t, i, t.anim.sh) - t.anim.p) < 0.5) { near = i; break }
+        }
+      }
 
       t.ticks.forEach((tk, jj) => {
         const e = Math.max(1 - Math.min(1, Math.abs(jj - j)), tk.pulse)
@@ -1142,6 +1202,15 @@ export default class OmniAxinator {
       })
     }
 
+    if (t.ring) {   // V215: the row rides the ring; opacity fades to 0 at the wrap point so nodes never pop
+      const tv = this._tmpV
+      t.nodeRecs.forEach((nd, i) => {
+        const slot = this._slotOf(t, i, t.anim.sh)
+        tv.copy(t.dir).multiplyScalar(slot * NODE_SPACING)
+        nd.group.position.copy(tv)
+        nd.fade = clamp((t.K + 0.5 - Math.abs(slot)) * 2, 0, 1)
+      })
+    }
     const ns = nodeOpacityScale(t.def)   // V166: base values scaled, glow / pulse / hover additions are not
     t.nodeRecs.forEach((nd, i) => {
       const target = i === near ? 1 : 0
@@ -1150,12 +1219,12 @@ export default class OmniAxinator {
       const hovT = this._hover && this._hover.t === t && this._hover.index === i ? 1 : 0
       nd.hov += (hovT - nd.hov) * (delta > 0 ? Math.min(1, delta * 14) : 0)
       const e = Math.max(nd.glow, nd.pulse, nd.hov * 0.8)
-      const a = clamp(nd.appear, 0, 1)
+      const a = clamp(nd.appear, 0, 1) * (nd.fade ?? 1)
       nd.fillMat.opacity = (NODE_FILL_OPACITY * ns + 0.14 * e) * a
       nd.edgeMat.opacity = Math.min(1, NODE_EDGE_OPACITY * ns + 0.35 * e) * a
       nd.darkMat.opacity = Math.min(1, NODE_DARK_OPACITY * ns + 0.4 * e) * a
       nd.labelMat.opacity = Math.min(1, 0.85 + 0.15 * e) * a
-      nd.group.scale.setScalar(Math.max(nd.appear, 1e-4) * (1 + 0.04 * nd.glow))
+      nd.group.scale.setScalar(Math.max(nd.appear * (nd.fade ?? 1), 1e-4) * (1 + 0.04 * nd.glow))
     })
     this._syncOriginCore()
   }
@@ -1210,18 +1279,23 @@ export default class OmniAxinator {
   // ── Stepping state (steppable tunnels) ──────────────────────────────────────
 
   _detail (t, phase) {
-    const node = t.def.nodes[t.state.p]
+    const ni = this._nodeAtSlot(t, t.state.p)
+    const node = ni >= 0 ? t.def.nodes[ni] : null
     const level = t.def.levels[t.state.r]
+    const count = t.def.nodes.length
     return {
       hand: t.id,
       phase,
-      primaryIndex: t.state.p,
-      primaryPosition: t.state.p,
+      primaryIndex: ni,                     // V215: node index at the marker (-1 = empty slot)
+      primaryPosition: t.state.p,           // V215: signed slot, negative = other side of the origin
+      primaryLabel: node ? `${ni + 1}/${count}` : `· /${count}`,
+      shift: t.state.sh,
+      slotCount: t.ring ? 2 * t.K + 1 : count,
       relativeIndex: t.state.r,
       relativePosition: t.state.r,
       primaryCount: t.def.nodes.length,
       relativeCount: t.def.levels.length,
-      activeNode: { id: node.id, name: node.name, index: t.state.p },
+      activeNode: node ? { id: node.id, name: node.name, index: ni } : { id: null, name: '— empty —', index: -1 },
       activeLevel: { id: level.id, name: level.name, index: t.state.r },
     }
   }
@@ -1245,17 +1319,28 @@ export default class OmniAxinator {
   _relDur (t) { return Math.min(MAX_STEP_S, Math.max(MIN_STEP_S, (this._hs(t, 'relDuration') ?? REL_DURATION) / this._speed(t))) }
   _staggerOn (t) { return !!(this._hs(t, 'stagger') ?? t.def.stagger) }
 
-  _setState (t, p, r, animate) {
+  _setState (t, p, r, animate, sh = t.state.sh) {
     const pChanged = p !== t.state.p
     const rChanged = r !== t.state.r
+    const shChanged = sh !== t.state.sh
     const prevP = t.state.p
     t.state.p = p
     t.state.r = r
+    t.state.sh = sh
     try { this.opts.onStateChange?.(t.id, { ...t.state }) } catch (_) {}
 
     if (!animate) {
-      t.anim.p = p; t.anim.r = r
+      t.anim.p = p; t.anim.r = r; t.anim.sh = sh
     } else {
+      if (shChanged) {   // V215: the row slides; continuous (unbounded) so wrapping never rewinds
+        const moving = t.tweens.sh?.isActive()
+        t.tweens.sh?.kill()
+        t.tweens.sh = gsap.to(t.anim, {
+          sh, duration: this._travelDur(t),
+          ease: moving ? 'power2.out' : 'power2.inOut',
+          onComplete: () => { t.tweens.sh = null; this._maybeSettle(t) },
+        })
+      }
       if (pChanged) {
         const moving = t.tweens.p?.isActive()
         t.tweens.p?.kill()
@@ -1281,14 +1366,19 @@ export default class OmniAxinator {
   }
 
   _maybeSettle (t) {
-    if (!t.tweens.p && !t.tweens.r) this._emitState(t, 'settle')
+    if (!t.tweens.p && !t.tweens.r && !t.tweens.sh) this._emitState(t, 'settle')
   }
 
   // OmniHand's travel stagger (unchanged from V159): nodes between the old and
   // new position flash in travel order; tier ticks flash outward from the new tier.
   _staggerNodes (t, from, to) {
     const lo = Math.min(from, to), hi = Math.max(from, to)
-    const path = t.nodeRecs.slice(lo, hi + 1)
+    let path
+    if (t.ring) {   // V215: the nodes sitting in slots lo..hi, in travel order
+      path = []
+      for (let p = lo; p <= hi; p++) { const i = this._nodeAtSlot(t, p); if (i >= 0) path.push(t.nodeRecs[i]) }
+    } else path = t.nodeRecs.slice(lo, hi + 1)
+    if (!path.length) return
     const travelDur = this._travelDur(t)
     if (from > to) path.reverse()
     gsap.killTweensOf(path, 'pulse')

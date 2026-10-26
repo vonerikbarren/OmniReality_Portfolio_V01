@@ -6,6 +6,7 @@
  *   size        60..160 (integer %)     100    global icon size. S = 75, M = 100, L = 130 are presets of the same number
  *   opacity     20..100 (integer %)     90     global icon opacity
  *   hideEmpty   true | false            false  hide the geometries that have 0 nodes
+ *   edge        'bottom'|'top'|'left'|'right'|'panel'  bottom  (V211) where the dock sits; 'panel' floats and can be dragged (px, py = its top-left, 0..5000). Hidden = show:false
  *   geo         { <GeometryId>: { color: '#rrggbb', opacity: 20..100 } }   per-geometry colour + opacity (only what the person changed)
  *
  * Storage 'omni:dock-realities-v1' = { v: 1, ...changed keys }. Load is defensive: bad JSON / wrong types / unknown keys /
@@ -31,7 +32,9 @@ export const OPACITY_MIN = 20, OPACITY_MAX = 100
 export const SIZE_PRESETS = Object.freeze({ S: 75, M: 100, L: 130 })
 export const ICON_MIN_PX = 22, ICON_MAX_PX = 72
 
-export const DEFAULTS = Object.freeze({ show: true, size: 100, opacity: 90, hideEmpty: false })
+export const EDGES = Object.freeze(['bottom', 'top', 'left', 'right', 'panel'])   // V211: where the dock sits ('panel' = a floating, draggable panel); hidden = show:false
+export const PANEL_POS_MAX = 5000
+export const DEFAULTS = Object.freeze({ show: true, size: 100, opacity: 90, hideEmpty: false, edge: 'bottom', px: 80, py: 140 })
 export const DEFAULT_GEO_OPACITY = 100
 export const DEFAULT_COLOR = '#d8e6ff'
 const KEYS = Object.keys(DEFAULTS)
@@ -69,6 +72,8 @@ export function cleanColor (v) {
 export function cleanValue (key, v) {
   switch (key) {
     case 'show': case 'hideEmpty': return toBool(v)
+    case 'edge': return typeof v === 'string' && EDGES.includes(v) ? v : undefined
+    case 'px': case 'py': return toInt(v, 0, PANEL_POS_MAX)
     case 'size': return toInt(v, SIZE_MIN, SIZE_MAX)
     case 'opacity': return toInt(v, OPACITY_MIN, OPACITY_MAX)
     default: return undefined
@@ -127,7 +132,7 @@ export function resolveSettings (overrides = {}) {
   const o = sanitizeOverrides(overrides)
   const geo = {}
   for (const id of GEOMETRY_IDS) geo[id] = { color: o.geo?.[id]?.color ?? defaultColorFor(id), opacity: o.geo?.[id]?.opacity ?? DEFAULT_GEO_OPACITY }
-  return { show: o.show ?? DEFAULTS.show, size: o.size ?? DEFAULTS.size, opacity: o.opacity ?? DEFAULTS.opacity, hideEmpty: o.hideEmpty ?? DEFAULTS.hideEmpty, geo }
+  return { show: o.show ?? DEFAULTS.show, size: o.size ?? DEFAULTS.size, opacity: o.opacity ?? DEFAULTS.opacity, hideEmpty: o.hideEmpty ?? DEFAULTS.hideEmpty, edge: o.edge ?? DEFAULTS.edge, px: o.px ?? DEFAULTS.px, py: o.py ?? DEFAULTS.py, geo }
 }
 
 /**

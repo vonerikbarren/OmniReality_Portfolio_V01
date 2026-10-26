@@ -10,7 +10,8 @@
  *   omni:hands-settings-changed  { hand, key, value }
  *
  * Consumers (all read the store AT USE TIME, so a change applies live):
- *   systems/OmniAxinator.js  travelDuration, relDuration, stagger, clockHour
+ *   systems/OmniAxinator.js  travelDuration, relDuration, stagger, clockHour, particles (V215: the tunnel's
+ *                            particle stream on/off; its speed is the hand's speed multiplier)
  *                            (tunnels whose def.padHand is 'conscious'|'omnihand')
  *   ui/MovementPad.js        holdRepeatMs (axis hold-to-repeat interval)
  *   main.js                  padOnStart (pad opened once at startup)
@@ -79,8 +80,8 @@ export const DEFAULTS = {
                elementKind: 'Process', chainEnabled: true, fireDistance: 10, maxAlive: 40 },
   rh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.rh, ammo: 'Pulse', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
                fireDistance: 10, maxAlive: 40, defaultWordDelayMs: 450 },
-  conscious: { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.conscious.pos },
-  omnihand:  { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.omnihand.pos, stagger: true },
+  conscious: { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.conscious.pos, particles: true },
+  omnihand:  { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.omnihand.pos, stagger: true, particles: true },
 }
 
 /** Numeric limits (min, max) used to clamp every write and every load. */

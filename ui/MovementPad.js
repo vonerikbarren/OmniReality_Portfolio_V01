@@ -156,12 +156,14 @@ const PAD_CONFIGS = {
     movable: true, keyboard: 'omnihand-axes', dimensional: true,
     dirLabels: { up: `${REL_AXIS_SYMBOL}▲`, down: `${REL_AXIS_SYMBOL}▼`, left: `${OMNIHAND_SYMBOL}◂`, right: `${OMNIHAND_SYMBOL}▸` },
     centerLabel: OMNIHAND_SYMBOL,
+    corners: { tl: 'spareUp', bl: 'spareDown', tr: 'arrayUp', br: 'arrayDown' },   // V215: row slide + a reserved pair
   },
   conscious: {
     id: 'conscious', corner: 'tr', abbr: 'CH', modeLabel: `${CONSCIOUS_SYMBOL} AXIS`,
     movable: true, keyboard: 'conscious-axes', dimensional: true,
     dirLabels: { up: `${REL_AXIS_SYMBOL}▲`, down: `${REL_AXIS_SYMBOL}▼`, left: `${CONSCIOUS_SYMBOL}◂`, right: `${CONSCIOUS_SYMBOL}▸` },
     centerLabel: CONSCIOUS_SYMBOL,
+    corners: { tl: 'spareUp', bl: 'spareDown', tr: 'arrayUp', br: 'arrayDown' },   // V215
   },
   lh: {
     id: 'lh', corner: 'bl', abbr: 'LH', modeLabel: 'MOVE',
@@ -188,6 +190,13 @@ const PAD_CONFIGS = {
 // V192: ORB-L / R / U / D (on BOTH lower pads now) orbit the CURRENT TARGET (omni:orbit-target-set, else the point 4 units ahead of
 // the camera at the start of the gesture, never the origin) and ORB-U / ORB-D loop all the way around (utils/OrbitMath.js, no clamp).
 const EXTRA_BUTTONS = {
+  // V215 (OmniHand / ConsciousHand): arrayUp / arrayDown slide the WHOLE ROW of the tunnel's nodes along the tunnel,
+  // through the origin 0,0,0, wrapping round so the flow never stops (the marker stays). The 'spare' pair is reserved
+  // for a later function: it is drawn so the pad matches RH / LH, but does nothing yet.
+  arrayUp:   { glyph: '⇶', label: 'ARR+', name: 'Slide row forward', tip: 'Slide the whole row of tunnel nodes toward the far end, through the origin (hold to keep it flowing). The marker stays; the nodes move.' },
+  arrayDown: { glyph: '⇷', label: 'ARR-', name: 'Slide row back',    tip: 'Slide the whole row of tunnel nodes back toward the near end, through the origin (hold to keep it flowing). The marker stays; the nodes move.' },
+  spareUp:   { glyph: '·', label: '—',    name: 'Reserved', tip: 'Reserved for a later function. Does nothing yet.', spare: true },
+  spareDown: { glyph: '·', label: '—',    name: 'Reserved', tip: 'Reserved for a later function. Does nothing yet.', spare: true },
   ascend:    { glyph: '⇧', label: 'ASC',   name: 'Ascend',   tip: 'Move up along world Y (hold). Same altitude settings and speed as RH Rise.' },
   descend:   { glyph: '⇩', label: 'DSC',   name: 'Descend',  tip: 'Move down along world Y (hold). Same altitude settings and speed as RH Fall.' },
   pitchUp:   { glyph: '⌃', label: 'ORB-U', name: 'Orbit up', tip: 'Orbit up and over the current target (the selected node, else the point just ahead of you), hold: it keeps going all the way around, over the top and under the bottom. Speed: Admin vertical orbit x this hand\'s speed.' },
@@ -659,6 +668,7 @@ ${_satRules(_SAT_GEOM)}
   margin           : 2px;
   place-self       : center;
 }
+.pad-btn--spare { opacity: 0.35; cursor: default; }
 .pad-btn--corner .pad-dir-label { font-size: 5px; letter-spacing: 0.02em; }
 
 /* Pressed — sinks into the surface */
@@ -1302,7 +1312,7 @@ export default class MovementPad {
     if (DIM_HANDS.includes(handId)) {
       const st = this._axes?.getState?.(handId)
       const name = st?.activeNode?.name ?? '—'
-      const sub = st ? `${st.primaryIndex + 1}/${st.primaryCount}` : ''
+      const sub = st ? (st.primaryLabel ?? `${st.primaryIndex + 1}/${st.primaryCount}`) : ''
       chip.innerHTML = `<span class="chip-name"></span><span class="chip-sub"></span>`
       chip.querySelector('.chip-name').textContent = name
       chip.querySelector('.chip-sub').textContent = sub
@@ -1594,7 +1604,7 @@ export default class MovementPad {
     const extra = EXTRA_BUTTONS[dir]   // V191: corner button (ascend / descend / pitchUp / pitchDown)
     const label = extra ? extra.label : (cfg.dirLabels?.[dir] ?? DIR_GLYPHS[dir])
     const btn   = document.createElement('button')
-    btn.className = ['pad-btn', `pad-btn--${dir}`, extra ? 'pad-btn--corner' : '', isTBD ? 'pad-btn--tbd' : ''].filter(Boolean).join(' ')
+    btn.className = ['pad-btn', `pad-btn--${dir}`, extra ? 'pad-btn--corner' : '', extra?.spare ? 'pad-btn--spare' : '', isTBD ? 'pad-btn--tbd' : ''].filter(Boolean).join(' ')
     btn.dataset.hand = handId
     btn.dataset.dir  = dir
     if (!isTBD) btn.setAttribute('aria-label', extra ? `${extra.name}: ${extra.tip}` : `${dir}: ${label}`)
@@ -1764,11 +1774,14 @@ export default class MovementPad {
       delete this._dimRepeat[key]
     }
     if (!active) return
-    this._axes?.step(handId, dir)
+    if (EXTRA_BUTTONS[dir]?.spare) return   // V215: reserved pair, no function yet
+    const act = dir === 'arrayUp' ? 'up' : dir === 'arrayDown' ? 'down' : null   // V215: slide the row instead of the marker
+    const go = () => { if (act) this._axes?.shift(handId, act); else this._axes?.step(handId, dir) }
+    go()
     // V165: a chained timeout (not setInterval) so every repeat re-reads the EASED speed:
     // changing the slider mid-hold speeds the repeat up smoothly.
     const tick = () => {
-      this._axes?.step(handId, dir)
+      go()
       this._dimRepeat[key] = setTimeout(tick, this._repeatMs(handId))
     }
     this._dimRepeat[key] = setTimeout(tick, this._repeatMs(handId))
@@ -1782,7 +1795,7 @@ export default class MovementPad {
 
   _releaseAllDimensionPresses () {
     Object.keys(PAD_CONFIGS).filter(id => PAD_CONFIGS[id].dimensional).forEach(handId => {
-      DIRS.forEach(d => this._setPressed(handId, d, false, true))
+      Object.keys(this._pressed[handId] ?? {}).forEach(d => this._setPressed(handId, d, false, true))   // V215: incl. the corner buttons
     })
     Object.values(this._dimRepeat).forEach(t => clearTimeout(t))
     this._dimRepeat = {}

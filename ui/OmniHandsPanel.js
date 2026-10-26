@@ -701,6 +701,9 @@ export default class OmniHandsPanel {
         () => !!getHandSetting('omnihand', 'stagger'),
         (on) => setHandSetting('omnihand', 'stagger', on))
     }
+    this._toggleRow(m, 'Tunnel particle stream (speed = hand Speed)', 'particles',
+      () => getHandSetting(hand, 'particles') !== false,
+      (on) => setHandSetting(hand, 'particles', on))
     this._numRow(m, 'Clock hour (direction)', 'clockHour', this._storeNum(hand, 'clockHour', 0.5, 'o\'clock'))
     m.appendChild(el('div', 'omh-note', 'Durations and hold-repeat apply on the next step; the clock hour re-aims the tunnel immediately (12 = away from you, 3 = right; the tunnel runs through the origin, so the opposite hour is its other end). Defaults: 0.55 s / 0.45 s / 450 ms, ' + getDefault(hand, 'clockHour') + ' o\'clock.'))
 
@@ -711,7 +714,7 @@ export default class OmniHandsPanel {
     this._sync.push(() => {
       const d = this._axisState[hand]
       pos.textContent = d
-        ? `At: ${d.activeNode.name} (${d.primaryIndex + 1}/${d.primaryCount}) · Υ ${d.activeLevel.name} (${d.relativeIndex + 1}/${d.relativeCount})`
+        ? `At: ${d.activeNode.name} (${d.primaryLabel ?? `${d.primaryIndex + 1}/${d.primaryCount}`}) · Υ ${d.activeLevel.name} (${d.relativeIndex + 1}/${d.relativeCount})`
         : 'At: — (moves once the axes report a position)'
     })
     const rb = el('button', 'omh-btn', 'Reset marker to the root (origin)')

@@ -26,7 +26,7 @@ import {
 } from '../utils/OmniGeometryCensus.js'
 import * as S from '../utils/OmniDockRealitiesSettings.js'
 import * as UCS from '../utils/OmniUserCompassSettings.js'
-import { setDockRow, getDockRowInset, DOCK_BASE_H } from '../utils/OmniLayout.js'
+import { setDockRow, getDockRowInset, getTopStack, DOCK_BASE_H } from '../utils/OmniLayout.js'
 
 export const ROOT_ID = 'omni-dock-realities'
 const STYLE_ID = 'omni-dock-realities-styles'
@@ -50,6 +50,31 @@ const STYLES = /* css */`
   user-select: none; -webkit-user-select: none;
 }
 #${ROOT_ID}[data-show="false"] { display: none; }
+/* V211: the other places the dock can sit */
+#${ROOT_ID}[data-edge="top"] { top: calc(var(--odr-top, 100px) + 4px); bottom: auto; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.08)); border-top: none; border-radius: 0 0 10px 10px; z-index: 44; }
+#${ROOT_ID}[data-edge="left"], #${ROOT_ID}[data-edge="right"] {
+  top: calc(var(--odr-top, 100px) + 8px); bottom: ${DOCK_BASE_H + 8}px; height: auto; width: calc(var(--odr-d, 40px) + 18px); flex-direction: column; padding: 4px 0;
+  z-index: 44; border-radius: 10px; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.08));
+}
+#${ROOT_ID}[data-edge="left"] { left: 4px; right: auto; }
+#${ROOT_ID}[data-edge="right"] { right: 4px; left: auto; }
+#${ROOT_ID}[data-edge="left"] .odr-scroll, #${ROOT_ID}[data-edge="right"] .odr-scroll, #${ROOT_ID}[data-edge="panel"] .odr-scroll { flex-direction: row; }
+#${ROOT_ID}[data-edge="left"] .odr-scroll, #${ROOT_ID}[data-edge="right"] .odr-scroll {
+  flex-direction: column; width: 100%; height: auto; overflow-x: hidden; overflow-y: auto; touch-action: pan-y; overscroll-behavior-y: contain;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+#${ROOT_ID}[data-edge="panel"] {
+  left: var(--odr-px, 80px); top: var(--odr-py, 140px); right: auto; bottom: auto; width: min(560px, calc(100vw - 16px)); height: calc(var(--odr-h, 52px) + 22px);
+  flex-direction: column; align-items: stretch; padding: 0 4px 4px; z-index: 46; border-radius: 10px; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.14));
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+}
+#${ROOT_ID}[data-edge="panel"] .odr-scroll { height: var(--odr-h, 52px); flex: 0 0 auto; }
+#${ROOT_ID} .odr-grip { display: none; }
+#${ROOT_ID}[data-edge="panel"] .odr-grip {
+  all: unset; display: block; box-sizing: border-box; height: 18px; cursor: grab; text-align: center; font-size: 11px; line-height: 18px; opacity: .6; pointer-events: auto; touch-action: none;
+}
+#${ROOT_ID}[data-edge="panel"] .odr-grip::after { content: '⋯⋯  drag  ⋯⋯'; }
+#${ROOT_ID}[data-edge="panel"] .odr-grip:active { cursor: grabbing; }
 #${ROOT_ID} .odr-scroll {
   flex: 1 1 auto; min-width: 0; height: 100%; display: flex; align-items: center; gap: 2px;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none;
@@ -101,6 +126,8 @@ export function rowMetrics (vw, size, compassBox = 0) {
   return { d, btn, h, reserve: compassBox > 0 ? compassBox + 6 : 0 }
 }
 
+const el_attr = (el, k, v) => { if (el.getAttribute(k) !== v) el.setAttribute(k, v) }
+
 export default class OmniDockRealities {
   constructor (context, omniNode = null) {
     this.ctx = context
@@ -144,6 +171,8 @@ export default class OmniDockRealities {
     on.out = (e) => this._hover(e, false)
     on.key = (e) => this._key(e)
     window.addEventListener(S.SET_EVENT, on.set)
+    on.grip = (e) => this._gripDown(e)
+    this._grip?.addEventListener('pointerdown', on.grip)
     for (const ev of ['omni:node-created', 'omni:node-deleted', 'omni:node-updated', 'omni:nodes-updated']) window.addEventListener(ev, on.nodes)
     window.addEventListener('omni:layout-changed', on.layout)
     window.addEventListener('resize', on.layout)
@@ -177,6 +206,7 @@ export default class OmniDockRealities {
   destroy () {
     const on = this._on
     window.removeEventListener(S.SET_EVENT, on.set)
+    this._grip?.removeEventListener('pointerdown', on.grip)
     for (const ev of ['omni:node-created', 'omni:node-deleted', 'omni:node-updated', 'omni:nodes-updated']) window.removeEventListener(ev, on.nodes)
     window.removeEventListener('omni:layout-changed', on.layout)
     window.removeEventListener('resize', on.layout)
@@ -227,7 +257,9 @@ export default class OmniDockRealities {
     gear.setAttribute('aria-label', 'OmniDock_Realities settings')
     gear.setAttribute('data-omni-tip', 'OmniDock_Realities settings'); gear.setAttribute('data-omni-tip-key', '—')
     gear.setAttribute('data-omni-tip-desc', 'Icon size (S / M / L and a slider), opacity, a colour and opacity for each shape, hide shapes with 0 nodes, hide the whole row, and put the userCompass back in the row.')
-    el.append(scroll, gear)
+    const grip = document.createElement('button'); grip.type = 'button'; grip.className = 'odr-grip'; grip.setAttribute('aria-label', 'Drag OmniDock_Realities')
+    el.append(grip, scroll, gear)
+    this._grip = grip
     this._el = el; this._scroll = scroll; this._gear = gear
     ;(document.getElementById('omni-ui') ?? document.body).appendChild(el)
   }
@@ -291,7 +323,14 @@ export default class OmniDockRealities {
     const st = this._el.style
     st.setProperty('--odr-d', m.d + 'px'); st.setProperty('--odr-h', m.h + 'px'); st.setProperty('--odr-reserve', m.reserve + 'px')
     st.setProperty('--odr-inset', getDockRowInset(vw) + 'px')
-    setDockRow({ h: m.h, on: !!this._settings.show })
+    const edge = this._settings.edge ?? 'bottom'
+    el_attr(this._el, 'data-edge', edge)
+    el_attr(this._el, 'aria-orientation', edge === 'left' || edge === 'right' ? 'vertical' : 'horizontal')
+    st.setProperty('--odr-top', getTopStack() + 'px')
+    const px = Math.max(0, Math.min(this._settings.px ?? 80, Math.max(0, (window.innerWidth || 1280) - 120)))
+    const py = Math.max(0, Math.min(this._settings.py ?? 140, Math.max(0, (window.innerHeight || 720) - 80)))
+    st.setProperty('--odr-px', px + 'px'); st.setProperty('--odr-py', py + 'px')
+    setDockRow({ h: m.h, on: !!this._settings.show && edge === 'bottom' })   // only the bottom row pushes the sheets up
   }
 
   // ── counts ──────────────────────────────────────────────────────────────────
@@ -378,9 +417,25 @@ export default class OmniDockRealities {
     else if (this._spin?.id === id) { this._spin = null; this._drawIcon(id, BASE_YAW) }
   }
 
+  /** V211: drag the floating panel by its grip; the position is saved when the pointer lets go. */
+  _gripDown (e) {
+    if (this._settings.edge !== 'panel' || e.button > 0) return
+    e.preventDefault()
+    const sx = e.clientX, sy = e.clientY, ox = this._settings.px, oy = this._settings.py
+    const move = (ev) => {
+      const nx = Math.max(0, Math.min(Math.round(ox + ev.clientX - sx), (window.innerWidth || 1280) - 120)), ny = Math.max(0, Math.min(Math.round(oy + ev.clientY - sy), (window.innerHeight || 720) - 80))
+      this._el.style.setProperty('--odr-px', nx + 'px'); this._el.style.setProperty('--odr-py', ny + 'px'); this._dragXY = [nx, ny]
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up)
+      if (this._dragXY) { const [px, py] = this._dragXY; this._dragXY = null; this._handleSet({ patch: { px, py } }) }
+    }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up)
+  }
+
   _wheel (e) {
     const s = this._scroll
-    if (!s || e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY) || s.scrollWidth <= s.clientWidth) return
+    if (!s || this._settings.edge === 'left' || this._settings.edge === 'right' || e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY) || s.scrollWidth <= s.clientWidth) return
     e.preventDefault()
     s.scrollLeft += e.deltaY
   }

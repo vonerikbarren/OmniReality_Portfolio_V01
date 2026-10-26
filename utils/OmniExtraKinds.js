@@ -36,6 +36,8 @@ import { buildDocNodeMesh, releaseDocMesh } from './OmniDocNodeMesh.js'         
 import { sanitizeDoc, defaultDoc } from './OmniDocModel.js'
 import { buildPolyNodeMesh, releasePolyMesh } from './OmniPolyNodeMesh.js'          // V204: the PolyNode geometry (a solid / strip / ring whose every face has its own picture)
 import { sanitizePoly, defaultPoly } from './OmniPolyModel.js'                    // V204: data.poly (shape + per-face data)                       // V203: data.doc (which document, which page, how big)
+import { sanitizeNote, defaultNote } from './OmniNoteModel.js'                      // V213: data.note (the rich-text note, saved with the node)
+import { buildVoxelNodeMesh, releaseVoxelMesh } from './OmniVoxelNodeMesh.js'    // V211: the OmniVoxelNode geometry (a diamond at a room's centre)
 import { sanitizeMix, defaultMix } from './OmniMixModel.js'                         // V201: data.mix (the desk: strips, master, crossfader, automation)                    // V198: data.song (the arrangement, saved with the node)
 
 export const KIND_PATH = 'omniPath'
@@ -47,7 +49,12 @@ export const KIND_SONG = 'songNode'     // V198: SongNode — data = { nodeKind:
 export const KIND_MIX = 'mixNode'       // V201: OmniMusicMixNode — data = { nodeKind:'mixNode', mix } (the mixing desk lives IN the node: utils/OmniMixModel.js)
 export const KIND_DOC = 'docNode'       // V203: DocNode — data = { nodeKind:'docNode', doc } (which document and page lives IN the node: utils/OmniDocModel.js)
 export const KIND_POLY = 'polyNode'     // V204: PolyNode — data = { nodeKind:'polyNode', poly } (shape and every face live IN the node: utils/OmniPolyModel.js)
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY]
+export const KIND_VOXEL = 'voxelNode'   // V211: OmniVoxelNode — data = { nodeKind:'voxelNode', voxel:{ room:'x,y,z' } } (the centre of one voxel room; systems/OmniVoxelSpace.js keeps one per room)
+export const KIND_NOTE = 'noteNode'     // V213: OmniNote — data = { nodeKind:'noteNode', note } (the rich text lives IN the node: utils/OmniNoteModel.js; drawn on the same thin sheet as the DocNode)
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE]
+export const GEO_NOTE = 'NoteNode'
+export const GEO_VOXEL = 'VoxelNode'
+export const sanitizeVoxel = (v) => { const room = typeof v?.room === 'string' && /^-?\d{1,4},-?\d{1,4},-?\d{1,4}$/.test(v.room) ? v.room : '0,0,0'; const point = typeof v?.point === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(v.point) ? v.point : ''; return point ? { room, point } : { room } }   // V214: point = the id of one of your points (a point node)
 export const GEO_PATH = 'OmniPathNode'
 export const GEO_FLOOR_PANEL = 'FloorPanelNode'
 export const GEO_TERMINAL_SHELL = 'TerminalShellTunnel'
@@ -61,9 +68,11 @@ export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring 
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE)
+export const isNoteNodeData = (d) => !!d && d.nodeKind === KIND_NOTE
+export const isVoxelNodeData = (d) => !!d && d.nodeKind === KIND_VOXEL
 export const isMusicNodeData = (d) => !!d && d.nodeKind === KIND_MUSIC
 export const isSongNodeData = (d) => !!d && d.nodeKind === KIND_SONG
 export const isMixNodeData = (d) => !!d && d.nodeKind === KIND_MIX
@@ -150,6 +159,12 @@ export function extraCreateFields (spec) {
   if (spec.nodeKind === KIND_MIX) {
     // the desk travels WITH the node (a sanitized copy; a missing / hostile one becomes the default mix)
     return { geometry: GEO_MIX, label: clip(spec.label || 'Mix node', 40), data: { nodeKind: KIND_MIX, mix: spec.mix && typeof spec.mix === 'object' ? sanitizeMix(spec.mix) : defaultMix() } }
+  }
+  if (spec.nodeKind === KIND_NOTE) {
+    return { geometry: GEO_NOTE, label: clip(spec.label || 'Note', 40), data: { nodeKind: KIND_NOTE, note: spec.note && typeof spec.note === 'object' ? sanitizeNote(spec.note) : defaultNote() } }
+  }
+  if (spec.nodeKind === KIND_VOXEL) {
+    return { geometry: GEO_VOXEL, label: clip(spec.label || 'Voxel node', 40), data: { nodeKind: KIND_VOXEL, voxel: sanitizeVoxel(spec.voxel) } }
   }
   if (spec.nodeKind === KIND_POLY) {
     return { geometry: GEO_POLY, label: clip(spec.label || 'Poly node', 40), data: { nodeKind: KIND_POLY, poly: spec.poly && typeof spec.poly === 'object' ? sanitizePoly(spec.poly) : defaultPoly() } }
@@ -255,6 +270,23 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_NOTE) {
+    if (!data.note || typeof data.note !== 'object') data.note = defaultNote()
+    const nt = sanitizeNote(data.note)
+    const mesh = buildDocNodeMesh(col, { width: nt.width, aspect: nt.aspect, paper: nt.paper })
+    mesh.userData.extraKind = { kind: KIND_NOTE, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_VOXEL) {
+    data.voxel = sanitizeVoxel(data.voxel)
+    const mesh = buildVoxelNodeMesh(col, !!data.voxel.point)
+    mesh.userData.extraKind = { kind: KIND_VOXEL, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   if (data.nodeKind === KIND_POLY) {
     if (!data.poly || typeof data.poly !== 'object') data.poly = defaultPoly()
     const mesh = buildPolyNodeMesh(col, sanitizePoly(data.poly))
@@ -315,8 +347,9 @@ export function releaseExtraMesh (mesh) {
   if (ek.kind === KIND_MUSIC) releaseMusicMesh(mesh)
   if (ek.kind === KIND_SONG) releaseSongMesh(mesh)
   if (ek.kind === KIND_MIX) releaseMixMesh(mesh)
-  if (ek.kind === KIND_DOC) releaseDocMesh(mesh)
+  if (ek.kind === KIND_DOC || ek.kind === KIND_NOTE) releaseDocMesh(mesh)
   if (ek.kind === KIND_POLY) releasePolyMesh(mesh)
+  if (ek.kind === KIND_VOXEL) releaseVoxelMesh(mesh)
   LIVE.delete(mesh)
   delete mesh.userData.extraKind
   delete mesh.userData.omniRelease

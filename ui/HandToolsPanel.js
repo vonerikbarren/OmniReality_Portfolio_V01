@@ -195,7 +195,7 @@ export default class HandToolsPanel {
     switch (id) {
       case 'here': {
         const st = axes?.getState?.(hand)
-        if (ax && st) {
+        if (ax && st && st.activeNode.id) {
           ax.travelToNode(hand, st.activeNode.id)
           send('omni:axinator-node-menu-action', { tunnel: hand, nodeId: st.activeNode.id, action: 'take-me-there' })
         }
@@ -270,7 +270,7 @@ export default class HandToolsPanel {
     if (st) {
       const b1 = document.createElement('b'); b1.textContent = st.activeNode.name
       const b2 = document.createElement('b'); b2.textContent = st.activeLevel.name
-      ro.append('Node ', b1, ` ${st.primaryIndex + 1}/${st.primaryCount}`, document.createElement('br'), 'Υ ', b2, ` ${st.relativeIndex + 1}/${st.relativeCount}`)
+      ro.append('Node ', b1, ` ${st.primaryLabel ?? `${st.primaryIndex + 1}/${st.primaryCount}`}`, document.createElement('br'), 'Υ ', b2, ` ${st.relativeIndex + 1}/${st.relativeCount}`)
     } else ro.textContent = 'The axis is not connected yet.'
     const on = { tunnel: !!this._tunnelOn[this._hand], follow: axes?.isVisible?.() ?? this._follow }
     this._el.querySelectorAll('.oht-btn').forEach(b => {

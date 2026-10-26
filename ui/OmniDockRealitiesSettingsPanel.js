@@ -64,7 +64,8 @@ export default class OmniDockRealitiesSettingsPanel extends OmniSettingsPanelBas
     const s = this._settings
     body.innerHTML = `
       <div class="oss-sec">The strip</div>
-      <div class="oss-row odrs-row"><label for="odrs-show">Show OmniDock_Realities</label><input id="odrs-show" type="checkbox" data-k="show" ${tip('Show the strip', 'Shows or hides the row of wireframe shapes above the Dock.')}></div>
+      <div class="oss-row odrs-row"><label for="odrs-show">Show OmniDock_Realities</label><input id="odrs-show" type="checkbox" data-k="show" ${tip('Show the strip', 'Hides the dock completely, or shows it again where you put it.')}></div>
+      <div class="oss-row odrs-row"><label for="odrs-edge">Where it sits</label><select id="odrs-edge" data-k="edge" aria-label="Where the dock sits">${S.EDGES.map(k => `<option value="${k}">${{ bottom: 'Bottom', top: 'Top', left: 'Left', right: 'Right', panel: 'Floating panel' }[k]}</option>`).join('')}</select></div>
       <div class="oss-row odrs-row"><label>Icon size</label>
         <span class="odrs-seg">${Object.keys(S.SIZE_PRESETS).map(k => `<button type="button" class="oss-btn" data-preset="${k}" ${tip('Size ' + k, 'Small / Medium / Large icons. The size also follows the screen width.')}>${k}</button>`).join('')}</span>
         <input type="range" data-k="size" min="${S.SIZE_MIN}" max="${S.SIZE_MAX}" step="1" aria-label="Icon size (percent)" value="${s.size}"><span class="oss-dim" data-out="size"></span></div>
@@ -86,13 +87,14 @@ export default class OmniDockRealitiesSettingsPanel extends OmniSettingsPanelBas
       <div class="oss-msg oss-dim">The strip scrolls sideways. Click a shape for the list of its realities; hover (or tap once on a phone) for the number of nodes.</div>`
     body.addEventListener('input', (e) => {
       const t = e.target
-      if (t.dataset.k === 'show' || t.dataset.k === 'hideEmpty') return
+      if (t.dataset.k === 'show' || t.dataset.k === 'hideEmpty' || t.dataset.k === 'edge') return
       if (t.dataset.k) send({ patch: { [t.dataset.k]: Number(t.value) } })
       else if (t.dataset.gk) send({ geo: { id: t.closest('[data-geo]').dataset.geo, [t.dataset.gk]: t.dataset.gk === 'opacity' ? Number(t.value) : t.value } })
     })
     body.addEventListener('change', (e) => {
       const t = e.target
       if (t.dataset.k === 'show' || t.dataset.k === 'hideEmpty') send({ patch: { [t.dataset.k]: !!t.checked } })
+      else if (t.dataset.k === 'edge') send({ patch: { edge: t.value } })
     })
     body.addEventListener('click', (e) => {
       const b = e.target.closest?.('button'); if (!b) return
@@ -113,6 +115,7 @@ export default class OmniDockRealitiesSettingsPanel extends OmniSettingsPanelBas
     const set = (sel, v) => { const el = body.querySelector(sel); if (el && el !== document.activeElement && String(el.value) !== String(v)) el.value = v }
     body.querySelector('[data-k="show"]').checked = !!s.show
     body.querySelector('[data-k="hideEmpty"]').checked = !!s.hideEmpty
+    set('[data-k="edge"]', s.edge)
     set('[data-k="size"]', s.size); set('[data-k="opacity"]', s.opacity)
     body.querySelector('[data-out="size"]').textContent = `${s.size}%${S.presetFor(s.size) ? ' · ' + S.presetFor(s.size) : ''}`
     body.querySelector('[data-out="opacity"]').textContent = `${s.opacity}%`

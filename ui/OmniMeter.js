@@ -283,7 +283,8 @@ const AXES = {
 }
 
 const SETTINGS_KEY = 'omni:meter:settings'
-const DEFAULT_SETTINGS = { showX: true, showY: true, showZ: true, labelStyle: 'spatial', showSession: true, sessionGoalH: GOAL_DEFAULT_H }
+const SETTINGS_VERSION = 2   // V211: the internal meter starts hidden; older saved show-flags are reset once
+const DEFAULT_SETTINGS = { v: SETTINGS_VERSION, showX: false, showY: false, showZ: false, labelStyle: 'spatial', showSession: false, sessionGoalH: GOAL_DEFAULT_H }
 
 export default class OmniMeter {
   constructor (context) {
@@ -602,9 +603,12 @@ export default class OmniMeter {
   _loadSettings () {
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')
-      if (saved && typeof saved === 'object') this._settings = { ...DEFAULT_SETTINGS, ...saved }
+      if (saved && typeof saved === 'object') {
+        this._settings = { ...DEFAULT_SETTINGS, ...saved }
+        if (saved.v !== SETTINGS_VERSION) Object.assign(this._settings, { v: SETTINGS_VERSION, showX: false, showY: false, showZ: false, showSession: false })
+      }
       this._settings.sessionGoalH = clampGoalHours(this._settings.sessionGoalH)   // V190: validated on every load
-      this._settings.showSession = this._settings.showSession !== false
+      this._settings.showSession = this._settings.showSession === true
     } catch (_) { /* keep defaults */ }
   }
 

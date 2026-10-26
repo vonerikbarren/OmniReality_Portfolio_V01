@@ -220,6 +220,9 @@ export default class OmniDimensionalAxes {
     return this._axinator ? this._axinator.step(hand, direction) : false
   }
 
+  /** V215: slide the whole row of tunnel nodes ('up' / 'down'); the marker stays. */
+  shift (hand, dir) { return this._axinator?.shiftArray(hand, dir) ?? false }
+
   goTo (hand, primaryIndex, relativeIndex) {
     this._axinator?.goTo(hand, primaryIndex, relativeIndex)
   }
@@ -250,7 +253,7 @@ export default class OmniDimensionalAxes {
       const hands = {}
       HAND_IDS.forEach(id => {
         const s = this._axinator?.getState(id)
-        if (s) hands[id] = { p: s.primaryIndex, r: s.relativeIndex }
+        if (s) hands[id] = { p: s.primaryPosition, r: s.relativeIndex, sh: s.shift ?? 0 }   // V215: signed slot + array shift
       })
       localStorage.setItem(STORE_KEY, JSON.stringify({ visible: this._visible, hands }))
     } catch (_) {}
@@ -282,14 +285,15 @@ export default class OmniDimensionalAxes {
     if (!this._readoutEl || !this._axinator) return
     this._readoutEl.innerHTML = HAND_IDS.map(id => {
       const t = this._axinator.getTunnel(id)
-      const node = t.def.nodes[t.state.p]
+      const ni = this._axinator.getState(id)?.primaryIndex ?? t.state.p
+      const node = t.def.nodes[ni] ?? { name: '— empty —', view: '' }
       const level = t.def.levels[t.state.r]
       const tip = [node.view, level.view].filter(Boolean).join(' / ')
       return `<div class="odr-row" title="${esc(tip)}">` +
         `<span class="odr-sym" style="color:${hex(t.def.color)}">${esc(t.def.symbol)}</span>` +
         `<span class="odr-dim">${esc(t.def.primaryTerm)}</span>` +
         `<span class="odr-name">${esc(node.name)}</span>` +
-        `<span class="odr-idx">${t.state.p + 1}/${t.def.nodes.length}</span>` +
+        `<span class="odr-idx">${esc(this._axinator.getState(id)?.primaryLabel ?? `${t.state.p + 1}/${t.def.nodes.length}`)}</span>` +
         `<span class="odr-dim">${esc(REL_AXIS_SYMBOL)} ${esc(t.def.relativeTerm)}</span>` +
         `<span class="odr-name">${esc(level.name)}</span>` +
         `<span class="odr-idx">${t.state.r + 1}/${t.def.levels.length}</span>` +

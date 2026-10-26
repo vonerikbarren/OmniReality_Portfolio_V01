@@ -87,7 +87,7 @@ export default class OmniFloorManager {
     this.ctx = context
     this._floors = []          // [{ id, y, label, mesh }]
     this._indicatorEl = null
-    this._indicatorVisible = true
+    this._indicatorVisible = false
     this._onSet = null
     this._lastReportedLabel = null
   }
@@ -101,8 +101,8 @@ export default class OmniFloorManager {
 
     try {
       const rawVisible = localStorage.getItem('omni:floormanager:indicator-visible')
-      this._indicatorVisible = rawVisible === null ? true : rawVisible === '1'
-    } catch (_) { this._indicatorVisible = true }
+      this._indicatorVisible = rawVisible === null ? false : rawVisible === '1'   // V211: off by default
+    } catch (_) { this._indicatorVisible = false }
     this._indicatorEl.classList.toggle('is-visible', this._indicatorVisible)
 
     this._onSet = (e) => this._handleSet(e.detail ?? {})

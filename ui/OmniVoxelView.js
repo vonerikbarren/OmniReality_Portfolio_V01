@@ -35,7 +35,7 @@ export function injectVoxelStyles () {
 }
 
 export default class OmniVoxelView {
-  constructor (host, opts = {}) { this.host = host; this.opts = opts; this._bound = []; this._msg = ''; this._err = false; this._from = ''; this._to = ''; this._lineA = ''; this._lineB = ''; this._lineMode = 'walk'; this._routeText = '' }
+  constructor (host, opts = {}) { this.host = host; this.opts = opts; this._bound = []; this._msg = ''; this._err = false; this._from = ''; this._to = ''; this._lineA = ''; this._lineB = ''; this._lineMode = 'walk'; this._routeText = ''; this._avPoint = '' }
   get svc () { return this.opts.svc ?? SERVICES.voxel }
 
   mount () {
@@ -46,6 +46,7 @@ export default class OmniVoxelView {
     on(this.host, 'change', (e) => this._change(e))
     const ev = (name, fn) => { const f = (e) => fn(e.detail ?? {}); window.addEventListener(name, f); this._bound.push([window, name, f]) }
     ev('omni:voxel-changed', () => this.refresh())
+    ev('omni:avatar-changed', () => this._avatarRefresh()); ev('omni:avatar-follow-changed', () => this._avatarRefresh())
     this.refresh()
   }
   destroy () { for (const [t, n, f] of this._bound) { try { t.removeEventListener(n, f) } catch (_) { /* gone */ } } this._bound = []; this.host.innerHTML = '' }
@@ -126,6 +127,10 @@ export default class OmniVoxelView {
         ${[...g.geo.entries()].map(([id, v]) => `<div class="ovx-item"><span>${esc(id)} · ${v.points.length} points</span><button data-act="dropshape" data-id="${esc(id)}" aria-label="Stop using this shape">×</button></div>`).join('')}
       </div>
 
+      <div class="ovx-box"><b>Avatar</b>
+        ${this._avatarHTML(opts)}
+      </div>
+
       <div class="ovx-box"><b>Route</b>
         <div class="ovx-row"><select data-ref="rf" aria-label="Route from">${opts(this._from)}</select>→<select data-ref="rt" aria-label="Route to">${opts(this._to)}</select><button data-act="route">Find route</button><button data-act="clearroute"${s.routeIds.length ? '' : ' disabled'}>Clear</button></div>
         <div class="ovx-note" data-ref="routeout" role="status">${esc(this._routeText)}</div>
@@ -136,6 +141,21 @@ export default class OmniVoxelView {
       </div>`
   }
 
+  get avatar () { return this.opts.avatar ?? SERVICES.avatar }
+  _avatarText (a) {
+    const st = a?.status?.(); if (!st) return 'The avatar is not running.'
+    if (!st.placed) return 'Not placed yet. Choose a point and press Place.'
+    const dest = st.destination ? ` → ${st.destination}` : ''
+    return `${st.moving ? 'Travelling' : 'Standing'} at ${st.pointId}${dest}. Camera: ${st.follow ? 'following the avatar' : 'free (you moved it)'}.`
+  }
+  _avatarHTML (opts) {
+    const a = this.avatar; const st = a?.status?.()
+    return `<div class="ovx-note" data-ref="avtext" role="status">${esc(this._avatarText(a))}</div>
+        <div class="ovx-row"><select data-ref="ap" aria-label="Avatar point">${opts(this._avPoint)}</select><button data-act="avplace">Place</button><button data-act="avgo">Go</button><button data-act="avstop"${st?.moving ? '' : ' disabled'}>Stop</button>
+          <button data-act="avfollow"${st?.follow ? ' class="is-on"' : ''}${st?.placed ? '' : ' disabled'} aria-pressed="${st?.follow ? 'true' : 'false'}">Follow avatar</button></div>
+        <div class="ovx-note">The avatar travels along the lines and only stops at points. The camera follows it until you move the camera yourself; press Follow avatar to bring it back.</div>`
+  }
+  _avatarRefresh () { const t = this.host.querySelector('[data-ref="avtext"]'); if (t) t.textContent = this._avatarText(this.avatar); const f = this.host.querySelector('[data-act="avfollow"]'); const st = this.avatar?.status?.(); if (f && st) { f.classList.toggle('is-on', !!st.follow); f.setAttribute('aria-pressed', String(!!st.follow)); f.disabled = !st.placed } const sp = this.host.querySelector('[data-act="avstop"]'); if (sp && st) sp.disabled = !st.moving }
   _num (ref) { const el = this.host.querySelector(`[data-ref="${ref}"]`); return el ? Number(el.value) : NaN }
   _val (ref) { const el = this.host.querySelector(`[data-ref="${ref}"]`); return el ? el.value : '' }
 
@@ -161,6 +181,15 @@ export default class OmniVoxelView {
       case 'rmline': this._do(s.removeLine(b.dataset.id), 'Line removed.'); break
       case 'shape': this._do(s.useNodeShape(), 'The shape\'s points are now stops.'); break
       case 'dropshape': this._do(s.dropNodeShape(b.dataset.id), 'Shape removed.'); break
+      case 'avplace': case 'avgo': {
+        const a = this.avatar; if (!a) { this.say('The avatar is not running.', true); break }
+        this._avPoint = this._val('ap') || this._avPoint || ''
+        if (!this._avPoint) { this.say('Choose a point first.', true); break }
+        const r = act === 'avplace' ? a.placeAt(this._avPoint) : a.goTo(this._avPoint)
+        this._do(r, act === 'avplace' ? 'Avatar placed.' : (r.same ? 'Already there.' : 'On the way.')); this._avatarRefresh(); break
+      }
+      case 'avstop': this.avatar?.stop(); this.say('It will stop at the next point.'); break
+      case 'avfollow': { const a = this.avatar; if (!a) break; if (a.follow) a.releaseFollow('button'); else a.followMe(); this._avatarRefresh(); break }
       case 'route': {
         this._from = this._val('rf'); this._to = this._val('rt')
         const r = s.findRoute(this._from, this._to)
