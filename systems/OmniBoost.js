@@ -58,7 +58,8 @@ export default class OmniBoost {
     el.dataset.hand = hand; el.title = `${hand.toUpperCase()} Boost: hold to move faster (settings in ⟐OmniHands)`
     el.setAttribute('aria-label', `${hand.toUpperCase()} Boost, hold`)
     el.dataset.omniTip = `${hand.toUpperCase()} Boost`; el.dataset.omniTipKey = '—'; el.dataset.omniTipDesc = el.title
-    Object.assign(el.style, { position: 'fixed', zIndex: '9000', display: 'none', padding: '6px 9px', borderRadius: '14px', font: '700 10px system-ui,sans-serif', letterSpacing: '.08em',
+    Object.assign(el.style, { position: 'fixed', zIndex: '9000', pointerEvents: 'auto', display: 'none',   // #omni-ui is pointer-events:none; without this the button gets no hover or click (V224 fix)
+      padding: '6px 9px', borderRadius: '14px', font: '700 10px system-ui,sans-serif', letterSpacing: '.08em',
       color: '#fff', background: 'rgba(20,20,24,.72)', border: '1px solid rgba(255,255,255,.45)', touchAction: 'none', userSelect: 'none', cursor: 'pointer' })
     const down = (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId) } catch (_) {} this.press(hand) }
     const up = () => this.release(hand)

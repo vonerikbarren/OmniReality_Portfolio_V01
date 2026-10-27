@@ -317,6 +317,8 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addVibrationModules(base, omniNode, () => orbitMod.controls)
   const { addIDEModules } = await import('./ui/OmniIDEModules.js')   // V222: OmniIDE, a place to work with .omni code in the space
   addIDEModules(base, omniNode)
+  const { addAcquisitionerModules } = await import('./ui/OmniAcquisitionerModules.js')   // V223: OmniCommunication (Receive / Route) + the OmniNodeAcquisitioner panel
+  addAcquisitionerModules(base, omniNode)
   const { addDimensionsModules } = await import('./ui/OmniDimensionsModules.js')   // V217: axioms (OmniHand) + perspectives (ConsciousHand), dimensional nodes, spaces and planes
   addDimensionsModules(base, omniNode)
   const { default: OmniBoost } = await import('./systems/OmniBoost.js')   // V220: Boost (LH / RH) with layered effects

@@ -173,3 +173,6 @@ no OmniSense document, and no backend to build any of it on top of
 yet. See `BACKEND_ARCHITECTURE_DESIGN.md` for what actually has to
 exist before OmniFeed, OmniCommunication, or OmniConnect can move past
 this document.
+
+## V223 update — Receive / Route and the OmniNodeAcquisitioner (built, local only)
+The receiving side of OmniCommunication now exists in a first, local form: tunnels are fields that receive only when opened (default closed, allow list, mute, cap 12), pieces stack like Tetris in the OmniNodeAcquisitioner (zipped until deciphered), and Route moves a piece between tunnels through relays. See `docs/user-guide/27_Receive_Route_and_the_Acquisitioner.md`. Code: `utils/OmniCommModel.js` (rules, sanitising, packing), `systems/OmniCommunication.js`, `ui/OmniAcquisitionerPanel.js`, and the `Communication` keyword of the Omni language. Not the OmniDraw ticker inspector (`ui/OmniCommunicationPanel.js`). Still open: OmniSense symbols for pieces (V223 uses ◆ and ¶), the rhythm-game hit/miss mechanic, delivery between users (needs the backend), moderation.

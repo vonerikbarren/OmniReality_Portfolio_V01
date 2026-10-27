@@ -57,6 +57,36 @@ export function registerOmniBuiltins () {
     return `Omni ${K.name} ${A.name}${A.arg ? `(${A.arg})` : ''}  ${A.summary ?? ''}\n` + Object.entries(A.props ?? {}).map(([p, d]) => `  ${p}(…)  ${d}`).join('\n') + (A.destructive ? '\n  confirm   required' : '')
   } })
 
+  // ── Communication (V223): Receive / Route ──
+  const comm = () => { const c = SERVICES.communication; if (!c) throw new Error('Communication is not running'); return c }
+  const TUN = 'a tunnel: conscious, omnihand, lh, rh, x, y, z'
+  const tun = (call, key = 'tunnel') => String(need(call.props[key] ?? call.words[0], `${key}(...)`)).toLowerCase()
+  const list = (v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]).map(x => String(x).toLowerCase())
+  registerOmni('Communication', 'status', { keywordSummary: 'tunnels as fields: receive, send and route nodes and messages', summary: 'Which tunnels are open and what they hold', props: {},
+    run () { return comm().status().map(s => `${s.name.padEnd(13)} ${s.open ? 'OPEN  ' : 'closed'} ${s.muted ? 'muted ' : '      '} ${s.count}/${s.cap}  allow: ${s.allow.join(',') || 'nobody'}`).join('\n') } })
+  registerOmni('Communication', 'receive', { summary: 'Open or close a tunnel to receive: Omni Communication receive tunnel(lh) open(true)', props: { tunnel: TUN, open: 'true | false (default true)' },
+    run (call) { const t = tun(call), o = call.props.open === undefined ? true : call.props.open !== false; comm().setReceive(t, o); return `${t} is now ${o ? 'open to receive' : 'closed'}` } })
+  registerOmni('Communication', 'mute', { summary: 'Mute a tunnel (stores arrivals silently)', props: { tunnel: TUN, on: 'true | false (default true)' },
+    run (call) { const t = tun(call), o = call.props.on === undefined ? true : call.props.on !== false; comm().setMuted(t, o); return `${t} ${o ? 'muted' : 'unmuted'}` } })
+  registerOmni('Communication', 'allow', { summary: 'Who may send to a tunnel: Omni Communication allow tunnel(lh) from(user, rh)  (from(*) = anyone)', props: { tunnel: TUN, from: '*, user, external or tunnels' },
+    run (call) { const t = tun(call); return `${t} allows: ${comm().setAllow(t, list(call.props.from)).join(', ') || 'nobody'}` } })
+  registerOmni('Communication', 'cap', { summary: 'How many pieces a tunnel holds (1..24)', props: { tunnel: TUN, n: 'number' }, run (call) { const t = tun(call); return `${t} holds up to ${comm().setCap(t, need(call.props.n, 'n(...)'))}` } })
+  registerOmni('Communication', 'send', { summary: 'Send a node or a message into a tunnel: Omni Communication send to(lh) node(<id>) [via(x, rh)]  or  text("hello")', props: { to: TUN, node: 'node id', text: 'message', via: 'relay tunnels', label: 'title' },
+    run (call) {
+      const r = comm().send({ to: String(need(call.props.to, 'to(...)')).toLowerCase(), via: list(call.props.via), node: call.props.node, text: call.props.text === undefined ? undefined : String(call.props.text), label: call.props.label })
+      if (!r.ok) throw new Error(r.error); return `Sent "${r.packet.label}" to ${r.packet.to} (id ${r.packet.id})` } })
+  registerOmni('Communication', 'route', { summary: 'Move a held piece: Omni Communication route id(<piece>) from(lh) to(rh) [via(x)]', props: { id: 'piece id', from: TUN, to: TUN, via: 'relay tunnels' },
+    run (call) {
+      const r = comm().route({ id: String(need(call.props.id, 'id(...)')), from: String(need(call.props.from, 'from(...)')).toLowerCase(), to: String(need(call.props.to, 'to(...)')).toLowerCase(), via: list(call.props.via) })
+      if (!r.ok) throw new Error(r.error); return `Routed "${r.packet.label}" to ${r.packet.to}` } })
+  registerOmni('Communication', 'inbox', { summary: 'List what a tunnel holds', props: { tunnel: TUN },
+    run (call) { const t = tun(call), l = comm().inbox(t); return l.length ? l.map(p => `${p.id}  ${p.pinned ? '📌' : '  '} ${p.kind === 'node' ? '◆' : '¶'} ${p.label}  (from ${p.from}${p.via.length ? ' via ' + p.via.join(',') : ''}, ${p.state})`).join('\n') : `${t} is empty` } })
+  registerOmni('Communication', 'take', { summary: 'Place a held piece in the space: Omni Communication take tunnel(lh) id(<piece>) [pos(x, y, z)]', props: { tunnel: TUN, id: 'piece id', pos: 'x, y, z (default in front of you)' },
+    run (call) { const r = comm().acquire(tun(call), String(need(call.props.id, 'id(...)')), { position: call.props.pos === undefined ? undefined : asVec3(call.props.pos, 'pos') }); if (!r.ok) throw new Error(r.error); return `Placed at (${r.position.join(', ')})` } })
+  registerOmni('Communication', 'drop', { summary: 'Remove a held piece', props: { tunnel: TUN, id: 'piece id' }, run (call) { return comm().drop(tun(call), String(need(call.props.id, 'id(...)'))) ? 'Dropped' : 'No such piece' } })
+  registerOmni('Communication', 'clear', { summary: 'Empty a tunnel (pinned pieces stay): Omni Communication clear tunnel(lh)', destructive: true, props: { tunnel: TUN }, run (call) { return `Cleared ${comm().clear(tun(call))} piece(s)` } })
+  registerOmni('Communication', 'open', { summary: 'Open the OmniNodeAcquisitioner panel on a tunnel', props: { tunnel: TUN }, run (call) { const t = call.props.tunnel ?? call.words[0] ?? 'lh'; window.dispatchEvent(new CustomEvent('omni:acquisitioner-open', { detail: { tunnel: String(t).toLowerCase() } })); return 'OmniNodeAcquisitioner open' } })
+
   // ── IDE (V222) ──
   registerOmni('IDE', 'open', { keywordSummary: 'the in-space code editor', summary: 'Open the IDE, optionally on a file: Omni IDE open file(/home/scripts/hello.omni)', props: { file: PATH },
     run (call) { const p = call.props.file ?? call.props.path ?? call.words[0]; window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniIDE' } })); if (p !== undefined) window.dispatchEvent(new CustomEvent('omni:ide-open', { detail: { path: String(p) } })); return 'OmniIDE open' + (p !== undefined ? ': ' + p : '') } })

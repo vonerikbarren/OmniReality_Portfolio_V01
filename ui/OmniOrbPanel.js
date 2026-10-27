@@ -92,7 +92,8 @@ export default class OmniOrbPanel {
     const b = document.createElement('button'); b.type = 'button'; b.id = 'omni-orb-btn-lh'; b.textContent = '◉ ORB'
     b.title = 'LH orb: a sphere of possibility. Hold its core to charge, release to fire the loaded tool.'; b.setAttribute('aria-label', 'Open the LH orb')
     b.dataset.omniTip = 'LH orb'; b.dataset.omniTipKey = '—'; b.dataset.omniTipDesc = b.title
-    Object.assign(b.style, { position: 'fixed', zIndex: '9000', display: 'none', padding: '6px 9px', borderRadius: '14px', font: '700 10px system-ui,sans-serif', letterSpacing: '.08em',
+    Object.assign(b.style, { position: 'fixed', zIndex: '9000', pointerEvents: 'auto', display: 'none',   // #omni-ui is pointer-events:none (V224 fix)
+      padding: '6px 9px', borderRadius: '14px', font: '700 10px system-ui,sans-serif', letterSpacing: '.08em',
       color: '#fff', background: 'rgba(20,20,24,.72)', border: '1px solid rgba(255,255,255,.45)', cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation' })
     b.addEventListener('click', () => this.toggle())
     this._shell().appendChild(b); this._btn = b
