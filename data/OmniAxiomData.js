@@ -9,14 +9,8 @@
  */
 export const AXIOMS = [
   { id: 'identity', name: 'Identity', symbol: '◉', color: '#ff9bd0', view: 'Who or what something is.',
-    perspectives: [
-      { id: 'self',   name: 'Self',   view: 'As itself.' },
-      { id: 'other',  name: 'Other',  view: 'As seen by something else.' },
-      { id: 'group',  name: 'Group',  view: 'As one of many.' },
-      { id: 'role',   name: 'Role',   view: 'By the part it plays.' },
-      { id: 'mask',   name: 'Mask',   view: 'By what it presents.' },
-      { id: 'origin', name: 'Origin', view: 'By where it came from.' },
-    ] },
+    // V218: numbered placeholders for now (Identity 1..6), not named identities; give each its real meaning here when they are decided.
+    perspectives: [1, 2, 3, 4, 5, 6].map(n => ({ id: `identity${n}`, name: `Identity ${n}`, view: `Identity perspective ${n} (not defined yet).` })) },
   { id: 'information', name: 'Information', symbol: 'ⓘ', color: '#7ec8ff', view: 'What is known, and how.',
     perspectives: [
       { id: 'raw',     name: 'Raw',     view: 'Exactly as recorded.' },

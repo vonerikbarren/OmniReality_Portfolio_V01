@@ -19,6 +19,8 @@
 
 import * as THREE from 'three'
 import gsap       from 'gsap'
+import { createTunnelParticles } from '../systems/OmniTunnelParticles.js'   // V222
+import { getTimeScale } from '../utils/OmniTimeScale.js'
 
 // ── Cylinder constants ──────────────────────────────────────
 const CYLINDER_HEIGHT   = 260
@@ -54,6 +56,9 @@ export default class RootSpace {
     this._buildFloor()
     this._buildTopLight()
     this._buildFlashEffect()
+    // V222: the Master Tunnel (OmniChronos) carries the same stream of particles as the hand tunnels: information arriving, floor to ceiling. Speed follows the Time axiom.
+    this._particles = createTunnelParticles({ y0: FLOOR_Y, y1: FLOOR_Y + CYLINDER_HEIGHT, radius: INNER_RADIUS, color: 0xffe9b0, count: 260, seed: 222, size: 0.9 })
+    this.group.add(this._particles.points)
 
     this.ctx.scene.add(this.group)
 
@@ -339,8 +344,9 @@ export default class RootSpace {
     this.lights = { top, center, floor }
   }
 
-  update() {
-    // Static geometry — no per-frame update needed
+  update(delta) {
+    // Static geometry; only the V222 particle stream moves (a slow upward drift, scaled by the Time axiom)
+    this._particles?.update(delta > 0 ? delta : 0, 0.08 * getTimeScale(), this.group.visible ? 1 : 0)
   }
 
   destroy() {

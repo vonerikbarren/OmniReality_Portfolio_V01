@@ -965,8 +965,9 @@ export default class OmniAxinator {
     }
     // V215: hand tunnels carry a light particle stream whose speed IS the hand's speed multiplier.
     t.particles = null
-    if (def.padHand && t.steppable) {
-      t.particles = createTunnelParticles({ y0, y1: len, radius: TUNNEL_RADIUS, color: def.color, seed: 215 + (def.padHand === 'conscious' ? 1 : 2), size: 3 * GEO_SCALE })
+    {   // V222: every tunnel (both top hands, LH, RH, X, Y, Z), not only the steppable ones
+      const seed = 215 + [...String(def.id)].reduce((a, c) => a + c.charCodeAt(0), 0)
+      t.particles = createTunnelParticles({ y0, y1: len, radius: TUNNEL_RADIUS, color: def.color, seed, size: 3 * GEO_SCALE })
       tunnel.add(t.particles.points)
     }
     group.add(tunnel)
@@ -1169,7 +1170,7 @@ export default class OmniAxinator {
     if (t.contrastMat) t.contrastMat.opacity = tunnelGridOpacity(t.def) * grow * CONTRAST_FRAC
 
     if (t.particles) {
-      const on = this.opts.handSettings === false || getHandSetting(t.def.padHand, 'particles') !== false
+      const on = this.opts.handSettings === false || !t.def.padHand || getHandSetting(t.def.padHand, 'particles') !== false   // axes have no hand: always on
       t.particles.update(delta > 0 ? delta : 0, this._speed(t) * getTimeScale(), on ? grow : 0)   // V217: the Time axiom scales the stream too
     }
 

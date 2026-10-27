@@ -21,3 +21,16 @@ Added on top of where the node is, and taken away exactly afterwards. Drag a vib
 
 ## For builders
 `window.dispatchEvent(new CustomEvent('omni:vibration-start', { detail: { target: 'user' | nodeId, programId: 'dance', hold: 3, attack: 0.1, release: 1 } }))` and `omni:vibration-stop { target | runId, immediate }`. Service: `Extra.SERVICES.vibration` (start, stop, stopAll, runs, programs, saveProgram). Next build: the LH/RH Boost button starts a vibration and sustains it after a dash.
+
+## Boost (V220)
+Hold the **BOOST** button that appears above the LH or RH pad (it shows with the pad). Your speed is multiplied by the Boost multiplier on top of Speed, eased in and out. Settings: ⟐OmniHands → LH / RH → ⚡ Boost. Terminal: `Omni Boost start hand(lh)`, `Omni Boost stop`, `Omni Boost set hand(lh) key(mult) value(5)`.
+
+Layered effects (any mix):
+- **OmniVibration while boosting** — any program, run on you, sustained until the boost ends (attack and release are the Boost's own).
+- **Afterimage** — capsule ghosts left behind + speed streaks on the screen.
+- **Glitch** — RGB-split bands and a small canvas shudder.
+- **multiPointPosition** — while you move, your view blinks between random points scattered around your path. You still arrive at point B; the scatter ends when you stop.
+Sustain keeps the boost on for a moment after you let go.
+
+## The LH orb (V221)
+Tap **◉ ORB** (beside BOOST above the LH pad) or type `Omni Orb open`. A greyscale sphere of possibility opens: words orbit it (Opportunities, Unknowns, Undefined, Possibilities, ? ...), and the tools in your LH magazine stream into its core. Hover or tap a word or tool for its tooltip; click a tool to load it as your ammo. **Hold the core** to charge, **release** to fire the loaded ammo (the same as the pad's Activation). Edit the words, speed and charge time in ⟐OmniHands → LH → ◉ Orb, or `Omni Orb words value("Maybe, Open, ?")`. The RH, ConsciousHand and OmniHand orbs come later.

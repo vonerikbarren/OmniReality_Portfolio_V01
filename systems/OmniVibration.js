@@ -33,6 +33,7 @@ export default class OmniVibration {
     this._custom = new Map(); this._runs = new Map(); this._seq = 0; this._bound = []; this._inited = false
     this._nodes = new Map()                    // nodeId -> applied record
     this.userCamOffset = new THREE.Vector3()   // what is in the camera right now
+    this.userExtra = new THREE.Vector3()       // V220: added on top of the programs' pose (OmniBoost's blink); the same rigid view shift
     this.userPose = { pos: new THREE.Vector3(), rot: new THREE.Euler(), scale: 0, glow: 0, active: false }
     this._camPaused = false
   }
@@ -129,7 +130,7 @@ export default class OmniVibration {
     P.pos.set(p.pos[0], p.pos[1], p.pos[2]); P.rot.set(p.rot[0] * DEG, p.rot[1] * DEG, p.rot[2] * DEG); P.scale = p.scale; P.glow = p.glow; P.active = !!pose
     const cam = this.ctx.camera; if (!cam) return
     if (this._camPaused) return
-    const want = P.pos
+    const want = this._want ?? (this._want = new THREE.Vector3()); want.copy(P.pos).add(this.userExtra)
     if (want.distanceToSquared(this.userCamOffset) < EPS2) return
     const d = want.clone().sub(this.userCamOffset)
     cam.position.add(d); const ctl = this._controls(); ctl?.target?.add(d)

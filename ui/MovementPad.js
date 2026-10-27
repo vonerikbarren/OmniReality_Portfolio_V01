@@ -116,7 +116,9 @@ import gsap from 'gsap'
 import * as THREE from 'three'
 import { getHandSetting, CHANGE_EVENT as HANDS_CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 import { getCurrentPayload, CHANGED_EVENT as PAYLOAD_CHANGED, CURRENT_EVENT as PAYLOAD_CURRENT } from '../utils/OmniPayloads.js'
-import { getEffectiveSpeed, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
+import { getEffectiveSpeed as _eff, stepSpeeds, repeatInterval } from '../utils/OmniHandSpeed.js'
+import { getBoostFactor } from '../utils/OmniBoostState.js'
+const getEffectiveSpeed = (h) => _eff(h) * getBoostFactor(h)   // V220: Boost multiplies the hand's eased speed (1 when not boosting)
 import HandSpeedPanel, { HAND_NAMES, formatSpeed } from './HandSpeedPanel.js'
 import { orbitYaw, orbitPitch, levelUpStep, settleStep, viewForward, isLevel } from '../utils/OrbitMath.js'   // V192: orbit about the target, continuous
 import { getDockRow, getDockRowInset, DOCK_BASE_H } from '../utils/OmniLayout.js'   // V192: lift the lower clusters above the OmniDock_Realities row

@@ -43,7 +43,7 @@ export function demoSpecs (seed = 217) {
   let a = seed >>> 0
   const rnd = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
   const plan = [
-    ['identity', '*', 'Who is here'], ['identity', 'mask', 'The face worn'],
+    ['identity', '*', 'Who is here'], ['identity', 'identity2', 'Identity 2 signature'],
     ['information', '*', 'What is known'], ['information', 'noise', 'Static'],
     ['space', '*', 'Where this is'], ['space', 'aerial', 'The view from above'],
     ['time', '*', 'The clock'], ['time', 'moment', 'Frozen instant'], ['time', 'hyperlapse', 'Sped-up hours'], ['time', 'slowmo', 'Drawn-out second'],

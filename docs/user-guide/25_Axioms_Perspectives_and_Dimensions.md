@@ -17,3 +17,6 @@ The first time you run V217 in a space with none, **twelve demo nodes** are scat
 
 ## Spaces and planes
 A **space** is a named pocket holding **planes** (layers). Select a node, then "+ node" on a plane. A plane can be **hidden** (its nodes vanish) or **locked** (behaviours stop moving them). A space can carry a **default channel** that its blank-axiom Dimensional Nodes inherit. Deleting a plane moves its nodes to another; deleting a space or taking a node out restores it.
+
+## V218
+Identity's perspectives are now numbered placeholders, **Identity 1** to **Identity 6**, instead of named identities. Give them real meanings in `data/OmniAxiomData.js` when they are decided.

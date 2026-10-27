@@ -25,6 +25,8 @@
  */
 
 import { parseCommand } from '../utils/CommandParser.js'
+import { runOmniLine, isOmniKeyword, completeOmni } from '../utils/OmniLangRegistry.js'   // V219: the Omni command language
+import { SERVICES } from '../utils/OmniExtraKinds.js'
 import { getCommand, getAllCommands } from '../utils/CommandRegistry.js'
 import * as WindowManager from './WindowManager.js'
 import * as Session from '../utils/TerminalSession.js'
@@ -175,6 +177,15 @@ export default class OmniCommandTerminalPanel {
       if (e.key === 'Escape') { input.blur(); window.dispatchEvent(new CustomEvent('omni:terminal-dismiss')); return }
       if (e.key === 'F1') { e.preventDefault(); window.dispatchEvent(new CustomEvent('omni:terminal-invoke', { detail: { toggle: true } })); return }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); input.value = Session.stepHistory(e.key === 'ArrowUp' ? -1 : 1, 'dom'); return }
+      if (e.key === 'Tab') {   // V219: complete Omni keywords, actions and properties
+        const r = completeOmni(input.value)
+        if (!r.items.length) return
+        e.preventDefault()
+        const common = r.items.map(i => i.text).reduce((a, b) => { let k = 0; while (k < a.length && k < b.length && a[k].toLowerCase() === b[k].toLowerCase()) k++; return a.slice(0, k) })
+        input.value = input.value.slice(0, r.from) + (r.items.length === 1 ? r.items[0].text + (r.items[0].text.endsWith('(') ? '' : ' ') : common)
+        if (r.items.length > 1) this._echo(r.items.map(i => i.text + (i.hint ? '  — ' + i.hint : '')).join('\n'))
+        Session.setDraft(input.value, 'dom'); return
+      }
       if (e.key !== 'Enter') return
       const raw = input.value.trim()
       if (!raw) return
@@ -235,6 +246,14 @@ export default class OmniCommandTerminalPanel {
    *  Terminal tab specifically, the context already means every
    *  line is a command, so there's no real ambiguity to resolve. */
   _runLine (raw) {
+    // V219: "Omni Draw node(static) pos(0, 0, 0)" (or a bare capitalised keyword such as "Draw node(sphere)") goes to the Omni language
+    const first = /^⟐?\s*(\S+)/.exec(raw)?.[1] ?? ''
+    if (/^omni$/i.test(first) || (/^[A-Z]/.test(first) && isOmniKeyword(first) && !getCommand(first.toLowerCase()))) {
+      this._echo(`⟐ ${raw.replace(/^⟐\s*/, '')}`, 'oct-line--echo')
+      runOmniLine(/^⟐?\s*omni(\s|$)/i.test(raw) ? raw : 'Omni ' + raw.replace(/^⟐\s*/, ''), { omniNode: this.omniNode, camera: this.ctx?.camera, fs: SERVICES.fs, depth: 0 })
+        .then(r => this._echo(r.ok ? r.output : r.error, r.ok ? 'oct-line' : 'oct-line--error'))
+      return
+    }
     const withPrefix = raw.startsWith('⟐') ? raw : `⟐${raw}`
     this._echo(`⟐ ${withPrefix.slice(1)}`, 'oct-line--echo')
 

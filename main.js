@@ -268,6 +268,9 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── V192 TerminalShellTunnel nodes (several in-scene terminals; the Terminal button switches them all together) ──
   const { addTerminalModules } = await import('./ui/OmniTerminalModules.js')
   addTerminalModules(base, omniNode)
+  // ── V219 Omni command language + virtual file system (OmniTerminal) ──
+  const { default: OmniFileSystem } = await import('./systems/OmniFileSystem.js')
+  base.addModule(new OmniFileSystem(base.context))
 
   // ── V192 TimeData ruler (vertical 00:00..24:00 ruler + week / month / year / decade lines; ⟐Times slot, Admin settings) ──
   const { addTimeDataRulerModules } = await import('./ui/OmniTimeDataRulerModules.js')
@@ -312,8 +315,14 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addScanModules(base, omniNode)
   const { addVibrationModules } = await import('./ui/OmniVibrationModules.js')   // V216: OmniVibration, looped rhythmic motion for you and for nodes
   addVibrationModules(base, omniNode, () => orbitMod.controls)
+  const { addIDEModules } = await import('./ui/OmniIDEModules.js')   // V222: OmniIDE, a place to work with .omni code in the space
+  addIDEModules(base, omniNode)
   const { addDimensionsModules } = await import('./ui/OmniDimensionsModules.js')   // V217: axioms (OmniHand) + perspectives (ConsciousHand), dimensional nodes, spaces and planes
   addDimensionsModules(base, omniNode)
+  const { default: OmniBoost } = await import('./systems/OmniBoost.js')   // V220: Boost (LH / RH) with layered effects
+  base.addModule(new OmniBoost(base.context))
+  const { default: OmniOrbPanel } = await import('./ui/OmniOrbPanel.js')   // V221: the LH orb
+  base.addModule(new OmniOrbPanel())
   const { addNoteModules } = await import('./ui/OmniNoteModules.js')   // V213: OmniNote, the rich-text note node
   addNoteModules(base, omniNode)
   // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──
@@ -1348,6 +1357,10 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
         if (!isEmbedded) {
           omniBrowserWindow1.openFromSide()
           omniBrowserProperties.openFromSide()
+          // V222: the OmniKeys keyboard is out when the user lands (the user can close it; set localStorage 'omni:keys-on-landing' to 'off' to opt out)
+          let keysOnLanding = true
+          try { keysOnLanding = localStorage.getItem('omni:keys-on-landing') !== 'off' } catch (_) {}
+          if (keysOnLanding && !omniKeys._isOpen) omniKeys.open()
         }
       }
     })

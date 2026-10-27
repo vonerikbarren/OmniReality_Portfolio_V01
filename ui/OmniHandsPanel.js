@@ -42,6 +42,8 @@
  */
 
 import gsap from 'gsap'
+import { parseWords } from '../utils/OmniOrbModel.js'
+import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as WindowManager from './WindowManager.js'
 import {
   getHandSettings, getHandSetting, setHandSetting, resetHand, getDefault, LIMITS, ENUMS, CHANGE_EVENT,
@@ -413,6 +415,8 @@ export default class OmniHandsPanel {
     body.appendChild(el('div', 'omh-hand-sub', `Keys: ${meta.keys}`))
 
     this._viewSpeed(body, hand)
+    if (hand === 'lh' || hand === 'rh') this._viewBoost(body, hand)   // V220
+    if (hand === 'lh') this._viewOrb(body)   // V221
     if (hand === 'lh') this._viewLogical(body)
     if (hand === 'rh') this._viewCreative(body)
     if (hand === 'lh' || hand === 'rh') this._viewAmmo(body, hand)
@@ -550,6 +554,50 @@ export default class OmniHandsPanel {
     })
   }
 
+  /** V221: the LH orb (ui/OmniOrbPanel.js): its words, speed and charge time. */
+  _viewOrb (body) {
+    const g = this._group(body, '◉ Orb (the ◉ ORB button above the LH pad)')
+    const row = el('label', 'omh-row'); row.appendChild(el('span', 'omh-row-label', 'Orbiting words (commas)'))
+    const inp = el('input', 'omh-num'); inp.type = 'text'; inp.dataset.key = 'orbWords'; inp.style.width = '170px'; inp.maxLength = 600
+    const cur = () => (getHandSetting('lh', 'orbWords') ?? []).join(', ')
+    inp.value = cur()
+    inp.addEventListener('change', () => { setHandSetting('lh', 'orbWords', parseWords(inp.value)); inp.value = cur() })
+    row.appendChild(inp); g.appendChild(row)
+    this._sync.push(() => { if (document.activeElement !== inp && inp.value !== cur()) inp.value = cur() })
+    this._numRow(g, 'Orbit speed', 'orbSpeed', this._storeNum('lh', 'orbSpeed', 0.1, '×'))
+    this._numRow(g, 'Time to full charge', 'orbChargeMs', this._storeNum('lh', 'orbChargeMs', 100, 'ms'))
+    g.appendChild(el('div', 'omh-note', 'Hold the orb\'s core to charge, release to fire the loaded ammo. Click a tool streaming into the core to load it.'))
+  }
+
+  /** V220: Boost (systems/OmniBoost.js): its own multiplier on top of Speed, and the layered effects. */
+  _viewBoost (body, hand) {
+    const g = this._group(body, '⚡ Boost (hold the BOOST button above the pad)')
+    this._numRow(g, 'Boost multiplier (× Speed)', 'boostMult', this._storeNum(hand, 'boostMult', 0.5, '×'))
+    this._numRow(g, 'Ramp up / down', 'boostRamp', this._storeNum(hand, 'boostRamp', 0.05, 's'))
+    this._numRow(g, 'Sustain after release', 'boostSustain', this._storeNum(hand, 'boostSustain', 0.1, 's'))
+    const vRow = el('label', 'omh-row'); vRow.appendChild(el('span', 'omh-row-label', 'OmniVibration while boosting'))
+    const vSel = el('select', 'omh-num'); vSel.dataset.key = 'boostVibration'; vSel.style.width = '140px'
+    const fill = () => {
+      const progs = SERVICES.vibration?.programs?.() ?? []
+      const ids = ['none', ...(progs.length ? progs.map(p => p.id) : ['shake', 'bounce', 'hop', 'sway', 'pulse', 'float', 'dance'])]
+      const cur = String(getHandSetting(hand, 'boostVibration'))
+      if (!ids.includes(cur)) ids.push(cur)
+      vSel.textContent = ''; ids.forEach(id => { const o = el('option', null, id); o.value = id; vSel.appendChild(o) }); vSel.value = cur
+    }
+    fill(); vSel.addEventListener('change', () => setHandSetting(hand, 'boostVibration', vSel.value))
+    vRow.appendChild(vSel); g.appendChild(vRow)
+    this._sync.push(() => { if (vSel.value !== String(getHandSetting(hand, 'boostVibration'))) fill() })
+    this._numRow(g, 'Vibration attack', 'boostVibAttack', this._storeNum(hand, 'boostVibAttack', 0.05, 's'))
+    this._numRow(g, 'Vibration release', 'boostVibRelease', this._storeNum(hand, 'boostVibRelease', 0.05, 's'))
+    this._toggleRow(g, 'Afterimage (capsule ghosts + speed streaks)', 'boostAfterimage', () => !!getHandSetting(hand, 'boostAfterimage'), (on) => setHandSetting(hand, 'boostAfterimage', on))
+    this._numRow(g, 'Ghost spacing', 'boostGhostMs', this._storeNum(hand, 'boostGhostMs', 10, 'ms'))
+    this._toggleRow(g, 'Glitch', 'boostGlitch', () => !!getHandSetting(hand, 'boostGlitch'), (on) => setHandSetting(hand, 'boostGlitch', on))
+    this._toggleRow(g, 'multiPointPosition (blink between A and B)', 'boostBlink', () => !!getHandSetting(hand, 'boostBlink'), (on) => setHandSetting(hand, 'boostBlink', on))
+    this._numRow(g, 'Blink interval', 'boostBlinkMs', this._storeNum(hand, 'boostBlinkMs', 10, 'ms'))
+    this._numRow(g, 'Blink scatter radius', 'boostBlinkRadius', this._storeNum(hand, 'boostBlinkRadius', 0.5, 'units'))
+    g.appendChild(el('div', 'omh-note', 'Hold BOOST while you move. Effects layer: turn on any mix. Blink scatters your view around the path, you still arrive at B.'))
+  }
+
   /** V168: the pad's CENTRE button = Fire (systems/OmniFlowFire.js). Activation (behaviours, above) is separate. */
   _viewFlow (body, hand) {
     const g = this._group(body, '⟐ Fire (the centre button)')
@@ -666,6 +714,9 @@ export default class OmniHandsPanel {
       ? 'The 7↔1 o\'clock tunnel (green), root + Mechanic / Relational / Transformational nodes (placeholders). Shown while this pad is open, or pinned here. Not steppable: the pad still walks the camera.'
       : 'The 4↔10 o\'clock tunnel (red / green / blue grid), root + Temporal / Emergent / Expressive nodes (placeholders). Shown while this pad is open, or pinned here. Not steppable: the pad still flies the camera.'))
     this._tunnelPinRows(g, hand)
+    this._toggleRow(g, 'Tunnel particle stream (speed = hand Speed)', 'particles',   // V222
+      () => getHandSetting(hand, 'particles') !== false,
+      (on) => setHandSetting(hand, 'particles', on))
   }
 
   _tunnelPinRows (g, hand) {
