@@ -9,16 +9,10 @@
 import gsap from 'gsap'
 import * as WindowManager from './WindowManager.js'
 import * as Side from '../utils/OmniSideTargeting.js'
+import * as Fx from '../utils/OmniTargetFx.js'
 import { targetTextureStore, TARGET_TEXTURE_SLOTS, TARGETING_GEOMETRIES } from '../modules/OmniTargeting.js'
 
-const STORE_KEY = 'omni:targeting:settings'
-function loadSettings () {
-  const defaults = { geometry: 'TetrahedronGeometry', color: '#ffffff', alpha: 0.85, activeSlot: null }
-  try {
-    const raw = localStorage.getItem(STORE_KEY)
-    return raw ? { ...defaults, ...JSON.parse(raw) } : defaults
-  } catch (_) { return defaults }
-}
+const loadSettings = Fx.load
 
 const STYLES = `
 
@@ -194,7 +188,7 @@ export default class OmniTargetingSettingsPanel {
     const s = loadSettings()
     this._el.querySelector('[data-field="geometry"]').value = s.geometry
     this._el.querySelector('[data-field="color"]').value = s.color
-    this._el.querySelector('[data-field="alpha"]').value = s.alpha
+    for (const k of Object.keys(Fx.RANGES)) this._el.querySelector(`[data-field="${k}"]`).value = s[k]
     const m = Side.load()
     this._el.querySelector('[data-field="mode"]').value = m.mode
     this._el.querySelector('[data-field="distance"]').value = Math.round(m.distance * 100)
@@ -260,9 +254,14 @@ export default class OmniTargetingSettingsPanel {
         </div>
         <div class="ts-note">Four markers orbit the current target, each pointed inward — the real Z-target reticle shape, whatever shape you choose here.</div>
 
-        <div class="ts-group-title">Color &amp; Alpha</div>
+        <div class="ts-group-title">Look</div>
         <div class="ts-row"><span class="ts-row-label">Color</span><input class="ts-color-input" type="color" data-field="color"></div>
-        <div class="ts-row"><span class="ts-row-label">Alpha</span><input class="ts-num-input" type="number" min="0" max="1" step="0.05" data-field="alpha"></div>
+        <div class="ts-row"><span class="ts-row-label">Opacity</span><input class="ts-num-input" type="number" min="0.1" max="1" step="0.05" data-field="opacity"></div>
+        <div class="ts-row"><span class="ts-row-label">Glow</span><input class="ts-num-input" type="number" min="0" max="4" step="0.25" data-field="glow"></div>
+        <div class="ts-group-title">Motion</div>
+        <div class="ts-row"><span class="ts-row-label">Speed</span><input class="ts-num-input" type="number" min="0" max="10" step="0.25" data-field="speed"></div>
+        <div class="ts-row"><span class="ts-row-label">Bolts per second</span><input class="ts-num-input" type="number" min="0" max="20" step="1" data-field="bolts"></div>
+        <div class="ts-note">Bright white lines strike the target from the markers. 0 turns them off. Speed 0 holds the markers still.</div>
 
         <div class="ts-group-title">Marker Texture (Default + ${TARGET_TEXTURE_SLOTS})</div>
         <div class="ts-slot-grid" id="ts-slot-grid"></div>
@@ -288,8 +287,9 @@ export default class OmniTargetingSettingsPanel {
     el.querySelector('[data-field="color"]').addEventListener('input', (e) => {
       window.dispatchEvent(new CustomEvent('omni:targeting-set', { detail: { color: e.target.value } }))
     })
-    el.querySelector('[data-field="alpha"]').addEventListener('input', (e) => {
-      window.dispatchEvent(new CustomEvent('omni:targeting-set', { detail: { alpha: Number(e.target.value) } }))
+    for (const k of Object.keys(Fx.RANGES)) el.querySelector(`[data-field="${k}"]`).addEventListener('input', (e) => {
+      if (e.target.value === '') return
+      window.dispatchEvent(new CustomEvent('omni:targeting-set', { detail: { [k]: Number(e.target.value) } }))
     })
 
     const fileInput = el.querySelector('#ts-file-input')

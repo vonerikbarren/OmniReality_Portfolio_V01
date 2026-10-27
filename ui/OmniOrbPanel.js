@@ -12,6 +12,7 @@
  * Module contract: constructor / init / update / destroy / onResize (the frame loop is its own rAF, only while open).
  */
 import { getHandSetting } from '../utils/OmniHandsSettings.js'
+import { STRONG_AT, FULL_AT } from '../utils/OmniChargeTier.js'
 import { cleanWords, wordPositions, streamPositions, chargeAt, greyAt, wordTip } from '../utils/OmniOrbModel.js'
 import { setHandSetting } from '../utils/OmniHandsSettings.js'
 
@@ -129,7 +130,8 @@ export default class OmniOrbPanel {
   _sync () { this._showTip() }
   _feedback (d) {
     if (d.hand !== HAND) return
-    this._msg = { fired: 'Fired.', released: 'Released.', 'no-target': 'No target: select a node first.', blocked: 'That node has its own behaviour.', empty: 'The magazine is empty.' }[d.kind] ?? ''
+    const tn = d.kind === 'fired' && d.tier && d.tier !== 'normal' ? (d.tier === 'full' ? ' Full charge: strongest, widest reach.' : ' Strong shot.') : ''
+    this._msg = ({ fired: 'Fired.' + tn, released: 'Released.', 'no-target': 'No target: select a node first.', blocked: 'That node has its own behaviour.', empty: 'The magazine is empty.' }[d.kind] ?? '')
     this._msgT = 2.2; this._hover = null; this._showTip()
   }
   _showTip () {
@@ -164,7 +166,7 @@ export default class OmniOrbPanel {
     const h = this._hit(pt); let next = null
     if (h?.kind === 'word') next = { title: h.word, text: wordTip(h.word) }
     else if (h?.kind === 'tool') next = { title: h.name, text: (h.name === this._ammo() ? 'Loaded. ' : '') + 'Click to load this tool as your ammo.' }
-    else if (h?.kind === 'core') next = { title: 'Core', text: 'Hold to charge, release to fire the loaded tool.' }
+    else if (h?.kind === 'core') next = { title: 'Core', text: 'Hold to charge, release to fire. Past the first mark (40%) the shot is stronger; at a full ring it is strongest and reaches wider.' }
     if ((next?.title ?? null) !== (this._hover?.title ?? null)) { this._hover = next; this._showTip() }
   }
   _up (e) {
@@ -227,6 +229,8 @@ export default class OmniOrbPanel {
     grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.35, `rgba(210,210,210,${0.8 + 0.2 * c})`); grad.addColorStop(0.7, 'rgba(90,90,90,0.35)'); grad.addColorStop(1, 'rgba(0,0,0,0)')
     g.fillStyle = grad; g.beginPath(); g.arc(0, 0, cr * 2.6, 0, Math.PI * 2); g.fill()
     if (c > 0) { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, cr * 1.5, -Math.PI / 2, -Math.PI / 2 + c * Math.PI * 2); g.stroke() }
+    { const rr = cr * 1.5, a = -Math.PI / 2 + STRONG_AT * Math.PI * 2; g.strokeStyle = c >= STRONG_AT ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * (rr - 5), Math.sin(a) * (rr - 5)); g.lineTo(Math.cos(a) * (rr + 5), Math.sin(a) * (rr + 5)); g.stroke()   // V229: the 40% mark (stronger shot)
+      if (c >= FULL_AT) { g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, rr + 5, 0, Math.PI * 2); g.stroke() } }
     if (burst > 0) { g.strokeStyle = `rgba(255,255,255,${burst * 0.8})`; g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, R * (1.05 - burst * 0.9), 0, Math.PI * 2); g.stroke() }
     words.filter(w => w.z >= 0).forEach(drawWord)
     g.restore()

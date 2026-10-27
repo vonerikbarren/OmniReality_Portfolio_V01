@@ -95,6 +95,7 @@ import OmniRealityGridSelectorPanel from './ui/OmniRealityGridSelectorPanel.js'
 import OmniMeter from './ui/OmniMeter.js'
 import OmniOrbitRelease from './systems/OmniOrbitRelease.js'
 import OmniSideTargeting from './systems/OmniSideTargeting.js'   // V207: Z / L / R targeting
+import OmniTargetSidePanel from './ui/OmniTargetSidePanel.js'   // V227: the Left / Centre / Right switch that shows while something is targeted
 import OmniRealityGridPointSelector from './systems/OmniRealityGridPointSelector.js'
 import OmniRealityGridPointSelectorPanel from './ui/OmniRealityGridPointSelectorPanel.js'
 import OmniPointing from './systems/OmniPointing.js'
@@ -485,6 +486,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   base.addModule(omniRealityGridSelector)
   base.addModule(new OmniRealityGridSelectorPanel(omniRealityGridSelector))
   base.addModule(new OmniMeter(base.context))
+  base.addModule(new OmniTargetSidePanel(base.context))   // V227
   base.addModule(new OmniSideTargeting(base.context))   // V207: L-Targeting (9 o'clock) / R-Targeting (3 o'clock) / Z (centre)
   base.addModule(new OmniOrbitRelease(base.context, orbitMod))   // V190: click empty space / Escape releases the orbit target
   const omniRealityGridPointSelector = new OmniRealityGridPointSelector(base.context)

@@ -43,3 +43,12 @@ Tap **◉ ORB** (beside BOOST above the LH pad) or type `Omni Orb open`. A greys
 - Releasing the core fires the loaded tool at the node you have selected (else the node nearest the screen centre).
 - The orb is a **round panel** now. Drag it by the empty rim around the picture; the × at the top closes it.
 - **Panel opacity** (⟐OmniHands → LH → ◉ Orb, 0.15 faint to 1 solid) makes the whole orb more or less see-through. `Omni Setting set hands.lh.orbOpacity value(0.5)` does the same.
+
+## Charged shots (V229)
+Holding the orb's core now matters. The charge ring has a mark at 40%.
+- **Under 40%**: the shot is normal, exactly as before (the pad's Activation button always fires this way).
+- **40% to just under full**: a strong shot. The behaviour's strength-type settings (speed, radius, strength, range, amplitude, rate, push, max speed) are multiplied by 1.5 at the mark, rising to 2. Two tracers fly out.
+- **Full ring**: the strongest shot, x2.5, and a behaviour that works on several other nodes (Attract, Repel and the like) reaches 2 more of them. Three tracers fly out.
+- Values stay inside each setting's own limits, and things that are not "how much" (axis, offsets, phase, timing) are never changed.
+- Firing the same tool on the same node with a **stronger** charge upgrades it in place. Firing it again with the same or a weaker charge undoes it, as before.
+- From the terminal: `Omni Orb fire charge(0.5)` (strong) or `charge(1)` (full).

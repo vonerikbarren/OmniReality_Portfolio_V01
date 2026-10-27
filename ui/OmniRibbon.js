@@ -6,7 +6,7 @@
  * most, laid out flat as large icon + label buttons in captioned groups, in tabs so more can be
  * added later.
  *
- *   Tabs        OmniStar (V190: Docs, OmniStarLight) · Home (▦ dashboard) · Inspector · Realities · Hands      (data table TABS below)
+ *   Tabs        OmniStar · Home · Create · Tools · Sandbox · Inspector · Realities · Time & Value · Hands      (V227: RIBBON_LAYOUT / RIBBON_ORDER below)
  *   Body        groups of buttons, a caption under each group, thin separators, horizontal scroll
  *   Collapse    chevron at the right (and double-click a tab) -> tabs only; tab + collapsed persist
  *   Phones      <= 700px: tabs row only; tapping a tab drops its body over the scene as an overlay,
@@ -79,6 +79,51 @@ const b = (id, icon, label, key, desc, run, extra = {}) => ({ id, icon, label, k
 const HAND_TAG = { lh: 'lh', rh: 'rh', omnihand: 'oh', conscious: 'ch' }
 export const handDividerBetween = (prev, cur) => !!prev && (prev.hand ?? null) !== (cur.hand ?? null) && !!((prev.hand ?? null) || (cur.hand ?? null))
 
+/**
+ * V227: the long Home and Realities tabs are split by job. The buttons themselves are unchanged (same ids, same behaviour); only which tab and group
+ * they sit in. To add a button later, put it in the tab it belongs to by adding its id to a list below, or add a new button to the right tab above.
+ *   Home          Dashboard, Navigation, Windows, Sound, Assistance
+ *   Create        Draw · Nodes · Media nodes
+ *   Tools         Build · Studio · Editors
+ *   Sandbox       Remix and the Sandbox (more experiments will live here)
+ *   Realities     Realities, Axes, Scopes, Save          Time & Value   Chronos, Value
+ */
+export const RIBBON_LAYOUT = {
+  create:  { id: 'create',  label: 'Create',  icon: '✚', tip: 'Create tab: draw nodes and make special and media nodes', groups: [
+    ['Draw', ['draw', 'draw-static', 'draw-dynamic', 'draw-behavior']],
+    ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'node-order', 'floor-panels', 'voxel-rooms']],
+    ['Media nodes', ['sound-node', 'music-node', 'song-node', 'mix-node', 'doc-node', 'poly-node']] ] },
+  tools:   { id: 'tools',   label: 'Tools',   icon: '⬢', tip: 'Tools tab: code, scanning, dimensions, studios and editors', groups: [
+    ['Build', ['omni-ide', 'omni-acquisitioner', 'omni-scan', 'omni-dimensions', 'omni-vibration']],
+    ['Studio', ['mixer', 'translator', 'presenter', 'gallery', 'sound-settings', 'expression-settings', 'expression', 'beatpad', 'browser', 'omnidj']],
+    ['Editors', ['song-editor', 'mix-editor', 'doc-editor', 'poly-editor', 'audio-library']] ] },
+  sandbox: { id: 'sandbox', label: 'Sandbox', icon: '⚗', tip: 'Sandbox tab: experiments kept apart from your portfolio', groups: [
+    ['Experiments', ['omni-sandbox', 'omni-remix', 'omni-remix-sparks']] ] },
+  timevalue: { id: 'timevalue', label: 'Time & Value', icon: '⧖', tip: 'Time & Value tab: OmniChronos controls and the OmniStore, exchange and wallet', groups: [
+    ['Chronos', ['chronos', 'chronos-play', 'chronos-back', 'chronos-fwd', 'chronos-start', 'chronos-add', 'chronos-marker', 'time-ruler']],
+    ['Value', ['store', 'exchange', 'wallet', 'talent', 'store-settings', 'dev-store']] ] },
+}
+/** Order of the tabs left to right. Anything not listed keeps its place at the end, so a tab added later still shows. */
+export const RIBBON_ORDER = ['omnistar', 'home', 'create', 'tools', 'sandbox', 'inspector', 'realities', 'timevalue', 'hands']
+
+export function rearrange (base) {
+  const all = new Map(); for (const t of base) for (const g of t.groups) for (const btn of g.btns) all.set(btn.id, btn)
+  const used = new Set(), tabs = new Map()
+  for (const def of Object.values(RIBBON_LAYOUT)) {
+    const groups = def.groups.map(([caption, ids]) => ({ caption, btns: ids.map(id => all.get(id)).filter(Boolean) })).filter(g => g.btns.length)
+    for (const g of groups) for (const btn of g.btns) used.add(btn.id)
+    tabs.set(def.id, { id: def.id, label: def.label, icon: def.icon, tip: def.tip, groups })
+  }
+  const out = []
+  for (const t of base) {   // the old tabs, minus what moved out; an emptied group disappears
+    const groups = t.groups.map(g => ({ ...g, btns: g.btns.filter(btn => !used.has(btn.id)) })).filter(g => g.btns.length)
+    if (groups.length) out.push({ ...t, groups })
+  }
+  for (const t of tabs.values()) out.push(t)
+  const rank = (t) => { const i = RIBBON_ORDER.indexOf(t.id); return i < 0 ? 999 : i }
+  return out.map((t, i) => [t, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0])
+}
+
 function buildTabs () {
   const padBtn = (hand, label, name) => b(`pad-${hand}`, '⚇', label, '—',
     `Show or hide ${name}'s movement pad (the same as its ⚇ cell). Pad on/off is reported back by the pad itself.`,
@@ -90,7 +135,7 @@ function buildTabs () {
   const handSettings = (item, label, hand, extraDesc) => b(`set-${hand}`, '⚙', label, '—',
     `Opens ⟐OmniHands on the ${label} view: speed, pad-on-start, pad dock${extraDesc}.`, nav(item), { name: `${label} settings`, hand: HAND_TAG[hand] })
 
-  return [
+  const base = [
     {
       id: 'omnistar', label: 'OmniStar', icon: '✧',
       tip: 'OmniStar tab — the user guide and the search',
@@ -278,6 +323,8 @@ function buildTabs () {
     },
   ]
 
+  return rearrange(base)
+
   function secBtn ({ id, label, glyph, desc }) {
     const where = id === 'location' ? ' (only for a location node — OmniPointing)' : ''
     return b(`sec-${id}`, glyph, label, '—',
@@ -316,7 +363,7 @@ const STYLES = /* css */`
   font-family: var(--mono); color: var(--orb-text);
   pointer-events: auto; user-select: none; -webkit-font-smoothing: antialiased;
 }
-.orb-tabs { box-sizing: border-box; display: flex; align-items: stretch; height: var(--orb-tabs-h); background: var(--orb-head); border-bottom: 1px solid var(--orb-border); }
+.orb-tabs { box-sizing: border-box; display: flex; align-items: stretch; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; height: var(--orb-tabs-h); background: var(--orb-head); border-bottom: 1px solid var(--orb-border); }
 .orb-tab {
   display: flex; align-items: center; gap: 6px; padding: 0 14px; background: none; border: none;
   border-bottom: 2px solid transparent; margin-bottom: -1px;
@@ -376,7 +423,13 @@ const STYLES = /* css */`
 
 @media (max-width: ${PHONE_MAX}px) {
   #omni-ribbon { --orb-tabs-h: ${TABS_H_PHONE}px; --orb-body-h: 76px; left: 0; }
-  .orb-tab { flex: 1 1 0; min-width: 0; justify-content: center; gap: 3px; padding: 0 2px; font-size: 10.5px; letter-spacing: 0; }   /* V190: 5 tabs share 390px */
+  /* V227: nine tabs do not fit in 390px, so the tab row scrolls sideways; icons first, the label shows on the active tab only */
+  .orb-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .orb-tabs::-webkit-scrollbar { display: none; }
+  .orb-tab { flex: 0 0 auto; min-width: 46px; justify-content: center; gap: 4px; padding: 0 10px; font-size: 10.5px; letter-spacing: 0; }
+  .orb-tab .orb-tab-lbl { display: none; } .orb-tab.is-active .orb-tab-lbl { display: inline; }
+  .orb-tab-ico { font-size: 16px; }
+  .orb-spacer { display: none; }
   .orb-collapse { display: none; }
   .orb-btn { min-width: 60px; min-height: 52px; }
   .orb-ico { font-size: 22px; }

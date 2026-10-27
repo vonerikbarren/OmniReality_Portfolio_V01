@@ -30,7 +30,8 @@
  *              class-coloured, tweened out and disposed (never more than MAX_TRACERS).
  *
  * Events consumed (window):
- *   omni:hand-activate        { hand }        pad Activation press (lh / rh only here)
+ *   omni:hand-activate        { hand, charge? } pad Activation press (lh / rh only here). V229: charge 0..1 (the LH orb) picks a tier: below 40% normal, 40%+ strong
+ *                              (strength settings scaled up), 98%+ full (scaled more, and multi-target rows get 2 more anchors). See utils/OmniChargeTier.js.
  *   omni:hand-ammo-cycle      { hand, dir }   next (+1) / previous (-1) loaded ammo
  *   omni:hand-ammo-release-all{ hand }        un-fire every behaviour that hand fired
  *   omni:hand-ammo-request    {}              re-announce omni:hand-ammo-state for both hands
@@ -50,6 +51,7 @@
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { BEHAVIOR_TABLE, behaviorDefaults, behaviorClassColorHex } from './OmniNodeBehavior.js'
+import { tierOf, rankOf, scaleParams } from '../utils/OmniChargeTier.js'
 import { getHandSetting, setHandSetting, CHANGE_EVENT } from '../utils/OmniHandsSettings.js'
 
 export const AMMO_HANDS = ['lh', 'rh']
@@ -77,7 +79,7 @@ export default class OmniHandAmmo {
   init () {
     if (this._bound.length) return
     const on = (n, fn) => { window.addEventListener(n, fn); this._bound.push([n, fn]) }
-    on('omni:hand-activate', (e) => { const h = e.detail?.hand; if (AMMO_HANDS.includes(h)) this.fire(h) })
+    on('omni:hand-activate', (e) => { const h = e.detail?.hand; if (AMMO_HANDS.includes(h)) this.fire(h, e.detail?.charge) })
     on('omni:hand-ammo-cycle', (e) => { const h = e.detail?.hand; if (AMMO_HANDS.includes(h)) this.cycle(h, e.detail?.dir === -1 ? -1 : 1) })
     on('omni:hand-ammo-request', () => AMMO_HANDS.forEach(h => this._emitState(h)))
     on('omni:hand-ammo-release-all', (e) => { const h = e.detail?.hand; if (AMMO_HANDS.includes(h)) this.releaseAll(h) })
@@ -148,14 +150,17 @@ export default class OmniHandAmmo {
   // ── Fire / release ──────────────────────────────────────────────────────────
 
   /** Press of the Activation satellite. Returns the feedback kind. */
-  fire (hand) {
+  fire (hand, charge = 0) {
+    const tier = tierOf(charge)
     const ammo = this.getAmmo(hand)
     if (!ammo) return this._feedback(hand, 'empty')
     const target = this.resolveTarget()
     if (!target) return this._feedback(hand, 'no-target', { type: ammo })
     const src = sourceOf(hand)
     const existing = this._behaviorOf(target.id)
-    if (existing?.source === src && existing.type === ammo && this._active[hand].some(a => a.nodeId === target.id)) {
+    const mine = this._active[hand].find(a => a.nodeId === target.id)
+    const upgrade = !!mine && existing?.source === src && existing.type === ammo && tier.rank > rankOf(mine.tier)   // V229: a stronger charge on the same shot re-fires it harder instead of undoing it
+    if (existing?.source === src && existing.type === ammo && mine && !upgrade) {
       this._setBehavior(target.id, null)
       this._drop(target.id)
       this._emitState(hand)
@@ -166,16 +171,17 @@ export default class OmniHandAmmo {
     }
     const row = BEHAVIOR_TABLE[ammo]
     const cfg = {
-      type: ammo, params: behaviorDefaults(ammo), enabled: true, source: src,
-      targets: this._anchorsFor(row, target, hand),
+      type: ammo, params: scaleParams(behaviorDefaults(ammo), row?.schema, tier.factor), enabled: true, source: src,
+      targets: this._anchorsFor(row, target, hand, tier.extraAnchors),
     }
     this._drop(target.id)                    // a replaced hand-fired behaviour leaves ITS hand's list
     this._setBehavior(target.id, cfg)       // the engine's omni:node-behavior-changed may already have adopted it
-    if (!this._active[hand].some(a => a.nodeId === target.id)) this._active[hand].push({ nodeId: target.id, type: ammo })
+    if (!this._active[hand].some(a => a.nodeId === target.id)) this._active[hand].push({ nodeId: target.id, type: ammo, tier: tier.name })
+    else this._active[hand].find(a => a.nodeId === target.id).tier = tier.name
     this._enforceMax(hand)
-    this._trace(hand, target.mesh, ammo, target.id)
+    for (let i = 0; i < tier.tracers; i++) this._trace(hand, target.mesh, ammo, target.id, i)
     this._emitState(hand)
-    return this._feedback(hand, 'fired', { type: ammo, nodeId: target.id })
+    return this._feedback(hand, 'fired', { type: ammo, nodeId: target.id, tier: tier.name, charge: tier.charge, factor: tier.factor })
   }
 
   releaseAll (hand) {
@@ -285,9 +291,9 @@ export default class OmniHandAmmo {
   }
 
   /** The hand's anchor(s): nearest other node(s) to the target, per anchorMode / row.needs. */
-  _anchorsFor (row, target, hand) {
+  _anchorsFor (row, target, hand, extra = 0) {
     if (!row || row.needs === 'self' || getHandSetting(hand, 'anchorMode') === 'none') return []
-    const count = row.needs === 'target' ? 1 : Math.max(1, Math.round(Number(getHandSetting(hand, 'anchorCount')) || 3))
+    const count = row.needs === 'target' ? 1 : Math.max(1, Math.round(Number(getHandSetting(hand, 'anchorCount')) || 3)) + Math.max(0, extra)
     const tp = new THREE.Vector3()
     target.mesh.getWorldPosition(tp)
     const p = new THREE.Vector3()
@@ -300,12 +306,12 @@ export default class OmniHandAmmo {
 
   // ── Tracer (cheap, self-cleaning) ───────────────────────────────────────────
 
-  _trace (hand, mesh, type, nodeId = null) {
+  _trace (hand, mesh, type, nodeId = null, n = 0) {
     const cam = this.ctx?.camera, scene = this.ctx?.scene
     if (!cam || !scene || !mesh) return
     while (this._tracers.size >= MAX_TRACERS) this._disposeTracer(this._tracers.values().next().value)
     cam.updateMatrixWorld?.()
-    const start = new THREE.Vector3(hand === 'lh' ? -0.85 : 0.85, -0.85, 0.5).unproject(cam)
+    const start = new THREE.Vector3((hand === 'lh' ? -0.85 : 0.85) + n * (hand === 'lh' ? 0.07 : -0.07), -0.85 - n * 0.04, 0.5).unproject(cam)   // V229: a charged shot sends 2 or 3 tracers side by side
     const end = new THREE.Vector3()
     mesh.getWorldPosition(end)
     const pos = new Float32Array([start.x, start.y, start.z, start.x, start.y, start.z])

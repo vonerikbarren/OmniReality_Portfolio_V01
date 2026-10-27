@@ -110,8 +110,8 @@ export function registerOmniBuiltins () {
   // ── Orb (V221) ──
   registerOmni('Orb', 'open', { keywordSummary: 'the LH orb of possibility', summary: 'Open the LH orb', props: {}, run () { window.dispatchEvent(new CustomEvent('omni:orb-open', { detail: { hand: 'lh' } })); return 'LH orb open' } })
   registerOmni('Orb', 'close', { summary: 'Close the LH orb', props: {}, run () { window.dispatchEvent(new CustomEvent('omni:orb-close')); return 'LH orb closed' } })
-  registerOmni('Orb', 'fire', { summary: 'Fire the loaded LH ammo as the orb does', props: { charge: '0..1 (default 0)' }, run (call) {
-    const c = Math.max(0, Math.min(1, Number(call.props.charge ?? 0) || 0)); window.dispatchEvent(new CustomEvent('omni:hand-activate', { detail: { hand: 'lh', charge: c } })); return 'Fired the loaded LH ammo' } })
+  registerOmni('Orb', 'fire', { summary: 'Fire the loaded LH ammo as the orb does. Charge 0.4+ is a stronger shot; 0.98+ is the strongest and reaches wider', props: { charge: '0..1 (default 0)' }, run (call) {
+    const c = Math.max(0, Math.min(1, Number(call.props.charge ?? 0) || 0)); window.dispatchEvent(new CustomEvent('omni:hand-activate', { detail: { hand: 'lh', charge: c } })); return c >= 0.98 ? 'Fired the loaded LH ammo (full charge)' : c >= 0.4 ? 'Fired the loaded LH ammo (strong)' : 'Fired the loaded LH ammo' } })
   registerOmni('Orb', 'words', { summary: 'Set the orbiting words: Omni Orb words value("Maybe, Open, ?")', props: { value: 'comma separated words' }, run (call) {
     if (call.props.value === undefined) { return (Hands.getHandSetting('lh', 'orbWords') ?? []).join(', ') }
     const list = (Array.isArray(call.props.value) ? call.props.value : String(call.props.value).split(',')).map(w => String(w).trim()).filter(Boolean)
