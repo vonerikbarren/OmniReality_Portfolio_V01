@@ -564,6 +564,7 @@ export default class OmniHandsPanel {
     inp.addEventListener('change', () => { setHandSetting('lh', 'orbWords', parseWords(inp.value)); inp.value = cur() })
     row.appendChild(inp); g.appendChild(row)
     this._sync.push(() => { if (document.activeElement !== inp && inp.value !== cur()) inp.value = cur() })
+    this._numRow(g, 'Panel opacity (0.15 faint .. 1 solid)', 'orbOpacity', this._storeNum('lh', 'orbOpacity', 0.05, ''))
     this._numRow(g, 'Orbit speed', 'orbSpeed', this._storeNum('lh', 'orbSpeed', 0.1, '×'))
     this._numRow(g, 'Time to full charge', 'orbChargeMs', this._storeNum('lh', 'orbChargeMs', 100, 'ms'))
     g.appendChild(el('div', 'omh-note', 'Hold the orb\'s core to charge, release to fire the loaded ammo. Click a tool streaming into the core to load it.'))

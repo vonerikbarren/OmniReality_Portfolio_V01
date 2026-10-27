@@ -319,6 +319,8 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addIDEModules(base, omniNode)
   const { addAcquisitionerModules } = await import('./ui/OmniAcquisitionerModules.js')   // V223: OmniCommunication (Receive / Route) + the OmniNodeAcquisitioner panel
   addAcquisitionerModules(base, omniNode)
+  const { addRemixModules } = await import('./ui/OmniRemixModules.js')   // V226: Omni Remix — random combinations on the nodes in the scene
+  addRemixModules(base, omniNode)
   const { addDimensionsModules } = await import('./ui/OmniDimensionsModules.js')   // V217: axioms (OmniHand) + perspectives (ConsciousHand), dimensional nodes, spaces and planes
   addDimensionsModules(base, omniNode)
   const { default: OmniBoost } = await import('./systems/OmniBoost.js')   // V220: Boost (LH / RH) with layered effects

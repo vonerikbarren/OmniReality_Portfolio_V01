@@ -36,3 +36,10 @@ Sustain keeps the boost on for a moment after you let go.
 Tap **◉ ORB** (beside BOOST above the LH pad) or type `Omni Orb open`. A greyscale sphere of possibility opens: words orbit it (Opportunities, Unknowns, Undefined, Possibilities, ? ...), and the tools in your LH magazine stream into its core. Hover or tap a word or tool for its tooltip; click a tool to load it as your ammo. **Hold the core** to charge, **release** to fire the loaded ammo (the same as the pad's Activation). Edit the words, speed and charge time in ⟐OmniHands → LH → ◉ Orb, or `Omni Orb words value("Maybe, Open, ?")`. The RH, ConsciousHand and OmniHand orbs come later.
 
 **V224 fix:** the BOOST and ◉ ORB buttons did not react to hover or taps (the UI layer lets clicks pass through to the scene and the two buttons did not opt back in). Fixed.
+
+## The orb, explained (V225)
+- The white dots spiralling into the core are the **tools in your LH magazine** (Orbit, Anchor, Follow ...), not nodes from your scene. The ringed one is loaded. Click a dot to load that tool.
+- The words orbiting on the rings are decoration and tooltips.
+- Releasing the core fires the loaded tool at the node you have selected (else the node nearest the screen centre).
+- The orb is a **round panel** now. Drag it by the empty rim around the picture; the × at the top closes it.
+- **Panel opacity** (⟐OmniHands → LH → ◉ Orb, 0.15 faint to 1 solid) makes the whole orb more or less see-through. `Omni Setting set hands.lh.orbOpacity value(0.5)` does the same.

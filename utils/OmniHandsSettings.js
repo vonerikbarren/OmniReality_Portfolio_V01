@@ -78,7 +78,7 @@ export const DEFAULT_MAGAZINE = {
 export const DEFAULTS = {
   lh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.lh, ammo: 'Orbit', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
                elementKind: 'Process', chainEnabled: true, fireDistance: 10, maxAlive: 40, particles: true,
-               orbWords: ['Opportunities', 'Unknowns', 'Undefined', 'Possibilities', '?', 'Maybe', 'Perhaps', 'Potential', 'Unwritten', 'Open', 'Unmapped', 'What if'], orbSpeed: 1, orbChargeMs: 1200,
+               orbWords: ['Opportunities', 'Unknowns', 'Undefined', 'Possibilities', '?', 'Maybe', 'Perhaps', 'Potential', 'Unwritten', 'Open', 'Unmapped', 'What if'], orbSpeed: 1, orbChargeMs: 1200, orbOpacity: 1,
                boostMult: 3, boostRamp: 0.25, boostSustain: 0.4, boostVibration: 'shake', boostVibAttack: 0.1, boostVibRelease: 0.3, boostAfterimage: true, boostGhostMs: 60, boostGlitch: false, boostBlink: false, boostBlinkMs: 90, boostBlinkRadius: 3 },
   rh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.rh, ammo: 'Pulse', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
                fireDistance: 10, maxAlive: 40, defaultWordDelayMs: 450, particles: true,
@@ -99,6 +99,7 @@ export const LIMITS = {
   fireDistance:   { min: 2, max: 60 },      // V168: HUD-centre fire point (units ahead of the camera)
   maxAlive:       { min: 1, max: 200 },     // V168: fired flow elements / display anchors kept per hand
   defaultWordDelayMs: { min: 50, max: 3000 },
+  orbOpacity:       { min: 0.15, max: 1 },     // V225: how see-through the round orb panel is
   orbSpeed:         { min: 0.1, max: 4 },      // V221: LH orb
   orbChargeMs:      { min: 200, max: 5000 },
   boostMult:        { min: 1, max: 20 },       // V220: Boost

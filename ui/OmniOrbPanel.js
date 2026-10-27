@@ -17,16 +17,19 @@ import { setHandSetting } from '../utils/OmniHandsSettings.js'
 
 const HAND = 'lh'
 const SIZE = 300
+const ORB_R = 0.40            // the orb's radius as a fraction of the panel; the margin outside it is the rim you drag by
 const CORE_HIT = 0.2          // core radius as a fraction of the orb radius
 const STYLE_ID = 'omni-orb-styles'
 const CSS = `
-.omni-orb { position: fixed; z-index: 63; width: ${SIZE}px; max-width: calc(100vw - 16px); display: none; flex-direction: column; pointer-events: auto;
-  background: rgba(6,6,8,.94); border: 1px solid rgba(255,255,255,.16); border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.55); font-family: 'Courier New', monospace; color: #eee; user-select: none; -webkit-user-select: none; }
-.omni-orb.is-open { display: flex; }
-.oorb-head { height: 30px; display: flex; align-items: center; justify-content: center; position: relative; cursor: grab; touch-action: none; font-size: 11px; color: #aaa; border-bottom: 1px solid rgba(255,255,255,.12); }
-.oorb-close { position: absolute; right: 6px; width: 20px; height: 20px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #bbb; cursor: pointer; padding: 0; }
-.oorb-canvas { width: 100%; aspect-ratio: 1; display: block; touch-action: none; cursor: crosshair; }
-.oorb-tip { min-height: 30px; padding: 4px 10px 8px; font-size: 10px; line-height: 1.4; color: #bbb; }
+.omni-orb { position: fixed; z-index: 63; width: ${SIZE}px; height: ${SIZE}px; max-width: calc(100vw - 16px); max-height: calc(100vw - 16px); display: none; pointer-events: auto; overflow: hidden; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(18,18,22,.96) 0%, rgba(6,6,8,.97) 70%); border: 1px solid rgba(255,255,255,.22); box-shadow: 0 0 26px rgba(255,255,255,.08), 0 10px 34px rgba(0,0,0,.55);
+  font-family: 'Courier New', monospace; color: #eee; user-select: none; -webkit-user-select: none; }
+.omni-orb.is-open { display: block; }
+.oorb-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.oorb-canvas.is-rim { cursor: grab; } .oorb-canvas.is-drag { cursor: grabbing; }
+.oorb-close { position: absolute; top: 3.5%; left: 50%; transform: translateX(-50%); width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.35); color: #ccc; cursor: pointer; padding: 0; font-size: 13px; line-height: 1; }
+.oorb-close:hover { background: rgba(255,255,255,.2); }
+.oorb-tip { position: absolute; left: 20%; right: 20%; bottom: 8%; text-align: center; font-size: 10px; line-height: 1.35; color: #bbb; pointer-events: none; text-shadow: 0 0 6px #000; }
 .oorb-tip b { color: #fff; }
 `
 
@@ -48,6 +51,7 @@ export default class OmniOrbPanel {
     on('omni:orb-close', () => this.close())
     on('omni:orb-toggle', (e) => { if ((e.detail?.hand ?? HAND) === HAND) this.toggle() })
     on('omni:hand-ammo-feedback', (e) => this._feedback(e.detail ?? {}))
+    on('omni:hands-settings-changed', (e) => { if (e.detail?.hand === HAND && e.detail?.key === 'orbOpacity') this._applyOpacity() })
     on('keydown', (e) => { if (e.key === 'Escape' && this._open) this.close() })
     on('resize', () => { if (this._open) this._place() })
     this._buildButton()
@@ -56,7 +60,7 @@ export default class OmniOrbPanel {
   // ── open / close ──
   open () {
     if (!this._el) this._build()
-    this._el.classList.add('is-open'); this._open = true; this._place(); this._sync()
+    this._el.classList.add('is-open'); this._open = true; this._applyOpacity(); this._place(); this._sync()
     this._last = 0; this._loop()
     this._emit('omni:orb-state', { hand: HAND, open: true })
   }
@@ -67,24 +71,22 @@ export default class OmniOrbPanel {
     this._emit('omni:orb-state', { hand: HAND, open: false })
   }
   toggle () { this._open ? this.close() : this.open() }
+  /** the whole round panel (picture, words, text) at the user's opacity (⟐OmniHands → LH → ◉ Orb) */
+  _applyOpacity () { if (this._el) this._el.style.opacity = String(Math.min(1, Math.max(0.15, Number(getHandSetting(HAND, 'orbOpacity')) || 1))) }
   _emit (name, detail) { try { window.dispatchEvent(new CustomEvent(name, { detail })) } catch (_) {} }
 
   // ── dom ──
   _shell () { return document.getElementById('omni-ui') ?? document.body }
   _build () {
     const el = document.createElement('div'); el.className = 'omni-orb'; el.id = 'omni-orb-lh'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'LH orb')
-    el.innerHTML = `<div class="oorb-head"><span>◉ LH · possibility</span><button type="button" class="oorb-close" aria-label="Close">×</button></div><canvas class="oorb-canvas" width="${SIZE * 2}" height="${SIZE * 2}"></canvas><div class="oorb-tip"></div>`
+    el.innerHTML = `<canvas class="oorb-canvas" width="${SIZE * 2}" height="${SIZE * 2}"></canvas><button type="button" class="oorb-close" aria-label="Close the orb">×</button><div class="oorb-tip"></div>`
     this._shell().appendChild(el); this._el = el
     this._cv = el.querySelector('canvas'); this._g = this._cv.getContext('2d'); this._tipEl = el.querySelector('.oorb-tip')
     el.querySelector('.oorb-close').addEventListener('click', () => this.close())
-    const head = el.querySelector('.oorb-head')
-    head.addEventListener('pointerdown', (e) => { if (e.target.closest('.oorb-close')) return; const r = el.getBoundingClientRect(); this._drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; try { head.setPointerCapture(e.pointerId) } catch (_) {} })
-    head.addEventListener('pointermove', (e) => { if (!this._drag) return; this._pos = { x: e.clientX - this._drag.dx, y: e.clientY - this._drag.dy }; this._place() })
-    const end = () => { this._drag = null }
-    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end)
+    this._applyOpacity()
     const cv = this._cv
     cv.addEventListener('pointerdown', (e) => this._down(e)); cv.addEventListener('pointermove', (e) => this._move(e))
-    cv.addEventListener('pointerup', (e) => this._up(e)); cv.addEventListener('pointercancel', () => { this._hold = null; this._charge = 0 })
+    cv.addEventListener('pointerup', (e) => this._up(e)); cv.addEventListener('pointercancel', () => { this._hold = null; this._charge = 0; this._drag = null; cv.classList.remove('is-drag') })
     cv.addEventListener('pointerleave', () => { this._hover = null; this._showTip() })
     cv.addEventListener('contextmenu', e => e.preventDefault())
   }
@@ -100,10 +102,10 @@ export default class OmniOrbPanel {
   }
   _place () {
     if (!this._el) return
-    const w = this._el.offsetWidth || SIZE, h = this._el.offsetHeight || SIZE + 70
+    const w = this._el.offsetWidth || SIZE, h = this._el.offsetHeight || SIZE
     let x, y
     if (this._pos) ({ x, y } = this._pos)
-    else { const chip = document.getElementById('omni-pad-chip-lh'); const r = chip?.getBoundingClientRect(); x = r ? r.right + 12 : 20; y = r ? r.top - h + 40 : 80 }
+    else { const chip = document.getElementById('omni-pad-chip-lh'); const r = chip?.getBoundingClientRect(); x = r ? r.right + 12 : 20; y = r ? r.top - h + 60 : 80 }
     x = Math.max(8, Math.min(window.innerWidth - w - 8, x)); y = Math.max(8, Math.min(window.innerHeight - h - 8, y))
     this._el.style.left = x + 'px'; this._el.style.top = y + 'px'
   }
@@ -141,20 +143,25 @@ export default class OmniOrbPanel {
   // ── pointer ──
   _pt (e) { const r = this._cv.getBoundingClientRect(); const k = SIZE / Math.max(1, r.width); return { x: (e.clientX - r.left) * k - SIZE / 2, y: (e.clientY - r.top) * k - SIZE / 2 } }
   _hit (p) {
-    const R = SIZE * 0.46
+    const R = SIZE * ORB_R
     if (Math.hypot(p.x, p.y) < R * CORE_HIT * 1.3) return { kind: 'core' }
     let best = null, bd = 1e9
     for (const h of this._hits) { const d = Math.hypot(p.x - h.x, p.y - h.y); if (d < h.r && d < bd) { bd = d; best = h } }
     return best
   }
+  _rim (p) { return Math.hypot(p.x, p.y) > SIZE * ORB_R + 6 }
   _down (e) {
     e.preventDefault(); try { this._cv.setPointerCapture(e.pointerId) } catch (_) {}
-    const h = this._hit(this._pt(e))
+    const pt = this._pt(e)
+    if (this._rim(pt)) { const r = this._el.getBoundingClientRect(); this._drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; this._cv.classList.add('is-drag'); return }   // the rim moves the orb
+    const h = this._hit(pt)
     if (h?.kind === 'core') { this._hold = { at: performance.now() }; this._charge = 0; this._msg = '' }
     else if (h?.kind === 'tool') { setHandSetting(HAND, 'ammo', h.name); this._msg = `Loaded ${h.name}.`; this._msgT = 2; this._burst = 0.5; this._showTip() }
   }
   _move (e) {
-    const h = this._hit(this._pt(e)); let next = null
+    if (this._drag) { this._pos = { x: e.clientX - this._drag.dx, y: e.clientY - this._drag.dy }; this._place(); return }
+    const pt = this._pt(e); this._cv.classList.toggle('is-rim', this._rim(pt))
+    const h = this._hit(pt); let next = null
     if (h?.kind === 'word') next = { title: h.word, text: wordTip(h.word) }
     else if (h?.kind === 'tool') next = { title: h.name, text: (h.name === this._ammo() ? 'Loaded. ' : '') + 'Click to load this tool as your ammo.' }
     else if (h?.kind === 'core') next = { title: 'Core', text: 'Hold to charge, release to fire the loaded tool.' }
@@ -162,6 +169,7 @@ export default class OmniOrbPanel {
   }
   _up (e) {
     try { this._cv.releasePointerCapture(e.pointerId) } catch (_) {}
+    if (this._drag) { this._drag = null; this._cv.classList.remove('is-drag'); return }
     if (!this._hold) return
     const charge = this._charge; this._hold = null; this._charge = 0
     this.fire(charge)
@@ -189,7 +197,7 @@ export default class OmniOrbPanel {
   }
   _draw () {
     const g = this._g; if (!g) return
-    const S = SIZE, R = S * 0.46, c = this._charge, t = this._t, burst = this._burst
+    const S = SIZE, R = S * ORB_R, c = this._charge, t = this._t, burst = this._burst
     g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, S, S); g.save(); g.translate(S / 2, S / 2)
     // rings
     g.lineWidth = 0.6

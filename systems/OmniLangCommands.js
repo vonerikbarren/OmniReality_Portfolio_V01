@@ -2,6 +2,8 @@
  * systems/OmniLangCommands.js (V219) — the built-in vocabulary of the Omni command language (grammar: utils/OmniLang.js, registry: utils/OmniLangRegistry.js).
  *
  *   Help        Omni Help [Keyword [action]]
+ *   Sandbox     spawn | add | remove | list | remix | show | hide | lock | unlock | centre | clear
+ *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
  *   Draw        Omni Draw node(static|box|sphere|cone|cylinder|torus|...|note|dimensional) pos(x, y, z) label(...) color(#hex|name) scale(n | x, y, z) rotation(x, y, z) id(name) wireframe
  *   Node        list | get | set | select | delete   (id(name))
  *   Setting     list | get | set                    (path(hands.omnihand.speed) value(5))
@@ -114,6 +116,32 @@ export function registerOmniBuiltins () {
     if (call.props.value === undefined) { return (Hands.getHandSetting('lh', 'orbWords') ?? []).join(', ') }
     const list = (Array.isArray(call.props.value) ? call.props.value : String(call.props.value).split(',')).map(w => String(w).trim()).filter(Boolean)
     Hands.setHandSetting('lh', 'orbWords', list); return 'Orb words: ' + (Hands.getHandSetting('lh', 'orbWords') ?? []).join(', ') } })
+
+  // ── Sandbox (V226) ──
+  const sbx = () => { if (!SERVICES.sandbox) throw new Error('the sandbox is not running'); return SERVICES.sandbox }
+  registerOmni('Sandbox', 'spawn', { keywordSummary: 'a marked-off area for experiments, apart from your portfolio', summary: 'Omni Sandbox spawn [n(6)] [seed(7)] [layout(ring)] [scheme(triad)] [axiom(time)]  (add remix(false) to leave them plain)',
+    props: { n: 'how many (1..24, default 6)', seed: 'any number or word', layout: 'scatter | ring | spiral | grid | stack', scheme: 'analogous | triad | complement | split | mono', axiom: 'limit the labels to one axiom', remix: 'false leaves the new nodes plain' },
+    run (call) { const p = call.props; return sbx().spawn({ n: p.n, seed: p.seed, layout: p.layout === undefined ? undefined : String(p.layout).toLowerCase(), scheme: p.scheme === undefined ? undefined : String(p.scheme).toLowerCase(), axiom: p.axiom === undefined ? undefined : String(p.axiom).toLowerCase(), remix: p.remix === false || String(p.remix).toLowerCase() === 'false' ? false : true }).text } })
+  registerOmni('Sandbox', 'add', { arg: 'id', summary: 'Move an existing node into the Sandbox: Omni Sandbox add(id)  (leave out id for the selected node)', props: { id: 'node id' }, run (call, ctx) { const id = call.arg !== undefined ? String(call.arg) : (call.props.id ?? nodes(ctx).getSelectedId?.()); if (!id) throw new Error('give an id, or select a node'); sbx().add(String(id)); return `Added ${id} to the Sandbox (it stays where it is)` } })
+  registerOmni('Sandbox', 'remove', { arg: 'id', summary: 'Take a node out of the Sandbox (it is not deleted)', props: { id: 'node id' }, run (call, ctx) { const id = call.arg !== undefined ? String(call.arg) : (call.props.id ?? nodes(ctx).getSelectedId?.()); if (!id) throw new Error('give an id, or select a node'); sbx().remove(String(id)); return `Took ${id} out of the Sandbox` } })
+  registerOmni('Sandbox', 'list', { summary: 'What is in the Sandbox and where it is', props: {}, run (call, ctx) { const ids = sbx().ids(), on = nodes(ctx); return `Spawn point (${sbx().getCentre().join(', ')})  ${ids.length} node(s)` + (ids.length ? '\n' + ids.map(i => `  ${i}  ${on.getNodeData?.(i)?.label ?? ''}`).join('\n') : '') } })
+  registerOmni('Sandbox', 'remix', { summary: 'Remix only the Sandbox: Omni Sandbox remix [seed()] [what()] [scheme()] [layout()] [axiom()]', props: { seed: 'any number or word', what: 'color, scale, spin, label, motion, layout', scheme: 'analogous | triad | complement | split | mono', layout: 'scatter | ring | spiral | grid | stack', axiom: 'limit the labels to one axiom' },
+    run (call) { const p = call.props; return sbx().remix({ seed: p.seed, what: words(p.what), scheme: p.scheme === undefined ? undefined : String(p.scheme).toLowerCase(), layout: p.layout === undefined ? undefined : String(p.layout).toLowerCase(), axiom: p.axiom === undefined ? undefined : String(p.axiom).toLowerCase() }).text } })
+  registerOmni('Sandbox', 'show', { summary: 'Show the Sandbox', props: {}, run: () => (sbx().setShown(true), 'Sandbox shown') })
+  registerOmni('Sandbox', 'hide', { summary: 'Hide the Sandbox (your portfolio view stays clean)', props: {}, run: () => (sbx().setShown(false), 'Sandbox hidden') })
+  registerOmni('Sandbox', 'lock', { summary: 'Lock the Sandbox so behaviours stop moving its nodes', props: {}, run: () => (sbx().setLocked(true), 'Sandbox locked') })
+  registerOmni('Sandbox', 'unlock', { summary: 'Unlock the Sandbox', props: {}, run: () => (sbx().setLocked(false), 'Sandbox unlocked') })
+  registerOmni('Sandbox', 'centre', { summary: 'Where new Sandbox nodes appear: Omni Sandbox centre pos(60, 1, 0)  (no pos: use the spot in front of the camera)', props: { pos: 'x, y, z' }, run (call, ctx) { const c = call.props.pos !== undefined ? asVec3(call.props.pos, 'pos') : frontOfCamera(ctx); return `Sandbox spawn point (${sbx().centre(c).join(', ')})` } })
+  registerOmni('Sandbox', 'clear', { summary: 'Delete every node in the Sandbox and nothing else: Omni Sandbox clear confirm', destructive: true, props: {}, run: () => `Deleted ${sbx().clear()} Sandbox node(s)` })
+
+  // ── Remix (V226) ──
+  const rmx = () => { if (!SERVICES.remix) throw new Error('the remix system is not running'); return SERVICES.remix }
+  const words = (v) => v === undefined ? undefined : (Array.isArray(v) ? v : String(v).split(/[,\s]+/)).map(x => String(x).trim().toLowerCase()).filter(Boolean)
+  registerOmni('Remix', 'roll', { keywordSummary: 'random combinations on the nodes, for ideas', summary: 'Omni Remix roll [scope(all|selected|sandbox)] [seed(7)] [what(color, scale, spin, label, motion, layout)] [scheme(triad)] [layout(ring)] [axiom(time)]',
+    props: { scope: 'all (default) | selected | sandbox', seed: 'any number or word: the same seed deals the same again', what: 'color, scale, spin, label, motion, layout (default: color, scale, spin, label)', scheme: 'analogous | triad | complement | split | mono', layout: 'scatter | ring | spiral | grid | stack', axiom: 'limit the labels to one axiom' },
+    run (call) { const p = call.props; return rmx().roll({ scope: p.scope === undefined ? (rmx()._selectedId() ? 'selected' : 'all') : String(p.scope).toLowerCase(), seed: p.seed, what: words(p.what), scheme: p.scheme === undefined ? undefined : String(p.scheme).toLowerCase(), layout: p.layout === undefined ? undefined : String(p.layout).toLowerCase(), axiom: p.axiom === undefined ? undefined : String(p.axiom).toLowerCase() }).text } })
+  registerOmni('Remix', 'undo', { summary: 'Put the last remix back', props: {}, run: () => `Restored ${rmx().undo()} node(s)` })
+  registerOmni('Remix', 'sparks', { summary: 'Ideas as text only; nothing changes: Omni Remix sparks n(5)', props: { n: 'how many (1..12)', seed: 'any number or word' }, run (call) { return rmx().sparks(Number(call.props.n ?? 5) || 5, call.props.seed).join('\n') } })
 
   // ── Draw ──
   registerOmni('Draw', 'node', { keywordSummary: 'put things in the space', arg: 'type', summary: 'Create a node. Types: ' + NODE_TYPES.join(', ') + ' (static = a plain box that nothing moves)',
