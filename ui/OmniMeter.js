@@ -217,7 +217,7 @@ const STYLES = `
   align-items      : center;
   justify-content  : center;
   cursor           : pointer;
-  z-index          : 46;
+  z-index          : 3000;   /* V231: above the floating windows (200+), which used to cover it on a phone */
   pointer-events   : none;
   opacity          : 0;
   visibility       : hidden;
@@ -235,7 +235,7 @@ const STYLES = `
   border           : 1px solid rgba(255, 255, 255, 0.18);
   border-radius     : 8px;
   padding          : 10px 12px;
-  z-index          : 46;
+  z-index          : 3000;   /* V231 */
   font-family      : 'Courier New', Courier, monospace;
   font-size        : 10.5px;
   color            : rgba(255, 255, 255, 0.85);
@@ -351,6 +351,13 @@ export default class OmniMeter {
 
   toggle () {
     this._isOpen = !this._isOpen
+    // V231: opening the meter used to show only a tiny ⚙ (every axis starts off), which read as "nothing happened".
+    // If nothing is switched on, switch the three axes on, and say so.
+    let auto = false
+    if (this._isOpen && !this._settings.showX && !this._settings.showY && !this._settings.showZ && !this._settings.showSession) {
+      this._settings.showX = this._settings.showY = this._settings.showZ = true; auto = true; this._saveSettings()
+      this._els.settingsPanel?.querySelectorAll('[data-axis]').forEach(i => { if (i.dataset.axis in this._settings) i.checked = !!this._settings[i.dataset.axis] })
+    }
     this._els.vertical?.classList.toggle('open', this._isOpen && this._settings.showY)
     this._els.horizontal?.classList.toggle('open', this._isOpen && this._settings.showX)
     this._els.depth?.classList.toggle('open', this._isOpen && this._settings.showZ)
@@ -358,6 +365,10 @@ export default class OmniMeter {
     this._els.settingsBtn?.classList.toggle('open', this._isOpen)
     if (this._isOpen) { this._layoutDock(); this._updateSession(true) }
     if (!this._isOpen) this._els.settingsPanel?.classList.remove('open')
+    try {
+      window.dispatchEvent(new CustomEvent('omni:meter-state', { detail: { open: this._isOpen } }))
+      window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: this._isOpen ? '⟐OmniMeter on' : '⟐OmniMeter off', desc: this._isOpen ? (auto ? 'Showing where you are on each axis. Use the ⚙ button (top right) to choose which meters show.' : 'Use the ⚙ button (top right) to choose which meters show.') : 'Meters hidden.', holdMs: 3000 } }))
+    } catch (_) {}
   }
 
   /** V190: puts the bottom X meter 4px above the Dock's REAL top edge (falls back to 52px where there is no layout, e.g. jsdom). */

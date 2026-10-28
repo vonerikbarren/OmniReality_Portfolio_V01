@@ -94,11 +94,12 @@ export const RIBBON_LAYOUT = {
     ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'node-order', 'floor-panels', 'voxel-rooms']],
     ['Media nodes', ['sound-node', 'music-node', 'song-node', 'mix-node', 'doc-node', 'poly-node']] ] },
   tools:   { id: 'tools',   label: 'Tools',   icon: '⬢', tip: 'Tools tab: code, scanning, dimensions, studios and editors', groups: [
-    ['Build', ['omni-ide', 'omni-acquisitioner', 'omni-scan', 'omni-dimensions', 'omni-vibration']],
+    ['Build', ['omni-ide', 'omni-acquisitioner', 'omni-scan', 'omni-meter', 'omni-pointing', 'omni-dimensions', 'omni-vibration']],
     ['Studio', ['mixer', 'translator', 'presenter', 'gallery', 'sound-settings', 'expression-settings', 'expression', 'beatpad', 'browser', 'omnidj']],
     ['Editors', ['song-editor', 'mix-editor', 'doc-editor', 'poly-editor', 'audio-library']] ] },
   sandbox: { id: 'sandbox', label: 'Sandbox', icon: '⚗', tip: 'Sandbox tab: experiments kept apart from your portfolio', groups: [
-    ['Experiments', ['omni-sandbox', 'omni-remix', 'omni-remix-sparks']] ] },
+    ['Experiments', ['omni-sandbox', 'omni-remix', 'omni-remix-sparks']],
+    ['Painter', ['omni-paint', 'omni-paint-undo']] ] },
   timevalue: { id: 'timevalue', label: 'Time & Value', icon: '⧖', tip: 'Time & Value tab: OmniChronos controls and the OmniStore, exchange and wallet', groups: [
     ['Chronos', ['chronos', 'chronos-play', 'chronos-back', 'chronos-fwd', 'chronos-start', 'chronos-add', 'chronos-marker', 'time-ruler']],
     ['Value', ['store', 'exchange', 'wallet', 'talent', 'store-settings', 'dev-store']] ] },
@@ -178,8 +179,12 @@ function buildTabs () {
         b('omni-ide', '{ }', 'OmniIDE', '—', 'Opens ⟐OmniIDE: a file tree, tabbed editor with colouring and a formatter, and a terminal, for .omni scripts. Works offline.', nav('⟐OmniIDE'), { name: 'OmniIDE' }),
         b('omni-acquisitioner', '▤', 'OmniNodeAcquisitioner', '—', 'Opens ⟐OmniNodeAcquisitioner: what has arrived in a tunnel, stacked like Tetris pieces, with an inspector beside it. Tunnels only receive when you open them.', nav('⟐OmniNodeAcquisitioner'), { name: 'OmniNodeAcquisitioner' }),
         b('omni-remix', '🎲', 'Remix', '—', 'Deals every node (or the selected one) a random combination: an axiom and perspective, a palette colour, a size, a turn and a name. Tap again for another deal. Undo is on the note that appears. Same thing from the terminal: Omni Remix roll.', () => ev('omni:remix-request', { action: 'roll' }), { name: 'Remix nodes' }),
+        b('omni-paint', '🖌', 'Paint', '—', 'OmniConstruction painter. Turns the brush on: drag across the scene (finger or mouse) to spray small nodes into the Sandbox instead of turning the camera. Esc or the Off chip turns it off. Brush: Omni Construction set shape(box) color(#ff8800) size(.5) radius(1.5) density(3) mode(ground|air) rainbow(true).', () => ev('omni:construction-request', { action: 'toggle' }), { name: 'Paint' }),
+        b('omni-paint-undo', '↶', 'Undo paint', '—', 'Takes back the last painted stroke.', () => ev('omni:construction-request', { action: 'undo' }), { name: 'Undo paint' }),
         b('omni-sandbox', '🧪', 'Sandbox', '—', 'Makes a few random nodes in the Sandbox, a marked-off area apart from your portfolio, and deals them a random combination. Tap again to add more. Omni Sandbox clear confirm wipes only the Sandbox.', () => ev('omni:sandbox-request', { action: 'spawn' }), { name: 'Sandbox spawn' }),
         b('omni-remix-sparks', '✺', 'Sparks', '—', 'Shows five random combinations as ideas only. Nothing in the scene changes.', () => ev('omni:remix-request', { action: 'sparks' }), { name: 'Sparks' }),
+        b('omni-meter', '⇕', 'OmniMeter', '—', 'Shows or hides the OmniMeter (Internal): where you are on each axis (up/down, left/right, depth) as markers on the screen edges, with an optional session clock. The ⚙ button (top right) chooses which meters show.', nav('⟐OmniMeter'), { name: 'OmniMeter (internal)', pressed: (s) => !!s.meter }),
+        b('omni-pointing', '⌖', 'Pointing', '—', 'Turns OmniMeter (External) on or off: hover (or tap) the floor to read the coordinate of the nearest grid point, and click or tap for its menu. Points sit on a 20-unit grid.', nav('⟐OmniMeterExternal'), { name: 'OmniMeter (external / pointing)', pressed: (s) => !!s.pointing }),
         b('omni-scan', '◎', 'OmniScan', '—', 'Opens ⟐OmniScan: tells you about the node in the middle circle of the screen, as plain text or as JSON. Pin it to hold one node.', nav('⟐OmniScan'), { name: 'OmniScan' }),
         b('note-node', '✎', 'Note node', '—', 'Creates an OmniNote in front of the camera and opens ⟐OmniNote: a rich-text note (headings, lists, tables, pictures, fonts, colours) that shows what you write on a sheet in the space.', () => { ev('omni:note-node-create', { select: true }); nav('⟐OmniNote')() }, { name: 'New note node' }),
           b('node-order', '⇅', 'Node order', '—', 'Opens ⟐OmniNodeOrder: the nodes of a path in order, drag to reorder, jump to a node, add, remove.', nav('⟐OmniNodeOrder'), { name: 'Node order panel' }),
@@ -419,7 +424,7 @@ const STYLES = /* css */`
   box-shadow: 0 10px 24px rgba(0,0,0,0.45);
 }
 #omni-ribbon[data-mode="overlay"].is-open .orb-body { display: block; }
-#omni-ribbon[data-mode="overlay"].is-open { z-index: 52; }  /* the dropped body must sit above the notify box (z 51) on a phone */
+#omni-ribbon[data-mode="overlay"].is-open { z-index: 2500; }  /* the dropped body must sit above the notify box (z 51) and, V231, above floating windows (200+): on a phone the Inspector covered the buttons */
 
 @media (max-width: ${PHONE_MAX}px) {
   #omni-ribbon { --orb-tabs-h: ${TABS_H_PHONE}px; --orb-body-h: 76px; left: 0; }
@@ -460,6 +465,7 @@ export default class OmniRibbon {
     this.state = {
       minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), bannerMixed: HandBanner.getPairState('top').mixed, bannerBottomMixed: HandBanner.getPairState('bottom').mixed, handShown: HandBanner.getHandStates(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
+      meter: false, pointing: false,
       terminal: TerminalShells.isOn(),
       timeline: { playing: PrimaryTime.isPlaying() },
       inspector: { open: false, loaded: false, sections: [], openSections: {} },
@@ -610,6 +616,8 @@ export default class OmniRibbon {
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
     on(TerminalShells.STATE_EVENT, d => { st.terminal = !!d.on })   // V192
+    on('omni:meter-state', d => { st.meter = !!d.open })
+    on('omni:omnipointing-active-changed', d => { st.pointing = !!d.active })
     on('omni:primarytime-state', d => { st.timeline = { playing: !!d.playing } })
     on('omni:inspector-state', d => {
       st.inspector = { open: !!d.open, loaded: !!d.loaded, sections: Array.isArray(d.sections) ? d.sections : [], openSections: d.openSections ?? {} }

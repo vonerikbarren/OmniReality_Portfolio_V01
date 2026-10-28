@@ -49,3 +49,13 @@ The Z-target markers are now bright (unlit, additive, with a soft glow behind ea
 
 # Target side switch (V228)
 While something is targeted, a small **TARGET  ◀ Left · ● Centre · Right ▶** switch appears at the top centre under the ribbon. It moves the target to the left or right of the screen (leaving the other side free for panels) or back to the centre. It is the same setting as Z / L / R in ⟐OmniTargetingSettings, and the two stay in step. It goes away when the target is let go.
+
+# OmniNotify at the left edge (V230)
+The docked OmniNotify box now sits flush with the left edge of the screen, directly under the Global Bar. Before, it started at the profile column (64 px in), which left a gap under the logo. The ribbon starts just to its right as before. A box you have dragged elsewhere stays where you put it; double-click its header to dock it again.
+
+# The meters, made visible (V231)
+Both OmniMeters used to start silently, which looked like "nothing happened".
+- **OmniMeter (Internal)** now switches the three axis meters on the first time you open it (if you had none on), says "⟐OmniMeter on" in OmniNotify, and its ⚙ button sits above floating windows (the Inspector used to cover it on a phone). If you choose to show only some axes, that choice is kept.
+- **OmniMeter (External / Pointing)** now shows a small chip at the bottom centre while it is on: **◎ OmniPointing on**, with **Stem** (OmniStemming) and **Off** buttons, and says so in OmniNotify. On a phone, tap the floor for the point menu (there is no hover). Points sit on a 20-unit grid, so near the start every spot reads (0, -0.08, 0): move a few steps away to see it change.
+- Both have buttons on the ribbon's **Tools** tab (Build group); the buttons light up while the meter is on.
+- On a phone, the ribbon's dropped-down buttons now sit above floating windows.

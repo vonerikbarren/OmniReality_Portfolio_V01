@@ -102,6 +102,11 @@ const STYLES = /* css */`
   font: 10px 'Courier New', monospace; padding: 4px 8px; border-radius: 5px;
   border: 1px solid var(--ttm-border, rgba(255,255,255,0.15)); white-space: pre; z-index: 50;
 }
+.omp-chip { position: fixed; left: 50%; bottom: calc(var(--omni-dock-h, 52px) + 64px); transform: translateX(-50%); z-index: 3000; display: none; align-items: center; gap: 6px;
+  padding: 5px 6px 5px 12px; border-radius: 999px; background: rgba(10,10,14,.9); border: 1px solid rgba(255,238,136,.7); color: #fff; font: 11px 'Courier New', monospace; pointer-events: auto; max-width: 94vw; }
+.omp-chip.on { display: flex; } .omp-chip b { color: #ffee88; font-weight: normal; } .omp-chip button { min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); background: none; color: inherit; font: inherit; cursor: pointer; touch-action: manipulation; }
+.omp-chip button.sel { background: #ffee88; color: #000; }
+@media (max-width: 700px) { .omp-chip button { min-height: 40px; } }
 .omp-dot {
   position: fixed; pointer-events: none; width: 5px; height: 5px;
   margin-left: -2.5px; margin-top: -2.5px; border-radius: 50%;
@@ -242,6 +247,7 @@ export default class OmniPointing {
   onResize () {}
 
   destroy () {
+    this._chip?.remove(); this._chip = null
     window.removeEventListener('omni:nav-select', this._onNavSelect)
     window.removeEventListener('keydown', this._onKeydown)
     window.removeEventListener('omni:node-created', this._onNodeCreated)
@@ -271,6 +277,22 @@ export default class OmniPointing {
       this._closeMenu()
     }
     window.dispatchEvent(new CustomEvent('omni:omnipointing-active-changed', { detail: { active: this._active } }))
+    this._syncChip()
+    try { window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: this._active ? '⟐OmniPointing on' : '⟐OmniPointing off', desc: this._active ? 'Move over the floor to read its coordinate; click or tap the floor for the point menu. Points sit on a 20-unit grid.' : 'Floor pointing switched off.', holdMs: 3500 } })) } catch (_) {}
+  }
+
+  /** V231: a visible sign while pointing is on (it used to switch on silently, and a phone has no hover). Buttons: Stem toggles OmniStemming, Off switches it off. */
+  _syncChip () {
+    if (typeof document === 'undefined') return
+    if (!this._chip) {
+      const c = this._chip = document.createElement('div'); c.className = 'omp-chip'; c.setAttribute('data-omni-pointing-chip', '')
+      c.innerHTML = '<span><b>◎ OmniPointing</b> on · hover (or tap) the floor</span><button type="button" data-a="stem">Stem</button><button type="button" data-a="off">Off</button>'
+      c.addEventListener('click', (e) => { const a = e.target.closest('button')?.dataset.a; if (a === 'stem') { this._toggleStemmingMode(); this._syncChip() } else if (a === 'off' && this._active) this.toggleActive() })
+      ;(document.getElementById('omni-ui') ?? document.body).appendChild(c)
+    }
+    this._chip.classList.toggle('on', this._active)
+    this._chip.querySelector('[data-a="stem"]').classList.toggle('sel', !!this._stemmingMode)
+    this._chip.querySelector('span').innerHTML = this._stemmingMode ? '<b>◎ OmniStemming</b> on · tap or move along the stem' : '<b>◎ OmniPointing</b> on · hover (or tap) the floor'
   }
 
   isActive () { return this._active }
@@ -279,6 +301,7 @@ export default class OmniPointing {
   _toggleStemmingMode () {
     this._stemmingMode = !this._stemmingMode
     this._clearHoverVisuals()
+    this._syncChip()
   }
 
   // ── Title persistence (localStorage, keyed by exact coordinate) ─────

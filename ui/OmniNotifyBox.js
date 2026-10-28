@@ -9,8 +9,8 @@
  * the existing feed (`omni:notify-panel-toggle`).
  *
  * Placement (measured, not guessed):
- *   side   desktop default. (V190: moved under the PROFILE area; before it sat under "Current State".) Docked right under
- *          the Global Bar's profile columns (its left edge is the avatar column #ob-col01, below the bar), same height as
+ *   side   desktop default. (V190: moved under the PROFILE area; V230: now flush with the LEFT EDGE of the screen, x = 0, no gap.) Docked right under
+ *          the Global Bar, same height as
  *          the ribbon; the ribbon starts to its right (utils/OmniLayout --omni-ribbon-left). Used only while at least
  *          MIN_RIBBON px remain for the ribbon. The strip to its left (under the logo) is now free: the userCompass's
  *          default spot (ui/OmniUserCompass.js).
@@ -337,7 +337,7 @@ export default class OmniNotifyBox {
       const y = clamp(s.y ?? BAR_H, BAR_H, vh - 52 - HEADER_H)
       return { mode: 'float', x, y, w, h, inset: 0, collapsed }
     }
-    const left = this._profileLeft()
+    const left = 0   // V230: docked flush to the left edge (it used to start at the profile avatar column, x = 64, which left a gap under the logo)
     if (!phone && vw - (left + w + GAP) >= MIN_RIBBON) {
       const ribbonH = getRibbonHeight() || 96
       return { mode: 'side', x: left, y: BAR_H, w, h: collapsed ? HEADER_H : Math.max(HEADER_H, ribbonH), inset: left + w + GAP, collapsed }

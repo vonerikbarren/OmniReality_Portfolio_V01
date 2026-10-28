@@ -3,6 +3,7 @@
  *
  *   Help        Omni Help [Keyword [action]]
  *   Sandbox     spawn | add | remove | list | remix | show | hide | lock | unlock | centre | clear
+ *   Construction on | off | set | get | undo   (the painter: shape() color() size() radius() density() spacing() mode() rainbow())
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
  *   Draw        Omni Draw node(static|box|sphere|cone|cylinder|torus|...|note|dimensional) pos(x, y, z) label(...) color(#hex|name) scale(n | x, y, z) rotation(x, y, z) id(name) wireframe
  *   Node        list | get | set | select | delete   (id(name))
@@ -133,6 +134,16 @@ export function registerOmniBuiltins () {
   registerOmni('Sandbox', 'unlock', { summary: 'Unlock the Sandbox', props: {}, run: () => (sbx().setLocked(false), 'Sandbox unlocked') })
   registerOmni('Sandbox', 'centre', { summary: 'Where new Sandbox nodes appear: Omni Sandbox centre pos(60, 1, 0)  (no pos: use the spot in front of the camera)', props: { pos: 'x, y, z' }, run (call, ctx) { const c = call.props.pos !== undefined ? asVec3(call.props.pos, 'pos') : frontOfCamera(ctx); return `Sandbox spawn point (${sbx().centre(c).join(', ')})` } })
   registerOmni('Sandbox', 'clear', { summary: 'Delete every node in the Sandbox and nothing else: Omni Sandbox clear confirm', destructive: true, props: {}, run: () => `Deleted ${sbx().clear()} Sandbox node(s)` })
+
+  // ── Construction (V232) ──
+  const cons = () => { if (!SERVICES.construction) throw new Error('OmniConstruction is not running'); return SERVICES.construction }
+  const BRUSH_PROPS = { shape: 'box, sphere, cone, cylinder, torus, octahedron, icosahedron, dodecahedron, tetrahedron', color: '#rrggbb', size: 'piece size 0.1..4', radius: 'spray radius 0..10', density: 'pieces per step 1..8', spacing: 'min distance between steps 0.1..5', jitterColor: 'colour wobble 0..1', mode: 'ground | air', height: 'ground plane height', distance: 'air distance 2..60', rainbow: 'true cycles hues' }
+  const brushPatch = (pr) => { const o = {}; for (const k of Object.keys(BRUSH_PROPS)) if (pr[k] !== undefined) o[k] = pr[k]; return o }
+  registerOmni('Construction', 'on', { keywordSummary: 'the painter: drag to spray nodes into the Sandbox', summary: 'Omni Construction on [shape(box)] [color(#ff8800)] [size(.5)] [radius(1.5)] [density(3)] [mode(ground|air)] [rainbow(true)]', props: BRUSH_PROPS, run (call) { const p = brushPatch(call.props); if (Object.keys(p).length) cons().set(p); cons().arm(true); return 'Painter on: drag in the scene. Esc or Omni Construction off to stop.' } })
+  registerOmni('Construction', 'off', { summary: 'Turn the painter off', props: {}, run: () => (cons().arm(false), 'Painter off') })
+  registerOmni('Construction', 'set', { summary: 'Change the brush without turning it on', props: BRUSH_PROPS, run (call) { const s = cons().set(brushPatch(call.props)); return Object.entries(s).map(([k, v]) => `${k}: ${v}`).join('\n') } })
+  registerOmni('Construction', 'get', { summary: 'Show the brush', props: {}, run: () => { const c = cons(); return `${c.armed ? 'ON' : 'off'}, ${c.strokes()} stroke(s) to undo\n` + Object.entries(c.get()).map(([k, v]) => `${k}: ${v}`).join('\n') } })
+  registerOmni('Construction', 'undo', { summary: 'Take back the last stroke', props: {}, run: () => `Took back ${cons().undo()} piece(s)` })
 
   // ── Remix (V226) ──
   const rmx = () => { if (!SERVICES.remix) throw new Error('the remix system is not running'); return SERVICES.remix }
