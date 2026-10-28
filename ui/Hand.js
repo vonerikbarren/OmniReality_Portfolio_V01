@@ -129,7 +129,7 @@ const HAND_CONFIGS = {
 const SYMBOLS = {
   hamburger : { glyph: '☰',  label: 'Menu',    title: 'Open menu'        },
   pad       : { glyph: '⚇',  label: 'Pad',     title: 'Movement pad'     },
-  orbiter   : { glyph: '⦿',  label: 'Orbiter', title: 'Orbiter (TBD)'    },
+  orbiter   : { glyph: '⦿',  label: 'Orb-it', title: 'Orb-it: open this hand\'s orb (its potentials orbit behind the tools)'    },
   radial    : { glyph: '⬢',  label: 'Tools',   title: 'Open radial menu' },
 }
 
@@ -277,19 +277,9 @@ const STYLES = /* css */`
   pointer-events   : none;
 }
 
-/* Undefined cells — ⦿ Orbiter — slightly more muted */
+/* V234: ⦿ Orb-it opens this hand's orb (ui/OrbNode.js); it is a normal cell now, lit while the orb is open */
 .hand-cell--orbiter {
-  cursor           : default;
-  opacity          : 0.55;
-}
-
-.hand-cell--orbiter:hover {
-  background       : var(--hand-cell-bg);
-  cursor           : default;
-}
-
-.hand-cell--orbiter .hand-glyph {
-  color            : var(--hand-text-dim);
+  cursor           : pointer;
 }
 
 /* ── Glyph + label typography ─────────────────────────────────────────────── */
@@ -531,6 +521,20 @@ export default class Hand {
     window.removeEventListener('omni:pad-state',      this._onPadState)
     window.removeEventListener('omni:radial-toggle',  this._onRadialExternal)
     window.removeEventListener('omni:pads-global',    this._onGlobalPads)
+    window.removeEventListener('omni:hand-open-request', this._onOpenRequest)
+    window.removeEventListener('omni:orb-state', this._onOrbState)
+  }
+
+  /**
+   * V233: open or close one part of this hand from code, as if its cell were pressed (omni:hand-open-request, `Omni Open Hand`).
+   * part: 'menu' (☰) | 'pad' (⚇) | 'tools' (⬢) | 'orbiter' (⦿ always fires). want: true open, false close, undefined toggle. Returns the new state.
+   */
+  openPart (part = 'menu', want) {
+    const m = { menu: ['_hamburgerActive', '_toggleHamburger'], pad: ['_padActive', '_togglePad'], tools: ['_radialActive', '_toggleRadial'] }[part]
+    if (part === 'orbiter') { this._triggerOrbiter(); return true }
+    if (!m) throw new Error(`context is one of: menu, pad, tools, orbiter (not "${part}")`)
+    if (want === undefined || !!want !== !!this[m[0]]) this[m[1]]()
+    return !!this[m[0]]
   }
 
   // ── Public state setters (called by Drawer / Panel / RadialMenu) ─────────
@@ -606,15 +610,9 @@ export default class Hand {
     const KEYS = { omnihand: { hamburger: '1', radial: '3' }, conscious: { hamburger: '2', radial: '4' }, lh: { radial: 'Left Shift' }, rh: { radial: 'Right Shift' } }
     btn.dataset.omniTip = `${cfg.productName} ${sym.label}`
     btn.dataset.omniTipKey = KEYS[cfg.id]?.[key] ?? '—'
-    btn.dataset.omniTipDesc = key === 'orbiter' ? 'Orbiter — undefined for all four hands (DeveloperQueue item 38).' : this._tooltipFor(key)
+    btn.dataset.omniTipDesc = key === 'orbiter' ? "Orb-it: opens this hand's orb behind its tools menu. Words are what you could do; the tools are what is available now." : this._tooltipFor(key)
     btn.dataset.omniTipSource = 'Hand'
-    // Orbiter is undefined — cursor: default, slightly muted
-    if (key === 'orbiter') {
-      btn.setAttribute('disabled', '')
-      btn.setAttribute('aria-label', `${sym.label} — undefined`)
-    } else {
-      btn.setAttribute('aria-label', this._tooltipFor(key))
-    }
+    btn.setAttribute('aria-label', this._tooltipFor(key))
 
     btn.innerHTML = key === 'orbiter'
       ? /* html */`
@@ -741,6 +739,11 @@ export default class Hand {
   _bindGlobalListeners () {
     const id = this.cfg.id
 
+    this._onOpenRequest = (e) => { const d = e.detail ?? {}; if (d.hand !== id) return; try { d.out = this.openPart(d.part ?? 'menu', d.open) } catch (err) { d.error = err.message } }
+    window.addEventListener('omni:hand-open-request', this._onOpenRequest)
+    this._onOrbState = (e) => { if (e.detail?.hand === id) this._setCellActive('orbiter', !!e.detail.open) }   // V234: ⦿ is lit while this hand's orb is open
+    window.addEventListener('omni:orb-state', this._onOrbState)
+
     // Another component closed our hamburger externally
     this._onHamburgerExternal = (e) => {
       if (e.detail?.hand === id) {
@@ -820,7 +823,7 @@ export default class Hand {
       case 'radial':
         return `${cfg.abbr} Tools — radial menu`
       case 'orbiter':
-        return '⦿ Orbiter — undefined'
+        return '⦿ Orb-it — opens this hand\'s orb, behind the tools menu'
       default:
         return key
     }

@@ -146,7 +146,7 @@ import OmniBrowserProperties from './ui/OmniBrowserProperties.js'
 import OmniBrowserSpace from './modules/OmniBrowserSpace.js'
 import OmniBrowserSpacePanel from './ui/OmniBrowserSpacePanel.js'
 import OmniMixerPanel from './ui/OmniMixerPanel.js'
-import OrbiterVisual from './ui/OrbiterVisual.js'
+// V234: OrbiterVisual (the V1 placeholder for ⦿) is retired: ⦿ Orb-it now opens the hand's orb (ui/OrbNode.js)
 import OmniExpressionVideoPlayer from './ui/OmniExpressionVideoPlayer.js'
 import OmniExpressionator from './modules/OmniExpressionator.js'
 import OmniExpressionatorPanel from './ui/OmniExpressionatorPanel.js'
@@ -326,8 +326,10 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   addDimensionsModules(base, omniNode)
   const { default: OmniBoost } = await import('./systems/OmniBoost.js')   // V220: Boost (LH / RH) with layered effects
   base.addModule(new OmniBoost(base.context))
-  const { default: OmniOrbPanel } = await import('./ui/OmniOrbPanel.js')   // V221: the LH orb
-  base.addModule(new OmniOrbPanel())
+  const { default: OrbNode } = await import('./ui/OrbNode.js')   // V234: one OrbNode per hand, opened by the hand's ⦿ Orb-it cell (the V221 ◉ ORB button is gone)
+  for (const h of ['lh', 'rh', 'conscious', 'omnihand']) base.addModule(new OrbNode(h))
+  const { default: OmniOrbNodes } = await import('./systems/OmniOrbNodes.js')   // V234: orbs summoned into the scene
+  base.addModule(new OmniOrbNodes(base.context, omniNode))
   const { addNoteModules } = await import('./ui/OmniNoteModules.js')   // V213: OmniNote, the rich-text note node
   addNoteModules(base, omniNode)
   // ── V198 Audio library: import any sound file the browser can decode (IndexedDB, utils/OmniAudioAssets.js) + the ⟐OmniAudioLibrary window ──
@@ -562,9 +564,6 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
 
   const omniMixerPanel = new OmniMixerPanel(base.context)
   base.addModule(omniMixerPanel)
-
-  const orbiterVisual = new OrbiterVisual(base.context)
-  base.addModule(orbiterVisual)
 
   const omniExpression = new OmniExpression(base.context)
   base.addModule(omniExpression)

@@ -8,12 +8,16 @@
  *   keys          Ctrl/Cmd+S save · Shift+Alt+F format · Ctrl/Cmd+Enter run · Tab completes a command, else inserts two spaces · Esc leaves the editor
  * Format = utils/OmniFormat.js formatOmniScript (one space between words, Keyword Action(arg) prop(value), comments kept). "Format on save" is on by default.
  * Run runs the BUFFER (saved or not) through the Omni language; Check does the same without changing anything.
+ * V233: look and behaviour come from /home/settings_IDE.json (utils/OmniIDESettings.js: themes, fonts, opacity, text shadow, file-tree shade, extensions reserved);
+ *       bracket finishers (utils/OmniBrackets.js): auto-close, type-over, delete the pair, wrap a selection, Enter between { }, coloured pairs, match highlight.
  * Opened by omni:nav-select '⟐OmniIDE', `Omni IDE open file(/home/x.omni)`, or omni:ide-open { path }.
  */
 import OmniSettingsPanelBase, { PHONE_MAX, esc } from './OmniSettingsPanelBase.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import { formatOmniScript, highlightOmniLine } from '../utils/OmniFormat.js'
 import { runOmniLine, runOmniScript, completeOmni } from '../utils/OmniLangRegistry.js'
+import * as IDES from '../utils/OmniIDESettings.js'
+import * as Br from '../utils/OmniBrackets.js'
 
 export const NAV_ITEM = '⟐OmniIDE'
 export const PANEL_ID = 'omniide'
@@ -23,11 +27,13 @@ const MAX_OUT = 300
 const STYLES = `
 .oss-panel.oide-panel, .oss-panel.oide-panel.is-wide { width: 760px; max-width: calc(100vw - 16px); max-height: calc(100vh - 80px); }
 .oide-panel .oss-body { padding: 0; display: flex; flex-direction: column; overflow: hidden; height: min(560px, calc(100vh - 140px)); }
-.oide-bar { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.oide-panel .oss-body { background: var(--oide-bar, transparent); color: var(--oide-fg, inherit); }
+.oide-bar { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; padding: 5px 8px; border-bottom: 1px solid var(--oide-border, rgba(255,255,255,.12)); background: var(--oide-bar, transparent); }
+.oide-bar select { min-height: 24px; font-size: 10px; max-width: 110px; }
 .oide-bar .oss-btn { min-height: 24px; padding: 1px 7px; }
 .oide-bar label { font-size: 10px; opacity: .8; display: flex; gap: 3px; align-items: center; }
 .oide-main { display: flex; flex: 1 1 auto; min-height: 0; }
-.oide-tree { flex: 0 0 150px; overflow: auto; border-right: 1px solid rgba(255,255,255,.12); padding: 4px 0; font-size: 11px; }
+.oide-tree { flex: 0 0 150px; overflow: auto; border-right: 1px solid var(--oide-border, rgba(255,255,255,.12)); padding: 4px 0; font-size: 11px; background: var(--oide-side, transparent); color: var(--oide-fg, inherit); }
 .oide-tree.is-hidden { display: none; }
 .oide-row { padding: 2px 6px 2px calc(6px + var(--d, 0) * 12px); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oide-row:hover { background: rgba(255,255,255,.1); } .oide-row.is-active { background: rgba(255,255,255,.2); }
@@ -37,20 +43,22 @@ const STYLES = `
 .oide-tab.is-active { opacity: 1; background: rgba(255,255,255,.1); } .oide-tab .x { opacity: .6; } .oide-tab .x:hover { opacity: 1; }
 .oide-pathbar { display: flex; gap: 4px; padding: 3px 6px; align-items: center; flex: 0 0 auto; }
 .oide-pathbar input { flex: 1; min-width: 0; min-height: 22px; font-size: 10px; }
-.oide-ed { position: relative; flex: 1 1 auto; min-height: 90px; display: flex; overflow: hidden; background: rgba(0,0,0,.25); }
-.oide-gut, .oide-hl, .oide-ta { font: 12px/18px 'Courier New', Courier, monospace; tab-size: 2; margin: 0; }
-.oide-gut { flex: 0 0 40px; text-align: right; padding: 6px 6px 6px 0; color: rgba(255,255,255,.35); overflow: hidden; white-space: pre; user-select: none; border-right: 1px solid rgba(255,255,255,.1); }
+.oide-ed { position: relative; flex: 1 1 auto; min-height: 90px; display: flex; overflow: hidden; background: var(--oide-bg, rgba(0,0,0,.25)); }
+.oide-gut, .oide-hl, .oide-ta { font: var(--oide-fs, 12px)/var(--oide-lh, 18px) var(--oide-font, 'Courier New', Courier, monospace); tab-size: var(--oide-tab, 2); margin: 0; }
+.oide-gut { flex: 0 0 40px; text-align: right; padding: 6px 6px 6px 0; color: var(--oide-gutter, rgba(255,255,255,.35)); overflow: hidden; white-space: pre; user-select: none; border-right: 1px solid var(--oide-border, rgba(255,255,255,.1)); background: var(--oide-side, transparent); }
 .oide-gut .e { color: #ff6b6b; font-weight: 700; }
 .oide-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
 .oide-hl, .oide-ta { position: absolute; inset: 0; padding: 6px 8px; white-space: pre; overflow: auto; box-sizing: border-box; border: 0; }
-.oide-hl { pointer-events: none; overflow: hidden; color: rgba(255,255,255,.9); }
-.oide-ta { background: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
-.oide-ta::selection { background: rgba(120,160,255,.45); color: transparent; }
-.oide-hl .c { color: #7d8590; font-style: italic; } .oide-hl .k0 { color: #8aa0b8; } .oide-hl .kw { color: #7fd1ff; font-weight: 700; } .oide-hl .ac { color: #ffd479; }
-.oide-hl .pn { color: #c4a7ff; } .oide-hl .wd { color: #ff9ec4; } .oide-hl .num { color: #8fe3a2; } .oide-hl .str { color: #ffb38a; } .oide-hl .bool { color: #ff9ec4; } .oide-hl .pu { color: #9aa4b2; }
+.oide-hl { pointer-events: none; overflow: hidden; color: var(--oide-fg, rgba(255,255,255,.9)); text-shadow: var(--oide-shadow, none); }
+.oide-ta { background: transparent; color: transparent; caret-color: var(--oide-caret, #fff); resize: none; outline: none; }
+.oide-ta::selection { background: var(--oide-sel, rgba(120,160,255,.45)); color: transparent; }
+.oide-hl .c { color: var(--oide-c, #7d8590); font-style: italic; } .oide-hl .k0 { color: var(--oide-k0, #8aa0b8); } .oide-hl .kw { color: var(--oide-kw, #7fd1ff); font-weight: 700; } .oide-hl .ac { color: var(--oide-ac, #ffd479); }
+.oide-hl .pn { color: var(--oide-pn, #c4a7ff); } .oide-hl .wd { color: var(--oide-wd, #ff9ec4); } .oide-hl .num { color: var(--oide-num, #8fe3a2); } .oide-hl .str { color: var(--oide-str, #ffb38a); } .oide-hl .bool { color: var(--oide-bool, #ff9ec4); } .oide-hl .pu { color: var(--oide-pu, #9aa4b2); }
+.oide-hl .b0 { color: var(--oide-b0, #ffd479); } .oide-hl .b1 { color: var(--oide-b1, #c4a7ff); } .oide-hl .b2 { color: var(--oide-b2, #7fd1ff); } .oide-hl .b3 { color: var(--oide-b3, #8fe3a2); } .oide-hl .b4 { color: var(--oide-b4, #ff9ec4); } .oide-hl .b5 { color: var(--oide-b5, #ffb38a); }
+.oide-hl .bx { color: #ff6b6b; text-decoration: underline wavy #ff6b6b; } .oide-hl .bm { background: rgba(255,255,255,.22); outline: 1px solid rgba(255,255,255,.35); border-radius: 2px; }
 .oide-hl .errline { background: rgba(255,80,80,.22); }
-.oide-status { display: flex; gap: 10px; padding: 2px 8px; font-size: 10px; opacity: .75; flex: 0 0 auto; border-top: 1px solid rgba(255,255,255,.1); }
-.oide-term { flex: 0 0 150px; display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,.18); min-height: 0; }
+.oide-status { display: flex; gap: 10px; padding: 2px 8px; font-size: 10px; opacity: .75; flex: 0 0 auto; border-top: 1px solid var(--oide-border, rgba(255,255,255,.1)); background: var(--oide-bar, transparent); }
+.oide-term { flex: 0 0 150px; display: flex; flex-direction: column; border-top: 1px solid var(--oide-border, rgba(255,255,255,.18)); min-height: 0; background: var(--oide-side, transparent); color: var(--oide-fg, inherit); }
 .oide-out { flex: 1 1 auto; overflow: auto; padding: 4px 8px; font-size: 10px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
 .oide-out .e { color: #ff8a8a; } .oide-out .o { color: #8fe3a2; } .oide-out .m { opacity: .6; }
 .oide-in { display: flex; gap: 4px; align-items: center; padding: 3px 6px; border-top: 1px solid rgba(255,255,255,.1); } .oide-in input { flex: 1; min-width: 0; min-height: 24px; }
@@ -67,7 +75,7 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     super({ id: PANEL_ID, label: '⟐OmniIDE', iconLabel: '⟐{ }', navItems: [NAV_ITEM], className: 'oide-panel', wide: true })
     this.context = context; this.omniNode = omniNode
     this.tabs = []; this.active = -1; this.expanded = new Set(['/', '/home', '/home/scripts'])
-    this.formatOnSave = true; this.history = []; this.hIdx = -1; this._evs = []; this._els = {}; this._delArm = null
+    this.cfg = IDES.mergeSettings({}).settings; this._lastSettingsText = null; this._matchKey = ''; this.formatOnSave = true; this.history = []; this.hIdx = -1; this._evs = []; this._els = {}; this._delArm = null
     this._confirm = (m) => { try { return window.confirm(m) } catch (_) { return false } }
   }
   get fs () { return SERVICES.fs }
@@ -77,12 +85,14 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
   onInit () {
     injectStyles()
     const on = (t, fn) => { window.addEventListener(t, fn); this._evs.push([t, fn]) }
+    on('omni:ide-theme-request', (e) => { const d = e.detail ?? {}; try { if (d.name === undefined) d.out = this.cfg.theme; else d.out = this.setTheme(String(d.name)) } catch (err) { d.error = err.message } })
+    on('omni:ide-settings-request', (e) => { const d = e.detail ?? {}; try { this.open(); this.openSettings(); d.out = IDES.FILE_PATH } catch (err) { d.error = err.message } })
     on('omni:ide-open', (e) => { this.open(); if (e.detail?.path) this.openFile(e.detail.path) })
-    on('omni:fs-changed', () => { if (this.isOpen) this._renderTree() })
+    on('omni:fs-changed', (e) => { const p = e.detail?.path; if (p === IDES.FILE_PATH || p === '/') this.loadSettings(); if (this.isOpen) this._renderTree() })
     this._restore()
   }
   onDestroy () { for (const [t, f] of this._evs) window.removeEventListener(t, f); this._evs = []; this._persist() }
-  onOpened () { this._renderAll(); setTimeout(() => this._els.ta?.focus?.(), 0) }
+  onOpened () { this.loadSettings({ report: false }); this._renderAll(); setTimeout(() => this._els.ta?.focus?.(), 0) }
   refresh () { if (this._els.ta) this._renderAll() }
 
   _restore () {
@@ -117,6 +127,8 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
         <button type="button" class="oss-btn" data-a="check" title="Check this file without running it">Check</button>
         <button type="button" class="oss-btn" data-a="del" title="Delete this file">Delete</button>
         <label><input type="checkbox" data-r="fos"> format on save</label>
+        <select class="oss-input" data-r="theme" aria-label="Theme" title="Theme (saved in settings_IDE.json)">${IDES.THEME_NAMES.map(n => `<option value="${n}">${n}</option>`).join('')}</select>
+        <button type="button" class="oss-btn" data-a="settings" title="Open settings_IDE.json (themes, fonts, opacity, brackets)">⚙</button>
         <button type="button" class="oss-btn" data-a="tree" title="Show or hide the file tree">☰</button>
       </div>
       <div class="oide-main">
@@ -131,10 +143,13 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
       <div class="oide-term"><div class="oide-out" data-r="out" aria-live="polite"></div>
         <div class="oide-in"><span>⟐</span><input class="oss-input" data-r="cmd" placeholder="Omni Help" aria-label="Omni command" autocomplete="off" spellcheck="false"></div></div>`
     const q = (r) => body.querySelector(`[data-r="${r}"]`)
-    this._els = { body, tree: q('tree'), tabs: q('tabs'), path: q('path'), gut: q('gut'), hl: q('hl'), ta: q('ta'), pos: q('pos'), lang: q('lang'), dirty: q('dirty'), msg: q('msg'), out: q('out'), cmd: q('cmd'), fos: q('fos') }
+    this._els = { body, tree: q('tree'), tabs: q('tabs'), path: q('path'), gut: q('gut'), hl: q('hl'), ta: q('ta'), pos: q('pos'), lang: q('lang'), dirty: q('dirty'), msg: q('msg'), out: q('out'), cmd: q('cmd'), fos: q('fos'), theme: q('theme') }
     const E = this._els
     E.fos.checked = this.formatOnSave
     E.fos.addEventListener('change', () => { this.formatOnSave = E.fos.checked; this._persist() })
+    E.theme.value = this.cfg.theme
+    E.theme.addEventListener('change', () => { try { this.setTheme(E.theme.value) } catch (e) { this._flash(e.message, true) } })
+    this._applyVars()
     body.addEventListener('keydown', (e) => e.stopPropagation()); body.addEventListener('keyup', (e) => e.stopPropagation())   // typing here never drives the camera
     body.addEventListener('click', (e) => {
       const b = e.target.closest('[data-a]'); if (b) return this._act(b.dataset.a)
@@ -149,6 +164,37 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     E.cmd.addEventListener('keydown', (e) => this._cmdKey(e))
     this._reopenPending()
   }
+
+  // ── settings (V233) ──
+  /** Apply this.cfg to the panel as CSS custom properties. */
+  _applyVars () {
+    const el = this.el; if (!el) return
+    for (const [k, v] of Object.entries(IDES.toCssVars(this.cfg))) el.style.setProperty(k, v)
+    if (this._els.theme) this._els.theme.value = this.cfg.theme
+  }
+  /** Make sure /home/settings_IDE.json exists (written from the defaults the first time), read it, and apply it. Broken JSON keeps the last good settings. */
+  loadSettings ({ report = true } = {}) {
+    const fs = this.fs; if (!fs) return null
+    let text
+    try { if (!fs.exists(IDES.FILE_PATH)) { fs.mkdir('/home', { quiet: true }); fs.write(IDES.FILE_PATH, IDES.defaultText(), { quiet: true }) } text = fs.read(IDES.FILE_PATH) } catch (_) { return null }
+    if (text === this._lastSettingsText) return this.cfg
+    this._lastSettingsText = text
+    const r = IDES.parseSettingsText(text)
+    if (!r.ok) { if (report) { this._flash(`settings_IDE.json: ${r.error}${r.line ? ' (line ' + r.line + ')' : ''}. Keeping the last good settings.`, true); this._print(`settings_IDE.json ${r.error}${r.line ? ' near line ' + r.line : ''}. Keeping the last good settings.`, 'e') } return null }
+    this.cfg = r.settings; this._applyVars(); if (this._els.ta) this._paint()
+    if (report && r.problems.length) { this._flash(`settings_IDE.json: ${r.problems.length} problem${r.problems.length === 1 ? '' : 's'}, see below`, true); for (const m of r.problems) this._print('settings_IDE.json: ' + m, 'e') }
+    else if (report) this._flash('Settings applied.')
+    return this.cfg
+  }
+  setTheme (name) {
+    if (!IDES.THEME_NAMES.includes(name)) throw new Error(`theme is one of: ${IDES.THEME_NAMES.join(', ')}`)
+    const fs = this._need(); this.loadSettings({ report: false })
+    const text = IDES.setKeyInText(fs.exists(IDES.FILE_PATH) ? fs.read(IDES.FILE_PATH) : IDES.defaultText(), 'theme', name)
+    fs.write(IDES.FILE_PATH, text); const open = this.tabs.find(t => t.path === IDES.FILE_PATH); if (open) { open.text = open.saved = text; if (this.tab === open) this._renderEditor() }
+    this.loadSettings({ report: false }); this._flash(`Theme: ${name}`); return this.cfg.theme
+  }
+  openSettings () { this.loadSettings({ report: false }); return this.openFile(IDES.FILE_PATH) }
+  _isSettings (t = this.tab) { return !!t && t.path === IDES.FILE_PATH }
 
   // ── files ──
   _need () { if (!this.fs) throw new Error('the file system is not running'); return this.fs }
@@ -176,7 +222,7 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
   save (opts = {}) {
     const t = this.tab; if (!t) return false
     if (this.formatOnSave && isOmni(t.path) && !opts.raw) { const r = formatOmniScript(t.text); t.errors = r.errors.map(e => e.line); if (r.changed) this._setText(r.text); else this._paint() }
-    this._need().write(t.path, t.text); t.saved = t.text; this._flash(`Saved ${t.path}`); this._renderTabs(); this._status(); return true
+    this._need().write(t.path, t.text); t.saved = t.text; this._flash(`Saved ${t.path}`); this._renderTabs(); this._status(); if (t.path === IDES.FILE_PATH) this.loadSettings(); return true
   }
   format () {
     const t = this.tab; if (!t) return null
@@ -217,11 +263,33 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     if (e.shiftKey && e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); this.format(); return }
     if (mod && e.key === 'Enter') { e.preventDefault(); this.run(); return }
     if (e.key === 'Escape') { ta.blur(); return }
+    if (!mod && !e.altKey && this._bracketKey(e)) return
     if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault()
       if (this._complete()) return
-      const a = ta.selectionStart, b = ta.selectionEnd; ta.setRangeText('  ', a, b, 'end'); this._edited()
+      const a = ta.selectionStart, b = ta.selectionEnd; ta.setRangeText(' '.repeat(this.cfg.tabSize), a, b, 'end'); this._edited()
     }
+  }
+  /** Bracket finishers. Returns true when the key was handled here. */
+  _bracketKey (e) {
+    const ta = this._els.ta, t = this.tab; if (!t || e.isComposing) return false
+    const o = this.cfg.brackets, a = ta.selectionStart, b = ta.selectionEnd, tab = ' '.repeat(this.cfg.tabSize)
+    let res = null
+    if (e.key === 'Backspace' && o.autoClose) res = Br.deletePair(ta.value, a, b)
+    else if (e.key === 'Enter' && !e.shiftKey) res = Br.enterBetween(ta.value, a, b, tab)
+    else if (e.key.length === 1) res = Br.closeOnType(ta.value, a, b, e.key, o)
+    if (!res) return false
+    e.preventDefault(); this._applyEdit(res); return true
+  }
+  /** Put an edit result into the textarea. execCommand keeps the browser's own undo; the plain assignment is the fallback (and what tests use). */
+  _applyEdit (res) {
+    const ta = this._els.ta, old = ta.value
+    let i = 0; while (i < old.length && i < res.text.length && old[i] === res.text[i]) i++
+    let j = 0; while (j < old.length - i && j < res.text.length - i && old[old.length - 1 - j] === res.text[res.text.length - 1 - j]) j++
+    const ins = res.text.slice(i, res.text.length - j); let done = false
+    try { ta.setSelectionRange(i, old.length - j); done = typeof document.execCommand === 'function' && document.execCommand('insertText', false, ins) && ta.value === res.text } catch (_) { done = false }
+    if (!done) ta.value = res.text
+    ta.setSelectionRange(res.a, res.b); this._edited(); this._cursor()
   }
   /** complete the Omni word before the cursor; false when there is nothing to complete */
   _complete () {
@@ -239,6 +307,7 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     const ta = this._els.ta; if (!ta || !this._els.pos) return
     const before = ta.value.slice(0, ta.selectionStart), ln = before.split('\n').length, col = before.length - before.lastIndexOf('\n')
     this._els.pos.textContent = `Ln ${ln}, Col ${col}`
+    if (this.cfg.brackets.highlightMatch && this.tab) { const m = Br.matchNear(this._info ?? Br.scan(''), ta.selectionStart), key = m ? m.at + ':' + m.other : ''; if (key !== this._matchKey) this._paint() }
   }
 
   // ── run / terminal ──
@@ -284,7 +353,7 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     try {
       if (a === 'new') this.newFile(); else if (a === 'folder') this.newFolder(); else if (a === 'save') this.save()
       else if (a === 'format') this.format(); else if (a === 'run') this.run(); else if (a === 'check') this.run({ dry: true })
-      else if (a === 'del') this.deleteFile(); else if (a === 'tree') this._els.tree.classList.toggle('is-hidden')
+      else if (a === 'del') this.deleteFile(); else if (a === 'settings') this.openSettings(); else if (a === 'tree') this._els.tree.classList.toggle('is-hidden')
     } catch (e) { this._flash(e.message, true) }
   }
   _rowClick (row) {
@@ -333,9 +402,17 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
     const E = this._els, t = this.tab; if (!E.hl) return
     const text = t ? t.text : '', lines = text.split('\n'), omni = t && isOmni(t.path), errs = new Set(t?.errors ?? [])
     E.hl.textContent = ''
+    const br = this.cfg.brackets, withBr = !!t && (br.colorPairs || br.highlightMatch)
+    this._info = Br.scan(text, { comments: !!omni })
+    const match = withBr && br.highlightMatch ? Br.matchNear(this._info, E.ta.selectionStart ?? 0) : null
+    this._matchKey = match ? match.at + ':' + match.other : ''
+    let lineStart = 0
     lines.forEach((ln, i) => {
       const row = document.createElement('span'); if (errs.has(i + 1)) row.className = 'errline'
-      if (omni) for (const s of highlightOmniLine(ln)) { if (!s.cls) row.appendChild(document.createTextNode(s.text)); else { const sp = document.createElement('span'); sp.className = s.cls; sp.textContent = s.text; row.appendChild(sp) } }
+      let segs = omni ? highlightOmniLine(ln) : [{ text: ln, cls: '' }]
+      if (withBr) segs = Br.decorate(segs, lineStart, this._info, { colorPairs: br.colorPairs, highlightMatch: br.highlightMatch, match })
+      lineStart += ln.length + 1
+      if (omni || withBr) for (const s of segs) { if (!s.cls) row.appendChild(document.createTextNode(s.text)); else { const sp = document.createElement('span'); sp.className = s.cls; sp.textContent = s.text; row.appendChild(sp) } }
       else row.appendChild(document.createTextNode(ln))
       E.hl.appendChild(row); E.hl.appendChild(document.createTextNode('\n'))
     })
@@ -344,7 +421,7 @@ export default class OmniIDEPanel extends OmniSettingsPanelBase {
   }
   _status () {
     const E = this._els, t = this.tab; if (!E.lang) return
-    E.lang.textContent = t ? (isOmni(t.path) ? 'Omni script' : 'Plain text') : ''
+    E.lang.textContent = t ? (isOmni(t.path) ? 'Omni script' : this._isSettings(t) ? 'IDE settings (JSON)' : 'Plain text') : ''
     E.dirty.textContent = t && t.text !== t.saved ? 'unsaved' : ''
     this._renderTabsDirty()
   }

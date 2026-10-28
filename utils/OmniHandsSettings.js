@@ -50,6 +50,7 @@
  * Adding fields needs no `_v` bump: load() merges every hand over DEFAULTS.
  */
 
+import { defaultPool, HANDS as ORB_HANDS } from './OmniOrbPotentials.js'
 import { CLOCK } from '../data/OmniDimensionalAxesData.js'
 
 export const STORE_KEY = 'omni:hands-settings-v1'
@@ -74,17 +75,22 @@ export const DEFAULT_MAGAZINE = {
        'Coalesce', 'Diffuse', 'Compete', 'Cooperate', 'Adapt', 'Emerge'],
 }
 
+/** V234: the orb settings every hand has (the words are that hand's OmniPotentials; colour / opacity / picture-or-video are the orb panel's look). */
+function orbDefaults (hand) {
+  return { orbWords: defaultPool(hand), orbSpeed: 1, orbOpacity: 1, orbColor: ORB_HANDS[hand].palette.disc, orbShown: 12, orbMediaKind: 'none', orbMediaName: '', orbMediaOpacity: 0.55 }
+}
+
 /** Pre-V163 values of the constants the systems used to hard-code (+ V165 speed / ammo). */
 export const DEFAULTS = {
   lh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.lh, ammo: 'Orbit', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
                elementKind: 'Process', chainEnabled: true, fireDistance: 10, maxAlive: 40, particles: true,
-               orbWords: ['Opportunities', 'Unknowns', 'Undefined', 'Possibilities', '?', 'Maybe', 'Perhaps', 'Potential', 'Unwritten', 'Open', 'Unmapped', 'What if'], orbSpeed: 1, orbChargeMs: 1200, orbOpacity: 1,
+               ...orbDefaults('lh'), orbChargeMs: 1200,
                boostMult: 3, boostRamp: 0.25, boostSustain: 0.4, boostVibration: 'shake', boostVibAttack: 0.1, boostVibRelease: 0.3, boostAfterimage: true, boostGhostMs: 60, boostGlitch: false, boostBlink: false, boostBlinkMs: 90, boostBlinkRadius: 3 },
   rh:        { padOnStart: false, speed: 1, magazine: DEFAULT_MAGAZINE.rh, ammo: 'Pulse', maxActive: 8, anchorMode: 'nearest', anchorCount: 3,
-               fireDistance: 10, maxAlive: 40, defaultWordDelayMs: 450, particles: true,
+               fireDistance: 10, maxAlive: 40, defaultWordDelayMs: 450, particles: true, ...orbDefaults('rh'), orbChargeMs: 1200,
                boostMult: 3, boostRamp: 0.25, boostSustain: 0.4, boostVibration: 'shake', boostVibAttack: 0.1, boostVibRelease: 0.3, boostAfterimage: true, boostGhostMs: 60, boostGlitch: false, boostBlink: false, boostBlinkMs: 90, boostBlinkRadius: 3 },
-  conscious: { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.conscious.pos, particles: true },
-  omnihand:  { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.omnihand.pos, stagger: true, particles: true },
+  conscious: { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.conscious.pos, particles: true, ...orbDefaults('conscious') },
+  omnihand:  { padOnStart: false, speed: 1, travelDuration: 0.55, relDuration: 0.45, holdRepeatMs: 450, clockHour: CLOCK.omnihand.pos, stagger: true, particles: true, ...orbDefaults('omnihand') },
 }
 
 /** Numeric limits (min, max) used to clamp every write and every load. */
@@ -102,6 +108,8 @@ export const LIMITS = {
   orbOpacity:       { min: 0.15, max: 1 },     // V225: how see-through the round orb panel is
   orbSpeed:         { min: 0.1, max: 4 },      // V221: LH orb
   orbChargeMs:      { min: 200, max: 5000 },
+  orbShown:         { min: 4, max: 24 },        // V234: how many potentials the orb shows at once
+  orbMediaOpacity:  { min: 0.1, max: 1 },
   boostMult:        { min: 1, max: 20 },       // V220: Boost
   boostRamp:        { min: 0.02, max: 3 },
   boostSustain:     { min: 0, max: 10 },
@@ -115,6 +123,7 @@ export const LIMITS = {
 /** Allowed values of the string fields that are enums. */
 export const ENUMS = {
   anchorMode: ['nearest', 'none'],
+  orbMediaKind: ['none', 'image', 'video'],
   elementKind: ['Terminator', 'Process', 'Decision', 'InputOutput', 'Connector', 'Loop'],   // V168 (mirrors systems/OmniFlowFire.js FLOW_KINDS)
 }
 
@@ -132,6 +141,7 @@ function sanitize (hand, key, value) {
   if (Array.isArray(def)) return sanitizeMagazine(value, def)
   if (typeof def === 'string') {
     if (typeof value !== 'string') return def
+    if (key === 'orbColor') return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : def
     return ENUMS[key] && !ENUMS[key].includes(value) ? def : value.slice(0, 48)
   }
   const n = Number(value)

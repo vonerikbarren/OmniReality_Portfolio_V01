@@ -17,15 +17,15 @@ export const WORD_TIPS = {
   unmapped: 'No route here yet. Be the first.',
   'what if': 'The shortest way to start a Reality.',
 }
-export const MAX_WORDS = 24
-export const MAX_WORD_LEN = 24
+export const MAX_WORDS = 64   // V234: the full pool (30 synonyms + 19 languages) fits
+export const MAX_WORD_LEN = 28
 export const MAX_STREAM = 24
 export const RINGS = [{ tilt: 0.35, rot: 0.0, rx: 1.0, ry: 0.42 }, { tilt: -0.5, rot: 1.1, rx: 0.86, ry: 0.36 }, { tilt: 0.1, rot: 2.2, rx: 0.7, ry: 0.3 }]
 
-export function cleanWords (list) {
+export function cleanWords (list, fallback = DEFAULT_WORDS) {
   const out = []
   ;(Array.isArray(list) ? list : []).forEach(w => { const s = String(w ?? '').trim().slice(0, MAX_WORD_LEN); if (s && !out.some(o => o.toLowerCase() === s.toLowerCase()) && out.length < MAX_WORDS) out.push(s) })
-  return out.length ? out : [...DEFAULT_WORDS]
+  return out.length ? out : [...fallback]
 }
 export const parseWords = (text) => cleanWords(String(text ?? '').split(/[,\n]/))
 export const wordTip = (w) => WORD_TIPS[String(w).toLowerCase()] ?? 'Your word. Edit the list in ⟐OmniHands.'

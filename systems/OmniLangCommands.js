@@ -4,6 +4,8 @@
  *   Help        Omni Help [Keyword [action]]
  *   Sandbox     spawn | add | remove | list | remix | show | hide | lock | unlock | centre | clear
  *   Construction on | off | set | get | undo   (the painter: shape() color() size() radius() density() spacing() mode() rainbow())
+ *   Orb         open | close | fire | words | summon | list | clear   (hand(lh|rh|conscious|omnihand))
+ *   Open        hand(lh|rh|conscious|omni) context(menu|pad|tools|orbiter) state(open|close|toggle)
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
  *   Draw        Omni Draw node(static|box|sphere|cone|cylinder|torus|...|note|dimensional) pos(x, y, z) label(...) color(#hex|name) scale(n | x, y, z) rotation(x, y, z) id(name) wireframe
  *   Node        list | get | set | select | delete   (id(name))
@@ -22,6 +24,7 @@ import { formatOmniScript } from '../utils/OmniFormat.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as Hands from '../utils/OmniHandsSettings.js'
 import { AXIOMS } from '../data/OmniAxiomData.js'
+import { defaultPool } from '../utils/OmniOrbPotentials.js'
 
 const GEOS = { static: 'BoxGeometry', box: 'BoxGeometry', sphere: 'SphereGeometry', cylinder: 'CylinderGeometry', cone: 'ConeGeometry', torus: 'TorusGeometry', torusknot: 'TorusKnotGeometry',
   octahedron: 'OctahedronGeometry', tetrahedron: 'TetrahedronGeometry', icosahedron: 'IcosahedronGeometry', dodecahedron: 'DodecahedronGeometry', plane: 'PlaneGeometry', circle: 'CircleGeometry', ring: 'RingGeometry', capsule: 'CapsuleGeometry' }
@@ -94,6 +97,27 @@ export function registerOmniBuiltins () {
   registerOmni('IDE', 'open', { keywordSummary: 'the in-space code editor', summary: 'Open the IDE, optionally on a file: Omni IDE open file(/home/scripts/hello.omni)', props: { file: PATH },
     run (call) { const p = call.props.file ?? call.props.path ?? call.words[0]; window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniIDE' } })); if (p !== undefined) window.dispatchEvent(new CustomEvent('omni:ide-open', { detail: { path: String(p) } })); return 'OmniIDE open' + (p !== undefined ? ': ' + p : '') } })
 
+  registerOmni('IDE', 'theme', { arg: 'name', summary: 'Show or change the IDE theme: Omni IDE theme(midnight)  (omni-dark, midnight, paper, terminal, dusk). Saved in /home/settings_IDE.json', props: { name: 'theme name' },
+    run (call) { const d = { name: call.arg !== undefined ? call.arg : call.props.name }; window.dispatchEvent(new CustomEvent('omni:ide-theme-request', { detail: d })); if (d.error) throw new Error(d.error); if (d.out === undefined) throw new Error('the IDE is not running here'); return d.name === undefined ? 'IDE theme: ' + d.out : 'IDE theme is now ' + d.out } })
+  registerOmni('IDE', 'settings', { summary: 'Open /home/settings_IDE.json in the IDE (themes, fonts, opacity, text shadow, file-tree shade, bracket options, extensions)', props: {},
+    run () { const d = {}; window.dispatchEvent(new CustomEvent('omni:ide-settings-request', { detail: d })); if (d.error) throw new Error(d.error); if (!d.out) throw new Error('the IDE is not running here'); return 'Opened ' + d.out + ' in the IDE. Save it (Ctrl/Cmd+S) to apply.' } })
+
+  // ── Open (V233) ──
+  const HAND_IDS = { omnihand: 'omnihand', omni: 'omnihand', conscious: 'conscious', consciousness: 'conscious', lh: 'lh', left: 'lh', lefthand: 'lh', rh: 'rh', right: 'rh', righthand: 'rh' }
+  registerOmni('Open', 'hand', { keywordSummary: 'open parts of the interface from a script', arg: 'hand', summary: 'Open a hand\'s menu: Omni Open Hand(lh|rh|conscious|omni) [context(menu|pad|tools|orbiter)] [state(open|close|toggle)]  (context defaults to menu)',
+    props: { context: 'menu (☰ drawer / panel) | pad (⚇) | tools (⬢ radial) | orbiter (⦿)', state: 'open (default) | close | toggle' },
+    run (call) {
+      const raw = String(call.arg ?? call.props.hand ?? call.words[0] ?? '').toLowerCase().replace(/[^a-z]/g, ''); const hand = HAND_IDS[raw]
+      if (!hand) throw new Error(`give a hand: Omni Open Hand(${['lh', 'rh', 'conscious', 'omni'].join(' | ')})`)
+      const part = String(call.props.context ?? 'menu').toLowerCase(), st = String(call.props.state ?? 'open').toLowerCase()
+      if (!['open', 'close', 'toggle'].includes(st)) throw new Error('state is one of: open, close, toggle')
+      const detail = { hand, part: part === 'tool' ? 'tools' : part, open: st === 'toggle' ? undefined : st === 'open' }
+      window.dispatchEvent(new CustomEvent('omni:hand-open-request', { detail }))
+      if (detail.error) throw new Error(detail.error)
+      if (detail.out === undefined) throw new Error('that hand is not on screen (hands are not running here)')
+      return `${hand} ${detail.part}: ${part === 'orbiter' ? 'fired' : detail.out ? 'open' : 'closed'}`
+    } })
+
   // ── Boost (V220) ──
   const boostHand = (call) => { const h = String(call.props.hand ?? 'lh').toLowerCase(); if (h !== 'lh' && h !== 'rh') throw new Error('hand(...) must be lh or rh'); return h }
   const boosts = () => { const b = SERVICES.boost; if (!b) throw new Error('Boost is not running'); return b }
@@ -108,15 +132,27 @@ export function registerOmniBuiltins () {
       if (call.props.value === undefined) throw new Error('value(...) is needed')
       const v = Hands.setHandSetting(h, k, call.props.value); return `${h.toUpperCase()} ${k} = ${v}` } })
 
-  // ── Orb (V221) ──
-  registerOmni('Orb', 'open', { keywordSummary: 'the LH orb of possibility', summary: 'Open the LH orb', props: {}, run () { window.dispatchEvent(new CustomEvent('omni:orb-open', { detail: { hand: 'lh' } })); return 'LH orb open' } })
-  registerOmni('Orb', 'close', { summary: 'Close the LH orb', props: {}, run () { window.dispatchEvent(new CustomEvent('omni:orb-close')); return 'LH orb closed' } })
-  registerOmni('Orb', 'fire', { summary: 'Fire the loaded LH ammo as the orb does. Charge 0.4+ is a stronger shot; 0.98+ is the strongest and reaches wider', props: { charge: '0..1 (default 0)' }, run (call) {
-    const c = Math.max(0, Math.min(1, Number(call.props.charge ?? 0) || 0)); window.dispatchEvent(new CustomEvent('omni:hand-activate', { detail: { hand: 'lh', charge: c } })); return c >= 0.98 ? 'Fired the loaded LH ammo (full charge)' : c >= 0.4 ? 'Fired the loaded LH ammo (strong)' : 'Fired the loaded LH ammo' } })
-  registerOmni('Orb', 'words', { summary: 'Set the orbiting words: Omni Orb words value("Maybe, Open, ?")', props: { value: 'comma separated words' }, run (call) {
-    if (call.props.value === undefined) { return (Hands.getHandSetting('lh', 'orbWords') ?? []).join(', ') }
+  // ── Orb (V221, V234: every hand has an orb; summon puts one in the scene) ──
+  const ORB_HANDS = { lh: 'lh', left: 'lh', rh: 'rh', right: 'rh', conscious: 'conscious', omnihand: 'omnihand', omni: 'omnihand' }
+  const orbHand = (call) => { const raw = String(call.props.hand ?? 'lh').toLowerCase().replace(/[^a-z]/g, ''); const h = ORB_HANDS[raw]; if (!h) throw new Error('hand(...) is one of: lh, rh, conscious, omnihand'); return h }
+  const orbs3d = () => { if (!SERVICES.orbnodes) throw new Error('scene orbs are not running'); return SERVICES.orbnodes }
+  registerOmni('Orb', 'open', { keywordSummary: 'the orbs of potential, one per hand (the ⦿ Orb-it cell)', summary: 'Open a hand\'s orb: Omni Orb open [hand(lh|rh|conscious|omnihand)]', props: { hand: 'lh | rh | conscious | omnihand (default lh)' }, run (call) { const h = orbHand(call); window.dispatchEvent(new CustomEvent('omni:orb-open', { detail: { hand: h } })); return `${h} orb open: its potentials orbit behind the tools menu` } })
+  registerOmni('Orb', 'close', { summary: 'Close a hand\'s orb (no hand: close them all)', props: { hand: 'which hand' }, run (call) { const h = call.props.hand === undefined ? undefined : orbHand(call); window.dispatchEvent(new CustomEvent('omni:orb-close', { detail: { hand: h } })); return h ? `${h} orb closed` : 'All orbs closed' } })
+  registerOmni('Orb', 'fire', { summary: 'Fire the loaded LH / RH ammo as the orb does. Charge 0.4+ is a stronger shot; 0.98+ is the strongest and reaches wider', props: { hand: 'lh | rh (default lh)', charge: '0..1 (default 0)' }, run (call) {
+    const h = orbHand(call); if (h !== 'lh' && h !== 'rh') throw new Error('only the LH and RH orbs fire ammo; use Omni Orb summon')
+    const c = Math.max(0, Math.min(1, Number(call.props.charge ?? 0) || 0)); window.dispatchEvent(new CustomEvent('omni:hand-activate', { detail: { hand: h, charge: c } })); return c >= 0.98 ? `Fired the loaded ${h.toUpperCase()} ammo (full charge)` : c >= 0.4 ? `Fired the loaded ${h.toUpperCase()} ammo (strong)` : `Fired the loaded ${h.toUpperCase()} ammo` } })
+  registerOmni('Orb', 'words', { summary: 'Show or set a hand\'s potentials: Omni Orb words hand(rh) value("Ideas, Colors")  (value(reset) restores the full list)', props: { hand: 'which hand', value: 'comma separated words, or reset' }, run (call) {
+    const h = orbHand(call)
+    if (call.props.value === undefined) { return (Hands.getHandSetting(h, 'orbWords') ?? []).join(', ') }
+    if (String(call.props.value).toLowerCase() === 'reset') { Hands.setHandSetting(h, 'orbWords', defaultPool(h)); return `${h} orb words reset (${(Hands.getHandSetting(h, 'orbWords') ?? []).length} words)` }
     const list = (Array.isArray(call.props.value) ? call.props.value : String(call.props.value).split(',')).map(w => String(w).trim()).filter(Boolean)
-    Hands.setHandSetting('lh', 'orbWords', list); return 'Orb words: ' + (Hands.getHandSetting('lh', 'orbWords') ?? []).join(', ') } })
+    Hands.setHandSetting(h, 'orbWords', list); return `${h} orb words: ` + (Hands.getHandSetting(h, 'orbWords') ?? []).join(', ') } })
+  registerOmni('Orb', 'summon', { summary: 'Put an orb in the scene looping some words: Omni Orb summon hand(rh) words("Ideas, Colors") [pos(x, y, z)] [scale(1..3)]  (no words: the first few of the hand\'s list)', props: { hand: 'lh | rh | conscious | omnihand', words: 'comma separated', pos: 'x, y, z (default 8 units ahead of the camera)', scale: '0.5..3' },
+    run (call) {
+      const h = orbHand(call), list = call.props.words === undefined ? (Hands.getHandSetting(h, 'orbWords') ?? []).slice(0, 6) : (Array.isArray(call.props.words) ? call.props.words : String(call.props.words).split(',')).map(w => String(w).trim()).filter(Boolean)
+      const r = orbs3d().summon({ hand: h, words: list, pos: call.props.pos === undefined ? undefined : asVec3(call.props.pos, 'pos'), scale: call.props.scale }); return `Summoned ${r.id}: ${r.words.join(', ')} at (${r.pos.join(', ')})` } })
+  registerOmni('Orb', 'list', { summary: 'The orbs in the scene', props: {}, run () { const l = orbs3d().list(); return l.length ? l.map(o => `${o.id}  ${o.hand}  ${o.words.join(', ')}`).join('\n') : 'No orbs in the scene' } })
+  registerOmni('Orb', 'clear', { summary: 'Remove every orb from the scene: Omni Orb clear confirm', destructive: true, props: {}, run: () => `Removed ${orbs3d().clear()} orb(s)` })
 
   // ── Sandbox (V226) ──
   const sbx = () => { if (!SERVICES.sandbox) throw new Error('the sandbox is not running'); return SERVICES.sandbox }

@@ -43,6 +43,8 @@
 
 import gsap from 'gsap'
 import { parseWords } from '../utils/OmniOrbModel.js'
+import { defaultPool } from '../utils/OmniOrbPotentials.js'
+import { saveMedia, removeMedia } from '../utils/OmniOrbMedia.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as WindowManager from './WindowManager.js'
 import {
@@ -416,7 +418,7 @@ export default class OmniHandsPanel {
 
     this._viewSpeed(body, hand)
     if (hand === 'lh' || hand === 'rh') this._viewBoost(body, hand)   // V220
-    if (hand === 'lh') this._viewOrb(body)   // V221
+    this._viewOrb(body, hand)   // V221 (LH), V234: every hand has an orb
     if (hand === 'lh') this._viewLogical(body)
     if (hand === 'rh') this._viewCreative(body)
     if (hand === 'lh' || hand === 'rh') this._viewAmmo(body, hand)
@@ -554,20 +556,45 @@ export default class OmniHandsPanel {
     })
   }
 
-  /** V221: the LH orb (ui/OmniOrbPanel.js): its words, speed and charge time. */
-  _viewOrb (body) {
-    const g = this._group(body, '◉ Orb (the ◉ ORB button above the LH pad)')
-    const row = el('label', 'omh-row'); row.appendChild(el('span', 'omh-row-label', 'Orbiting words (commas)'))
-    const inp = el('input', 'omh-num'); inp.type = 'text'; inp.dataset.key = 'orbWords'; inp.style.width = '170px'; inp.maxLength = 600
-    const cur = () => (getHandSetting('lh', 'orbWords') ?? []).join(', ')
+  /** V221 / V234: a hand's orb (ui/OrbNode.js): its potentials (words), how many show, speed, panel colour and opacity, and one picture or video. */
+  _viewOrb (body, hand) {
+    const g = this._group(body, '⦿ Orb-it (the orb behind the ⬢ tools menu)')
+    const row = el('label', 'omh-row'); row.appendChild(el('span', 'omh-row-label', 'Potentials: orbiting words (commas)'))
+    const inp = el('input', 'omh-num'); inp.type = 'text'; inp.dataset.key = 'orbWords'; inp.style.width = '170px'; inp.maxLength = 1200
+    const cur = () => (getHandSetting(hand, 'orbWords') ?? []).join(', ')
     inp.value = cur()
-    inp.addEventListener('change', () => { setHandSetting('lh', 'orbWords', parseWords(inp.value)); inp.value = cur() })
+    inp.addEventListener('change', () => { setHandSetting(hand, 'orbWords', parseWords(inp.value)); inp.value = cur() })
     row.appendChild(inp); g.appendChild(row)
+    const rs = el('button', 'omh-btn', 'Reset words to the full list'); rs.type = 'button'; rs.dataset.role = 'orb-words-reset'
+    rs.addEventListener('click', () => { setHandSetting(hand, 'orbWords', defaultPool(hand)); inp.value = cur() })
+    g.appendChild(rs)
     this._sync.push(() => { if (document.activeElement !== inp && inp.value !== cur()) inp.value = cur() })
-    this._numRow(g, 'Panel opacity (0.15 faint .. 1 solid)', 'orbOpacity', this._storeNum('lh', 'orbOpacity', 0.05, ''))
-    this._numRow(g, 'Orbit speed', 'orbSpeed', this._storeNum('lh', 'orbSpeed', 0.1, '×'))
-    this._numRow(g, 'Time to full charge', 'orbChargeMs', this._storeNum('lh', 'orbChargeMs', 100, 'ms'))
-    g.appendChild(el('div', 'omh-note', 'Hold the orb\'s core to charge, release to fire the loaded ammo. Click a tool streaming into the core to load it.'))
+    this._numRow(g, 'Words shown at once (4..24)', 'orbShown', this._storeNum(hand, 'orbShown', 1, ''))
+    this._numRow(g, 'Orbit speed', 'orbSpeed', this._storeNum(hand, 'orbSpeed', 0.1, '×'))
+    if (hand === 'lh' || hand === 'rh') this._numRow(g, 'Time to full charge', 'orbChargeMs', this._storeNum(hand, 'orbChargeMs', 100, 'ms'))
+    // panel look: colour, opacity, picture / video
+    const crow = el('label', 'omh-row'); crow.appendChild(el('span', 'omh-row-label', 'Panel colour'))
+    const col = el('input', 'omh-num'); col.type = 'color'; col.dataset.key = 'orbColor'; col.style.width = '56px'
+    col.value = getHandSetting(hand, 'orbColor'); col.addEventListener('input', () => setHandSetting(hand, 'orbColor', col.value))
+    crow.appendChild(col); g.appendChild(crow)
+    this._sync.push(() => { const v = getHandSetting(hand, 'orbColor'); if (document.activeElement !== col && col.value !== v) col.value = v })
+    this._numRow(g, 'Panel opacity (0.15 faint .. 1 solid)', 'orbOpacity', this._storeNum(hand, 'orbOpacity', 0.05, ''))
+    const mrow = el('label', 'omh-row'); mrow.appendChild(el('span', 'omh-row-label', 'Picture or video'))
+    const file = el('input', 'omh-num'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/ogg'; file.dataset.role = 'orb-media-file'; file.style.width = '170px'
+    mrow.appendChild(file); g.appendChild(mrow)
+    const status = el('div', 'omh-note'); status.dataset.role = 'orb-media-status'
+    const rm = el('button', 'omh-btn', 'Remove picture / video'); rm.type = 'button'; rm.dataset.role = 'orb-media-remove'
+    const showStatus = () => { const k = getHandSetting(hand, 'orbMediaKind'); status.textContent = k === 'none' ? 'No picture or video: the panel is the colour above. Pictures up to 8 MB, videos up to 40 MB (kept in this browser).' : `${k === 'video' ? 'Video' : 'Picture'}: ${getHandSetting(hand, 'orbMediaName')}`; rm.style.display = k === 'none' ? 'none' : '' }
+    file.addEventListener('change', async () => {
+      const f = file.files?.[0]; if (!f) return
+      try { const m = await saveMedia(hand, f); setHandSetting(hand, 'orbMediaKind', m.kind); setHandSetting(hand, 'orbMediaName', m.name); window.dispatchEvent(new CustomEvent('omni:orb-media-changed', { detail: { hand } })) } catch (e) { status.textContent = e.message }
+      file.value = ''; if (!/MB|png|jpeg/.test(status.textContent)) showStatus()
+    })
+    rm.addEventListener('click', async () => { await removeMedia(hand); setHandSetting(hand, 'orbMediaKind', 'none'); setHandSetting(hand, 'orbMediaName', ''); window.dispatchEvent(new CustomEvent('omni:orb-media-changed', { detail: { hand } })); showStatus() })
+    g.append(status, rm); showStatus()
+    this._sync.push(() => { if (!/MB|png/.test(status.textContent) || /^(Picture|Video|No picture)/.test(status.textContent)) showStatus() })
+    this._numRow(g, 'Picture / video strength', 'orbMediaOpacity', this._storeNum(hand, 'orbMediaOpacity', 0.05, ''))
+    g.appendChild(el('div', 'omh-note', 'Click ⦿ on the hand to open its orb. Words are what you could do (potentials); the tools streaming in are what is available now. Click words to choose them, then ✦ Summon puts an orb in the scene.'))
   }
 
   /** V220: Boost (systems/OmniBoost.js): its own multiplier on top of Speed, and the layered effects. */
