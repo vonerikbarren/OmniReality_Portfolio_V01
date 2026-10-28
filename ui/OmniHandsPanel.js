@@ -569,6 +569,11 @@ export default class OmniHandsPanel {
     rs.addEventListener('click', () => { setHandSetting(hand, 'orbWords', defaultPool(hand)); inp.value = cur() })
     g.appendChild(rs)
     this._sync.push(() => { if (document.activeElement !== inp && inp.value !== cur()) inp.value = cur() })
+    const nrow = el('label', 'omh-row'); nrow.appendChild(el('span', 'omh-row-label', 'Notify circle (OmniNotifyOfHands)'))
+    const nsel = el('select', 'omh-num'); nsel.dataset.key = 'notifyMode'; nsel.style.width = '150px'
+    for (const [v, t] of [['orb', 'Show while the orb is open'], ['always', 'Always show'], ['off', 'Off']]) { const o = el('option', null, t); o.value = v; nsel.appendChild(o) }
+    nsel.value = getHandSetting(hand, 'notifyMode'); nsel.addEventListener('change', () => setHandSetting(hand, 'notifyMode', nsel.value)); nrow.appendChild(nsel); g.appendChild(nrow)
+    this._sync.push(() => { const v = getHandSetting(hand, 'notifyMode'); if (nsel.value !== v) nsel.value = v })
     this._numRow(g, 'Words shown at once (4..24)', 'orbShown', this._storeNum(hand, 'orbShown', 1, ''))
     this._numRow(g, 'Orbit speed', 'orbSpeed', this._storeNum(hand, 'orbSpeed', 0.1, '×'))
     if (hand === 'lh' || hand === 'rh') this._numRow(g, 'Time to full charge', 'orbChargeMs', this._storeNum(hand, 'orbChargeMs', 100, 'ms'))

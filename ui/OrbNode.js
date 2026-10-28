@@ -195,6 +195,7 @@ export default class OrbNode {
   _showTip () {
     if (!this._tipEl) return
     const h = this._hover
+    this._emit('omni:orb-text', { hand: this.hand, title: h?.title ?? '', text: h?.text ?? '', msg: this._msg })   // V235: OmniNotifyOfHands repeats this outside the orb
     if (h) { this._tipEl.innerHTML = ''; const b = document.createElement('b'); b.textContent = h.title; this._tipEl.append(b, document.createTextNode(' · ' + h.text)); return }
     const a = this._ammo(), sel = this._sel.size
     this._tipEl.textContent = this._msg || (sel ? `${sel} selected. ✦ Summon puts them in the scene.` : (AMMO_HANDS.includes(this.hand) ? (a ? `Loaded: ${a}. Hold the core to charge, release to fire.` : 'The magazine is empty. Load tools in ⟐OmniHands.') : 'Click words to choose them, then ✦ Summon. Hold the core to charge a bigger orb.'))
@@ -217,7 +218,7 @@ export default class OrbNode {
     const h = this._hit(pt)
     if (h?.kind === 'core') { this._hold = { at: performance.now() }; this._charge = 0; this._msg = '' }
     else if (h?.kind === 'tool') this._toolClick(h.name)
-    else if (h?.kind === 'word') { if (this._sel.has(h.word)) this._sel.delete(h.word); else if (this._sel.size < 12) this._sel.add(h.word); this._msg = ''; this._burst = 0.3; this._showTip() }
+    else if (h?.kind === 'word') { if (this._sel.has(h.word)) this._sel.delete(h.word); else if (this._sel.size < 12) this._sel.add(h.word); this._msg = ''; this._burst = 0.3; this._emit('omni:orb-selection', { hand: this.hand, count: this._sel.size }); this._showTip() }
   }
   _toolClick (name) {
     if (AMMO_HANDS.includes(this.hand)) { setHandSetting(this.hand, 'ammo', name); this._msg = `Loaded ${name}.`; this._msgT = 2; this._burst = 0.5; this._showTip(); return }

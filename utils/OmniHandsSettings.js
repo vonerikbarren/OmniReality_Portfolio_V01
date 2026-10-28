@@ -77,7 +77,7 @@ export const DEFAULT_MAGAZINE = {
 
 /** V234: the orb settings every hand has (the words are that hand's OmniPotentials; colour / opacity / picture-or-video are the orb panel's look). */
 function orbDefaults (hand) {
-  return { orbWords: defaultPool(hand), orbSpeed: 1, orbOpacity: 1, orbColor: ORB_HANDS[hand].palette.disc, orbShown: 12, orbMediaKind: 'none', orbMediaName: '', orbMediaOpacity: 0.55 }
+  return { orbWords: defaultPool(hand), orbSpeed: 1, orbOpacity: 1, orbColor: ORB_HANDS[hand].palette.disc, orbShown: 12, orbMediaKind: 'none', orbMediaName: '', orbMediaOpacity: 0.55, notifyMode: 'orb' }
 }
 
 /** Pre-V163 values of the constants the systems used to hard-code (+ V165 speed / ammo). */
@@ -124,6 +124,7 @@ export const LIMITS = {
 export const ENUMS = {
   anchorMode: ['nearest', 'none'],
   orbMediaKind: ['none', 'image', 'video'],
+  notifyMode: ['orb', 'always', 'off'],   // V235: OmniNotifyOfHands: show while the orb is open / always / never
   elementKind: ['Terminator', 'Process', 'Decision', 'InputOutput', 'Connector', 'Loop'],   // V168 (mirrors systems/OmniFlowFire.js FLOW_KINDS)
 }
 

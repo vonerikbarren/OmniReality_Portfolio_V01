@@ -328,6 +328,8 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   base.addModule(new OmniBoost(base.context))
   const { default: OrbNode } = await import('./ui/OrbNode.js')   // V234: one OrbNode per hand, opened by the hand's ⦿ Orb-it cell (the V221 ◉ ORB button is gone)
   for (const h of ['lh', 'rh', 'conscious', 'omnihand']) base.addModule(new OrbNode(h))
+  const { default: OmniNotifyOfHands } = await import('./ui/OmniNotifyOfHands.js')   // V235: each hand's own small circle notify panel
+  for (const h of ['lh', 'rh', 'conscious', 'omnihand']) base.addModule(new OmniNotifyOfHands(h))
   const { default: OmniOrbNodes } = await import('./systems/OmniOrbNodes.js')   // V234: orbs summoned into the scene
   base.addModule(new OmniOrbNodes(base.context, omniNode))
   const { addNoteModules } = await import('./ui/OmniNoteModules.js')   // V213: OmniNote, the rich-text note node
