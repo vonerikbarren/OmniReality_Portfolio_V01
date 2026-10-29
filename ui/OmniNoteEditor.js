@@ -48,6 +48,7 @@ export default class OmniNoteEditor {
   mount () {
     injectNoteStyles()
     this.host.innerHTML = this._html()
+    this.host.setAttribute('data-omni-typing', '')   // V238: every key goes to the note while the cursor is in it (utils/OmniTypingShield.js)
     const on = (t, n, f) => { t.addEventListener(n, f); this._bound.push([t, n, f]) }
     on(this.host, 'mousedown', (e) => { if (e.target.closest?.('.onote-bar button')) e.preventDefault() })   // keep the caret in the text while a tool is pressed
     on(this.host, 'click', (e) => this._click(e))

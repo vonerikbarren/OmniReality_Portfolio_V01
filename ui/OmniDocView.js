@@ -8,6 +8,7 @@
 
 import * as D from '../utils/OmniDocModel.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
+import * as BM from '../utils/OmniDocBookmarks.js'
 
 export const NAV_ITEM = '⟐OmniDoc'
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -36,6 +37,10 @@ export function injectDocStyles () {
 .odc-notice { padding: 8px; border: 1px dashed rgba(255,255,255,.35); border-radius: 8px; line-height: 1.45; }
 .odc-lib { display: flex; flex-direction: column; gap: 2px; max-height: 120px; overflow: auto; }
 .odc-lib div { display: flex; gap: 6px; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 1px 6px; }
+.odc-bm { display: flex; flex-direction: column; gap: 3px; max-height: 150px; overflow: auto; }
+.odc-bm > div { display: flex; gap: 5px; align-items: center; }
+.odc-bm input[type=text] { flex: 1; min-width: 0; }
+.odc-bm .odc-pg { min-width: 54px; }
 .odc-note { font-size: 9.5px; opacity: .75; line-height: 1.4; }
 @media (max-width: 700px) { .odc-grid { grid-template-columns: 1fr; } .odc button, .odc select, .odc input { min-height: 40px; } }
 `
@@ -52,6 +57,7 @@ export default class OmniDocView {
     this._msg = ''; this._err = false
     this._previewKey = ''
     this._previewSeq = 0
+    this._bm = BM.load()   // V237: bookmarks per document (up to 20 each)
   }
   get svc () { return this.opts.svc ?? SERVICES.doc }
 
@@ -113,7 +119,7 @@ export default class OmniDocView {
     const root = this.host.querySelector('[data-ref=root]'); if (!root) return
     this._pick()
     const svc = this.svc; const doc = this._doc()
-    const sig = JSON.stringify([this.nodeId, doc, svc?.listDocNodes?.() ?? [], svc?.listSources?.() ?? null, svc?.canUndo?.(this.nodeId), svc?.canRedo?.(this.nodeId), this._msg])
+    const sig = JSON.stringify([this.nodeId, doc, svc?.listDocNodes?.() ?? [], svc?.listSources?.() ?? null, svc?.canUndo?.(this.nodeId), svc?.canRedo?.(this.nodeId), this._msg, this._bm])
     if (!force && sig === this._sig) return
     const active = document.activeElement
     if (!force && active && (active.type === 'range' || active.type === 'text') && this.host.contains(active)) { this._sig = sig; return }
@@ -151,6 +157,7 @@ export default class OmniDocView {
         <span class="odc-row" role="group" aria-label="Zoom"><button data-act="zoomout" ${doc.zoom <= D.ZOOM_MIN ? 'disabled' : ''} aria-label="Zoom out">−</button><label>zoom <input type="number" data-act="zoom" min="${D.ZOOM_MIN}" max="${D.ZOOM_MAX}" step="25" value="${doc.zoom}" aria-label="Zoom percent"> %</label><button data-act="zoomin" ${doc.zoom >= D.ZOOM_MAX ? 'disabled' : ''} aria-label="Zoom in">+</button><button data-act="zoomfit" ${doc.zoom === 100 ? 'disabled' : ''} aria-label="Zoom to fit (100 percent)">Fit</button></span>
         <span class="odc-row" role="group" aria-label="Move the zoomed view"><button data-act="panl" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look left">◀</button><button data-act="panu" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look up">▲</button><button data-act="pand" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look down">▼</button><button data-act="panr" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look right">▶</button></span></div>
       <div class="odc-note">100 % shows the whole page on the sheet. Zooming in shows a part of it, sharper the closer you are (up to the device's texture limit). Two pages turn two at a time (1–2, 3–4 …).</div>
+      ${this._bmHtml(doc)}
       <div class="odc-grid"><div class="odc-prevbox" data-ref="prevbox"><canvas class="odc-prev" data-ref="prev" width="2" height="2" aria-label="Preview of the current page"></canvas></div>
         <div class="odc-col">
           <div class="odc-row"><label>width <input type="range" data-act="width" min="1" max="30" step="0.5" value="${Math.min(30, doc.width)}" aria-label="Sheet width"> <b data-ref="wv">${doc.width}</b></label></div>
@@ -164,6 +171,17 @@ export default class OmniDocView {
       ${lib}
       <div class="odc-msg ${this._err ? 'is-err' : ''}" role="status" aria-live="polite" data-ref="msg">${esc(this._msg)}</div>`
   }
+
+  /** V237: the bookmark list of the current document (keyed by its source, so every doc node showing this PDF shares it). */
+  _bmKey () { return BM.keyOf(this._doc()?.source) }
+  _bmHtml (doc) {
+    const key = BM.keyOf(doc.source); if (!key) return ''
+    const items = BM.list(this._bm, key)
+    const rows = items.map(b => `<div data-bm="${esc(b.id)}"><button data-act="bmgo" data-id="${esc(b.id)}" class="odc-pg${doc.page === b.page ? ' is-on' : ''}" title="Go to page ${b.page}" aria-label="Go to page ${b.page}">p. ${b.page}</button><input type="text" data-act="bmtitle" data-id="${esc(b.id)}" value="${esc(b.title)}" maxlength="${BM.TITLE_MAX}" aria-label="Bookmark title (edit to rename)"><button data-act="bmdel" data-id="${esc(b.id)}" aria-label="Delete this bookmark" title="Delete">×</button></div>`).join('')
+    return `<div class="odc-bmbox"><div class="odc-row"><b>Bookmarks</b> <span class="odc-note">${items.length} of ${BM.MAX}</span><button data-act="bmadd" ${items.length >= BM.MAX ? 'disabled' : ''} title="Bookmark the page you are on">＋ Bookmark page ${doc.page}</button></div>
+      ${items.length ? `<div class="odc-bm" role="list" aria-label="Bookmarks">${rows}</div><div class="odc-note">Click the page number to go there. Click a title to rename it.</div>` : '<div class="odc-note">None yet. Turn to a page you want to keep and press ＋ Bookmark.</div>'}</div>`
+  }
+  _bmCommit () { BM.save(this._bm); this._sync(true) }
 
   async _updatePreview () {
     const svc = this.svc; const doc = this._doc(); if (!svc || !doc) return
@@ -190,6 +208,7 @@ export default class OmniDocView {
   _act (name, fn) { const r = fn(); if (r && r.ok === false) this.say(r.error || 'That did not work.', true); else this.say(''); return r }
   _click (e) {
     const b = e.target.closest?.('[data-act]'); if (!b || b.disabled) return
+    const b0 = b
     const s = this.svc; const id = this.nodeId; const a = b.dataset.act
     switch (a) {
       case 'create': { const r = s?.createDocNode({ select: true }); if (r?.ok) { this.nodeId = r.nodeId; this.refresh() } else this.say(r?.error || 'Could not create.', true); break }
@@ -201,6 +220,9 @@ export default class OmniDocView {
       case 'zoomout': this._act('zoom', () => s.zoomBy(id, -1)); break
       case 'zoomfit': this._act('zoom', () => s.setZoom(id, 100)); break
       case 'panl': case 'panr': case 'panu': case 'pand': { const d = this._doc(); if (!d) break; const k = 0.25; const dx = a === 'panl' ? -k : a === 'panr' ? k : 0; const dy = a === 'panu' ? -k : a === 'pand' ? k : 0; this._act('pan', () => s.setPan(id, Math.min(1, Math.max(-1, d.panX + dx)), Math.min(1, Math.max(-1, d.panY + dy)))); break }
+      case 'bmadd': { const d = this._doc(); const r = BM.add(this._bm, this._bmKey(), d?.page); if (r.ok) { this.say('Bookmarked page ' + r.bookmark.page + '.'); this._bmCommit() } else this.say(r.error, true); break }
+      case 'bmgo': { const b = BM.list(this._bm, this._bmKey()).find(x => x.id === b0.dataset.id); if (b) this._act('page', () => s.goto(id, b.page)); break }
+      case 'bmdel': { const r = BM.remove(this._bm, this._bmKey(), b0.dataset.id); if (r.ok) { this.say('Bookmark deleted.'); this._bmCommit() } else this.say(r.error, true); break }
       case 'import': this.host.querySelector('[data-ref=file]')?.click(); break
       case 'copy': { const t = this.host.querySelector('[data-ref=text]')?.textContent ?? ''; try { navigator.clipboard.writeText(t).then(() => this.say('Copied.'), () => this.say('Select the text and copy it.', true)) } catch (_) { this.say('Select the text and copy it.', true) } break }
       case 'libdel': s?.removeFromLibrary(b.dataset.id).then((r) => this.say(r?.ok ? 'Removed from your documents.' : (r?.message || 'Could not remove.'), !r?.ok)); break
@@ -222,6 +244,7 @@ export default class OmniDocView {
       case 'quality': this._act('quality', () => s.edit(id, 'quality', (m) => D.setQuality(m, el.value))); break
       case 'paper': this._act('paper', () => s.edit(id, 'paper', (m) => D.setPaper(m, el.value), 'paper')); break
       case 'frame': this._act('frame', () => s.edit(id, 'frame', (m) => D.setFrame(m, el.checked))); break
+      case 'bmtitle': { const r = BM.rename(this._bm, this._bmKey(), el.dataset.id, el.value); if (r.ok) { el.value = r.title; BM.save(this._bm); this._sig = ''; this.say('Renamed.') } else this.say(r.error, true); break }
       case 'title': this._act('title', () => s.edit(id, 'title', (m) => D.setTitle(m, el.value), 'title')); break
       default: break
     }

@@ -72,7 +72,7 @@ export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring 
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, spaces: null, fs: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, spaces: null, fs: null, scenefile: null }
 
 export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_DIMENSIONAL)
 export const isNoteNodeData = (d) => !!d && d.nodeKind === KIND_NOTE

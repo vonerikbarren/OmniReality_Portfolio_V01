@@ -3963,9 +3963,22 @@ export default class OmniNode {
       const rawNodes = localStorage.getItem(STORE_NODES)
       const rawEdges = localStorage.getItem(STORE_EDGES)
 
-      if (rawNodes) {
-        const nodes = JSON.parse(rawNodes)
-        nodes.forEach(data => {
+      if (rawNodes) this._restoreNodes(JSON.parse(rawNodes))
+
+      if (rawEdges) this._restoreEdges(JSON.parse(rawEdges))
+
+      if (this._nodes.size > 0) {
+        console.log(`⟐N — restored ${this._nodes.size} node(s), ${this._edges.length} edge(s) from storage.`)
+      }
+
+    } catch (err) {
+      console.warn('⟐N — localStorage load failed:', err)
+    }
+  }
+
+  /** V236 — rebuilds meshes for saved node records (shared by _load and importScene). */
+  _restoreNodes (nodes) {
+    nodes.forEach(data => {
           // Use the node's own saved color if it has one — falling back
           // to the primitive-type default only for older saves that
           // predate per-node color. This was the actual "color/texture
@@ -4010,11 +4023,11 @@ export default class OmniNode {
           // own restore step instead of surviving through the mesh alone.
           if (data.isEssenceNode) this._rebuildEssenceVisual(data.id)
           window.dispatchEvent(new CustomEvent('omni:node-restored', { detail: { node: data, mesh } }))
-        })
-      }
+    })
+  }
 
-      if (rawEdges) {
-        const edges = JSON.parse(rawEdges)
+  /** V236 — rebuilds edge lines for saved {from,to} records (shared by _load and importScene). */
+  _restoreEdges (edges) {
         const savedStyles = loadEdgeStyles()
         edges.forEach(({ from, to }) => {
           const entryA = this._nodes.get(from)
@@ -4043,15 +4056,33 @@ export default class OmniNode {
         // Let OmniPresenter pick up any restored sequence chain too, not
         // just freshly-drawn ones.
         if (this._edges.some(e => e.isSequenceEdge)) this._dispatchSequenceUpdate()
-      }
+  }
 
-      if (this._nodes.size > 0) {
-        console.log(`⟐N — restored ${this._nodes.size} node(s), ${this._edges.length} edge(s) from storage.`)
-      }
+  /** V236 — a plain-data copy of the whole scene (nodes as saved, edges with their look) for the .omni.json file (utils/OmniSceneJson.js). */
+  exportScene () {
+    const nodes = [...this._nodes.values()].map(n => {
+      const rp = n.mesh.userData?.restPosition ?? n.mesh.position
+      return JSON.parse(JSON.stringify({ ...n.data, position: [rp.x, rp.y, rp.z] }))
+    })
+    const edges = this._edges.map(e => ({ from: e.from, to: e.to, ...(e.isSequenceEdge || !e.style ? {} : { style: { ...e.style } }) }))
+    return { nodes, edges }
+  }
 
-    } catch (err) {
-      console.warn('⟐N — localStorage load failed:', err)
-    }
+  /**
+   * V236 — loads already-validated records (utils/OmniSceneJson.checkFile) into the scene.
+   * mode 'replace' clears the scene first (omni:scene-clear-request, so every module lets go); 'merge' adds beside what is there.
+   * Goes through the same restore path as a page load, so every node kind behaves as after a reload.
+   */
+  importScene ({ nodes = [], edges = [] } = {}, { mode = 'replace' } = {}) {
+    if (mode === 'replace') window.dispatchEvent(new CustomEvent('omni:scene-clear-request'))
+    edges.forEach(e => { if (e.style) saveEdgeStyle(e.from, e.to, e.style) })
+    this._restoreNodes(nodes)
+    this._restoreEdges(edges.map(({ from, to }) => ({ from, to })))
+    this._save()
+    this._updateNodeList()
+    this._updateEdgeList()
+    window.dispatchEvent(new CustomEvent('omni:nodes-updated', { detail: this._storageSnapshot() }))
+    return { nodes: nodes.length, edges: this._edges.length }
   }
 
   _storageSnapshot () {

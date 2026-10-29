@@ -38,7 +38,7 @@ const CSS = `
 .oorb-close:hover { background: rgba(255,255,255,.2); }
 .oorb-summon { position: absolute; bottom: 7.5%; left: 50%; transform: translateX(-50%); padding: 3px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.4); background: rgba(0,0,0,.45); color: #fff; font: 700 10px system-ui, sans-serif; letter-spacing: .08em; cursor: pointer; touch-action: manipulation; }
 .oorb-summon:hover { background: rgba(255,255,255,.25); }
-.oorb-tip { position: absolute; left: 18%; right: 18%; bottom: 19%; text-align: center; font-size: 10px; line-height: 1.3; color: #ccc; pointer-events: none; text-shadow: 0 0 6px #000; }
+.oorb-tip { display: none; position: absolute; left: 18%; right: 18%; bottom: 19%; text-align: center; font-size: 10px; line-height: 1.3; color: #ccc; pointer-events: none; text-shadow: 0 0 6px #000; }
 .oorb-tip b { color: #fff; }
 `
 const FLASH = { lh: 'LH', rh: 'RH', conscious: 'ConsciousHand', omnihand: 'OmniHand' }

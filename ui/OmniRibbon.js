@@ -283,7 +283,9 @@ function buildTabs () {
           b('dev-store', '⌘', 'Dev Store', '—', 'DEV ONLY. Opens ⟐DevOmniStoreSettings: store type records, catalog JSON import / export, items per page, test data, notes for Claude, dump state. Not part of the user settings.', nav('⟐DevOmniStoreSettings'), { name: 'Dev Store [DEV]' }),
         ] },
         { caption: 'Save', btns: [
-          b('save', '⤓', 'Save nodes', '—', 'Writes all nodes and edges to this browser now (they also auto-save). There is no Open / import button because no such handler exists yet.', () => ev('omni:force-save')),
+          b('save', '⤓', 'Save nodes', '—', 'Writes all nodes and edges to this browser now (they also auto-save). To keep a copy as a file, use Export scene; to load one, use Import scene.', () => ev('omni:force-save')),
+          b('scene-export', '⇪', 'Export scene', '—', 'Downloads the whole scene (every node and edge) as a .omni.json file. Same as: Omni Scene export. Not in the file yet: hand settings, painter strokes, scene orbs, uploaded media.', () => ev('omni:scene-file-request', { action: 'export' }), { name: 'Export scene' }),
+          b('scene-import', '⇩', 'Import scene', '—', 'Opens the file picker for a .omni.json file and REPLACES the scene with it (Omni Scene import mode(merge) adds instead).', () => { if (window.confirm('Replace the current scene with the file you choose?')) ev('omni:scene-file-request', { action: 'import', mode: 'replace' }) }, { name: 'Import scene' }),
         ] },
       ],
     },

@@ -5,6 +5,7 @@
  * wires the UI shell, sound system, and camera controls.
  */
 
+import './utils/OmniTypingShield.js'   // V238: first import on purpose, so it is the first key listener on the window (typing areas keep every key)
 import gsap              from 'gsap'
 import * as THREE        from 'three'
 import BaseScene         from './scene/BaseScene.js'

@@ -6,6 +6,7 @@
  *   Construction on | off | set | get | undo   (the painter: shape() color() size() radius() density() spacing() mode() rainbow())
  *   Orb         open | close | fire | words | summon | list | clear   (hand(lh|rh|conscious|omnihand))
  *   Open        hand(lh|rh|conscious|omni) context(menu|pad|tools|orbiter) state(open|close|toggle)
+ *   Scene       export | check | import           (the .omni.json scene file: name() path() mode(replace|merge))
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
  *   Draw        Omni Draw node(static|box|sphere|cone|cylinder|torus|...|note|dimensional) pos(x, y, z) label(...) color(#hex|name) scale(n | x, y, z) rotation(x, y, z) id(name) wireframe
  *   Node        list | get | set | select | delete   (id(name))
@@ -180,6 +181,16 @@ export function registerOmniBuiltins () {
   registerOmni('Construction', 'set', { summary: 'Change the brush without turning it on', props: BRUSH_PROPS, run (call) { const s = cons().set(brushPatch(call.props)); return Object.entries(s).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'get', { summary: 'Show the brush', props: {}, run: () => { const c = cons(); return `${c.armed ? 'ON' : 'off'}, ${c.strokes()} stroke(s) to undo\n` + Object.entries(c.get()).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'undo', { summary: 'Take back the last stroke', props: {}, run: () => `Took back ${cons().undo()} piece(s)` })
+
+  // ── Scene file (V236) — the .omni.json scene ──
+  const sf = () => { if (!SERVICES.scenefile) throw new Error('the scene file module is not running'); return SERVICES.scenefile }
+  const sfMode = (call) => { const m = String(call.props.mode ?? 'replace').toLowerCase(); if (m !== 'replace' && m !== 'merge') throw new Error('mode(replace|merge)'); return m }
+  registerOmni('Scene', 'export', { keywordSummary: 'save the whole scene as a .omni.json file, or load one back', summary: 'Omni Scene export [name(My reality)] [path(/home/scenes/a)]  (no path: the browser downloads it)', props: { name: 'a name for the file', path: 'write into the in-browser file system instead of downloading' },
+    run (call) { const name = call.props.name === undefined ? '' : str(call.props.name, 80); if (call.props.path !== undefined) return 'Saved ' + sf().saveTo(String(call.props.path), { name }); return 'Downloaded ' + sf().download({ name }) } })
+  registerOmni('Scene', 'check', { summary: 'Read a scene file from the in-browser file system and say what is in it, without loading it: Omni Scene check path(/home/scenes/a.omni.json) [mode(merge)]', props: { path: 'the file', mode: 'replace (default) | merge' },
+    run (call) { const fs = SERVICES.fs; if (!fs) throw new Error('the file system is not running'); const r = sf().check(fs.read(String(need(call.props.path, 'path(...)'))), { mode: sfMode(call) }); return (r.ok ? 'OK: ' : 'Cannot load: ') + r.summary + (r.warnings.length ? '\n' + r.warnings.slice(0, 10).map(w => '• ' + w).join('\n') : '') } })
+  registerOmni('Scene', 'import', { summary: 'Load a scene file. mode(replace) clears the scene first and needs confirm; mode(merge) adds. No path: opens the file picker. Omni Scene import path(/home/scenes/a.omni.json) mode(merge)', destructive: false, props: { path: 'a file in the in-browser file system (omit for the file picker)', mode: 'replace (default, needs the word confirm) | merge', confirm: 'required for replace' },
+    run (call) { const mode = sfMode(call); if (mode === 'replace' && !(call.words.some(w => w.toLowerCase() === 'confirm') || call.props.confirm === true)) throw new Error('replace clears the scene first: add the word "confirm", or use mode(merge)'); if (call.props.path === undefined) { sf().pick({ mode }).then(t => send('omni:notify-info', { text: t.split('\n')[0] }), e => send('omni:notify-info', { text: 'Scene file: ' + e.message })); return 'Choose a .omni.json file in the picker' } return sf().importFromPath(String(call.props.path), { mode }) } })
 
   // ── Remix (V226) ──
   const rmx = () => { if (!SERVICES.remix) throw new Error('the remix system is not running'); return SERVICES.remix }
