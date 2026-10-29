@@ -6,6 +6,8 @@
  *   Construction on | off | set | get | undo   (the painter: shape() color() size() radius() density() spacing() mode() rainbow())
  *   Orb         open | close | fire | words | summon | list | clear   (hand(lh|rh|conscious|omnihand))
  *   Open        hand(lh|rh|conscious|omni) context(menu|pad|tools|orbiter) state(open|close|toggle)
+ *   Demo        play | stop | list                (name(meaning) speed() captions() keep(); a 10-second sequence of meaning shown by change)
+ *   Decor       list | show | hide                 (name(landingRoom|portalSpheres|trackingNodes); the old starting shapes, off by default; reload to apply)
  *   Scene       export | check | import           (the .omni.json scene file: name() path() mode(replace|merge))
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
  *   Draw        Omni Draw node(static|box|sphere|cone|cylinder|torus|...|note|dimensional) pos(x, y, z) label(...) color(#hex|name) scale(n | x, y, z) rotation(x, y, z) id(name) wireframe
@@ -24,6 +26,8 @@ import { asVec3 } from '../utils/OmniLang.js'
 import { formatOmniScript } from '../utils/OmniFormat.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as Hands from '../utils/OmniHandsSettings.js'
+import * as Decor from '../utils/OmniSceneDecor.js'
+import * as M_DEMO from '../utils/OmniMeaningDemoModel.js'
 import { AXIOMS } from '../data/OmniAxiomData.js'
 import { defaultPool } from '../utils/OmniOrbPotentials.js'
 
@@ -181,6 +185,18 @@ export function registerOmniBuiltins () {
   registerOmni('Construction', 'set', { summary: 'Change the brush without turning it on', props: BRUSH_PROPS, run (call) { const s = cons().set(brushPatch(call.props)); return Object.entries(s).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'get', { summary: 'Show the brush', props: {}, run: () => { const c = cons(); return `${c.armed ? 'ON' : 'off'}, ${c.strokes()} stroke(s) to undo\n` + Object.entries(c.get()).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'undo', { summary: 'Take back the last stroke', props: {}, run: () => `Took back ${cons().undo()} piece(s)` })
+
+  // ── Decor (V239) ──
+  registerOmni('Decor', 'list', { keywordSummary: 'the old decoration shapes of the starting scene (off by default)', summary: 'Show which are on', props: {}, run: () => Object.entries(Decor.load()).map(([k, v]) => `${k}: ${v ? 'on' : 'off'}`).join('\n') + '\n(changes apply after a reload)' })
+  registerOmni('Decor', 'show', { summary: 'Bring a decoration back after a reload: Omni Decor show name(landingRoom|portalSpheres|trackingNodes)', props: { name: 'landingRoom | portalSpheres | trackingNodes' }, run (call) { Decor.setDecor(String(need(call.props.name, 'name(...)')), true); return `${call.props.name} will be on after a reload` } })
+  registerOmni('Decor', 'hide', { summary: 'Remove a decoration after a reload: Omni Decor hide name(...)', props: { name: 'landingRoom | portalSpheres | trackingNodes' }, run (call) { Decor.setDecor(String(need(call.props.name, 'name(...)')), false); return `${call.props.name} will be off after a reload` } })
+
+  // ── Demo (V241) — the 10-second meaning demo ──
+  const demo = () => { if (!SERVICES.demo) throw new Error('the demo module is not running'); return SERVICES.demo }
+  registerOmni('Demo', 'play', { keywordSummary: 'a short sequence in the scene: meaning shown by change', summary: 'Omni Demo play name(meaning) [speed(1)] [captions(false)] [keep(true)]  (10 seconds, Esc stops)', props: { name: 'meaning (the only demo so far)', speed: '0.25..4 (default 1)', captions: 'false hides the captions (for testing whether people read the change)', keep: 'true leaves the three nodes afterwards' },
+    run (call) { const n = String(call.props.name ?? 'meaning').toLowerCase(); if (n !== 'meaning') throw new Error('the demos are: meaning'); return demo().play({ speed: call.props.speed, captions: call.props.captions !== false && String(call.props.captions) !== 'false', keep: call.props.keep === true || String(call.props.keep) === 'true' }) } })
+  registerOmni('Demo', 'stop', { summary: 'Stop the demo and remove its nodes', props: {}, run: () => (demo().stop() ? 'Stopped' : 'No demo is playing') })
+  registerOmni('Demo', 'list', { summary: 'The demos and what each change shows', props: {}, run: () => 'meaning (10 s)\n' + M_DEMO.describe() })
 
   // ── Scene file (V236) — the .omni.json scene ──
   const sf = () => { if (!SERVICES.scenefile) throw new Error('the scene file module is not running'); return SERVICES.scenefile }

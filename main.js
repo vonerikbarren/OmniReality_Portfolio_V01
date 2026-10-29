@@ -17,6 +17,7 @@ import ParticleField     from './modules/ParticleField.js'
 import PortalSpheres     from './modules/PortalSpheres.js'
 import OmniPlatform      from './modules/OmniPlatform.js'
 import OmniLandingRoom   from './modules/OmniLandingRoom.js'
+import { decorOn } from './utils/OmniSceneDecor.js'   // V239: the old decoration shapes are off by default
 import OmniPlayerGame    from './systems/OmniPlayerGame.js'
 import AccountLoginPanel from './ui/AccountLoginPanel.js'
 import AccountLoginCryptx from './modules/AccountLoginCryptx.js'
@@ -204,9 +205,9 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   const orbitMod = base.addModule(new OrbitModule(base.context))
                    base.addModule(new RootSpace(base.context))
                    base.addModule(new ParticleField(base.context))
-                   base.addModule(new PortalSpheres(base.context))
+                   if (decorOn('portalSpheres')) base.addModule(new PortalSpheres(base.context))
                    base.addModule(new OmniPlatform(base.context))
-                   const omniLandingRoom = base.addModule(new OmniLandingRoom(base.context))
+                   const omniLandingRoom = decorOn('landingRoom') ? base.addModule(new OmniLandingRoom(base.context)) : { nodes: [], getNode: () => null }   // V239: no shapes; the NavMap just has no rooms to list
                    base.addModule(new NavMapPanel(base.context, omniLandingRoom, '⟐NavMap'))
                    base.addModule(new OmniNotifyPanel(base.context))
                    base.addModule(new OmniFloor(base.context))
@@ -215,7 +216,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
                    base.addModule(new FloorManagerPanel(omniFloorManager))
                    base.addModule(new OmniTargeting(base.context))
                    base.addModule(new OmniTargetingSettingsPanel(base.context))
-                   base.addModule(new OmniTrackingNodes(base.context))
+                   if (decorOn('trackingNodes')) base.addModule(new OmniTrackingNodes(base.context))
                    base.addModule(new FloorSettingsPanel(base.context))
                    base.addModule(new ToolTipSettingsPanel())
                    base.addModule(new TerminalTunnel(base.context))

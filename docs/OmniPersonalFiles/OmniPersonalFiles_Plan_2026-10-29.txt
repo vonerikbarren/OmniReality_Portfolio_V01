@@ -1,0 +1,113 @@
+OMNIPERSONALFILES  -  loose notes, not part of the build
+Written 2026-10-29 from the owner's words. Nothing in the code reads this folder.
+When OmniNet and the infrastructure start, this whole folder moves out into its own
+private repo (the "personal sandbox"). Keep it out of public repos and public zips.
+
+
+1. WHERE THINGS STAND
+- The OS (OmniStarOS / OmniRealities) is the ECOSYSTEM. Real products on top of it are not built yet.
+- Main template still to finish -> then the owner's portfolio -> then clients.
+- Plan: fix bugs, finish a complete product list, get one clean copy, copy it into a new base repo
+  ("coming up for air"), then go deep on the backend.
+- Blocker today: no database. Realities cannot be saved somewhere others can open them.
+
+
+2. THE GOALS (owner's words, tidied)
+A. Solve systemic, almost-impossible problems by showing the reality itself as a traversable
+   problem, then offering potential solutions judged against a set of criteria.
+B. A communication platform: every person has their own space to navigate AND a connection
+   to the shared space.
+C. OmniNet: a traversable internet. (The scene is the home of it. We built the ecosystem first.)
+D. Look and feel: Interstellar + MegaMan Battle Network. Dimensional communication between
+   people. Keep everything stupid-simple so average people understand (shapes, not jargon).
+E. VR and AR later. Plenty of room to scale.
+
+
+3. CLIENTS AND MONEY
+- Today: two clients. A friend, and an organisation (a church).
+- Right now the budget is FREE. Everything below must work on free tiers at first.
+- Later: a hosting budget PER CLIENT, with an upcharge to the client that covers the costs,
+  sold as weekly, monthly or annual.
+- A separate budget for APIs (and later the owner's own services, in the Battle Network vibe).
+
+Cost model (fill in real numbers when a host is chosen; check current prices then)
+  client price  =  (hosting + storage + bandwidth + API/AI usage + backup)  x  margin  +  your time
+  Keep each of those lines separate per client so you can see which one grows.
+  Annual plans: cheaper per month for the client, cash up front for you, but refund rules needed.
+  Put usage CAPS in every plan (storage, visitors, AI messages) so a busy month cannot eat the margin.
+
+Ideas for what to sell the two clients now
+  Church:  a "visit our space" reality (welcome room, service times, sermon library, events),
+           presented through OmniPresentation; members get a limited-movement tier.
+  Friend:  agree what they want to show first; make it the pilot; learn what confuses people.
+  Both:    the first reality is built by you, hosted statically, no accounts needed.
+
+
+4. HOW OTHERS EXPLORE A REALITY (offer levels, name them later)
+  Level 1  PRESENT     OmniPresentation only: a guided tour, no free movement. Cheapest, safest, simplest.
+  Level 2  EXPLORE     limited freedom of movement inside the space (paid extra).
+  Level 3  FULL        both, plus VR/AR when those exist ("greater experience").
+Enforce levels with the reality file, not with the client: the file says which camera modes and
+which nodes a visitor may use. A server only needed once paid levels must be checked.
+
+
+5. THE DATABASE QUESTION, FREE FIRST
+Step 1 (free, no server): a reality is one .omni.json file (built in V236). Host the files in a
+  repo / static hosting and add a small registry file that lists them. Visitors only READ.
+  Good enough for the first two clients: you build and upload, they explore.
+Step 2 (free tier backend, when visitors must WRITE or log in): one small service with
+  file storage + a database. Options to compare then (verify current limits): Cloudflare R2 +
+  Workers, Supabase free tier, Backblaze B2. The secret keys live only on the server.
+Step 3 (own services): the owner's own small servers with their own look and voice.
+Rules that stay true: the app keeps working offline; uploaded data is untrusted and re-checked
+by the same sanitizer code on the server; nothing real-money or private until the end of the
+backend build order (claude/buildOrder_Backend_V01.md in the Project).
+
+
+6. THE GUIDE (AI companion inside the app)
+Idea: a helper that travels with the user, like a fairy / navigator (Navi, Fi) and a party member
+that has its own abilities (Donald and Goofy in Kingdom Hearts): it can DO things while the
+user works, not only talk.
+Original character: use these only as inspiration. Make its name, look and voice your own
+(working name: OmniGuide), so there is no copyright or trademark trouble.
+
+What it should do (ordered by how cheap and safe each is)
+  1. Know where you are: reads the current selection, camera place, open panels.   [free, local]
+  2. Explain: what is this node / tool / word, in plain language, with the shape legend. [free]
+  3. Suggest the next step, as an Omni command the user can accept with one tap.      [free]
+     The Omni language is already a safe action surface: commands have summaries, props,
+     and destructive ones need the word "confirm". The guide proposes, the user approves.
+  4. Do small jobs on request: arrange nodes, rename, remix, export a .omni.json, run a script. [free]
+  5. Help with the Problem Reality (section 7): ask for criteria, point out missing evidence,
+     compare solutions, state its assumptions.                                          [needs a language model]
+  6. Natural-language chat for anything else.                                           [needs a language model = costs money]
+Build order: 1-4 as a rule-based guide first (no cost, works offline). Add the language model
+only for 5-6, behind a server that holds the key, with per-client caps (section 3).
+Rules: it never acts without a visible proposal; every action is undoable or needs confirm; it
+shows why it suggests something; it can be turned off or made quiet; it never invents facts about
+the user's own reality.
+Needs from the owner: personality (calm? playful?), the party-member abilities list, and the
+look (a shape-based body fits "stupid simple").
+
+
+7. PROBLEM REALITY (the core thesis, not built yet)
+Nodes = facts, actors, constraints. Edges = cause / dependency. Criteria = weighted rules
+people agree on. Solutions = nodes scored against the criteria, with the evidence and
+assumptions shown. Anyone can change a weight and watch the ranking move.
+Build ONE thin example end to end (a real, small problem) before building more tools.
+
+
+8. WHAT THE OWNER IS HONING
+Skills to grow on purpose: backend basics (HTTP, a database, accounts), deployment and
+backups, pricing / selling to clients, testing with real users, keeping the scope small.
+
+
+9. NEXT STEPS (proposed)
+  [ ] Review the build list as Core / Lab / Park. Decide the repo split.
+  [ ] Clean copy -> new base repo with tests and an automatic check on each change.
+  [ ] Finish the template -> the owner's portfolio.
+  [ ] Pilot reality for the friend, then the church, as .omni.json files on free static hosting.
+  [ ] Backend steps 0-1: data classes (public / account / private), a hello server.
+  [ ] Decide the offer levels and write the first price sheet.
+  [ ] Prototype the rule-based guide (section 6, items 1-4).
+  [ ] Draft the first Problem Reality example.

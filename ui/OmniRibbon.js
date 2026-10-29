@@ -99,7 +99,8 @@ export const RIBBON_LAYOUT = {
     ['Editors', ['song-editor', 'mix-editor', 'doc-editor', 'poly-editor', 'audio-library']] ] },
   sandbox: { id: 'sandbox', label: 'Sandbox', icon: '⚗', tip: 'Sandbox tab: experiments kept apart from your portfolio', groups: [
     ['Experiments', ['omni-sandbox', 'omni-remix', 'omni-remix-sparks']],
-    ['Painter', ['omni-paint', 'omni-paint-undo']] ] },
+    ['Painter', ['omni-paint', 'omni-paint-undo']],
+    ['Demos', ['omni-demo-meaning']] ] },
   timevalue: { id: 'timevalue', label: 'Time & Value', icon: '⧖', tip: 'Time & Value tab: OmniChronos controls and the OmniStore, exchange and wallet', groups: [
     ['Chronos', ['chronos', 'chronos-play', 'chronos-back', 'chronos-fwd', 'chronos-start', 'chronos-add', 'chronos-marker', 'time-ruler']],
     ['Value', ['store', 'exchange', 'wallet', 'talent', 'store-settings', 'dev-store']] ] },
@@ -180,6 +181,7 @@ function buildTabs () {
         b('omni-acquisitioner', '▤', 'OmniNodeAcquisitioner', '—', 'Opens ⟐OmniNodeAcquisitioner: what has arrived in a tunnel, stacked like Tetris pieces, with an inspector beside it. Tunnels only receive when you open them.', nav('⟐OmniNodeAcquisitioner'), { name: 'OmniNodeAcquisitioner' }),
         b('omni-remix', '🎲', 'Remix', '—', 'Deals every node (or the selected one) a random combination: an axiom and perspective, a palette colour, a size, a turn and a name. Tap again for another deal. Undo is on the note that appears. Same thing from the terminal: Omni Remix roll.', () => ev('omni:remix-request', { action: 'roll' }), { name: 'Remix nodes' }),
         b('omni-paint', '🖌', 'Paint', '—', 'OmniConstruction painter. Turns the brush on: drag across the scene (finger or mouse) to spray small nodes into the Sandbox instead of turning the camera. Esc or the Off chip turns it off. Brush: Omni Construction set shape(box) color(#ff8800) size(.5) radius(1.5) density(3) mode(ground|air) rainbow(true).', () => ev('omni:construction-request', { action: 'toggle' }), { name: 'Paint' }),
+        b('omni-demo-meaning', '▶', 'Meaning demo', '—', 'Plays a 10-second sequence in front of you: three nodes, and each axiom makes one change (Power grows one, Time speeds one, Expression changes a colour, Space brings them closer) with a caption. Esc stops it. Same as: Omni Demo play name(meaning). Add captions(false) to test whether people read the change without help.', () => ev('omni:demo-request', { action: 'play' }), { name: 'Meaning demo' }),
         b('omni-paint-undo', '↶', 'Undo paint', '—', 'Takes back the last painted stroke.', () => ev('omni:construction-request', { action: 'undo' }), { name: 'Undo paint' }),
         b('omni-sandbox', '🧪', 'Sandbox', '—', 'Makes a few random nodes in the Sandbox, a marked-off area apart from your portfolio, and deals them a random combination. Tap again to add more. Omni Sandbox clear confirm wipes only the Sandbox.', () => ev('omni:sandbox-request', { action: 'spawn' }), { name: 'Sandbox spawn' }),
         b('omni-remix-sparks', '✺', 'Sparks', '—', 'Shows five random combinations as ideas only. Nothing in the scene changes.', () => ev('omni:remix-request', { action: 'sparks' }), { name: 'Sparks' }),
