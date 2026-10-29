@@ -5,7 +5,7 @@
  *   DocAssets.importText(name, text, type = 'markdown')                     the same for text that is not a file (pasted)
  *   DocAssets.list() / getMeta(id) / remove(id) / rename(id, name) / usage()
  *   DocAssets.getBytes(id)           -> Promise<ArrayBuffer|null>
- * Error codes: 'unsupported', 'too-large' (> 50 MB per file), 'quota' (library full: 250 MB total or 60 documents, or the browser storage is full), 'empty', 'not-a-file', 'storage', 'missing'.
+ * Error codes: 'unsupported', 'too-large' (> 70 MB per file), 'quota' (library full: 250 MB total or 60 documents, or the browser storage is full), 'empty', 'not-a-file', 'storage', 'missing'.
  * The BYTES decide the type (sniffDoc), the extension / mime type are only a hint. Every async function resolves, never rejects.
  * Storage: IndexedDB 'omni-doc-assets-v1' (stores 'meta' and 'blobs'). When IndexedDB is unavailable (private mode, blocked) a memory store takes over and `persistent` is false.
  * Event: window 'omni:doc-assets-changed' {action:'add'|'remove'|'rename', id}.
@@ -14,8 +14,8 @@
 export const DB_NAME = 'omni-doc-assets-v1'
 export const STORE_META = 'meta'
 export const STORE_BLOBS = 'blobs'
-export const MAX_FILE_BYTES = 50 * 1024 * 1024
-export const MAX_TOTAL_BYTES = 250 * 1024 * 1024
+export const MAX_FILE_BYTES = 70 * 1024 * 1024
+export const MAX_TOTAL_BYTES = 270 * 1024 * 1024
 export const MAX_DOCS = 60
 export const MAX_NAME = 60
 export const EVENT = 'omni:doc-assets-changed'

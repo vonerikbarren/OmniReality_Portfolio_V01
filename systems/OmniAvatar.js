@@ -13,6 +13,7 @@
 import * as THREE from 'three'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import { MODES } from '../utils/OmniVoxelGrid.js'
+import { gaitAt } from '../utils/OmniGaitModel.js'   // V242
 
 export const STORE_KEY = 'omni:avatar:v1'
 export const BASE_SPEED = 6            // world units per second on a x1 (walk) line
@@ -29,6 +30,7 @@ export default class OmniAvatar {
     this._mesh = null; this._bound = []; this._inited = false
     this._expect = null          // { cam: Vector3, target: Vector3 } what the follower last set
     this._lastPos = new THREE.Vector3(); this._persistT = null
+    this._clock = 0; this._dist = 0; this._speed = 0; this._smooth = 0; this.gait = { mode: 'idle', y: 0, roll: 0, lean: 0, squash: 0 }
   }
   get space () { return this._space?.() ?? SERVICES.voxel }
   get moving () { return !!this._leg }
@@ -132,10 +134,16 @@ export default class OmniAvatar {
   _poseMesh () {
     const m = this._mesh, vp = SERVICES.vibration?.userPose
     m.position.copy(this.pos)
+    const g = this.gait; m.position.y += g.y
     if (vp?.active) {
       m.position.add(vp.pos); m.rotation.copy(vp.rot); m.scale.setScalar(Math.max(0.05, 1 + vp.scale))
       m.material.emissiveIntensity = 0.5 + vp.glow * 2
-    } else if (m.scale.x !== 1 || m.rotation.x || m.rotation.y || m.rotation.z) { m.rotation.set(0, 0, 0); m.scale.setScalar(1); m.material.emissiveIntensity = 0.5 }
+    } else {
+      // V242: walk (steps) below the hover speed, hover / breathe above it; the lean tips the capsule forward along its travel direction
+      m.rotation.set(0, 0, g.roll)
+      if (g.lean && this._leg) { const d = this._leg.B.clone().sub(this._leg.A); d.y = 0; if (d.lengthSq() > 1e-9) { m.rotation.order = 'YXZ'; m.rotation.y = Math.atan2(d.x, d.z); m.rotation.x = g.lean } }
+      m.scale.set(1, 1 + g.squash, 1); m.material.emissiveIntensity = g.mode === 'hover' ? 0.9 : 0.5
+    }
   }
 
   update (delta = 0.016) {
@@ -149,6 +157,9 @@ export default class OmniAvatar {
         if (!this._leg) { const id = this.pointId; this._stopAtNext = false; this.destination = null; this._emit('omni:avatar-arrived', { pointId: id }); this._changed() }
       } else this.pos.lerpVectors(this._leg.A, this._leg.B, this._t)
     }
+    const dt = Math.min(delta, 0.1); this._clock += dt
+    const target = this._leg ? this._leg.speed : 0; this._speed = target; if (target) this._dist += target * dt
+    this.gait = gaitAt(this._speed, this._clock, this._dist)
     if (this._mesh) this._poseMesh()
     this._followStep(delta)
   }

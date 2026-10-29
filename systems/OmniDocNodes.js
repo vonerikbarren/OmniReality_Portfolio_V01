@@ -20,6 +20,7 @@ import * as D from '../utils/OmniDocModel.js'
 import { KIND_DOC, GEO_DOC, SERVICES } from '../utils/OmniExtraKinds.js'
 import { liveDocMeshes, applyDocLook, setPageCanvas, clearPage } from '../utils/OmniDocNodeMesh.js'
 import { createDocRaster } from './OmniDocRaster.js'
+import { layoutPages, pickLayout, LAYOUTS } from '../utils/OmniDocPageLayouts.js'
 
 const PIN_DISTANCE = 7
 const PERSIST_MS = 300
@@ -66,6 +67,7 @@ export default class OmniDocNodes {
     on('omni:node-created', (d) => this._fixNode(d.node))
     on('omni:node-deleted', (d) => this._onDeleted(d.id))
     on('omni:doc-view-set', (d) => this._viewSet(d))
+    on('omni:doc-layout-request', (d, e) => { const out = this.createLayout(d); if (e.detail && typeof e.detail === 'object') e.detail.out = out })
     on('omni:doc-turn', (d) => { if (!d.nodeId) return; if (Number.isFinite(d.page)) this.goto(d.nodeId, d.page); else this.turn(d.nodeId, d.dir < 0 ? -1 : 1) })
     on('omni:doc-assets-changed', (d) => { this._refreshLibrary(); if (d.action === 'remove') this._invalidateAll() })
     if (!this._raster) this._raster = createDocRaster({ getBytes: (id) => this._getBytes(id) })
@@ -327,7 +329,7 @@ export default class OmniDocNodes {
       const o = opts && typeof opts === 'object' ? opts : {}
       const doc = o.doc && typeof o.doc === 'object' ? D.sanitizeDoc(o.doc) : D.setSource(D.defaultDoc(), 'guide', 'index', 'Guide index')
       const nodeId = typeof o.id === 'string' && /^[\w-]{1,64}$/.test(o.id) ? o.id : newId()
-      const rotation = this._facing()
+      const rotation = Array.isArray(o.rotation) && o.rotation.length >= 3 && o.rotation.slice(0, 3).every(Number.isFinite) ? o.rotation.slice(0, 3) : this._facing()   // V242: a layout sets the facing
       window.dispatchEvent(new CustomEvent('omni:node-create-request', { detail: {
         nodeKind: KIND_DOC, doc, id: nodeId, label: String(o.label || this._nextName()).slice(0, 40), geometry: GEO_DOC, primitive: 'objective', color: NODE_COLOR,
         position: this._positionFor(o, doc.width * doc.aspect), rotation, scale: [1, 1, 1], noParent: true, noSelect: o.select !== true,
@@ -335,6 +337,26 @@ export default class OmniDocNodes {
       if (this.omniNode && !this.omniNode.getNodeData?.(nodeId)) return { ok: false, error: 'The doc node could not be created.' }
       this._dirty = true
       return { ok: true, nodeId }
+    } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
+  }
+  /**
+   * V242: lay a document out in space. `from` = the id of a doc node whose source is used; the pages become real doc nodes (page 1..count), so the level of detail and the pixel budget
+   * look after them like any other sheets. Returns { ok, nodeIds, layout, count, radius }.  Existing sheets are left alone. Each new sheet turns its own page.
+   */
+  createLayout ({ from, layout = 'tunnel', count = 4, center = null, start = 1 } = {}) {
+    try {
+      const src = this.getDoc?.(from); if (!src) return { ok: false, error: 'Pick a doc node first (id(...) or select one).' }
+      const L = pickLayout(layout); if (!L) return { ok: false, error: 'Layouts: ' + LAYOUTS.join(', ') }
+      const c = center ?? this._positionFor({}, 0)
+      const plan = layoutPages({ layout: L, count, width: src.width, aspect: src.aspect, center: c })
+      const first = Math.max(1, Math.round(Number(start) || 1)); const ids = []
+      for (const pg of plan.pages) {
+        const page = src.pages > 0 ? Math.min(src.pages, first + pg.page - 1) : first + pg.page - 1
+        const out = this.createDocNode({ doc: { ...src, spread: 'single', page, zoom: 100 }, position: pg.position, rotation: pg.rotation, label: `${src.title || 'Doc'} p${page}` })
+        if (!out.ok) return { ...out, nodeIds: ids }
+        ids.push(out.nodeId)
+      }
+      return { ok: true, nodeIds: ids, layout: plan.layout, count: plan.count, radius: plan.radius }
     } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
   }
   _fixNode (d) {

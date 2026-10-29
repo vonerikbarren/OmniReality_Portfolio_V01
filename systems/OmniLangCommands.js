@@ -7,6 +7,9 @@
  *   Orb         open | close | fire | words | summon | list | clear   (hand(lh|rh|conscious|omnihand))
  *   Open        hand(lh|rh|conscious|omni) context(menu|pad|tools|orbiter) state(open|close|toggle)
  *   Demo        play | stop | list                (name(meaning) speed() captions() keep(); a 10-second sequence of meaning shown by change)
+ *   Doc         layout | layouts               (id() layout(row|grid|tunnel|helix|sphereIn|sphereOut) pages(1|2|4|6|8|10|25) start(1): the pages of a doc node laid out in space)
+ *   Semantics   create | face | list            (the six-face skin: skin(default|plain|contrast|blank) id() pos(); face id() axiom() icon() label() event())
+ *   Lineup      create | place | take | arrange | delete | attach | detach | list   (id() layout() ids(a, b, c) node() to() index(): a sequence of nodes on a shape; attach carries a node at another's core)
  *   Decor       list | show | hide                 (name(landingRoom|portalSpheres|trackingNodes); the old starting shapes, off by default; reload to apply)
  *   Scene       export | check | import           (the .omni.json scene file: name() path() mode(replace|merge))
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
@@ -28,6 +31,10 @@ import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as Hands from '../utils/OmniHandsSettings.js'
 import * as Decor from '../utils/OmniSceneDecor.js'
 import * as M_DEMO from '../utils/OmniMeaningDemoModel.js'
+import * as DPL from '../utils/OmniDocPageLayouts.js'
+import * as SK from '../utils/OmniSemanticsSkin.js'
+import * as LU from '../utils/OmniLineupModel.js'
+import { setFace as P_setFace } from '../utils/OmniPolyModel.js'
 import { AXIOMS } from '../data/OmniAxiomData.js'
 import { defaultPool } from '../utils/OmniOrbPotentials.js'
 
@@ -197,6 +204,53 @@ export function registerOmniBuiltins () {
     run (call) { const n = String(call.props.name ?? 'meaning').toLowerCase(); if (n !== 'meaning') throw new Error('the demos are: meaning'); return demo().play({ speed: call.props.speed, captions: call.props.captions !== false && String(call.props.captions) !== 'false', keep: call.props.keep === true || String(call.props.keep) === 'true' }) } })
   registerOmni('Demo', 'stop', { summary: 'Stop the demo and remove its nodes', props: {}, run: () => (demo().stop() ? 'Stopped' : 'No demo is playing') })
   registerOmni('Demo', 'list', { summary: 'The demos and what each change shows', props: {}, run: () => 'meaning (10 s)\n' + M_DEMO.describe() })
+
+  // ── Doc layouts (V242) ──
+  registerOmni('Doc', 'layouts', { keywordSummary: 'lay a document out in space', summary: 'List the page layouts and counts', props: {}, run: () => DPL.describe() })
+  registerOmni('Doc', 'layout', { summary: 'Omni Doc layout id(docNode) layout(tunnel) pages(4) [start(1)]  (makes one doc node per page; no id: the selected doc node)', props: { id: 'the doc node to take the source from', layout: DPL.LAYOUTS.join(' | '), pages: DPL.COUNTS.join(' | '), start: 'the first page, default 1' },
+    run (call) {
+      const d = SERVICES.doc; if (!d) throw new Error('the doc module is not running')
+      const id = String(call.props.id ?? call.arg ?? d._selectedId ?? ''); if (!id) throw new Error('id(...) is needed, or select a doc node first')
+      const out = d.createLayout({ from: id, layout: call.props.layout ?? call.words[0] ?? 'tunnel', count: call.props.pages ?? 4, start: call.props.start ?? 1 })
+      if (!out.ok) throw new Error(out.error); return `Laid out ${out.count} pages as ${out.layout} (radius ${out.radius}): ${out.nodeIds.join(', ')}`
+    } })
+
+  // ── Semantics skin (V243) — OmniSemanticsVoxelNode: a six-face cube, one face per axiom ──
+  const poly = () => { if (!SERVICES.poly) throw new Error('the poly module is not running'); return SERVICES.poly }
+  const axiomArg = (v) => { const k = String(need(v, 'axiom(...)')).toLowerCase(); const hit = SK.AXIOM_ORDER.find(a => a === k) ?? SK.AXIOM_ORDER[Number(k) - 1]; if (!hit) throw new Error('axiom(identity|information|space|time|power|expression, or 1-6)'); return hit }
+  registerOmni('Semantics', 'list', { keywordSummary: 'the six-face meaning cube (skin): one face per axiom', summary: 'List the six faces and the skins', props: {}, run: () => SK.describe() })
+  registerOmni('Semantics', 'create', { summary: 'Omni Semantics create [skin(default|plain|contrast|blank)] [id(name)] [pos(x, y, z)]  (a cube, one face per axiom; click a face)', props: { skin: SK.SKIN_NAMES.join(' | '), id: 'node id', pos: 'x, y, z' },
+    run (call) {
+      const skin = String(call.props.skin ?? call.arg ?? 'default'); if (!SK.SKIN_NAMES.includes(skin)) throw new Error('skin(' + SK.SKIN_NAMES.join('|') + ')')
+      const id = call.props.id === undefined ? undefined : String(call.props.id); if (id !== undefined && !ID_OK.test(id)) throw new Error('id: letters, digits, _ and - (max 64)')
+      const out = poly().createPolyNode({ poly: SK.skinToPoly(SK.presetSkin(skin)), id, label: 'Semantics ' + skin, position: call.props.pos === undefined ? undefined : asVec3(call.props.pos), select: true })
+      if (!out.ok) throw new Error(out.error); return `Created ${out.nodeId} (skin ${skin})`
+    } })
+  registerOmni('Semantics', 'face', { summary: 'Change one face: Omni Semantics face id(name) axiom(time) [icon(⧖)] [label(Time)] [event(my:event)]', props: { id: 'the semantics cube', axiom: 'identity | information | space | time | power | expression (or 1-6)', icon: 'a symbol or emoji', label: 'text', event: 'event name' },
+    run (call) {
+      const id = idOf(call); const axiom = axiomArg(call.props.axiom); const i = SK.AXIOM_ORDER.indexOf(axiom); const p = poly().getPoly(id); if (!p) throw new Error('no poly node ' + id)
+      const cur = p.faces[i]; const text0 = cur?.content?.text ?? ''; const m = /^# (.*)\n?(.*)$/s.exec(text0)
+      const icon = call.props.icon === undefined ? (m ? m[1] : '') : str(call.props.icon, 8); const label = call.props.label === undefined ? (m ? m[2] : (cur?.label ?? '')) : str(call.props.label, 40)
+      const patch = { label: label || '(not defined)', content: { type: 'text', text: icon ? `# ${icon}\n${label}` : label } }
+      if (call.props.event !== undefined) patch.event = String(call.props.event)
+      const r = poly().edit(id, 'semantics-face', (m2) => P_setFace(m2, i, patch)); if (!r.ok) throw new Error(r.error || 'could not change the face')
+      return `Face ${i + 1} (${axiom}) of ${id} changed`
+    } })
+
+  // ── Lineups and attachments (V244) ──
+  const lu = () => { if (!SERVICES.lineup) throw new Error('the lineup module is not running'); return SERVICES.lineup }
+  const idList = (v) => String(v ?? '').split(/[\s,]+/).filter(Boolean)
+  registerOmni('Lineup', 'create', { keywordSummary: 'put nodes in a sequence on a shape; they glide to their slots; attach carries a node at another\'s core', summary: 'Omni Lineup create id(name) [layout(row|grid|tunnel|helix|sphereIn|sphereOut)] [ids(a, b, c)] [center(x, y, z)] [spacing(3)]', props: { id: 'lineup name', layout: 'shape', ids: 'node ids in order', center: 'x, y, z (default: ahead of you)', spacing: 'node size, default 3' },
+    run (call) { const r = lu().create({ id: String(need(call.props.id ?? call.arg, 'id(...)')), layout: String(call.props.layout ?? 'row'), ids: idList(call.props.ids), center: call.props.center === undefined ? undefined : asVec3(call.props.center), spacing: Number(call.props.spacing ?? 3) }); return `Lineup ${call.props.id ?? call.arg}: ${r.state.lineups[call.props.id ?? call.arg].order.length} nodes` } })
+  registerOmni('Lineup', 'place', { summary: 'Put a node at a sequence number (1 = first; no index = last; it leaves any other lineup): Omni Lineup place id(name) node(nodeId) [index(2)]', props: { id: 'lineup', node: 'node id', index: 'sequence number' },
+    run (call) { const r = lu().place({ id: String(need(call.props.id, 'id(...)')), node: String(need(call.props.node, 'node(...)')), index: call.props.index === undefined ? null : Number(call.props.index) }); return `${call.props.node} is now number ${r.index} in ${call.props.id}` } })
+  registerOmni('Lineup', 'take', { summary: 'Take a node out of a lineup: Omni Lineup take id(name) node(nodeId)', props: { id: 'lineup', node: 'node id' }, run (call) { lu().take({ id: String(need(call.props.id, 'id(...)')), node: String(need(call.props.node, 'node(...)')) }); return 'Taken out' } })
+  registerOmni('Lineup', 'arrange', { summary: 'Glide every lineup node back to its slot (after you dragged some)', props: {}, run: () => { lu().arrange(); return 'Arranging' } })
+  registerOmni('Lineup', 'delete', { summary: 'Delete a lineup (the nodes stay where they are): Omni Lineup delete id(name)', props: { id: 'lineup' }, run (call) { lu().delete({ id: String(need(call.props.id ?? call.arg, 'id(...)')) }); return 'Deleted' } })
+  registerOmni('Lineup', 'attach', { summary: 'Carry a node at another node\'s core, keeping its offset: Omni Lineup attach node(a) to(b) [off(x, y, z)]', props: { node: 'the carried node', to: 'the carrier', off: 'offset (default: where it is now)' },
+    run (call) { lu().attach({ node: String(need(call.props.node, 'node(...)')), to: String(need(call.props.to, 'to(...)')), off: call.props.off === undefined ? null : asVec3(call.props.off) }); return `${call.props.node} now travels with ${call.props.to}` } })
+  registerOmni('Lineup', 'detach', { summary: 'Let a carried node go: Omni Lineup detach node(a)', props: { node: 'node' }, run (call) { lu().detach({ node: String(need(call.props.node ?? call.arg, 'node(...)')) }); return 'Detached' } })
+  registerOmni('Lineup', 'list', { summary: 'The lineups (in sequence order) and what carries what', props: {}, run () { const s = lu().state(); const a = Object.entries(s.lineups).map(([id, l]) => `${id} [${l.layout}] ${l.order.map((n, i) => (i + 1) + ':' + n).join(' ') || '(empty)'}`); const c = Object.entries(s.attach).map(([n, x]) => `${n} carried by ${x.to}`); return [...a, ...c].join('\n') || 'No lineups or attachments' } })
 
   // ── Scene file (V236) — the .omni.json scene ──
   const sf = () => { if (!SERVICES.scenefile) throw new Error('the scene file module is not running'); return SERVICES.scenefile }

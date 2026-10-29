@@ -31,7 +31,7 @@ It is drawn as an ordinary picture on the sheet (a 2D canvas used as a texture).
 | Image (PNG, JPG, GIF, WebP) | One page, fills the sheet in its own proportions. |
 | Guide pages | The pages of this guide, from the Document list. No import needed. |
 
-Not supported: Word / PowerPoint / Excel files (export to PDF first), zip files, empty files, anything over **50 MB**. The library keeps up to **60 documents and 250 MB** in this browser (IndexedDB). In a private window it works but the files vanish when you close it.
+Not supported: Word / PowerPoint / Excel files (export to PDF first), zip files, empty files, anything over **70 MB**. The library keeps up to **60 documents and 250 MB** in this browser (IndexedDB). In a private window it works but the files vanish when you close it.
 
 ## The ⟐OmniDoc window
 

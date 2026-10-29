@@ -148,7 +148,7 @@ export default class OmniDocView {
     return `<div class="odc-row">${sel}<button data-act="create" title="New doc node">+ Doc</button>
         <button data-act="undo" ${svc.canUndo(this.nodeId) ? '' : 'disabled'}>Undo</button><button data-act="redo" ${svc.canRedo(this.nodeId) ? '' : 'disabled'}>Redo</button></div>
       <div class="odc-drop"><div class="odc-row">${sourceSel}<button data-act="import">Import a file…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden></div>
-        <div class="odc-note">PDF, markdown, text or an image. Drop a file here too. Files stay in this browser (up to 50 MB each).</div></div>
+        <div class="odc-note">PDF, markdown, text or an image. Drop a file here too. Files stay in this browser (up to 70 MB each).</div></div>
       <div class="odc-row"><button data-act="prev" ${doc.page <= 1 ? 'disabled' : ''} aria-label="Page up (previous page)" title="Page up (the PageUp key)">▲ Page up</button>
         <button data-act="next" ${lastShown ? 'disabled' : ''} aria-label="Page down (next page)" title="Page down (the PageDown key)">▼ Page down</button>
         <label>page <input type="number" data-act="page" min="1" max="${doc.pages || 5000}" value="${doc.page}" aria-label="Page number"> of ${pages}${vp[1] ? ` <span class="odc-note">(showing ${vp[0]}–${vp[1]})</span>` : ''}</label>
