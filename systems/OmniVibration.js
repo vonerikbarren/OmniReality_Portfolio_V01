@@ -22,6 +22,7 @@ import * as THREE from 'three'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import { PRESETS, sanitizeProgram, poseAt } from '../utils/OmniVibrationModel.js'
 import { getTimeScale, getLoopWindow } from '../utils/OmniTimeScale.js'   // V217
+import SongPlayer from './OmniSongPlayer.js'   // V245: the beat clock for sync(song)
 
 export const STORE_KEY = 'omni:vibration:v1'
 const DEG = Math.PI / 180
@@ -74,9 +75,13 @@ export default class OmniVibration {
     if (!prog) return null
     if (target !== 'user' && !(this.omniNode?.getMeshById?.(target))) return null
     const env = { ...prog.envelope }
+    // V245: per-start overrides of the beat settings (land, offset, bpm, sync)
+    const over = {}; for (const k of ['land', 'landOffset', 'bpm', 'sync']) if (opts[k] !== undefined && opts[k] !== null && opts[k] !== '') over[k] = opts[k]
+    if (over.bpm !== undefined) over.mode = 'beat'
+    const prog2 = Object.keys(over).length ? sanitizeProgram({ ...prog, ...over }) : prog
     for (const k of ['attack', 'hold', 'release']) if (Number.isFinite(Number(opts[k])) && opts[k] !== null && opts[k] !== '') env[k] = Math.max(0, Number(opts[k]))
     const id = 'run' + (++this._seq)
-    this._runs.set(id, { id, target, program: { ...prog, envelope: env }, t: 0, releaseAt: null, immediate: false })
+    this._runs.set(id, { id, target, program: { ...prog2, id: prog.id, name: prog.name, envelope: env }, beats: 0, bpm: prog2.bpm, t: 0, releaseAt: null, immediate: false })
     this._emit('omni:vibration-changed', { runs: this.runs() })
     return id
   }
@@ -105,7 +110,14 @@ export default class OmniVibration {
     for (const r of this._runs.values()) {
       r.t += dt
       if (r.target !== 'user' && !this.omniNode?.getMeshById?.(r.target)) { finished.push(r.id); continue }   // the node is gone
-      let pose = poseAt(r.program, r.t, r.releaseAt, loop > 0 ? r.t % loop : r.t)
+      // V245: sync('song'): the beat position of the playing song drives the loop (a late start or a seek stays in time, tempo changes are followed); when the song stops it keeps going at the last tempo
+      let cyc = null
+      if (r.program.sync === 'song') {
+        let ck = null; try { ck = SongPlayer.beatClock() } catch (_) { ck = null }
+        if (ck) { r.beats = ck.beats; r.bpm = ck.bpm } else r.beats += dt * r.bpm / 60
+        cyc = r.beats
+      }
+      let pose = poseAt(r.program, r.t, r.releaseAt, loop > 0 ? r.t % loop : r.t, cyc)
       if (r.immediate) pose = { pos: [0, 0, 0], rot: [0, 0, 0], scale: 0, glow: 0, gain: 0, done: true }
       if (pose.done) finished.push(r.id)
       let s = sums.get(r.target)

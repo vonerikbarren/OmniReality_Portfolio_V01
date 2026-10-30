@@ -4,7 +4,10 @@
  */
 import OmniSettingsPanelBase, { PHONE_MAX } from './OmniSettingsPanelBase.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
-import { PROPS, WAVE_NAMES, sanitizeProgram } from '../utils/OmniVibrationModel.js'
+import { PROPS, WAVE_NAMES, LAND, sanitizeProgram, waveAt, beatPosition } from '../utils/OmniVibrationModel.js'
+import createCurveEditor from './OmniCurveEditor.js'
+import { curveFromWave } from '../utils/OmniCurveModel.js'
+import { easeNames } from '../utils/OmniEases.js'
 
 export const NAV_ITEM = '⟐OmniVibration'
 export const PANEL_ID = 'omnivibration'
@@ -16,6 +19,10 @@ const STYLES = `
 .ovb-ch .oss-input, .ovb-ch .oss-select { width: 100%; min-width: 0; padding: 2px 4px; }
 .ovb-ch.ovb-head { font-size: 9px; opacity: .65; }
 .ovb-pat { grid-column: 1 / -1; }
+.ovb-curve { grid-column: 1 / -1; }
+.ocv-bar { display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 11px; }
+.ocv-bar .oss-select { width: auto; }
+.ovb-lead { font-size: 10px; display: flex; gap: 3px; align-items: center; grid-column: 1 / -1; opacity: .85; }
 .ovb-note { font-size: 10px; opacity: .7; margin: 4px 0; }
 .ovb-details > summary { cursor: pointer; font-weight: 600; margin: 6px 0; }
 @media (max-width: ${PHONE_MAX}px) { .oss-panel.ovb-panel, .oss-panel.ovb-panel.is-wide { width: 100%; max-height: 62vh; } }
@@ -115,28 +122,49 @@ export default class OmniVibrationPanel extends OmniSettingsPanelBase {
       <div class="oss-row"><label>Name</label><input class="oss-input" data-f="name" value="${esc(d.name)}" maxlength="40"></div>
       <div class="oss-row"><label>Timing</label><select class="oss-select" data-f="mode"><option value="free"${d.mode === 'free' ? ' selected' : ''}>Free (cycles per second)</option><option value="beat"${d.mode === 'beat' ? ' selected' : ''}>Beat (BPM)</option></select>
         ${d.mode === 'beat' ? `<input class="oss-input" type="number" data-f="bpm" min="20" max="300" step="1" value="${d.bpm}">` : `<input class="oss-input" type="number" data-f="rate" min="0.05" max="12" step="0.05" value="${d.rate}">`}</div>
+      <div class="oss-row"><label>Tempo from</label><select class="oss-select" data-f="sync"><option value="none"${d.sync !== 'song' ? ' selected' : ''}>The BPM above</option><option value="song"${d.sync === 'song' ? ' selected' : ''}>The playing song (beat position)</option></select></div>
+      <div class="oss-row"><label>Beat lands at</label><select class="oss-select" data-f="land">${LAND.map(l => `<option value="${l}"${d.land === l ? ' selected' : ''}>${{ none: 'Start of the loop (as before)', ground: 'Ground (on the floor)', middle: 'Middle (halfway)', apex: 'Apex (in the air)' }[l]}</option>`).join('')}</select>
+        <input class="oss-input" type="number" data-f="landOffset" min="-0.5" max="0.5" step="0.05" value="${d.landOffset ?? 0}" title="Beats: + lands later, - lands earlier"></div>
       <div class="oss-row"><label>Swing (uneven beats)</label><input class="oss-input" type="number" data-f="swing" min="0" max="0.75" step="0.05" value="${d.swing}"></div>
       <div class="ovb-ch ovb-head"><span>What moves</span><span>Wave</span><span>Size</span><span>×Speed</span><span>Phase°</span><span></span></div>
       ${d.channels.map((c, i) => `<div class="ovb-ch" data-i="${i}">
         <select class="oss-select" data-c="prop">${opt(PROPS, c.prop)}</select><select class="oss-select" data-c="wave">${opt(WAVE_NAMES, c.wave)}</select>
         <input class="oss-input" type="number" data-c="amp" step="0.05" value="${c.amp}"><input class="oss-input" type="number" data-c="freq" step="0.25" value="${c.freq}"><input class="oss-input" type="number" data-c="phase" step="15" value="${c.phase}">
         <button type="button" class="oss-btn" data-act="del-ch" data-i="${i}" title="Remove">×</button>
+        <label class="ovb-lead"><input type="radio" name="ovb-lead" data-lead="${i}"${(d.lead ?? 0) === i ? ' checked' : ''}> beat follows this channel</label>
+        ${c.wave === 'curve' ? `<div class="ovb-curve" data-curve="${i}"></div>` : ''}
+        ${c.wave === 'ease' ? `<select class="oss-select ovb-pat" data-c="ease" title="One hump per beat: floor, apex, floor. The rise follows this ease (GSAP names)">${opt(easeNames(), c.ease ?? 'power2.out')}</select>` : ''}
         ${c.wave === 'steps' ? `<input class="oss-input ovb-pat" data-c="pattern" value="${esc((c.pattern ?? []).join(', '))}" title="Values from -1 to 1, looped and eased">` : ''}</div>`).join('')}
       <div class="oss-row"><button type="button" class="oss-btn" data-act="add-ch">+ Channel</button>
         ${p && !p.builtin ? '<button type="button" class="oss-btn" data-act="save">Save changes</button><button type="button" class="oss-btn" data-act="delete">Delete</button>' : ''}
         <button type="button" class="oss-btn" data-act="save-new">Save as new</button></div>
+      <div class="ovb-note">Beat lands at: shifts the motion so the beat falls on the first channel's apex, ground or middle; the small number moves it a little later (+) or earlier (-) in beats. Follow the playing song: stays in time with the song (late start, seek, tempo changes) and keeps the last tempo when it stops. Wave \u201cease\u201d: one hump per beat through a GSAP-named ease. Wave \u201ccurve\u201d: draw it yourself: drag points, tap to add, Delete removes the selected one; the yellow line is where the beat falls (when Beat lands at is set). Choose which channel the beat follows with the small radio button.</div>
       <div class="ovb-note">Size: world units for position, degrees for rotation, a fraction for scale. ×Speed multiplies the base rate; keep it to simple ratios (0.5, 1, 2, 1.5) so the loop repeats exactly. Built-ins are copied, never overwritten.</div>`
+    for (const ed of this._eds ?? []) ed.destroy(); this._eds = []
+    host.querySelectorAll('[data-curve]').forEach((slot) => {
+      const i = Number(slot.dataset.curve); const c = d.channels[i]; if (!c) return
+      const beatOf = () => { try { return beatPosition(sanitizeProgram({ ...d, lead: i })) } catch (_) { return null } }
+      const shows = d.land && d.land !== 'none' && (d.lead ?? 0) === i
+      let ed = null
+      ed = createCurveEditor({ points: c.curve, beat: shows ? beatOf() : null, grid: this._grid ?? '1/8', onChange: (pts) => { c.curve = pts; if (shows && ed) ed.setBeat(beatOf()) } })   // the beat marker follows your edits
+      slot.appendChild(ed.el); ed.el.querySelector('select')?.addEventListener('change', (ev) => { this._grid = ev.target.value }); this._eds.push(ed)
+    })
   }
   _onChange (e) {
     const t = e.target, d = this._draft; if (!d || !t.dataset) return
+    if (t.dataset.lead !== undefined) { d.lead = Number(t.dataset.lead); this._renderEditor(); return }
     if (t.dataset.f) {
-      const f = t.dataset.f; d[f] = (f === 'name' || f === 'mode') ? t.value : Number(t.value)
-      if (f === 'mode') this._renderEditor()
+      const f = t.dataset.f; d[f] = (f === 'name' || f === 'mode' || f === 'land' || f === 'sync') ? t.value : Number(t.value)
+      if (f === 'mode' || f === 'land' || f === 'landOffset') this._renderEditor()
     } else if (t.dataset.c) {
       const row = t.closest('[data-i]'); const c = d.channels[Number(row?.dataset.i)]; if (!c) return
       const k = t.dataset.c
       if (k === 'pattern') c.pattern = t.value.split(',').map(s => Number(s.trim())).filter(Number.isFinite)
-      else if (k === 'prop' || k === 'wave') { c[k] = t.value; if (k === 'wave') this._renderEditor() }
+      else if (k === 'ease') c.ease = t.value
+      else if (k === 'prop' || k === 'wave') {
+        if (k === 'wave' && t.value === 'curve' && c.wave !== 'curve') { const old = { ...c }; c.curve = curveFromWave((u) => waveAt(old, u), 12) }   // start drawing from the current wave
+        c[k] = t.value; if (k === 'wave') this._renderEditor()
+      }
       else c[k] = Number(t.value)
     }
   }
@@ -154,5 +182,6 @@ export default class OmniVibrationPanel extends OmniSettingsPanelBase {
     v.deleteProgram(p.id); this._progId = 'bounce'; this._draft = null; this.refresh(); this._say('Deleted.')
   }
   onOpened () { this.refresh() }
-  onDestroy () { for (const [t, h] of this._evs) window.removeEventListener(t, h); this._evs = [] }
+  onDestroy () { for (const ed of this._eds ?? []) ed.destroy(); this._eds = []
+    for (const [t, h] of this._evs) window.removeEventListener(t, h); this._evs = [] }
 }

@@ -346,8 +346,11 @@ export function registerOmniBuiltins () {
 
   // ── Vibration ──
   const vb = () => { if (!SERVICES.vibration) throw new Error('the vibration system is not running'); return SERVICES.vibration }
-  registerOmni('Vibration', 'start', { keywordSummary: 'looped, rhythmic motion', summary: 'Omni Vibration start target(user) program(bounce) hold(5)', props: { target: 'user or a node id', program: 'bounce, hop, sway, pulse, shake, float, dance or yours', hold: 'seconds to sustain, 0 = until stopped', attack: 'seconds', release: 'seconds' }, run (call) {
-    const p = call.props, id = vb().start(String(p.target ?? 'user'), String(p.program ?? 'bounce'), { hold: p.hold, attack: p.attack, release: p.release })
+  registerOmni('Vibration', 'start', { keywordSummary: 'looped, rhythmic motion', summary: 'Omni Vibration start target(user) program(bounce) hold(5)', props: { target: 'user or a node id', program: 'bounce, hop, sway, pulse, shake, float, dance or yours', hold: 'seconds to sustain, 0 = until stopped', attack: 'seconds', release: 'seconds', bpm: 'beats per minute (beat timing)', land: 'where the beat falls: apex (in the air) | ground | middle | none', offset: 'beats, -0.5..0.5: the beat lands a little later (+) or earlier (-) than that point', sync: 'song = follow the playing song\'s beat and tempo | none' }, run (call) {
+    const p = call.props
+    if (p.land !== undefined && !['none', 'ground', 'middle', 'apex'].includes(String(p.land))) throw new Error('land(apex|ground|middle|none)')
+    if (p.sync !== undefined && !['none', 'song'].includes(String(p.sync))) throw new Error('sync(song|none)')
+    const id = vb().start(String(p.target ?? 'user'), String(p.program ?? 'bounce'), { hold: p.hold, attack: p.attack, release: p.release, bpm: p.bpm, land: p.land, landOffset: p.offset, sync: p.sync })
     if (!id) throw new Error('could not start (check target(...) and program(...))'); return `Started ${p.program ?? 'bounce'} on ${p.target ?? 'user'} (${id})`
   } })
   registerOmni('Vibration', 'stop', { summary: 'Stop a target (releases): Omni Vibration stop target(user)', props: { target: 'user or a node id; leave out for all', immediate: 'true to snap back' }, run (call) {

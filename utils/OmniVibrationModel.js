@@ -11,10 +11,14 @@
  * Loops are periodic by construction, so any program repeats cleanly; `steps` and `swing` make the loop uneven on purpose.
  */
 
+import { isEase, humpAt } from './OmniEases.js'
+import { sanitizeCurve, curveAt } from './OmniCurveModel.js'
 export const PROPS = ['pos.x', 'pos.y', 'pos.z', 'rot.x', 'rot.y', 'rot.z', 'scale', 'glow']
-export const WAVE_NAMES = ['sine', 'tri', 'saw', 'square', 'pulse', 'bounce', 'steps']
+export const WAVE_NAMES = ['sine', 'tri', 'saw', 'square', 'pulse', 'bounce', 'steps', 'ease', 'curve']   // V245: 'ease' = one hump per beat through a GSAP-named ease (channel.ease, e.g. 'power2.out')
+export const LAND = ['none', 'ground', 'middle', 'apex']      // V245: where the BEAT falls in the motion (none = the program's own start, as before)
+export const SYNCS = ['none', 'song']                         // V245: 'song' = follow the playing song's beat position and tempo
 export const LIMITS = {
-  rate: [0.05, 12], bpm: [20, 300], swing: [0, 0.75], amp: [-50, 50], freq: [0.0625, 16], phase: [0, 360],
+  rate: [0.05, 12], bpm: [20, 300], swing: [0, 0.75], landOffset: [-0.5, 0.5], amp: [-50, 50], freq: [0.0625, 16], phase: [0, 360],
   attack: [0, 30], hold: [0, 3600], release: [0, 60], channels: 8, pattern: 16,
 }
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
@@ -38,6 +42,8 @@ export function stepsWave (pattern, u) {
   return a + (b - a) * e
 }
 export function waveAt (ch, u) {
+  if (ch.wave === 'ease') return humpAt(ch.ease, u)
+  if (ch.wave === 'curve') return curveAt(ch.curve ?? [[0, 0], [0.5, 1], [1, 0]], u)   // V246: drawn in the curve editor
   if (ch.wave === 'steps') return stepsWave(ch.pattern ?? [0, 1], u)
   return (WAVES[ch.wave] ?? WAVES.sine)(frac(u))
 }
@@ -51,6 +57,8 @@ export function sanitizeChannel (c) {
     freq: num(o.freq, 1, LIMITS.freq),
     phase: num(o.phase, 0, LIMITS.phase),
   }
+  if (ch.wave === 'curve') ch.curve = sanitizeCurve(o.curve)
+  if (ch.wave === 'ease') ch.ease = isEase(o.ease) ? o.ease : 'power2.out'
   if (ch.wave === 'steps') {
     const p = Array.isArray(o.pattern) ? o.pattern.map(Number).filter(Number.isFinite).slice(0, LIMITS.pattern).map(v => clamp(v, -1, 1)) : []
     ch.pattern = p.length ? p : [0, 1, 0.4, 0.8]
@@ -60,13 +68,15 @@ export function sanitizeChannel (c) {
 export function sanitizeProgram (p) {
   const o = p && typeof p === 'object' ? p : {}
   const channels = (Array.isArray(o.channels) ? o.channels : []).slice(0, LIMITS.channels).map(sanitizeChannel)
-  return {
+  const prog = {
     id: typeof o.id === 'string' && /^[\w-]{1,40}$/.test(o.id) ? o.id : 'vib_' + Math.random().toString(36).slice(2, 8),
     name: typeof o.name === 'string' && o.name.trim() ? o.name.trim().slice(0, 40) : 'Vibration',
     mode: o.mode === 'beat' ? 'beat' : 'free',
     rate: num(o.rate, 1, LIMITS.rate),
     bpm: num(o.bpm, 120, LIMITS.bpm),
     swing: num(o.swing, 0, LIMITS.swing),
+    land: LAND.includes(o.land) ? o.land : 'none', landOffset: num(o.landOffset, 0, LIMITS.landOffset), sync: SYNCS.includes(o.sync) ? o.sync : 'none',
+    lead: 0,
     channels: channels.length ? channels : [sanitizeChannel({})],
     envelope: {
       attack: num(o.envelope?.attack, 0.25, LIMITS.attack),
@@ -74,6 +84,8 @@ export function sanitizeProgram (p) {
       release: num(o.envelope?.release, 0.6, LIMITS.release),
     },
   }
+  prog.lead = Number.isInteger(Number(o.lead)) && o.lead !== null && o.lead !== '' ? clamp(Number(o.lead), 0, prog.channels.length - 1) : 0   // V246: which channel the beat landing follows
+  return prog
 }
 
 /** Base cycles per second of a program. */
@@ -90,9 +102,40 @@ export function cyclesAt (p, t) {
 }
 
 /** The program's raw pose at time t (before the envelope). { pos:[x,y,z], rot:[x,y,z] degrees, scale, glow } */
-export function evaluate (p, t) {
+/**
+ * V245: the shift (in beats) that puts the BEAT on the chosen point of the LEAD channel (the first one): 'apex' = its highest point (in the air), 'ground' = its lowest (on the floor),
+ * 'middle' = halfway up. `landOffset` (beats) then moves the motion later (+) or earlier (-) so the beat lands a little before or after that point. 'none' = 0 (the old behaviour).
+ */
+const SHIFTS = new WeakMap()
+export function landShift (p) {
+  if (!p || !p.land || p.land === 'none') return 0
+  const key = p.channels[p.lead ?? 0] ?? p.channels[0]; const memo = SHIFTS.get(key); const k = `${p.land}|${key.wave}|${key.ease}|${key.amp < 0}|${key.freq}|${key.phase}|${(key.pattern ?? []).join(',')}|${(key.curve ?? []).join(',')}`
+  let base
+  if (memo && memo.k === k) base = memo.v
+  else {
+    const N = 720; const sgn = key.amp < 0 ? -1 : 1; const v = []
+    for (let i = 0; i < N; i++) v.push(sgn * waveAt(key, i / N))
+    const lo = Math.min(...v); const hi = Math.max(...v); const mid = (lo + hi) / 2; const eps = (hi - lo) * 1e-6
+    let u = 0
+    if (hi - lo < 1e-9) u = 0
+    else if (p.land === 'apex') u = v.findIndex(x => x >= hi - eps) / N
+    else if (p.land === 'ground') u = v.findIndex(x => x <= lo + eps) / N
+    else { const g = v.findIndex(x => x <= lo + eps); let i = g; for (let n = 0; n < N; n++) { const a = v[(g + n) % N]; const b = v[(g + n + 1) % N]; if (a < mid && b >= mid) { i = (g + n + 1) % N; break } } u = i / N }
+    base = (u - key.phase / 360) / (key.freq || 1)
+    SHIFTS.set(key, { k, v: base })
+  }
+  return base - (p.landOffset ?? 0)
+}
+
+/** V246: where in the channel's own loop the BEAT is (0..1): for the editor's beat marker. */
+export function beatPosition (p) {
+  const ch = p.channels[p.lead ?? 0] ?? p.channels[0]; const x = landShift(p) * (ch.freq || 1) + ch.phase / 360
+  return x - Math.floor(x)
+}
+
+export function evaluate (p, t, cycles = null) {
   const out = { pos: [0, 0, 0], rot: [0, 0, 0], scale: 0, glow: 0 }
-  const cyc = cyclesAt(p, t)
+  const cyc = (cycles === null ? cyclesAt(p, t) : cycles) + landShift(p)
   for (const ch of p.channels) {
     const v = ch.amp * waveAt(ch, cyc * ch.freq + ch.phase / 360)
     if (ch.prop === 'scale') out.scale += v
@@ -116,8 +159,8 @@ export function envelopeAt (env, t, releaseAt = null) {
 }
 
 /** pose x gain */
-export function poseAt (p, t, releaseAt = null, waveT = t) {   // waveT: V217, the time the waves are read at (a looped event wraps it)
-  const e = envelopeAt(p.envelope, t, releaseAt), v = evaluate(p, waveT)
+export function poseAt (p, t, releaseAt = null, waveT = t, cycles = null) {   // waveT: V217, the time the waves are read at (a looped event wraps it)
+  const e = envelopeAt(p.envelope, t, releaseAt), v = evaluate(p, waveT, cycles)
   const g = e.gain
   return { pos: v.pos.map(x => x * g), rot: v.rot.map(x => x * g), scale: v.scale * g, glow: v.glow * g, gain: g, done: e.done }
 }

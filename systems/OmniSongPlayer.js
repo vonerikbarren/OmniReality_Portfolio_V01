@@ -325,6 +325,15 @@ export class OmniSongPlayer {
     return p
   }
 
+  /** V245: where the playing song is in BEATS (from the start of the song, a float; follows tempo changes and seeks) and its tempo, or null when nothing plays. Used by OmniVibration's song sync. */
+  beatClock () {
+    const s = this._sess; if (!s || s.paused) return null
+    try {
+      const sec = this._secNow(s, this.now()); const bar = SM.secondsToBarSeg(s.segs, sec)
+      return { beats: (bar - 1) * s.segs.bpb, bpm: SM.bpmAtSeg(s.segs, bar), nodeId: s.nodeId }
+    } catch (_) { return null }
+  }
+
   /** Peak levels 0..1 (the same object every call: do not keep it). Audio lanes: AnalyserNode peaks; pattern lanes: the last scheduled note decaying. */
   getLevels (nodeId = null) {
     const s = this._sess
