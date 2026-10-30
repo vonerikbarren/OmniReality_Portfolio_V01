@@ -9,7 +9,8 @@
  *   Demo        play | stop | list                (name(meaning) speed() captions() keep(); a 10-second sequence of meaning shown by change)
  *   Doc         layout | layouts               (id() layout(row|grid|tunnel|helix|sphereIn|sphereOut) pages(1|2|4|6|8|10|25) start(1): the pages of a doc node laid out in space)
  *   Semantics   create | face | list            (the six-face skin: skin(default|plain|contrast|blank) id() pos(); face id() axiom() icon() label() event())
- *   Lineup      create | place | take | arrange | delete | attach | detach | list   (id() layout() ids(a, b, c) node() to() index(): a sequence of nodes on a shape; attach carries a node at another's core)
+ *   Lineup      create | place | take | arrange | delete | attach | detach | list | walk | next | prev | halt  (walk id() seconds() hold() distance() from() loop() auto(): the camera visits each node in sequence order)   (id() layout() ids(a, b, c) node() to() index(): a sequence of nodes on a shape; attach carries a node at another's core)
+ *   Doc         window | flip | goto | windows | unwindow   (sheets in a layout that page through a long document, turned like a carousel)
  *   Decor       list | show | hide                 (name(landingRoom|portalSpheres|trackingNodes); the old starting shapes, off by default; reload to apply)
  *   Scene       export | check | import           (the .omni.json scene file: name() path() mode(replace|merge))
  *   Remix       roll | undo | sparks            (scope() seed() what() scheme() layout() axiom())
@@ -33,6 +34,7 @@ import * as Decor from '../utils/OmniSceneDecor.js'
 import * as M_DEMO from '../utils/OmniMeaningDemoModel.js'
 import * as DPL from '../utils/OmniDocPageLayouts.js'
 import * as SK from '../utils/OmniSemanticsSkin.js'
+import { describe as WM_DESCRIBE } from '../utils/OmniDocWindowModel.js'
 import * as LU from '../utils/OmniLineupModel.js'
 import { setFace as P_setFace } from '../utils/OmniPolyModel.js'
 import { AXIOMS } from '../data/OmniAxiomData.js'
@@ -215,6 +217,16 @@ export function registerOmniBuiltins () {
       if (!out.ok) throw new Error(out.error); return `Laid out ${out.count} pages as ${out.layout} (radius ${out.radius}): ${out.nodeIds.join(', ')}`
     } })
 
+  // ── Doc windows (V250): a few sheets paging through a long document ──
+  const dw = () => { if (!SERVICES.docwindow) throw new Error('the doc window module is not running'); return SERVICES.docwindow }
+  registerOmni('Doc', 'window', { summary: 'Sheets in a layout that page through a long document: Omni Doc window id(docNode) [layout(helix)] [pages(8)] [name(w1)] [start(1)]  (then Omni Doc flip name(w1))', props: { id: 'the doc node to take the source from (no id: the selected one)', layout: DPL.LAYOUTS.join(' | '), pages: 'how many sheets, 1-25', name: 'window name', start: 'first page' },
+    run (call) { const d = SERVICES.doc; const src = String(call.props.id ?? call.arg ?? d?._selectedId ?? ''); if (!src) throw new Error('id(...) is needed, or select a doc node first'); const w = dw().create({ from: src, layout: String(call.props.layout ?? 'helix'), count: call.props.pages ?? 8, id: call.props.name, start: call.props.start ?? 1 }); return `Window ${w.id}: ${w.count} sheets, pages ${w.start}-${w.start + w.count - 1}${w.pages ? ' of ' + w.pages : ''}. Turn it with: Omni Doc flip name(${w.id})` } })
+  registerOmni('Doc', 'flip', { summary: 'Turn a window like a carousel: Omni Doc flip name(w1) [dir(-1)] [by(1)] [seconds(0.6)]', props: { name: 'window', dir: '1 forward (default) | -1 back', by: 'how many pages, 1-25', seconds: 'per page' },
+    run (call) { const name = String(need(call.props.name ?? call.arg, 'name(...)')); const dir = Number(call.props.dir ?? 1) < 0 ? -1 : 1; const w0 = dw().get(name); if (!w0) throw new Error('no window ' + name + ' (Omni Doc windows lists them)'); dw().flip(name, { dir, by: call.props.by, seconds: call.props.seconds }).catch(() => {}); return `Turning ${name} ${dir > 0 ? 'forward' : 'back'} by ${Math.max(1, Math.min(25, Math.round(Number(call.props.by) || 1)))} from pages ${w0.start}-${w0.start + w0.count - 1}` } })
+  registerOmni('Doc', 'goto', { summary: 'Jump a window to a first page: Omni Doc goto name(w1) page(120)', props: { name: 'window', page: 'first page to show' }, run (call) { const s = dw().goto(String(need(call.props.name, 'name(...)')), call.props.page); return `Now showing from page ${s}` } })
+  registerOmni('Doc', 'windows', { summary: 'The windows and what they show', props: {}, run: () => dw().list().map(WM_DESCRIBE).join('\n') || 'No windows' })
+  registerOmni('Doc', 'unwindow', { summary: 'Forget a window (the sheets stay): Omni Doc unwindow name(w1)', props: { name: 'window' }, run (call) { return dw().forget(String(need(call.props.name ?? call.arg, 'name(...)'))) ? 'Forgotten (the sheets stay in the scene)' : 'No such window' } })
+
   // ── Semantics skin (V243) — OmniSemanticsVoxelNode: a six-face cube, one face per axiom ──
   const poly = () => { if (!SERVICES.poly) throw new Error('the poly module is not running'); return SERVICES.poly }
   const axiomArg = (v) => { const k = String(need(v, 'axiom(...)')).toLowerCase(); const hit = SK.AXIOM_ORDER.find(a => a === k) ?? SK.AXIOM_ORDER[Number(k) - 1]; if (!hit) throw new Error('axiom(identity|information|space|time|power|expression, or 1-6)'); return hit }
@@ -250,6 +262,11 @@ export function registerOmniBuiltins () {
   registerOmni('Lineup', 'attach', { summary: 'Carry a node at another node\'s core, keeping its offset: Omni Lineup attach node(a) to(b) [off(x, y, z)]', props: { node: 'the carried node', to: 'the carrier', off: 'offset (default: where it is now)' },
     run (call) { lu().attach({ node: String(need(call.props.node, 'node(...)')), to: String(need(call.props.to, 'to(...)')), off: call.props.off === undefined ? null : asVec3(call.props.off) }); return `${call.props.node} now travels with ${call.props.to}` } })
   registerOmni('Lineup', 'detach', { summary: 'Let a carried node go: Omni Lineup detach node(a)', props: { node: 'node' }, run (call) { lu().detach({ node: String(need(call.props.node ?? call.arg, 'node(...)')) }); return 'Detached' } })
+  registerOmni('Lineup', 'walk', { summary: 'Fly the camera through a lineup in sequence order: Omni Lineup walk id(story) [seconds(2.5)] [hold(1.5)] [distance(8)] [from(1)] [loop(true)] [auto(false)] [captions(false)]  (Esc stops; auto(false) waits for Omni Lineup next / prev)', props: { id: 'lineup', seconds: 'flight time per stop', hold: 'seconds to stay at each stop', distance: 'how far from the node, 2-60', from: 'first sequence number', loop: 'true = wrap around to the start', auto: 'false = step by hand with next / prev', captions: 'false = no "2 / 5 · label" text' },
+    run (call) { const p = call.props; const n = lu().walk({ id: String(need(p.id ?? call.arg, 'id(...)')), seconds: p.seconds, hold: p.hold, distance: p.distance, from: p.from, loop: p.loop === true, auto: p.auto !== false, captions: p.captions !== false }); return `Walking ${n} stops (Esc stops)` } })
+  registerOmni('Lineup', 'next', { summary: 'Go to the next stop of the walk', props: {}, run: () => (lu().next() ? 'Next' : 'No next stop (is a walk running?)') })
+  registerOmni('Lineup', 'prev', { summary: 'Go back one stop of the walk', props: {}, run: () => (lu().prev() ? 'Back' : 'No previous stop (is a walk running?)') })
+  registerOmni('Lineup', 'halt', { summary: 'End the walk and give the camera back', props: {}, run: () => (lu().halt() ? 'Walk ended' : 'No walk is running') })
   registerOmni('Lineup', 'list', { summary: 'The lineups (in sequence order) and what carries what', props: {}, run () { const s = lu().state(); const a = Object.entries(s.lineups).map(([id, l]) => `${id} [${l.layout}] ${l.order.map((n, i) => (i + 1) + ':' + n).join(' ') || '(empty)'}`); const c = Object.entries(s.attach).map(([n, x]) => `${n} carried by ${x.to}`); return [...a, ...c].join('\n') || 'No lineups or attachments' } })
 
   // ── Scene file (V236) — the .omni.json scene ──

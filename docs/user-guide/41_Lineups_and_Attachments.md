@@ -8,4 +8,11 @@ The skeleton side of the OmniVoxelNode: put nodes in a sequence on a shape, reor
 - `Omni Lineup attach node(a) to(b) [off(0, 3, 0)]` — a travels with b and keeps its offset (default: where it is now). Loops are refused. `Omni Lineup detach node(a)`.
 - `Omni Lineup list` — each lineup in sequence order, and what carries what.
 
-Saved apart from the nodes (browser storage `omni:lineups:v1`); deleting a node removes it from lineups and attachments. Not built yet: walking the lineup as a camera path, the lineup inside `.omni.json`, a sequence number shown on the node.
+Saved apart from the nodes (browser storage `omni:lineups:v1`); deleting a node removes it from lineups and attachments. ## Walking a lineup (V247)
+`Omni Lineup walk id(story) [seconds(2.5)] [hold(1.5)] [distance(8)] [from(1)] [loop(true)] [auto(false)] [captions(false)]` — the camera flies to each node in sequence order, holds, and goes on; a caption shows "2 / 5 · label". Esc ends it (or `Omni Lineup halt`).
+- Tunnel, helix and sphereIn: the camera goes INSIDE the shape and looks out at each node (you walk through it). sphereOut: outside, looking back. Row and grid: in front of the node.
+- `auto(false)`: it waits at each stop; step with `Omni Lineup next` / `Omni Lineup prev`.
+- `from(3)` starts at sequence number 3; `loop(true)` wraps around to the start.
+- Orbit controls are off during the walk and handed back at the end. A fly already in progress (such as the opening descent) is stopped when the walk starts.
+
+Not built yet: the lineup inside `.omni.json`, a sequence number shown on the node, a button for it in the ribbon.

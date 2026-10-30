@@ -1,7 +1,7 @@
 /**
  * utils/OmniDocPageLayouts.js (V242) — pure: where N pages of a document go in space.
  *   layoutPages({ layout, count, width, aspect, center }) -> { layout, count, radius, pages: [{ page, position:[x,y,z], rotation:[rx,ry,rz], normal:[x,y,z] }] }
- * A page's FRONT faces +z in the sheet mesh, so `normal` is where the front looks and `rotation` (Euler, order 'YXZ') turns +z to that normal with no roll.
+ * A page's FRONT faces +z in the sheet mesh, so `normal` is where the front looks and `rotation` (Euler, three.js default order XYZ, ready for mesh.rotation.set) turns +z to that normal with no roll.
  * Layouts:  row (side by side) · grid · tunnel (a vertical square tunnel, 4 walls per ring, rings stacked up) · helix (a spiral staircase of pages, facing the axis)
  *           sphereIn (pages on the inside of a sphere, facing the middle) · sphereOut (pages on the outside, facing away)
  * Counts are 1, 2, 4, 6, 8, 10 or 25: anything else snaps to the nearest. Never throws; bad numbers fall back to defaults.
@@ -21,10 +21,20 @@ export function snapCount (n) {
   const v = Number(n); if (!Number.isFinite(v)) return 4
   return COUNTS.reduce((best, c) => (Math.abs(c - v) < Math.abs(best - v) ? c : best), COUNTS[0])
 }
-/** Euler (YXZ) that turns +z to the unit vector n, with no roll. */
+/**
+ * Euler angles in three.js's default XYZ order (what mesh.rotation.set(x, y, z) takes) that turn +z to the unit vector n with no roll (the page stays upright: its top edge toward +y).
+ * (Built from yaw / pitch: R = Ry(yaw) * Rx(pitch), then converted to XYZ the way three.js's Euler.setFromRotationMatrix does.)
+ */
 export function eulerFacing (n) {
   const [x, y, z] = n; const yaw = Math.atan2(x, z); const pitch = -Math.asin(Math.min(1, Math.max(-1, y)))
-  return [pitch, yaw, 0]
+  const cy = Math.cos(yaw); const sy = Math.sin(yaw); const cp = Math.cos(pitch); const sp = Math.sin(pitch)
+  // R = Ry * Rx
+  const m11 = cy; const m12 = sy * sp; const m13 = sy * cp
+  const m22 = cp; const m23 = -sp
+  const m32 = -sy * sp; const m33 = cy * cp
+  const ey = Math.asin(Math.min(1, Math.max(-1, m13)))
+  if (Math.abs(m13) < 0.9999999) return [Math.atan2(-m23, m33), ey, Math.atan2(-m12, m11)]
+  return [Math.atan2(m32, m22), ey, 0]
 }
 const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map(c => c / l) }
 

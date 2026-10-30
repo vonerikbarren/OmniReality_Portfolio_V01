@@ -1,0 +1,19 @@
+{
+  "name": "omni-browser-tests",
+  "private": true,
+  "type": "module",
+  "description": "Real-browser smoke tests. Run: npm install && npm run vendor && npm test   (from tests/browser)",
+  "scripts": {
+    "vendor": "node build-vendor.mjs",
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "d3-sankey": "^0.12.3",
+    "esbuild": "^0.25.0",
+    "gsap": "^3.12.5",
+    "jszip": "^3.10.1",
+    "playwright-core": "^1.50.0",
+    "three": "0.165.0"
+  }
+}
