@@ -16,3 +16,11 @@ Saved apart from the nodes (browser storage `omni:lineups:v1`); deleting a node 
 - Orbit controls are off during the walk and handed back at the end. A fly already in progress (such as the opening descent) is stopped when the walk starts.
 
 Not built yet: the lineup inside `.omni.json`, a sequence number shown on the node, a button for it in the ribbon.
+
+## Sequence numbers (V255)
+
+Every node that is in a lineup shows a small round number above it: its place in the sequence (1, 2, 3 ...). The numbers follow the nodes when they glide, keep a steady size on screen, show through other things, and can not be picked or moved. They are not saved with the nodes.
+
+- Ribbon: Sandbox > Lineup > **Numbers** turns them on and off.
+- Command: `Omni Lineup numbers(on)`, `numbers(off)`, `numbers(toggle)`; add `total(true)` to show 2/6 instead of 2.
+- Your choice is remembered in this browser.

@@ -140,3 +140,7 @@ Touch behaviour is untested on real devices; see the [index appendix](README.md#
 | Ctrl/Cmd+F1 | Not bound |
 
 See [DeeperSettings build order](../dev/Roles/Developer/buildOrder_DeeperSettings_V01.md), item D5.
+
+## Lineup walk and doc pages (V252)
+
+Alt+W walk / stop · Alt+, / Alt+. previous / next stop · Alt+[ / Alt+] page back / forward. See [44](44_Ribbon_Walk_and_Pages.md).

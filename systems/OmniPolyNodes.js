@@ -16,6 +16,7 @@ import * as P from '../utils/OmniPolyModel.js'
 import { KIND_POLY, GEO_POLY, SERVICES } from '../utils/OmniExtraKinds.js'
 import { livePolyMeshes, applyPolyLook, faceAt, sizeAtlas, setAtlas, clearAtlas } from '../utils/OmniPolyNodeMesh.js'
 import { drawFace } from '../utils/OmniPolyFaceDraw.js'
+import * as VF from '../utils/OmniVideoFace.js'
 import { createDocRaster } from './OmniDocRaster.js'
 
 const PERSIST_MS = 300
@@ -61,7 +62,7 @@ export default class OmniPolyNodes {
     this._selectedId = null; this._selFace = new Map(); this._tagSel = new Map()
     this._persist = new Map(); this._undo = new Map(); this._redo = new Map(); this._sane = new WeakMap()
     this._coalesce = null; this._stroke = null
-    this._state = new Map()          // nodeId -> { src: Map(faceIdx -> {key, canvas, status, at}), lastPoly, cell }
+    this._state = new Map(); this._vplay = new Map(); this._vLast = 0          // nodeId -> { src: Map(faceIdx -> {key, canvas, status, at}), lastPoly, cell }
     this._lodT = 0; this._dirty = false
     this._frustum = new THREE.Frustum(); this._pm = new THREE.Matrix4(); this._sph = new THREE.Sphere(); this._ray = new THREE.Raycaster()
     this._stats = { draws: 0, passes: 0, loads: 0 }
@@ -96,6 +97,7 @@ export default class OmniPolyNodes {
 
   // ── Per frame: level of detail ──────────────────────────────────────────────
   update (delta) {
+    if (this._vplay.size) this._tickVideo()
     const meshes = livePolyMeshes(); if (!meshes.size) return
     this._lodT += Math.max(0, Number(delta) || 0)
     if (this._lodT < LOD_INTERVAL && !this._dirty) return
@@ -158,7 +160,7 @@ export default class OmniPolyNodes {
     let pending = false
     poly.faces.forEach((f, i) => {
       const c = f.content
-      if (f.hidden || (c.type !== 'image' && c.type !== 'doc') || !P.hasContent(c)) { st.src.delete(i); return }
+      if (f.hidden || (c.type !== 'image' && c.type !== 'doc' && c.type !== 'video') || !P.hasContent(c)) { st.src.delete(i); return }
       const key = P.contentKey(c) + '|' + cell
       const have = st.src.get(i)
       if (have && have.key === key && (have.status === 'ready' || have.status === 'loading')) { if (have.status === 'loading') pending = true; return }
@@ -167,7 +169,7 @@ export default class OmniPolyNodes {
       st.src.set(i, ent); pending = true; this._stats.loads++
       this._loadSource(id, i, ent, c, cell)
     })
-    const key = poly.faces.map((f, i) => (f.hidden ? '-' : P.contentKey(f.content) + (f.label ? ':' + f.label : '') + ':' + (st.src.get(i)?.status ?? ''))).join('|') + '#' + cell + '#' + v.grid.cols
+    const key = poly.faces.map((f, i) => (f.hidden ? '-' : P.contentKey(f.content) + (f.label ? ':' + f.label : '') + ':' + (st.src.get(i)?.status ?? '') + (this._vplay.has(VF.videoKey(id, i)) ? '>' : ''))).join('|') + '#' + cell + '#' + v.grid.cols
     if (st.drawKey === key && v.cell === cell) return
     const canvas = sizeAtlas(mesh, cell); if (!canvas) return
     const g = canvas.getContext?.('2d'); if (!g) return
@@ -175,17 +177,71 @@ export default class OmniPolyNodes {
       if (f.hidden) return
       const x = (i % v.grid.cols) * cell; const y = Math.floor(i / v.grid.cols) * cell
       const ent = st.src.get(i)
-      try { drawFace(g, x, y, cell, f, { source: ent?.status === 'ready' ? ent.canvas : null, state: ent?.status === 'error' ? 'error' : 'loading' }) } catch (_) { /* one bad face never stops the others */ }
+      try { drawFace(g, x, y, cell, f, { source: ent?.status === 'ready' ? ent.canvas : null, state: ent?.status === 'error' ? 'error' : 'loading', playing: this._vplay.has(VF.videoKey(id, i)) }) } catch (_) { /* one bad face never stops the others */ }
     })
     setAtlas(mesh); st.drawKey = key; v.cell = cell; v.drawn = { key, cell }; this._stats.draws++
   }
   _loadSource (id, i, ent, c, cell) {
     const done = (ok) => { if (!this._state.has(id)) return; ent.status = ok ? 'ready' : 'error'; ent.at = nowMs(); this._dirty = true }
+    if (c.type === 'video') return this._loadPoster(ent, c, cell).then(done, () => done(false))
     this._raster.open(c.source).then((h) => {
       if (!h.ok || !ent.canvas) return done(false)
       const stale = () => !this._state.has(id) || this._state.get(id).src.get(i) !== ent
       return this._raster.render(h.key, Math.min(c.page, h.pages), cell, ent.canvas, stale).then((r) => { if (r?.stale) return; done(!!r?.ok) })
     }).catch(() => done(false))
+  }
+
+  // ── Video faces (V257) ──────────────────────────────────────────────────────
+  /** A video face shows a still picture (a moment in) with a play badge; playing draws the live picture onto the face at about 12 a second. */
+  async _videoUrl (sourceId) {
+    const bytes = await this._getBytes(sourceId); if (!bytes) return null
+    const meta = await Promise.resolve(this._assets?.getMeta?.(sourceId)).catch(() => null)
+    return URL.createObjectURL(new Blob([bytes], { type: meta?.mime || 'video/mp4' }))
+  }
+  async _loadPoster (ent, c, cell) {
+    if (typeof document === 'undefined' || !ent.canvas) return false
+    const url = await this._videoUrl(c.source.id); if (!url) return false
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url
+    try {
+      await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('timeout')), 15000); v.onloadedmetadata = () => { clearTimeout(t); res() }; v.onerror = () => { clearTimeout(t); rej(new Error('bad video')) } })
+      const target = VF.posterTime(v.duration)
+      if (target > 0) await new Promise((res) => { const t = setTimeout(res, 4000); v.onseeked = () => { clearTimeout(t); res() }; v.currentTime = target })
+      const w = v.videoWidth || 16; const h = v.videoHeight || 9; const k = Math.min(1, cell / Math.max(w, h)); ent.canvas.width = Math.max(1, Math.round(w * k)); ent.canvas.height = Math.max(1, Math.round(h * k))
+      ent.canvas.getContext('2d').drawImage(v, 0, 0, ent.canvas.width, ent.canvas.height); return true
+    } finally { try { v.removeAttribute('src'); v.load() } catch (_) { /* gone */ } URL.revokeObjectURL(url) }
+  }
+  /** Play / pause the video on a face. At most 2 play at once: starting a third stops the oldest. */
+  async playVideoFace (nodeId, index) {
+    const f = this.getPoly(nodeId)?.faces[index]
+    if (!f || f.content.type !== 'video' || !P.hasContent(f.content)) return { ok: false, error: 'This face has no video.' }
+    const key = VF.videoKey(nodeId, index); const plan = VF.playPlan([...this._vplay.keys()], key)
+    for (const k of plan.stop) this._stopVideo(k)
+    if (plan.action === 'stop') return { ok: true, playing: false }
+    if (typeof document === 'undefined') return { ok: false, error: 'No video player here.' }
+    const url = await this._videoUrl(f.content.source.id); if (!url) return { ok: false, error: 'The video is missing from the library.' }
+    const v = document.createElement('video'); v.playsInline = true; v.src = url; v.volume = 1
+    const rec = { video: v, url, nodeId, index }; this._vplay.set(key, rec)
+    v.onended = () => this._stopVideo(key); v.onerror = () => this._stopVideo(key)
+    try { await v.play() } catch (e) { this._stopVideo(key); return { ok: false, error: 'The browser would not play it: ' + String(e?.message ?? e).slice(0, 80) } }
+    this._dirty = true; const st = this._state.get(nodeId); if (st) st.drawKey = ''
+    if (f.event) { try { window.dispatchEvent(new CustomEvent('omni:poly-face-action', { detail: { nodeId, face: 'f' + index, index, event: f.event, tags: f.tags.slice() } })) } catch (_) { /* no window */ } }
+    return { ok: true, playing: true }
+  }
+  videosPlaying () { return [...this._vplay.keys()] }
+  _stopVideo (key) {
+    const r = this._vplay.get(key); if (!r) return
+    this._vplay.delete(key); try { r.video.pause(); r.video.removeAttribute('src'); r.video.load() } catch (_) { /* gone */ } try { URL.revokeObjectURL(r.url) } catch (_) { /* gone */ }
+    const st = this._state.get(r.nodeId); if (st) st.drawKey = ''; this._dirty = true
+  }
+  _tickVideo () {
+    const now = nowMs(); if (!VF.frameDue(this._vLast, now)) return; this._vLast = now
+    for (const [key, r] of [...this._vplay]) {
+      if (!this.getPoly(r.nodeId)) { this._stopVideo(key); continue }       // the node is gone
+      const ent = this._state.get(r.nodeId)?.src.get(r.index); const v = r.video
+      if (!ent?.canvas || v.readyState < 2 || !v.videoWidth) continue
+      try { const w = ent.canvas.width; const h = ent.canvas.height; ent.canvas.getContext('2d').drawImage(v, 0, 0, w, h) } catch (_) { continue }
+      const st = this._state.get(r.nodeId); if (st) st.drawKey = ''; this._dirty = true
+    }
   }
 
   onResize () { this._dirty = true }
@@ -195,6 +251,7 @@ export default class OmniPolyNodes {
     this._bound = []
     this._persist.forEach(t => clearTimeout(t)); this._persist.clear()
     this._undo.clear(); this._redo.clear()
+    for (const k of [...this._vplay.keys()]) this._stopVideo(k)
     try { this._raster?.destroy?.() } catch (_) { /* ignore */ }
     this._state.clear()
     if (SERVICES.poly === this) SERVICES.poly = null
@@ -244,7 +301,7 @@ export default class OmniPolyNodes {
   clickFace (nodeId, index, clientX = 0, clientY = 0) {
     const poly = this.getPoly(nodeId); if (!poly) return false
     const pages = this._pagesOf(nodeId, index)
-    const options = P.menuOptions(poly, index, { pages })
+    const options = P.menuOptions(poly, index, { pages, playing: this._vplay.has(VF.videoKey(nodeId, index)) })
     if (!options.length) return false
     try { window.dispatchEvent(new CustomEvent('omni:poly-face-click', { detail: { nodeId, face: 'f' + index, index, clientX, clientY, options } })) } catch (_) { /* no window */ }
     return true
@@ -259,7 +316,7 @@ export default class OmniPolyNodes {
     switch (optionId) {
       case 'select': this._selFace.set(nodeId, index); this._tagSel.delete(nodeId); say('omni:poly-face-selected'); return { ok: true }
       case 'settings': this._selFace.set(nodeId, index); say('omni:poly-face-selected'); say('omni:poly-open-panel'); return { ok: true }
-      case 'play': return this.playFace(nodeId, index)
+      case 'play': return f.content.type === 'video' ? this.playVideoFace(nodeId, index) : this.playFace(nodeId, index)
       case 'prev': return this.turn(nodeId, index, -1)
       case 'next': return this.turn(nodeId, index, 1)
       case 'fire': say('omni:poly-face-action', { event: f.event, tags: f.tags.slice() }); return { ok: !!f.event }
@@ -322,8 +379,8 @@ export default class OmniPolyNodes {
       if (!this._assets) { const m = await import('../utils/OmniDocAssets.js'); this._assets = m.default ?? m.DocAssets }
       const r = await this._assets.importFile(file)
       if (!r.ok) return r
-      const isImg = r.meta.type === 'image'
-      this.setContent(id, ref, { type: isImg ? 'image' : 'doc', source: { type: r.meta.type, id: r.id }, page: 1 })
+      const isImg = r.meta.type === 'image'; const isVid = r.meta.type === 'video'
+      this.setContent(id, ref, { type: isImg ? 'image' : isVid ? 'video' : 'doc', source: { type: r.meta.type, id: r.id }, page: 1 })
       await this.loadSources()
       return r
     } catch (err) { return { ok: false, error: { code: 'storage', message: String(err?.message ?? err) } } }

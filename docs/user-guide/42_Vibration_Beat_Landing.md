@@ -15,3 +15,12 @@ Commands: `Omni Vibration start target(user) program(bounce) sync(song) land(ape
 **Beat follows this channel**: the small radio button under each channel picks which channel the beat landing is measured on (default: the first).
 
 Remember to Save as new (or Save changes) before pressing Start: Start plays the saved vibration.
+
+## Bending the curve with handles (V254)
+
+In the curve editor, tap a point to select it. Two round handles appear on either side. Drag one to bend that side of the curve into a smooth Bezier. With **Mirror** on, the other handle turns the opposite way so the joint stays smooth; turn it off to make a sharp corner.
+
+- **Smooth** draws handles on every point at once, a quick way to round off a drawn curve.
+- **Straighten** removes the handles of the selected point (or of all points when none is selected).
+- A point with no handles yet shows a small grab spot a little to each side of it.
+- Curves you drew before V254 play exactly as they did: a segment with no handles keeps the old soft ease.

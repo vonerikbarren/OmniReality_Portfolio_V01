@@ -33,7 +33,13 @@ export default class OmniSceneFile {
   destroy () { for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; this._input?.remove(); this._input = null; if (SERVICES.scenefile === this) SERVICES.scenefile = null }
 
   _on () { if (!this.omniNode?.exportScene) throw new Error('the node system is not available'); return this.omniNode }
-  exportFile ({ name = '' } = {}) { return J.buildFile(this._on().exportScene(), { name, version: this.context?.version ?? this.context?.appVersion ?? 'V236' }) }
+  _snapshot () {
+    return { lineups: SERVICES.lineup?.state?.() ?? null, docwindows: SERVICES.docwindow?.list?.() ?? null, vibration: SERVICES.vibration?.customPrograms?.() ?? null }
+  }
+  _taken () {
+    return { lineups: Object.keys(SERVICES.lineup?.state?.().lineups ?? {}), windows: (SERVICES.docwindow?.list?.() ?? []).map(w => w.id), programs: (SERVICES.vibration?.customPrograms?.() ?? []).map(p => p.id) }
+  }
+  exportFile ({ name = '' } = {}) { return J.buildFile(this._on().exportScene(), { name, version: this.context?.version ?? this.context?.appVersion ?? 'V253', extras: this._snapshot() }) }
   exportText (o) { return J.stringify(this.exportFile(o)) }
   download ({ name = '' } = {}) {
     const text = this.exportText({ name }), fn = J.fileName(name)
@@ -49,14 +55,18 @@ export default class OmniSceneFile {
   check (text, { mode = 'replace' } = {}) {
     const pr = J.parse(text); if (!pr.ok) return { ok: false, errors: [pr.error], warnings: [], counts: { nodes: 0, edges: 0, kinds: {} }, summary: pr.error }
     const existing = mode === 'merge' ? this._on().exportScene().nodes.map(n => n.id) : []
-    const r = J.checkFile(pr.file, { mode, existingIds: existing, genId: rid })
-    return { ...r, summary: r.ok ? J.describe(r.counts) : r.errors.join(' ') }
+    const r = J.checkFile(pr.file, { mode, existingIds: existing, genId: rid, taken: mode === 'merge' ? this._taken() : {} })
+    return { ...r, summary: r.ok ? J.describe(r.counts, r.extras) : r.errors.join(' ') }
   }
   importText (text, { mode = 'replace' } = {}) {
     const r = this.check(text, { mode }); if (!r.ok) throw new Error(r.summary)
     if (!r.nodes.length) throw new Error('the file has no nodes to load')
     this._on().importScene({ nodes: r.nodes, edges: r.edges }, { mode })
-    const msg = 'Loaded ' + J.describe(r.counts) + (mode === 'merge' ? ' (added to the scene)' : ' (the scene was replaced)') + (r.warnings.length ? '\n' + r.warnings.slice(0, 8).map(w => '• ' + w).join('\n') : '')
+    const ex = r.extras ?? {}
+    try { if (ex.lineups) SERVICES.lineup?.loadState?.(ex.lineups, mode) } catch (e) { r.warnings.push('Lineups: ' + e.message) }
+    try { if (ex.docwindows) SERVICES.docwindow?.loadWindows?.(ex.docwindows, mode) } catch (e) { r.warnings.push('Doc windows: ' + e.message) }
+    try { if (ex.vibration) SERVICES.vibration?.loadPrograms?.(ex.vibration, mode) } catch (e) { r.warnings.push('Vibration: ' + e.message) }
+    const msg = 'Loaded ' + J.describe(r.counts, r.extras) + (mode === 'merge' ? ' (added to the scene)' : ' (the scene was replaced)') + (r.warnings.length ? '\n' + r.warnings.slice(0, 8).map(w => '• ' + w).join('\n') : '')
     send('omni:notify-info', { text: 'Scene file: ' + msg.split('\n')[0] })
     return msg
   }

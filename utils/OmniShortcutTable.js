@@ -15,7 +15,7 @@ export function F (key, mods = {}) {
 const NAMED = {
   Escape: 'Escape', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Home: 'Home', End: 'End',
   PageUp: 'PageUp', PageDown: 'PageDown', ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', ' ': 'Space',
-  '`': 'Backquote', '-': 'Minus', '=': 'Equal', '[': 'BracketLeft', ']': 'BracketRight', '(': 'Digit9', ')': 'Digit0',
+  '`': 'Backquote', '-': 'Minus', '=': 'Equal', '[': 'BracketLeft', ']': 'BracketRight', ',': 'Comma', '.': 'Period', '(': 'Digit9', ')': 'Digit0',
 }
 const NUMPAD = { 'Numpad/': 'NumpadDivide', 'Numpad*': 'NumpadMultiply', 'Numpad-': 'NumpadSubtract', 'Numpad+': 'NumpadAdd' }
 
@@ -58,6 +58,10 @@ export const SHORTCUTS = [
   { key: 'Ctrl/Cmd+K', desc: 'Expression typing on / off: the keys play notes (A S D F G / J K L ; white keys, Space sustain, B / N octave); Escape leaves (V195)' , fire: [F('k',{ctrl:true})] },
   { key: 'r',        desc: 'Move up (vertical, Y-axis)' , fire: [F('r')] },
   { key: 'f',        desc: 'Move down (vertical, Y-axis)' , fire: [F('f')] },
+  // V252: Alt chords for lineup walking and doc-window paging (utils/OmniWalkKeys.js)
+  { key: 'Alt+W',    desc: 'Lineup camera walk: start walking the first lineup / stop (Esc also stops)' , fire: [F('w',{alt:true})] },
+  { key: 'Alt+, and Alt+.', desc: 'During a lineup walk: previous stop / next stop' , fire: [F(',',{alt:true}),F('.',{alt:true})] },
+  { key: 'Alt+[ and Alt+]', desc: 'Flip the newest doc window back / forward one page' , fire: [F('[',{alt:true}),F(']',{alt:true})] },
   { key: 'j',        desc: 'Toggle OmniStemming mode (while OmniMeter(External) is active)' , fire: [F('j')] },
   // V191: corner buttons of the LH / RH pads (ui/MovementPad.js). Ignored with Ctrl / Cmd / Alt held.
   // V195: E and Q no longer move the LH pad (Q opens OmniStarLight); use the ASC / DSC buttons on the pad.

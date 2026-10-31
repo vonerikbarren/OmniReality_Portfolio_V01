@@ -187,13 +187,18 @@ export function registerOmniBuiltins () {
 
   // ── Construction (V232) ──
   const cons = () => { if (!SERVICES.construction) throw new Error('OmniConstruction is not running'); return SERVICES.construction }
-  const BRUSH_PROPS = { shape: 'box, sphere, cone, cylinder, torus, octahedron, icosahedron, dodecahedron, tetrahedron', color: '#rrggbb', size: 'piece size 0.1..4', radius: 'spray radius 0..10', density: 'pieces per step 1..8', spacing: 'min distance between steps 0.1..5', jitterColor: 'colour wobble 0..1', mode: 'ground | air', height: 'ground plane height', distance: 'air distance 2..60', rainbow: 'true cycles hues' }
+  const BRUSH_PROPS = { shape: 'box, sphere, cone, cylinder, torus, octahedron, icosahedron, dodecahedron, tetrahedron', color: '#rrggbb', size: 'piece size 0.1..4', radius: 'spray radius 0..10', density: 'pieces per step 1..8', spacing: 'min distance between steps 0.1..5', jitterColor: 'colour wobble 0..1', mode: 'ground | air', paint: 'spray | surface (surface paints colour onto a node itself)', dab: 'surface brush width 4..96', soft: 'surface edge 0 hard .. 1 airbrush', sound: 'true | false', volume: '0..1', hand: 'rh | none (the hand whose Color / Texture / Material / DataTypes tools steer the brush)', height: 'ground plane height', distance: 'air distance 2..60', rainbow: 'true cycles hues' }
   const brushPatch = (pr) => { const o = {}; for (const k of Object.keys(BRUSH_PROPS)) if (pr[k] !== undefined) o[k] = pr[k]; return o }
   registerOmni('Construction', 'on', { keywordSummary: 'the painter: drag to spray nodes into the Sandbox', summary: 'Omni Construction on [shape(box)] [color(#ff8800)] [size(.5)] [radius(1.5)] [density(3)] [mode(ground|air)] [rainbow(true)]', props: BRUSH_PROPS, run (call) { const p = brushPatch(call.props); if (Object.keys(p).length) cons().set(p); cons().arm(true); return 'Painter on: drag in the scene. Esc or Omni Construction off to stop.' } })
   registerOmni('Construction', 'off', { summary: 'Turn the painter off', props: {}, run: () => (cons().arm(false), 'Painter off') })
   registerOmni('Construction', 'set', { summary: 'Change the brush without turning it on', props: BRUSH_PROPS, run (call) { const s = cons().set(brushPatch(call.props)); return Object.entries(s).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'get', { summary: 'Show the brush', props: {}, run: () => { const c = cons(); return `${c.armed ? 'ON' : 'off'}, ${c.strokes()} stroke(s) to undo\n` + Object.entries(c.get()).map(([k, v]) => `${k}: ${v}`).join('\n') } })
   registerOmni('Construction', 'undo', { summary: 'Take back the last stroke', props: {}, run: () => `Took back ${cons().undo()} piece(s)` })
+  registerOmni('Construction', 'lab', { arg: 'name', keywordSummary: 'named brush setups', summary: 'Omni Construction lab(name) uses a lab; Omni Construction labs lists them; Omni Construction savelab(name) saves the brush as a lab; Omni Construction deletelab(name)', props: { name: 'the lab name' }, run (call) { const l = cons().useLab(need(call.props.name ?? call.arg, 'name(...)')); return `Using lab "${l.name}"` } })
+  registerOmni('Construction', 'labs', { summary: 'List the brush labs (built in and yours)', props: {}, run: () => cons().listLabs().map(l => `${l.id}${l.builtin ? ' (built in)' : ''}: ${l.name}`).join('\n') })
+  registerOmni('Construction', 'savelab', { arg: 'name', summary: 'Save the current brush as a lab: Omni Construction savelab(My lab)', props: { name: 'the lab name' }, run (call) { const l = cons().saveLab(need(call.props.name ?? call.arg, 'name(...)')); return `Saved lab "${l.name}" (${l.id})` } })
+  registerOmni('Construction', 'deletelab', { arg: 'name', summary: 'Delete one of your labs: Omni Construction deletelab(My lab)', props: { name: 'the lab name' }, destructive: true, run (call) { const l = cons().deleteLab(need(call.props.name ?? call.arg, 'name(...)')); return `Deleted lab "${l.name}"` } })
+  registerOmni('Construction', 'clearpaint', { arg: 'id', summary: 'Give painted nodes their own look back: Omni Construction clearpaint(id) for one node, no id for all', props: { id: 'a node id' }, run (call) { const op = SERVICES.objectpaint; if (!op) throw new Error('OmniObjectPainter is not running'); const n = op.clear(call.props.id ?? call.arg ?? null); return `Cleared the paint on ${n} node(s)` } })
 
   // ── Decor (V239) ──
   registerOmni('Decor', 'list', { keywordSummary: 'the old decoration shapes of the starting scene (off by default)', summary: 'Show which are on', props: {}, run: () => Object.entries(Decor.load()).map(([k, v]) => `${k}: ${v ? 'on' : 'off'}`).join('\n') + '\n(changes apply after a reload)' })
@@ -238,16 +243,43 @@ export function registerOmniBuiltins () {
       const out = poly().createPolyNode({ poly: SK.skinToPoly(SK.presetSkin(skin)), id, label: 'Semantics ' + skin, position: call.props.pos === undefined ? undefined : asVec3(call.props.pos), select: true })
       if (!out.ok) throw new Error(out.error); return `Created ${out.nodeId} (skin ${skin})`
     } })
-  registerOmni('Semantics', 'face', { summary: 'Change one face: Omni Semantics face id(name) axiom(time) [icon(⧖)] [label(Time)] [event(my:event)]', props: { id: 'the semantics cube', axiom: 'identity | information | space | time | power | expression (or 1-6)', icon: 'a symbol or emoji', label: 'text', event: 'event name' },
+  registerOmni('Semantics', 'face', { summary: 'Change one face: Omni Semantics face id(name) axiom(time) [icon(⧖)] [label(Time)] [event(my:event)]', props: { id: 'the semantics cube', axiom: 'identity | information | space | time | power | expression (or 1-6)', icon: 'a symbol or emoji', label: 'text', event: 'event name', image: 'a picture from the document library (its id), or none', video: 'a video from the document library (its id), or none' },
     run (call) {
       const id = idOf(call); const axiom = axiomArg(call.props.axiom); const i = SK.AXIOM_ORDER.indexOf(axiom); const p = poly().getPoly(id); if (!p) throw new Error('no poly node ' + id)
       const cur = p.faces[i]; const text0 = cur?.content?.text ?? ''; const m = /^# (.*)\n?(.*)$/s.exec(text0)
       const icon = call.props.icon === undefined ? (m ? m[1] : '') : str(call.props.icon, 8); const label = call.props.label === undefined ? (m ? m[2] : (cur?.label ?? '')) : str(call.props.label, 40)
       const patch = { label: label || '(not defined)', content: { type: 'text', text: icon ? `# ${icon}\n${label}` : label } }
+      const media = (k) => { const v = call.props[k]; if (v === undefined) return undefined; const t = String(v); if (t === 'none' || t === '') return null; if (!/^[A-Za-z0-9_-]{1,64}$/.test(t)) throw new Error(k + '(library id, or none)'); return t }
+      const vid = media('video'); const img = media('image')
+      if (vid) patch.content = { type: 'video', source: { type: 'video', id: vid }, page: 1 }
+      else if (img) patch.content = { type: 'image', source: { type: 'image', id: img }, page: 1 }
+      else if (vid === null || img === null) { /* picture or video taken off: back to the icon and label */ }
+      else if (call.props.icon === undefined && call.props.label === undefined && (cur?.content?.type === 'image' || cur?.content?.type === 'video')) delete patch.content   // only the event / nothing else changed: keep the media
       if (call.props.event !== undefined) patch.event = String(call.props.event)
       const r = poly().edit(id, 'semantics-face', (m2) => P_setFace(m2, i, patch)); if (!r.ok) throw new Error(r.error || 'could not change the face')
       return `Face ${i + 1} (${axiom}) of ${id} changed`
     } })
+  // V257: reskin voxel-room nodes. The voxel node (the diamond at the room's centre) is the SKELETON and stays; a semantics cube above it is the SKIN.
+  const voxelIds = (ctx) => (nodes(ctx).getAllNodes?.() ?? []).filter(d => d?.nodeKind === 'voxelNode').map(d => d.id)
+  registerOmni('Semantics', 'reskin', { keywordSummary: 'put a meaning cube (skin) on a voxel-room node, or swap its skin', summary: 'Omni Semantics reskin id(voxelNodeId) [skin(default|plain|contrast|blank)]   or   Omni Semantics reskin all(true) [skin(...)]  (the cube sits above the voxel and follows it; run it again with another skin to swap)', props: { id: 'a voxel node', all: 'true = every voxel node', skin: SK.SKIN_NAMES.join(' | ') },
+    run (call, ctx) {
+      const skin = String(call.props.skin ?? 'default'); if (!SK.SKIN_NAMES.includes(skin)) throw new Error('skin(' + SK.SKIN_NAMES.join('|') + ')')
+      const all = String(call.props.all ?? '').toLowerCase() === 'true'; const known = voxelIds(ctx)
+      const wanted = all ? known : [String(need(call.props.id ?? call.arg, 'id(...) or all(true)'))]
+      if (!all && !known.includes(wanted[0])) throw new Error('no voxel node ' + wanted[0] + (known.length ? ' (voxel nodes: ' + known.slice(0, 8).join(', ') + ')' : ' (there are no voxel nodes; open ⟐OmniVoxel)'))
+      if (!wanted.length) throw new Error('there are no voxel nodes; open ⟐OmniVoxel')
+      const exist = (nodes(ctx).getAllNodes?.() ?? []).map(d => d.id); let made = 0, swapped = 0
+      for (const step of SK.reskinPlan(wanted, exist)) {
+        const p = SK.skinToPoly(SK.presetSkin(skin))
+        if (step.action === 'swap') { const r = poly().edit(step.skinId, 'reskin', () => p); if (!r.ok) throw new Error(r.error || 'could not swap the skin'); swapped++; continue }
+        const mesh = nodes(ctx).getMeshById?.(step.voxelId); const at = mesh ? [mesh.position.x, mesh.position.y + 1.6, mesh.position.z] : undefined
+        const out = poly().createPolyNode({ poly: p, id: step.skinId, label: 'Skin ' + skin, position: at }); if (!out.ok) throw new Error(out.error)
+        lu().attach({ node: step.skinId, to: step.voxelId, off: [0, 1.6, 0] }); made++
+      }
+      return `Reskinned ${made + swapped} voxel node(s) with the ${skin} skin (${made} new, ${swapped} swapped)`
+    } })
+  registerOmni('Semantics', 'unskin', { arg: 'id', summary: 'Take the skin cube off a voxel node: Omni Semantics unskin id(voxelNodeId) confirm', destructive: true, props: { id: 'a voxel node' },
+    run (call, ctx) { const v = String(need(call.props.id ?? call.arg, 'id(...)')); const sid = SK.skinNodeId(v); if (!nodes(ctx).getNodeData?.(sid)) throw new Error('that voxel node has no skin'); try { lu().detach({ node: sid }) } catch (_) { /* not attached */ } window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: sid } })); return `Removed the skin from ${v}` } })
 
   // ── Lineups and attachments (V244) ──
   const lu = () => { if (!SERVICES.lineup) throw new Error('the lineup module is not running'); return SERVICES.lineup }
@@ -267,6 +299,14 @@ export function registerOmniBuiltins () {
   registerOmni('Lineup', 'next', { summary: 'Go to the next stop of the walk', props: {}, run: () => (lu().next() ? 'Next' : 'No next stop (is a walk running?)') })
   registerOmni('Lineup', 'prev', { summary: 'Go back one stop of the walk', props: {}, run: () => (lu().prev() ? 'Back' : 'No previous stop (is a walk running?)') })
   registerOmni('Lineup', 'halt', { summary: 'End the walk and give the camera back', props: {}, run: () => (lu().halt() ? 'Walk ended' : 'No walk is running') })
+  registerOmni('Lineup', 'numbers', { arg: 'state', summary: 'Omni Lineup numbers(on|off|toggle) [total(true|false)]  (a small number above each node in a lineup: its place in the sequence)', props: { state: 'on, off or toggle', total: 'true shows 2/6 instead of 2' }, run (call) {
+    const b = SERVICES.badges; if (!b) throw new Error('the number badges module is not running')
+    const a = String(call.props.state ?? call.arg ?? '').toLowerCase()
+    if (a && !['on', 'off', 'toggle'].includes(a)) throw new Error('numbers on | off | toggle')
+    const patch = {}; if (a === 'on') patch.on = true; else if (a === 'off') patch.on = false; else if (a === 'toggle' || (!a && call.props.total === undefined)) patch.on = !b.get().on
+    if (call.props.total !== undefined) { const t = String(call.props.total).toLowerCase(); if (!['true', 'false'].includes(t)) throw new Error('total(true|false)'); patch.showTotal = t === 'true' }
+    const p = b.set(patch); return `Numbers ${p.on ? 'on' : 'off'}${p.showTotal ? ' (with totals)' : ''}`
+  } })
   registerOmni('Lineup', 'list', { summary: 'The lineups (in sequence order) and what carries what', props: {}, run () { const s = lu().state(); const a = Object.entries(s.lineups).map(([id, l]) => `${id} [${l.layout}] ${l.order.map((n, i) => (i + 1) + ':' + n).join(' ') || '(empty)'}`); const c = Object.entries(s.attach).map(([n, x]) => `${n} carried by ${x.to}`); return [...a, ...c].join('\n') || 'No lineups or attachments' } })
 
   // ── Scene file (V236) — the .omni.json scene ──

@@ -8,8 +8,10 @@ import { makeRng } from './OmniRemixModel.js'
 
 export const SHAPES = ['BoxGeometry', 'SphereGeometry', 'ConeGeometry', 'CylinderGeometry', 'TorusGeometry', 'OctahedronGeometry', 'IcosahedronGeometry', 'DodecahedronGeometry', 'TetrahedronGeometry']
 export const MODES = ['ground', 'air']
-export const DEFAULTS = { shape: 'SphereGeometry', color: '#7fd6ff', size: 0.5, radius: 1.5, density: 3, spacing: 0.6, jitterColor: 0.15, mode: 'ground', height: 0, distance: 12, rainbow: false }
-export const RANGES = { size: [0.1, 4], radius: [0, 10], density: [1, 8], spacing: [0.1, 5], jitterColor: [0, 1], height: [-5, 50], distance: [2, 60] }
+export const PAINTS = ['spray', 'surface']     // V256: spray = small nodes into the Sandbox; surface = colour painted onto a node's own surface (OmniObjectPainter)
+export const HANDS = ['rh', 'none']            // V256: the hand whose ⟐1 tools (Color, Texture, Material, DataTypes) steer the brush while painting
+export const DEFAULTS = { shape: 'SphereGeometry', color: '#7fd6ff', size: 0.5, radius: 1.5, density: 3, spacing: 0.6, jitterColor: 0.15, mode: 'ground', height: 0, distance: 12, rainbow: false, paint: 'spray', dab: 28, soft: 0.5, sound: true, volume: 0.5, hand: 'rh' }
+export const RANGES = { size: [0.1, 4], radius: [0, 10], density: [1, 8], spacing: [0.1, 5], jitterColor: [0, 1], height: [-5, 50], distance: [2, 60], dab: [4, 96], soft: [0, 1], volume: [0, 1] }
 export const MAX_PER_STEP = 8
 
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
@@ -29,7 +31,11 @@ export function normalise (patch = {}, base = DEFAULTS) {
       const m = String(v).toLowerCase(); if (!MODES.includes(m)) throw new Error(`mode is one of: ${MODES.join(', ')}`); s.mode = m
     } else if (k === 'color') {
       if (!/^#[0-9a-f]{6}$/i.test(String(v))) throw new Error('color needs a #rrggbb value'); s.color = String(v).toLowerCase()
-    } else if (k === 'rainbow') { s.rainbow = v === true || String(v).toLowerCase() === 'true' }
+    } else if (k === 'paint') {
+      const m = String(v).toLowerCase(); if (!PAINTS.includes(m)) throw new Error(`paint is one of: ${PAINTS.join(', ')}`); s.paint = m
+    } else if (k === 'hand') {
+      const m = String(v).toLowerCase(); if (!HANDS.includes(m)) throw new Error(`hand is one of: ${HANDS.join(', ')}`); s.hand = m
+    } else if (k === 'rainbow' || k === 'sound') { s[k] = v === true || String(v).toLowerCase() === 'true' }
     else { const n = Number(v); if (!Number.isFinite(n)) throw new Error(`${k} needs a number`); s[k] = clamp(k === 'density' ? Math.round(n) : n, ...RANGES[k]) }
   }
   return s

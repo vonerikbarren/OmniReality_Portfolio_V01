@@ -9,7 +9,7 @@ import { SERVICES } from '../utils/OmniExtraKinds.js'
 
 export const NAV_ITEM = '⟐OmniPoly'
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-export const ACCEPT = '.pdf,.md,.markdown,.txt,.text,image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown'
+export const ACCEPT = '.pdf,.md,.markdown,.txt,.text,image/png,image/jpeg,image/gif,image/webp,.mp4,.webm,.mov,video/mp4,video/webm,video/quicktime,application/pdf,text/plain,text/markdown'
 
 export function injectPolyStyles () {
   if (typeof document === 'undefined' || document.getElementById('opy-styles')) return
@@ -90,7 +90,7 @@ export default class OmniPolyView {
     const shapes = Object.keys(SHAPE_INFO).map(k => `<option value="${k}"${poly.shape === k ? ' selected' : ''}>${esc(SHAPE_INFO[k].name)}</option>`).join('')
     const multi = poly.shape === 'strip' || poly.shape === 'ring'
     const faceBtns = poly.faces.map((x, i) => `<button data-act="face" data-i="${i}" class="${i === this.face ? 'is-on' : ''}${x.hidden ? ' is-hole' : ''}" aria-label="Face ${i + 1}${x.hidden ? ' (removed)' : ''}">${i + 1}</button>`).join('')
-    const types = P.CONTENT_TYPES.map(t => `<option value="${t}"${c.type === t ? ' selected' : ''}>${{ none: 'nothing', pattern: 'pattern', text: 'text', image: 'image', doc: 'document', sound: 'sound' }[t]}</option>`).join('')
+    const types = P.CONTENT_TYPES.map(t => `<option value="${t}"${c.type === t ? ' selected' : ''}>${{ none: 'nothing', pattern: 'pattern', text: 'text', image: 'image', video: 'video', doc: 'document', sound: 'sound' }[t]}</option>`).join('')
     return `<div class="opy-row">${sel}<button data-act="create">+ Poly</button><button data-act="undo" ${svc.canUndo(this.nodeId) ? '' : 'disabled'}>Undo</button><button data-act="redo" ${svc.canRedo(this.nodeId) ? '' : 'disabled'}>Redo</button></div>
       <div class="opy-box"><div class="opy-row"><b>Shape</b><select data-act="shape" aria-label="Shape">${shapes}</select>
         <label>edge <input type="number" data-act="edge" min="${GEOM_LIMITS.edgeMin}" max="${GEOM_LIMITS.edgeMax}" step="0.5" value="${poly.edge}"></label>
@@ -114,7 +114,8 @@ export default class OmniPolyView {
     if (c.type === 'text') return `<textarea data-act="ptext" maxlength="${P.POLY_LIMITS.textMax}" placeholder="Text on this face">${esc(c.text)}</textarea>`
     const cur = c.source.type + ':' + c.source.id
     if (c.type === 'image') { const o = src.library.filter(l => l.type === 'image').map(l => `<option value="image:${esc(l.id)}"${cur === 'image:' + l.id ? ' selected' : ''}>${esc(l.name)}</option>`).join(''); return `<select data-act="psrc"><option value="none:">— choose —</option>${o}</select><button data-act="import">Import…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden>` }
-    if (c.type === 'doc') { const g = src.guide.map(x => `<option value="guide:${esc(x.id)}"${cur === 'guide:' + x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join(''); const l = src.library.filter(x => x.type !== 'image').map(x => `<option value="${esc(x.type)}:${esc(x.id)}"${cur === x.type + ':' + x.id ? ' selected' : ''}>${esc(x.name)} (${esc(x.type)})</option>`).join(''); return `<select data-act="psrc"><option value="none:">— choose —</option><optgroup label="Guide pages">${g}</optgroup><optgroup label="Your documents">${l}</optgroup></select><button data-act="import">Import…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden>` }
+    if (c.type === 'video') { const o = src.library.filter(l => l.type === 'video').map(l => `<option value="video:${esc(l.id)}"${cur === 'video:' + l.id ? ' selected' : ''}>${esc(l.name)}</option>`).join(''); return `<select data-act="psrc"><option value="none:">— choose —</option>${o}</select><button data-act="import">Import…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden>` }
+    if (c.type === 'doc') { const g = src.guide.map(x => `<option value="guide:${esc(x.id)}"${cur === 'guide:' + x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join(''); const l = src.library.filter(x => x.type !== 'image' && x.type !== 'video').map(x => `<option value="${esc(x.type)}:${esc(x.id)}"${cur === x.type + ':' + x.id ? ' selected' : ''}>${esc(x.name)} (${esc(x.type)})</option>`).join(''); return `<select data-act="psrc"><option value="none:">— choose —</option><optgroup label="Guide pages">${g}</optgroup><optgroup label="Your documents">${l}</optgroup></select><button data-act="import">Import…</button><input type="file" data-ref="file" accept="${ACCEPT}" hidden>` }
     if (c.type === 'sound') { const sn = svc.listSoundNodes().map(n => `<option value="soundNode:${esc(n.id)}"${cur === 'soundNode:' + n.id ? ' selected' : ''}>${esc(n.label)}</option>`).join(''); const cl = this._clips.map(n => `<option value="audio:${esc(n.id)}"${cur === 'audio:' + n.id ? ' selected' : ''}>${esc(n.name)}</option>`).join(''); return `<select data-act="psrc"><option value="none:">— choose —</option><optgroup label="Sound nodes">${sn}</optgroup><optgroup label="Audio library">${cl}</optgroup></select><button data-act="playtest">▶ Play</button>` }
     return ''
   }

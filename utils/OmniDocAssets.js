@@ -1,7 +1,7 @@
 /**
  * utils/OmniDocAssets.js (V203) — the DOCUMENT LIBRARY: import a PDF / markdown / text / image file, keep its bytes in IndexedDB, hand them back to the rasterizers.
  *
- *   DocAssets.importFile(file)       -> Promise<{ok, id?, meta?, error?}>   meta = { id, name, type:'pdf'|'markdown'|'text'|'image', mime, size, added }
+ *   DocAssets.importFile(file)       -> Promise<{ok, id?, meta?, error?}>   meta = { id, name, type:'pdf'|'markdown'|'text'|'image'|'video', mime, size, added }
  *   DocAssets.importText(name, text, type = 'markdown')                     the same for text that is not a file (pasted)
  *   DocAssets.list() / getMeta(id) / remove(id) / rename(id, name) / usage()
  *   DocAssets.getBytes(id)           -> Promise<ArrayBuffer|null>
@@ -15,6 +15,7 @@ export const DB_NAME = 'omni-doc-assets-v1'
 export const STORE_META = 'meta'
 export const STORE_BLOBS = 'blobs'
 export const MAX_FILE_BYTES = 70 * 1024 * 1024
+export const MAX_VIDEO_BYTES = 40 * 1024 * 1024   // V257: a video is held in memory to play, so it has a smaller cap than a document
 export const MAX_TOTAL_BYTES = 270 * 1024 * 1024
 export const MAX_DOCS = 60
 export const MAX_NAME = 60
@@ -41,7 +42,16 @@ export function uniqueName (name, taken) {
 const asc = (b, i, s) => { for (let k = 0; k < s.length; k++) if (b[i + k] !== s.charCodeAt(k)) return false; return true }
 const IMG_MIME = { png: 'image/png', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp' }
 
-/** What the bytes are: { type:'pdf'|'image'|'text'|'unsupported', format, mime }. Text = valid UTF-8 without NUL bytes in the first 8 KB; markdown is told apart by the name. */
+/** V257: is this a video container we can play? mp4 / mov (an 'ftyp' box), webm / mkv (EBML), ogg with a video stream. -> { format, mime } | null */
+export function sniffVideo (u8) {
+  const b = u8 || new Uint8Array(0); const n = b.length
+  if (n >= 12 && asc(b, 4, 'ftyp')) { const brand = String.fromCharCode(b[8], b[9], b[10], b[11]); if (/^(heic|heix|hevc|mif1|avif|msf1|crx )/.test(brand)) return null; return brand === 'qt  ' ? { format: 'mov', mime: 'video/quicktime' } : { format: 'mp4', mime: 'video/mp4' } }
+  if (n >= 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return { format: 'webm', mime: 'video/webm' }
+  if (n >= 4 && asc(b, 0, 'OggS')) { const head = String.fromCharCode(...b.subarray(0, Math.min(n, 400))); if (/theora|\x01video/.test(head)) return { format: 'ogv', mime: 'video/ogg' } }
+  return null
+}
+
+/** What the bytes are: { type:'pdf'|'image'|'video'|'text'|'unsupported', format, mime }. Text = valid UTF-8 without NUL bytes in the first 8 KB; markdown is told apart by the name. */
 export function sniffDoc (u8, name = '') {
   const b = u8 || new Uint8Array(0); const n = b.length
   if (n >= 5 && asc(b, 0, '%PDF-')) return { type: 'pdf', format: 'pdf', mime: 'application/pdf' }
@@ -50,6 +60,7 @@ export function sniffDoc (u8, name = '') {
   if (n >= 4 && asc(b, 0, 'GIF8')) return { type: 'image', format: 'gif', mime: IMG_MIME.gif }
   if (n >= 12 && asc(b, 0, 'RIFF') && asc(b, 8, 'WEBP')) return { type: 'image', format: 'webp', mime: IMG_MIME.webp }
   if (n >= 2 && b[0] === 0x42 && b[1] === 0x4d) return { type: 'image', format: 'bmp', mime: IMG_MIME.bmp }
+  { const v = sniffVideo(b); if (v) return { type: 'video', format: v.format, mime: v.mime } }
   if (n >= 4 && ((b[0] === 0x50 && b[1] === 0x4b) || (b[0] === 0x7f && asc(b, 1, 'ELF')) || (b[0] === 0x4d && b[1] === 0x5a) || (b[0] === 0x1f && b[1] === 0x8b))) return { type: 'unsupported', format: 'binary' }
   const head = b.subarray(0, Math.min(n, 8192))
   for (let i = 0; i < head.length; i++) if (head[i] === 0) return { type: 'unsupported', format: 'binary' }
@@ -116,7 +127,8 @@ export const DocAssets = {
       if (!u8.length) return fail('empty', 'That file is empty.')
       if (u8.length > MAX_FILE_BYTES) return fail('too-large', `That file is ${MB(u8.length)} MB; the limit is ${MB(MAX_FILE_BYTES)} MB.`)
       const sn = sniffDoc(u8, name)
-      if (sn.type === 'unsupported') return fail('unsupported', 'That file is not a PDF, an image or a text document.')
+      if (sn.type === 'unsupported') return fail('unsupported', 'That file is not a PDF, an image, a video or a text document.')
+      if (sn.type === 'video' && u8.length > MAX_VIDEO_BYTES) return fail('too-large', `That video is ${MB(u8.length)} MB; the limit for a video is ${MB(MAX_VIDEO_BYTES)} MB.`)
       const type = hint === 'markdown' || (sn.type === 'text' && sn.format === 'markdown') ? (sn.type === 'text' ? 'markdown' : sn.type) : sn.type
       const list = await allMeta()
       if (list.length >= MAX_DOCS) return fail('quota', `The library is full (${MAX_DOCS} documents). Remove one first.`)

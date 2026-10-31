@@ -8,6 +8,7 @@
  */
 import * as THREE from 'three'
 import gsap from 'gsap'
+import { walkKeyAction, isTypingTarget } from '../utils/OmniWalkKeys.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as WM from '../utils/OmniDocWindowModel.js'
 import { layoutPages, pickLayout, LAYOUTS } from '../utils/OmniDocPageLayouts.js'
@@ -29,11 +30,18 @@ export default class OmniDocWindow {
     on('omni:node-deleted', (d) => this._nodeGone(d.id)); on('omni:scene-clear-request', () => { this._w.clear(); this._save() })
     // drop a window whose sheets are no longer in the scene (a reload that restored a different scene)
     setTimeout(() => { for (const w of [...this._w.values()]) if (!w.slots.every(id => this.omniNode?.getNodeData?.(id))) { this._w.delete(w.id) } this._save() }, 1500)
+    this._akey = (e) => { const a = walkKeyAction(e, isTypingTarget(document.activeElement)); if (a && a.event === 'omni:docwindow-request') { e.preventDefault(); window.dispatchEvent(new CustomEvent(a.event, { detail: a.detail })) } }; document.addEventListener('keydown', this._akey)
     SERVICES.docwindow = this
   }
-  destroy () { for (const t of this._busy.values()) t.kill(); this._busy.clear(); for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.docwindow === this) SERVICES.docwindow = null; this._inited = false }
+  destroy () { try { document.removeEventListener('keydown', this._akey) } catch (_) { /* gone */ } for (const t of this._busy.values()) t.kill(); this._busy.clear(); for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.docwindow === this) SERVICES.docwindow = null; this._inited = false }
   onResize () {}
   get doc () { if (!SERVICES.doc) throw new Error('the doc module is not running'); return SERVICES.doc }
+  /** V253: load windows from a scene file (replace = swap all; merge = add). The sheets themselves come with the nodes. */
+  loadWindows (list, mode = 'replace') {
+    if (mode !== 'merge') { for (const t of this._busy.values()) t.kill(); this._busy.clear(); this._w.clear() }
+    for (const r of (Array.isArray(list) ? list : []).slice(0, WM.MAX_WINDOWS)) { if (this._w.size >= WM.MAX_WINDOWS) break; const w = WM.sanitizeWindow(r); if (w) this._w.set(w.id, w) }
+    this._save()
+  }
   _save () { try { localStorage.setItem(STORE_KEY, JSON.stringify([...this._w.values()])) } catch (_) { /* full */ } }
   _nodeGone (id) { for (const w of [...this._w.values()]) if (w.slots.includes(id)) { this._busy.get(w.id)?.kill(); this._busy.delete(w.id); this._w.delete(w.id); this._save() } }
   list () { return [...this._w.values()].map(w => ({ ...w })) }

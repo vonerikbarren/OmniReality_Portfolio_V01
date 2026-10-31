@@ -35,6 +35,13 @@ export function drawPattern (ctx, x, y, s, p) {
   else if (p.kind === 'gradient' && ctx.createLinearGradient) { const g = ctx.createLinearGradient(x, y, x + s, y + s); if (g && g.addColorStop) { g.addColorStop(0, a); g.addColorStop(1, b); ctx.fillStyle = g } ctx.fillRect(x, y, s, s) }
 }
 
+/** V257: the play badge on a video poster (a round dark disc with a triangle), or a red dot while it plays. */
+function glyphPlay (ctx, x, y, s, playing) {
+  if (playing) { ctx.fillStyle = '#ff3b3b'; ctx.beginPath(); ctx.arc(x + s * 0.9, y + s * 0.1, s * 0.05, 0, Math.PI * 2); ctx.fill(); return }
+  ctx.fillStyle = 'rgba(10,16,26,0.62)'; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.16, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x + s * 0.46, y + s * 0.42); ctx.lineTo(x + s * 0.46, y + s * 0.58); ctx.lineTo(x + s * 0.6, y + s * 0.5); ctx.closePath(); ctx.fill()
+}
+
 function glyphSpeaker (ctx, x, y, s) {
   ctx.fillStyle = INK; ctx.strokeStyle = INK; ctx.lineWidth = Math.max(2, s / 28)
   const cx = x + s * 0.32; const cy = y + s * 0.5; const r = s * 0.14
@@ -54,16 +61,17 @@ export function drawFace (ctx, x, y, s, face, extra = {}) {
     const fs = Math.max(8, Math.round(s / 11)); ctx.font = `${fs}px sans-serif`; ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'top'
     const pad = s * 0.1; const lines = wrap(ctx, c.text, s - pad * 2)
     for (let i = 0; i < lines.length; i++) { const ly = y + pad + i * fs * 1.25; if (ly + fs > y + s - pad) break; ctx.fillText(lines[i], x + pad, ly, s - pad * 2) }
-  } else if (c.type === 'image' || c.type === 'doc') {
+  } else if (c.type === 'image' || c.type === 'doc' || c.type === 'video') {
     if (extra.source && extra.source.width > 0 && extra.source.height > 0) {
       const sw = extra.source.width; const sh = extra.source.height; const k = Math.min(s / sw, s / sh)
       const w = sw * k; const h = sh * k
       ctx.drawImage(extra.source, x + (s - w) / 2, y + (s - h) / 2, w, h)
+      if (c.type === 'video') glyphPlay(ctx, x, y, s, !!extra.playing)
     } else if (!c.source || c.source.type === 'none') msg('Choose a file')
     else if (extra.state === 'error') msg('Could not load')
     else msg('Loading…')
   } else if (c.type === 'sound' && c.source && c.source.type !== 'none') glyphSpeaker(ctx, x, y, s)
-  if (face?.label && c.type !== 'text' && !((c.type === 'doc' || c.type === 'image') && extra.source)) {
+  if (face?.label && c.type !== 'text' && !((c.type === 'doc' || c.type === 'image' || c.type === 'video') && extra.source)) {
     const fs = Math.max(8, Math.round(s / 10)); ctx.font = `bold ${fs}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x, y + s - fs * 1.5, s, fs * 1.5); ctx.fillStyle = INK; ctx.fillText(face.label, x + s / 2, y + s - fs * 0.15, s * 0.9)
   }

@@ -4,7 +4,7 @@
  *
  * data.poly = { version, shape, sides, count, fold, edge, faces:[ face ... ] }   (faces has exactly as many entries as the shape has faces; extra are dropped, missing are added)
  * face = { color:'' | '#rrggbb' (a tint of the node colour), label, tags:[...], hidden (a hole in the solid), event (a name sent with omni:poly-face-action), content }
- * content = { type:'none'|'pattern'|'text'|'image'|'doc'|'sound', pattern:{kind,a,b}, text, source:{type,id}, page }
+ * content = { type:'none'|'pattern'|'text'|'image'|'video'|'doc'|'sound', pattern:{kind,a,b}, text, source:{type,id}, page }
  *   pattern  a drawn texture (checker, stripes, dots, grid, gradient) in two colours
  *   text     markdown text drawn on the face
  *   image    an image from the document library            source.type 'image'
@@ -18,7 +18,7 @@ import { SHAPES, SHAPE_INFO, GEOM_LIMITS, sanitizeShapeParams } from './OmniPoly
 export const POLY_VERSION = 1
 export const KIND_POLY = 'polyNode'
 export const PATTERNS = Object.freeze(['checker', 'stripes', 'dots', 'grid', 'gradient'])
-export const CONTENT_TYPES = Object.freeze(['none', 'pattern', 'text', 'image', 'doc', 'sound'])
+export const CONTENT_TYPES = Object.freeze(['none', 'pattern', 'text', 'image', 'doc', 'sound', 'video'])   // V257: video (appended so older saved order is unchanged)
 export const DOC_SOURCES = Object.freeze(['guide', 'pdf', 'markdown', 'text'])
 export const SOUND_SOURCES = Object.freeze(['soundNode', 'audio'])
 export const POLY_LIMITS = Object.freeze({ faces: 64, labelMax: 40, textMax: 2000, tagsMax: 8, tagMax: 24, eventMax: 48, pageMax: 5000 })
@@ -59,7 +59,7 @@ export function sanitizeContent (raw) {
   const text = type === 'text' ? cleanText(get(r, 'text'), L.textMax) : cleanText(get(r, 'text'), L.textMax)
   const src = get(r, 'source')
   let sType = typeof get(src, 'type') === 'string' ? get(src, 'type') : 'none'
-  const allowed = type === 'image' ? ['image'] : type === 'doc' ? DOC_SOURCES : type === 'sound' ? SOUND_SOURCES : []
+  const allowed = type === 'image' ? ['image'] : type === 'video' ? ['video'] : type === 'doc' ? DOC_SOURCES : type === 'sound' ? SOUND_SOURCES : []
   if (!allowed.includes(sType)) sType = 'none'
   const id = cleanId(get(src, 'id'))
   const source = sType !== 'none' && id ? { type: sType, id } : { type: 'none', id: '' }
@@ -147,6 +147,7 @@ export function menuOptions (poly, ref, opts = {}) {
   if (!f) return []
   const o = [{ id: 'select', label: 'Select this face' }, { id: 'settings', label: 'Open face settings' }]
   if (f.content.type === 'sound' && hasContent(f.content)) o.push({ id: 'play', label: 'Play the sound' })
+  if (f.content.type === 'video' && hasContent(f.content)) o.push({ id: 'play', label: opts.playing ? 'Pause the video' : 'Play the video' })
   if (f.content.type === 'doc' && hasContent(f.content)) {
     const pages = Number(opts.pages) > 0 ? Number(opts.pages) : 0
     if (f.content.page > 1) o.push({ id: 'prev', label: 'Previous page' })
@@ -163,7 +164,7 @@ export function hasContent (c) {
   if (!c) return false
   if (c.type === 'pattern') return true
   if (c.type === 'text') return c.text.trim().length > 0
-  if (c.type === 'image' || c.type === 'doc' || c.type === 'sound') return c.source.type !== 'none'
+  if (c.type === 'image' || c.type === 'video' || c.type === 'doc' || c.type === 'sound') return c.source.type !== 'none'
   return false
 }
 

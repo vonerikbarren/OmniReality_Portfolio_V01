@@ -14,6 +14,7 @@
  * checkFile() never trusts the file: caps on size and counts, ids checked, prototype-polluting keys removed, numbers made finite,
  * dangling references cut with a warning, and — for a merge — ids that clash are renamed (every string that equalled the old id is rewritten).
  */
+import { buildExtras, readExtras, describeExtras } from './OmniSceneExtras.js'
 export const SCHEMA = 'omni-scene/1'
 export const EXT = '.omni.json'
 export const LIMITS = { bytes: 8 * 1024 * 1024, nodes: 2000, edges: 6000, depth: 14, string: 1000000, label: 300, id: 80 }
@@ -68,11 +69,11 @@ const edgeStyle = (s) => {
 }
 
 /** Builds the file object from exportScene() output. */
-export function buildFile ({ nodes = [], edges = [] } = {}, { name = '', version = '', now = new Date() } = {}) {
+export function buildFile ({ nodes = [], edges = [] } = {}, { name = '', version = '', now = new Date(), extras = null } = {}) {
   const cut = { n: 0 }
   const ns = nodes.map(n => { const c = cleanValue(n, 0, cut); for (const k of TRANSIENT) delete c[k]; return c })
   const es = edges.map(e => { const o = { from: String(e.from), to: String(e.to) }; const st = edgeStyle(e.style); if (st) o.style = st; return o })
-  return { schema: SCHEMA, app: 'OmniStarOS', version: String(version || ''), name: String(name || '').slice(0, LIMITS.label), exportedAt: now.toISOString(), counts: { nodes: ns.length, edges: es.length, kinds: countKinds(ns) }, nodes: ns, edges: es }
+  return { schema: SCHEMA, app: 'OmniStarOS', version: String(version || ''), name: String(name || '').slice(0, LIMITS.label), exportedAt: now.toISOString(), counts: { nodes: ns.length, edges: es.length, kinds: countKinds(ns) }, nodes: ns, edges: es, ...(extras && Object.keys(extras).length ? { extras: buildExtras(extras) } : {}) }
 }
 
 export const stringify = (file) => JSON.stringify(file, null, 1)
@@ -92,7 +93,7 @@ export function parse (text) {
  * opts: { mode: 'replace'|'merge', existingIds: Set|array (merge), genId: () => string (merge renames) }
  * -> { ok, errors[], warnings[], nodes[], edges[], remap: {old:new}, counts }
  */
-export function checkFile (file, { mode = 'replace', existingIds = [], genId = null } = {}) {
+export function checkFile (file, { mode = 'replace', existingIds = [], genId = null, taken = {} } = {}) {
   const errors = [], warnings = []
   const out = { ok: false, errors, warnings, nodes: [], edges: [], remap: {}, counts: { nodes: 0, edges: 0, kinds: {} } }
   if (!isObj(file)) { errors.push('The file must be a JSON object.'); return out }
@@ -155,6 +156,9 @@ export function checkFile (file, { mode = 'replace', existingIds = [], genId = n
     edges.push(o)
   }
   if (badEdges) warnings.push(badEdges + ' edge(s) skipped (missing node, self-link or duplicate).')
+  // V253: lineups, doc windows, vibration programs (the stuff that lives beside the nodes)
+  const ex = readExtras(file.extras, { ids: mode === 'merge' ? [...ids, ...existing] : [...ids], remap, takenLineups: taken.lineups ?? [], takenWindows: taken.windows ?? [], takenPrograms: taken.programs ?? [] })
+  warnings.push(...ex.warnings); out.extras = ex.extras
   out.nodes = kept; out.edges = edges; out.remap = remap
   out.counts = { nodes: kept.length, edges: edges.length, kinds: countKinds(kept) }
   out.ok = true
@@ -162,9 +166,10 @@ export function checkFile (file, { mode = 'replace', existingIds = [], genId = n
 }
 
 /** One readable line: "12 nodes (3 musicNode, 9 node), 14 edges". */
-export function describe (counts) {
+export function describe (counts, extras = null) {
   const k = Object.entries(counts?.kinds || {}).sort((a, b) => b[1] - a[1]).map(([n, c]) => c + ' ' + n).join(', ')
-  return (counts?.nodes ?? 0) + ' node' + ((counts?.nodes ?? 0) === 1 ? '' : 's') + (k ? ' (' + k + ')' : '') + ', ' + (counts?.edges ?? 0) + ' edge' + ((counts?.edges ?? 0) === 1 ? '' : 's')
+  const ed = describeExtras(extras)
+  return (counts?.nodes ?? 0) + ' node' + ((counts?.nodes ?? 0) === 1 ? '' : 's') + (k ? ' (' + k + ')' : '') + ', ' + (counts?.edges ?? 0) + ' edge' + ((counts?.edges ?? 0) === 1 ? '' : 's') + (ed ? ', ' + ed : '')
 }
 
 export function fileName (name = '', now = new Date()) {

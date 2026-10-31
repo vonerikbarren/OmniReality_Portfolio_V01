@@ -12,6 +12,7 @@ import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as M from '../utils/OmniLineupModel.js'
 import * as W from '../utils/OmniLineupWalkModel.js'
 import gsap from 'gsap'
+import { walkKeyAction, isTypingTarget } from '../utils/OmniWalkKeys.js'
 
 export const STORE_KEY = 'omni:lineups:v1'
 const EASE = 6          // 1/s: how fast nodes glide to their slot
@@ -28,11 +29,26 @@ export default class OmniLineup {
     on('omni:scene-clear-request', () => { this._s = M.emptyState(); this._save() })
     on('omni:lineup-request', (d) => { try { const fn = this[d.action]; if (typeof fn === 'function') fn.call(this, d) } catch (_) { /* ignore a bad request */ } })
     this._esc = (e) => { if (e.key === 'Escape' && this._walk) this.halt() }; document.addEventListener('keydown', this._esc)
+    this._akey = (e) => { const a = walkKeyAction(e, isTypingTarget(document.activeElement)); if (a && a.event === 'omni:lineup-request') { e.preventDefault(); send(a.event, a.detail) } }; document.addEventListener('keydown', this._akey)
     SERVICES.lineup = this
   }
-  destroy () { this.halt(true); try { document.removeEventListener('keydown', this._esc) } catch (_) { /* gone */ } for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.lineup === this) SERVICES.lineup = null; this._inited = false }
+  destroy () { this.halt(true); try { document.removeEventListener('keydown', this._esc); document.removeEventListener('keydown', this._akey) } catch (_) { /* gone */ } for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.lineup === this) SERVICES.lineup = null; this._inited = false }
   onResize () {}
   state () { return JSON.parse(JSON.stringify(this._s)) }
+  /** V253: load lineups from a scene file. replace = swap everything; merge = add (ids already checked/renamed by the file reader). */
+  loadState (state, mode = 'replace') {
+    const inc = M.sanitizeState(state)
+    if (mode === 'merge') {
+      const cur = this.state(); const out = M.emptyState()
+      out.lineups = { ...cur.lineups, ...inc.lineups }; out.attach = { ...cur.attach, ...inc.attach }
+      // a node belongs to one lineup at a time: the file's lineups win for the nodes they bring
+      const mine = new Set(Object.values(inc.lineups).flatMap(l => l.order))
+      for (const [id, l] of Object.entries(cur.lineups)) out.lineups[id] = { ...l, order: l.order.filter(n => !mine.has(n)) }
+      Object.assign(out.lineups, inc.lineups)
+      this._s = M.sanitizeState(out)
+    } else this._s = inc
+    this._moving = true; this._save()
+  }
   _save () { try { localStorage.setItem(STORE_KEY, JSON.stringify(this._s)) } catch (_) { /* full */ } send('omni:lineup-changed', { state: this.state() }) }
   _apply (r) { if (!r.ok) throw new Error(r.error); this._s = r.state; this._moving = true; this._save(); return r }
   _mesh (id) { return this.omniNode?.getMeshById?.(id) ?? null }

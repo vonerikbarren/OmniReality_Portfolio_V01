@@ -99,9 +99,9 @@ export const RIBBON_LAYOUT = {
     ['Editors', ['song-editor', 'mix-editor', 'doc-editor', 'poly-editor', 'audio-library']] ] },
   sandbox: { id: 'sandbox', label: 'Sandbox', icon: '⚗', tip: 'Sandbox tab: experiments kept apart from your portfolio', groups: [
     ['Experiments', ['omni-sandbox', 'omni-remix', 'omni-remix-sparks']],
-    ['Painter', ['omni-paint', 'omni-paint-undo']],
+    ['Painter', ['omni-paint', 'omni-paint-undo', 'omni-paint-mode', 'omni-paint-lab']],
     ['Demos', ['omni-demo-meaning']],
-    ['Lineup', ['lineup-walk', 'lineup-prev', 'lineup-next']],
+    ['Lineup', ['lineup-walk', 'lineup-prev', 'lineup-next', 'lineup-numbers']],
     ['Pages', ['docwin-back', 'docwin-fwd']] ] },
   timevalue: { id: 'timevalue', label: 'Time & Value', icon: '⧖', tip: 'Time & Value tab: OmniChronos controls and the OmniStore, exchange and wallet', groups: [
     ['Chronos', ['chronos', 'chronos-play', 'chronos-back', 'chronos-fwd', 'chronos-start', 'chronos-add', 'chronos-marker', 'time-ruler']],
@@ -187,8 +187,11 @@ function buildTabs () {
         b('lineup-walk', '🚶', 'Walk lineup', '—', 'Walks the camera along the first lineup, stopping at each node with a caption. Tap again (or Esc) to stop. Make a lineup first: Omni Lineup create.', () => ev('omni:lineup-request', { action: 'walkFirst' }), { name: 'Walk lineup' }),
         b('lineup-prev', '◀', 'Prev stop', '—', 'During a lineup walk, goes back to the previous node.', () => ev('omni:lineup-request', { action: 'prev' }), { name: 'Prev stop' }),
         b('lineup-next', '▶', 'Next stop', '—', 'During a lineup walk, skips ahead to the next node.', () => ev('omni:lineup-request', { action: 'next' }), { name: 'Next stop' }),
+        b('lineup-numbers', '①', 'Numbers', '—', 'Shows or hides the small number above each node that is in a lineup (its place in the sequence). Omni Lineup numbers total(true) shows 2/6 instead of 2.', () => ev('omni:badges-request', { action: 'toggle' }), { name: 'Numbers' }),
         b('docwin-back', '⟵', 'Pages back', '—', 'Flips the newest doc window back one page. Make one first: Omni Doc window.', () => ev('omni:docwindow-request', { action: 'flip', dir: -1 }), { name: 'Pages back' }),
         b('docwin-fwd', '⟶', 'Pages forward', '—', 'Flips the newest doc window forward one page.', () => ev('omni:docwindow-request', { action: 'flip', dir: 1 }), { name: 'Pages forward' }),
+        b('omni-paint-mode', '◐', 'Spray / Surface', '—', 'Switches the painter between spraying small pieces into the Sandbox and painting colour straight onto a node. With the right hand, its Material tool does the same while the painter is on.', () => ev('omni:construction-request', { action: 'paintmode' }), { name: 'Spray / Surface' }),
+        b('omni-paint-lab', '⚗', 'Next lab', '—', 'Steps to the next brush lab (Confetti, Stars, Moss, Pebbles, Crayon, Airbrush, then yours). Omni Construction labs lists them.', () => ev('omni:construction-request', { action: 'nextlab' }), { name: 'Next lab' }),
         b('omni-paint-undo', '↶', 'Undo paint', '—', 'Takes back the last painted stroke.', () => ev('omni:construction-request', { action: 'undo' }), { name: 'Undo paint' }),
         b('omni-sandbox', '🧪', 'Sandbox', '—', 'Makes a few random nodes in the Sandbox, a marked-off area apart from your portfolio, and deals them a random combination. Tap again to add more. Omni Sandbox clear confirm wipes only the Sandbox.', () => ev('omni:sandbox-request', { action: 'spawn' }), { name: 'Sandbox spawn' }),
         b('omni-remix-sparks', '✺', 'Sparks', '—', 'Shows five random combinations as ideas only. Nothing in the scene changes.', () => ev('omni:remix-request', { action: 'sparks' }), { name: 'Sparks' }),

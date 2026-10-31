@@ -60,6 +60,13 @@ export default class OmniVibration {
   // ── programs ──
   programs () { return [...PRESETS, ...this._custom.values()] }
   getProgram (id) { return PRESETS.find(p => p.id === id) ?? this._custom.get(id) ?? null }
+  customPrograms () { return [...this._custom.values()].map(p => JSON.parse(JSON.stringify(p))) }
+  /** V253: load custom programs from a scene file (replace = swap the custom set; merge = add). */
+  loadPrograms (list, mode = 'replace') {
+    if (mode !== 'merge') this._custom.clear()
+    for (const p of (Array.isArray(list) ? list : []).slice(0, 64)) { const q = sanitizeProgram(p); if (!PRESETS.some(b => b.id === q.id)) this._custom.set(q.id, q) }
+    this._persist(); this._emit('omni:vibration-programs-changed', {})
+  }
   saveProgram (p) {
     const q = sanitizeProgram(p)
     if (PRESETS.some(b => b.id === q.id)) q.id = 'vib_' + Math.random().toString(36).slice(2, 8)   // a built-in is copied, never overwritten
