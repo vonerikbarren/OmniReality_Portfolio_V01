@@ -21,6 +21,11 @@ export default class OmniDocWindow {
     if (this._inited) return; this._inited = true
     try { const raw = JSON.parse(localStorage.getItem(STORE_KEY)); for (const r of (Array.isArray(raw) ? raw : []).slice(0, WM.MAX_WINDOWS)) { const w = WM.sanitizeWindow(r); if (w) this._w.set(w.id, w) } } catch (_) { /* none saved */ }
     const on = (n, fn) => { const h = (e) => fn(e.detail ?? {}); window.addEventListener(n, h); this._bound.push([n, h]) }
+    on('omni:docwindow-request', (d) => {   // ribbon: flip the most recent window forward/back (dir -1 or 1)
+      const all = this.list(); const w = all[all.length - 1]
+      if (!w) return window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: 'Doc window', desc: 'There is no doc window yet. Make one with: Omni Doc window', holdMs: 3500 } }))
+      if (d.action === 'flip') this.flip(w.id, { dir: d.dir === -1 ? -1 : 1 }).catch(() => {})
+    })
     on('omni:node-deleted', (d) => this._nodeGone(d.id)); on('omni:scene-clear-request', () => { this._w.clear(); this._save() })
     // drop a window whose sheets are no longer in the scene (a reload that restored a different scene)
     setTimeout(() => { for (const w of [...this._w.values()]) if (!w.slots.every(id => this.omniNode?.getNodeData?.(id))) { this._w.delete(w.id) } this._save() }, 1500)

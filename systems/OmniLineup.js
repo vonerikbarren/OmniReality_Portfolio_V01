@@ -74,6 +74,13 @@ export default class OmniLineup {
     window.dispatchEvent(new CustomEvent('omni:orbit-disable', { detail: {} }))
     send('omni:lineup-walk', { state: 'start', id }); this._step(1); return plan.length
   }
+  /** Ribbon helper: walk the first lineup (or tell the person there is none). */
+  walkFirst () {
+    if (this._walk) return this.halt()
+    const id = Object.keys(this._s.lineups || {})[0]
+    if (!id) return send('omni:notify-info', { name: 'Lineup walk', desc: 'There is no lineup yet. Make one with: Omni Lineup create', holdMs: 3500 })
+    this.walk({ id })
+  }
   next () { return this._jump(1) }
   prev () { return this._jump(-1) }
   _jump (d) { const w = this._walk; if (!w) return false; const n = w.i + d; if (n < 0 || n >= w.plan.length) return false; this._step(d); return true }

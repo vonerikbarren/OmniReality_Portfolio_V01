@@ -47,6 +47,9 @@ export default async function smoke (pg, errs) {
     for (let i = 0; i < 80 && SERVICES.lineup.isWalking(); i++) { await wait(200); const c = document.getElementById('omni-lineup-walk-caption')?.textContent; if (c) seen.add(c.split(' ')[0]) }
     check('walk visits 1, 2, 3 and ends', seen.has('1') && seen.has('2') && seen.has('3') && !SERVICES.lineup.isWalking() && !document.getElementById('omni-lineup-walk-caption'), [...seen].join())
     await ok('walk manual', 'Omni Lineup walk id(L) seconds(0.3) auto(false)'); await wait(600); await ok('walk next', 'Omni Lineup next'); await ok('walk halt', 'Omni Lineup halt'); await ok('halt twice is harmless', 'Omni Lineup halt', 'No walk')
+    // ribbon buttons (V251): events reach the modules
+    window.dispatchEvent(new CustomEvent('omni:lineup-request', { detail: { action: 'walkFirst' } })); await wait(300); check('ribbon walk starts', SERVICES.lineup.isWalking()); window.dispatchEvent(new CustomEvent('omni:lineup-request', { detail: { action: 'walkFirst' } })); await wait(300); check('ribbon walk toggles off', !SERVICES.lineup.isWalking())
+    await ok('ribbon window', 'Omni Doc window id(big) layout(helix) pages(6) name(w2)'); const p0 = SERVICES.docwindow.get('w2').start; window.dispatchEvent(new CustomEvent('omni:docwindow-request', { detail: { action: 'flip', dir: 1 } })); await wait(2500); check('ribbon page flip advances window', SERVICES.docwindow.get('w2').start !== p0, p0)
     // vibration beat landing, with the song clock stubbed
     const SP = (await import('/systems/OmniSongPlayer.js')).default; let beats = 0; const keep = SP.beatClock; SP.beatClock = () => ({ beats, bpm: 120, nodeId: 'x' })
     await run('Omni Draw node(sphere) id(vn) pos(0, 30, 0)'); await ok('vibration start apex + song sync', 'Omni Vibration start target(vn) program(bounce) sync(song) land(apex) attack(0)')
