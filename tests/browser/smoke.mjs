@@ -124,6 +124,113 @@ export default async function smoke (pg, errs) {
     await ok('demo play', 'Omni Demo play name(meaning) speed(4) captions(false)'); await wait(600); check('demo is playing', SERVICES.demo.isPlaying()); await ok('demo stop', 'Omni Demo stop'); await wait(400)
     check('demo cleaned up its nodes', !on.getNodeData('demo_meaning_a'))
     await ok('decor list', 'Omni Decor list')
+    // TimeNode (V259): cubes, ring + icosahedron, halt, chain, face panel, pad, calendar view
+    { const TN = SERVICES.timenodes; check('timenodes service', !!TN); let nowMs = Date.UTC(2026, 5, 1, 9, 0); TN.setClock(() => nowMs)
+      const heard = []; const hear = (n) => window.addEventListener(n, (e) => heard.push(n + ':' + (e.detail.nodeId || '')))
+      hear('omni:time-fulfilled')
+      const a = TN.createCube({ id: 'tc1', title: 'Kickoff', startDate: '2026-06-01', startTime: '09:00', endDate: '2026-06-01', endTime: '11:00', zone: 'UTC', position: [0, 3, 40] }); check('first TimeCube made', a.ok, JSON.stringify(a))
+      const b = TN.createCube({ id: 'tc2', after: 'tc1', title: 'Review', startDate: '2026-06-01', startTime: '11:00', endDate: '2026-06-01', endTime: '12:00', zone: 'UTC', bind: 'own', chain: true }); check('second cube joins the same sequence', b.ok && b.sequence === a.sequence, JSON.stringify(b))
+      await wait(700); check('a line joins the cubes', on._edges.some(e => e.from === 'tc1' && e.to === 'tc2'))
+      check('sequence order', TN.sequenceOf('tc1').join() === 'tc1,tc2', TN.sequenceOf('tc1').join())
+      const rig = TN.rigOf('tc1'); check('ring and icosahedron are on the cube', !!rig && rig.children.length === 2 && rig.parent?.userData?.nodeId === 'tc1')
+      check('faces carry the six sides', SERVICES.poly.getPoly('tc1').faces.map(f => f.label).join() === 'Start date,End date,Start time,End time,Title and notes,Status', SERVICES.poly.getPoly('tc1').faces.map(f => f.label).join())
+      await wait(300); const R = rig.userData.time.R; let rs = TN.rigStatus('tc1'); check('start: icosahedron at the top', rs.progress === 0 && Math.abs(rs.icoPosition[1] - R) < 1e-6, JSON.stringify(rs))
+      nowMs = Date.UTC(2026, 5, 1, 10, 0); await wait(400); rs = TN.rigStatus('tc1'); check('half done: icosahedron at the bottom of the ring', rs.status === 'running' && Math.abs(rs.icoPosition[1] + R) < 1e-3 && Math.abs(rs.icoPosition[0]) < 1e-3, JSON.stringify(rs))
+      const spin0 = rig.userData.time.ico.rotation.x; await wait(300); check('it spins while running', rig.userData.time.ico.rotation.x !== spin0)
+      TN.halt('tc1'); await wait(300); const rh = rig.userData.time.ico.rotation.clone(); nowMs = Date.UTC(2026, 5, 1, 10, 30); await wait(400)
+      rs = TN.rigStatus('tc1'); check('halted: stops, keeps its place, glows', rs.status === 'halted' && rig.userData.time.ico.rotation.x === rh.x && Math.abs(rs.progress - 0.5) < 1e-6 && rs.emissive > 0.4, JSON.stringify(rs))
+      check('halting one cube leaves the other alone', TN.state('tc2').status === 'waiting')
+      TN.resume('tc1'); await wait(300); check('resume carries on from the same place', Math.abs(TN.state('tc1').progress - 0.5) < 1e-6, String(TN.state('tc1').progress))
+      // face panel: one at a time, docNode material, closes on a second press
+      SERVICES.poly.clickFace('tc1', 2); const ps = TN.panelState(); check('pressing a face opens its panel', ps?.face === 'startTime', JSON.stringify(ps))
+      const pm = TN._panel; check('panel sheet uses the doc material', pm.children[0].material.type === 'MeshBasicMaterial' && pm.children[0].material.toneMapped === false && pm.children[0].material.polygonOffset === true)
+      SERVICES.poly.clickFace('tc1', 5); check('another face moves the panel (one at a time)', TN.panelState()?.face === 'status' && scene3().filter(o => o.name === 'omni-time-panel').length === 1)
+      SERVICES.poly.clickFace('tc1', 5); check('same face closes it', TN.panelState() === null && scene3().filter(o => o.name === 'omni-time-panel').length === 0)
+      function scene3 () { return TN.ctx.scene.children }
+      // fulfilment, event, chain
+      nowMs = Date.UTC(2026, 5, 1, 11, 35); await wait(500); check('cube 1 fulfilled and announced', TN.state('tc1').fulfilled && heard.includes('omni:time-fulfilled:tc1'), heard.join())
+      await wait(400); check('chain: cube 2 started by itself when cube 1 finished', TN.entry('tc2').activatedAt != null && TN.state('tc2').status === 'running', JSON.stringify(TN.entry('tc2')))
+      // TimePad
+      const pd = TN.createPad('Show'); check('pad made', pd.ok); const btn = TN.addPadButton('Show', { label: 'Go' }).pad.buttons[0]
+      TN.addPadAction('Show', btn.id, { op: 'reset', target: 'tc2', at: 0 }); TN.addPadAction('Show', btn.id, { op: 'activate', target: 'tc2', at: 150 }); TN.addPadAction('Show', btn.id, { op: 'halt', target: 'tc2', at: 350 })
+      const pr = TN.pressButton('Show', 'Go'); check('pad press runs the first action at once', pr.ok && pr.scheduled === 3 && TN.entry('tc2').activatedAt == null, JSON.stringify(pr)); await wait(700)
+      check('pad actions run in order, on time', TN.entry('tc2').activatedAt != null && TN.entry('tc2').halt.on)
+      // loop for analysis
+      await ok('loop on', 'Omni Time loop id(tc1) on(true)'); await wait(400); check('looping replays a finished cube', TN.entry('tc1').bind === 'own' && TN.state('tc1').progress < 1, JSON.stringify(TN.state('tc1')))
+      // calendar view
+      nowMs = Date.UTC(2026, 5, 1, 9, 0); const v = TN.view('7d', { anchor: nowMs, sequence: a.sequence }); check('7-day view has 7 columns and the cubes', v.columns.length === 7 && v.columns[0].items.length >= 1, v.columns.map(c => c.items.length).join())
+      check('filter by month', TN.filter('month', '2026-06', { sequence: a.sequence }).length === 2)
+      // Inspector section
+      { const { timeKindBlockHTML, wireTimeKindBlock } = await import('/ui/OmniTimeInspector.js'); const host = document.createElement('div'); host.innerHTML = timeKindBlockHTML(on.getNodeData('tc1')); document.body.appendChild(host); wireTimeKindBlock(host, on.getNodeData('tc1'))
+        check('TimeNode section is there with all fields', !!host.querySelector('#oi-custom-time') && ['title', 'startDate', 'startTime', 'endDate', 'endTime', 'zone', 'notes', 'bind', 'rate', 'chain', 'loop'].every(k => host.querySelector(`[data-oitm="${k}"]`)))
+        const sel = host.querySelector('[data-oitmv="span"]'); check('calendar picker offers all 15 views', sel.options.length === 15, String(sel.options.length))
+        const ti = host.querySelector('[data-oitm="title"]'); ti.value = 'Renamed'; ti.dispatchEvent(new Event('change', { bubbles: true })); check('editing a field changes the cube', TN.entry('tc1').title === 'Renamed')
+        sel.value = '1y'; sel.dispatchEvent(new Event('change', { bubbles: true })); check('year view renders in the section', /Year: 12 months/.test(host.querySelector('[data-ref="oitm-cal"]').textContent), host.querySelector('[data-ref="oitm-cal"]').textContent.slice(0, 60))
+        host.querySelector('[data-oitma="toggle-halt"]').click(); check('Halt button halts', TN.entry('tc1').halt.on === true); host.querySelector('[data-oitma="toggle-halt"]').click(); check('and resumes', TN.entry('tc1').halt.on === false); host.remove() }
+      // deleting a cube cleans up its rig and pad actions
+      window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'tc2' } })); await wait(700); check('deleted cube loses its rig and pad actions', !TN.rigOf('tc2') && TN.pads()[0].buttons[0].actions.length === 0, JSON.stringify(TN.pads()[0].buttons[0].actions))
+      window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'tc1' } })); await wait(500); TN.deletePad('Show'); TN.setClock(null) }
+    // ribbon + node menu + TimePad board + scene clock + pads in the scene file (V260)
+    { const TN = SERVICES.timenodes; const RB = await import('/ui/OmniRibbon.js'); const ids = RB.RIBBON_LAYOUT.create.groups.flatMap(g => g[1])
+      check('ribbon Create has Time node, TimePad and Claim node', ['time-node', 'time-pad', 'claim-node'].every(i => ids.includes(i)), ids.join())
+      const pk = await (await fetch('/ui/OmniDrawModePicker.js')).text(); check('node menu has the Time and Claim tiles', pk.includes('data-mode="time"') && pk.includes('data-mode="claim"'))
+      const d2 = { select: false }; window.dispatchEvent(new CustomEvent('omni:time-node-create', { detail: d2 })); check('ribbon Time node makes a TimeCube', d2.out?.ok && TN.isTime(d2.out.nodeId), JSON.stringify(d2.out))
+      await ok('cube for pad', 'Omni Time create id(tcx) title(Pad cube) startdate(2026-06-01) starttime(09:00) enddate(2026-06-01) endtime(10:00)')
+      await ok('board open', 'Omni Time board(open)'); const bd = document.getElementById('omni-timepad'); check('TimePad board is on screen', bd?.classList.contains('is-on'))
+      bd.querySelector('[data-a="newpad"]').click(); await wait(100); check('board makes a pad', TN.pads().length >= 1 && !!bd.querySelector('[data-a="newbtn"]'))
+      bd.querySelector('[data-a="newbtn"]').click(); await wait(100); check('board makes a button and opens its editor', !!bd.querySelector('[data-f="op"]') && !!bd.querySelector('.tpb-pad'))
+      bd.querySelector('[data-f="target"]').value = 'tcx'; bd.querySelector('[data-f="op"]').value = 'activate'; bd.querySelector('[data-a="addact"]').click(); await wait(100); check('board adds an action', TN.pads()[0].buttons[0].actions.length === 1 && TN.pads()[0].buttons[0].actions[0].target === 'tcx', JSON.stringify(TN.pads()[0].buttons[0].actions))
+      bd.querySelector('[data-a="edit"]').click(); await wait(50); bd.querySelector('.tpb-pad').click(); await wait(100); check('pressing a board button runs it', TN.entry('tcx').activatedAt != null, JSON.stringify(TN.entry('tcx').activatedAt))
+      // pads and the clock travel in the scene file
+      await ok('scene clock', 'Omni Time clock source(scene) origin(2026-06-01) scale(60)'); const TLm = await import('/utils/OmniTimeline.js'); const want = Date.UTC(2026, 5, 1) + TLm.getT() * 60000; check('cubes read the scene clock', Math.abs(TN.now() - want) < 2000, TN.now() + ' vs ' + want)
+      const fj = JSON.parse(SERVICES.scenefile.exportText({ name: 'pads' })); check('file carries pads and the clock', fj.extras?.timepads?.[0]?.buttons?.[0]?.actions?.[0]?.target === 'tcx' && fj.extras?.timeclock?.source === 'scene', JSON.stringify(fj.extras?.timeclock))
+      await ok('real clock again', 'Omni Time clock source(real)'); await bad('bad clock source', 'Omni Time clock source(sideways)')
+      TN.deletePad(TN.pads()[0].id); await ok('board close', 'Omni Time board(close)'); check('board closes', !bd.classList.contains('is-on'))
+      window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'tcx' } })); window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: d2.out.nodeId } })); await wait(500) }
+    // ClaimNode (V260): shares, gauge, OmniCell chart, testimonies by who said them, private + key
+    { const CL = SERVICES.claims; check('claims service', !!CL)
+      const d1 = { select: false }; window.dispatchEvent(new CustomEvent('omni:claim-node-create', { detail: d1 })); check('ribbon Claim node makes a ClaimNode', d1.out?.ok && CL.isClaim(d1.out.nodeId), JSON.stringify(d1.out))
+      await ok('claim', 'Omni Claim create claim(The cup is half full) id(cup1) scale(10) laws(conservation of mass)')
+      await ok('testify human', 'Omni Claim testify id(cup1) by(ann) kind(human) verdict(true) from(0) to(0.52) saw(water to the line)')
+      await ok('testify sensor', 'Omni Claim testify id(cup1) by(lvl1) kind(sensor) verdict(false) from(0.52) to(1)')
+      let sh = CL.shares('cup1'); check('shares at 10 cells: 50 / 40 / 10', sh.truth === 0.5 && sh.false === 0.4 && sh.undefined === 0.1, JSON.stringify(sh.layers) + sh.truth + ' ' + sh.false)
+      await wait(700); const cm = on.getMeshById('cup1')?.userData?.claimMesh; check('the node has a gauge ring in 3 arcs', !!cm && cm.arcs.every(a => a.geometry.attributes.position?.count > 0) && !cm.lock.visible)
+      const col0 = cm.core.material.color.getHexString(); const { getChart } = await import('/utils/ChartDataRegistry.js'); const ch = getChart('cup1'); check('OmniCell chart data is registered', ch?.chartType === 'line' && ch.seriesData.True['8'] === 50 && ch.seriesData.Undefined['1'] === 100, JSON.stringify(ch?.seriesData?.True))
+      await ok('scale 100', 'Omni Claim scale id(cup1) n(100)'); sh = CL.shares('cup1'); check('zoomed in: nothing undefined, objective with a law', sh.undefined === 0 && CL.data('cup1').objective === true)
+      await wait(700); check('the node colour followed the shares', cm.core.material.color.getHexString() !== col0, col0 + ' -> ' + cm.core.material.color.getHexString())
+      await ok('state change', 'Omni Claim state id(cup1) conditions(lime=true) reason(added a lime)'); check('old state kept, new begun', CL.get('cup1').stateHistory.length === 1 && CL.get('cup1').state.conditions.lime === true)
+      await ok('who said what', 'Omni Claim show id(cup1)'); check('who said what is kept apart', CL.data('cup1').entities.human.accounts === 1 && CL.data('cup1').entities.sensor.accounts === 1 && CL.data('cup1').entities.ai.accounts === 0)
+      await bad('bad verdict', 'Omni Claim testify id(cup1) verdict(maybe)'); await bad('not a claim', 'Omni Claim show id(nothing_here)')
+      // inspector section
+      { const { claimKindBlockHTML, wireClaimKindBlock } = await import('/ui/OmniClaimInspector.js'); const host = document.createElement('div'); host.innerHTML = claimKindBlockHTML(on.getNodeData('cup1')); document.body.appendChild(host); wireClaimKindBlock(host, on.getNodeData('cup1'))
+        check('Claim section: shares, chart, testimony form', /True \d/.test(host.querySelector('[data-testid="oicl-shares"]')?.textContent || '') && !!host.querySelector('svg polyline') && !!host.querySelector('[data-oicl="kind"]') && !!host.querySelector('[data-oicl="observation"]'))
+        host.querySelector('[data-oicl="entityId"]').value = 'gpt'; host.querySelector('[data-oicl="kind"]').value = 'ai'; host.querySelector('[data-oicl="verdict"]').value = 'true'; host.querySelector('[data-oicl="from"]').value = '0'; host.querySelector('[data-oicl="to"]').value = '0.5'
+        host.querySelector('[data-oicla="testify"]').click(); await wait(150); check('the form adds a testimony from an AI', CL.data('cup1').entities.ai.accounts === 1); host.remove() }
+      // private: sealed in the node, locked shows nothing, wrong key fails, edits re-seal
+      await ok('seal', 'Omni Claim private id(cup1) key(open sesame)'); const nd = on.getNodeData('cup1'); check('sealed: no plain claim in the node, nothing readable', !!nd.claimSealed && !nd.claim && !JSON.stringify(nd).includes('water to the line') && !JSON.stringify(nd).includes('gpt'))
+      await ok('lock', 'Omni Claim lock id(cup1)'); check('locked: no information', CL.isLocked('cup1') && CL.get('cup1') === null); await wait(700); const cm2 = on.getMeshById('cup1').userData.claimMesh; check('locked: padlock shown, ring grey', cm2.lock.visible === true)
+      await bad('testify while locked', 'Omni Claim testify id(cup1) verdict(true)'); await bad('wrong key', 'Omni Claim unlock id(cup1) key(nope nope)'); check('still locked after a wrong key', CL.isLocked('cup1'))
+      { const { claimKindBlockHTML } = await import('/ui/OmniClaimInspector.js'); const h = claimKindBlockHTML(on.getNodeData('cup1')); check('locked Inspector shows the title and a key box only', h.includes('The cup is half full') && h.includes('type="password"') && !h.includes('water to the line') && !h.includes('Testify')) }
+      const fj2 = SERVICES.scenefile.exportText({ name: 'sealed' }); check('scene file carries only the sealed claim', !fj2.includes('water to the line') && fj2.includes('omni-claim-vault/1'))
+      await ok('unlock', 'Omni Claim unlock id(cup1) key(open sesame)'); check('unlocked: all accounts back', CL.get('cup1').testimonies.length === 3)
+      const before = on.getNodeData('cup1').claimSealed.data; await ok('edit while private', 'Omni Claim testify id(cup1) by(bot7) kind(bot) verdict(true) from(0.1) to(0.2)'); await CL.flush(); await wait(300); check('editing a private claim re-seals it', on.getNodeData('cup1').claimSealed.data !== before)
+      const V = await import('/utils/OmniClaimVault.js'); const back = await V.openClaim(on.getNodeData('cup1').claimSealed, 'open sesame'); check('the sealed copy holds the edit', back.testimonies.length === 4 && back.testimonies.some(t => t.entity.id === 'bot7'))
+      await ok('public again', 'Omni Claim public id(cup1)'); check('public: plain claim, no seal', !!on.getNodeData('cup1').claim && !on.getNodeData('cup1').claimSealed)
+      // V261: awareness, identification, branch realities, walk-in view
+      await ok('aware 1', 'Omni Claim aware id(cup1) name(Camera) type(natural) familiar(colour) accepts(colour)'); await ok('aware 2', 'Omni Claim aware id(cup1) name(Policy desk) type(intentional) familiar(rumour)')
+      await ok('identify unknown', 'Omni Claim identify id(cup1) subject(smell)'); await ok('identify branch', 'Omni Claim identify id(cup1) subject(rumour)')
+      { const c = CL.get('cup1'); check('identify: a branch was born for the declined subject', c.branches.length === 1 && c.branches[0].subject === 'rumour', JSON.stringify(c.branches))
+        const brId = c.branches[0].id; await ok('grow', 'Omni Claim grow id(cup1) branch(' + brId + ')'); const c2 = CL.get('cup1'); const nid = c2.branches[0].nodes[0]
+        check('grow made a linked ClaimNode', !!nid && CL.isClaim(nid) && (on.getAllEdges?.() ?? on.edges ?? []).some?.(e => (e.from === 'cup1' && e.to === nid) || (e.source === 'cup1' && e.target === nid)) !== false, String(nid))
+        if (nid) window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: nid } })) }
+      const CV = SERVICES.claimview; check('claim view service', !!CV)
+      await ok('view on', 'Omni Claim view id(cup1)'); await wait(400)
+      { const st = CV.stats('cup1'); check('walk-in: three rooms and particles', st.rooms.length === 3 && st.particles > 0 && CV.isShown('cup1'), JSON.stringify(st.rooms))
+        CV.step('cup1', 0.05, 200); const gp = st.group.getObjectByName('omni-claim-particles').geometry.attributes.position.array; const half = Math.max(...st.rooms.map(r => r.edge)) * 3
+        check('walk-in: particles stay near their rooms after stepping', Array.from(gp).every(v => Number.isFinite(v) && Math.abs(v) < half + 20))
+        check('walk-in is overlay only, never saved', !SERVICES.scenefile.exportText({ name: 'v' }).includes('omni-claim-particles')) }
+      await ok('view off', 'Omni Claim view id(cup1) state(off)'); check('walk-in closed', !CV.isShown('cup1'))
+      await ok('claim list', 'Omni Claim list'); window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'cup1' } })); window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: d1.out.nodeId } })); await wait(500); check('deleted claim leaves no chart', !getChart('cup1')) }
     // curve editor with Bezier handles (V254): real pointer events on the canvas
     { const { default: mk } = await import('/ui/OmniCurveEditor.js'); let last = null; const ed = mk({ points: [[0, 0], [0.5, 1], [1, 0]], onChange: (p) => { last = p } }); document.body.appendChild(ed.el); const cv = ed.el.querySelector('canvas'); await wait(50)
       const R = cv.getBoundingClientRect(); const px = (x) => R.left + (10 + x * 260) / 280 * R.width; const py = (y) => R.top + (10 + (1 - (y + 1) / 2) * 110) / 130 * R.height

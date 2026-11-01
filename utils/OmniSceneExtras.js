@@ -4,7 +4,8 @@
  *   "extras": {
  *     "lineups":    { version, lineups: { id: { layout, center, spacing, order[] } }, attach: { node: { to, off } } },
  *     "docwindows": [ { id, src, layout, count, center, pages, start, slots[] } ],
- *     "vibration":  [ ...custom vibration programs ]
+ *     "vibration":  [ ...custom vibration programs ],
+ *     "timepads":   [ ...OmniTimePad boards (V260) ],  "timeclock": { source, origin, scale }
  *   }
  *
  * Semantics skins need nothing here: a skin is a PolyNode, and its faces travel inside the node record.
@@ -14,13 +15,15 @@
 import * as LM from './OmniLineupModel.js'
 import * as WM from './OmniDocWindowModel.js'
 import { sanitizeProgram, PRESETS } from './OmniVibrationModel.js'
+import * as PADM from './OmniTimePadModel.js'
+import { sanitizeClock } from './OmniTimeClock.js'
 
 export const MAX_PROGRAMS = 64
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v)
 const clone = (v) => JSON.parse(JSON.stringify(v))
 
 /** What to write into the file. Inputs are the live module snapshots (any may be missing). */
-export function buildExtras ({ lineups = null, docwindows = null, vibration = null } = {}) {
+export function buildExtras ({ lineups = null, docwindows = null, vibration = null, timepads = null, timeclock = null } = {}) {
   const out = {}
   const ls = lineups ? LM.sanitizeState(lineups) : null
   if (ls && (Object.keys(ls.lineups).length || Object.keys(ls.attach).length)) out.lineups = ls
@@ -28,6 +31,8 @@ export function buildExtras ({ lineups = null, docwindows = null, vibration = nu
   if (ws.length) out.docwindows = ws
   const vs = (Array.isArray(vibration) ? vibration : []).filter(p => isObj(p) && !p.builtin).slice(0, MAX_PROGRAMS).map(p => sanitizeProgram(p))
   if (vs.length) out.vibration = vs
+  const tp = PADM.sanitizePads(timepads); if (tp.length) out.timepads = tp
+  const tc = timeclock ? sanitizeClock(timeclock) : null; if (tc && tc.source !== 'real') out.timeclock = tc
   return out
 }
 
@@ -37,7 +42,7 @@ export function buildExtras ({ lineups = null, docwindows = null, vibration = nu
  *         takenLineups, takenWindows, takenPrograms: ids already in use (merge) }
  * -> { extras, warnings }
  */
-export function readExtras (raw, { ids = [], remap = {}, takenLineups = [], takenWindows = [], takenPrograms = [] } = {}) {
+export function readExtras (raw, { ids = [], remap = {}, takenLineups = [], takenWindows = [], takenPrograms = [], takenPads = [] } = {}) {
   const warnings = []; const extras = {}
   if (raw == null) return { extras, warnings }
   if (!isObj(raw)) return { extras, warnings: ['The "extras" part is not an object; skipped.'] }
@@ -79,6 +84,18 @@ export function readExtras (raw, { ids = [], remap = {}, takenLineups = [], take
     }
     if (list.length) extras.vibration = list
   }
+  if (raw.timepads != null) {
+    const used = new Set(takenPads); const list = []
+    for (const p0 of PADM.sanitizePads(raw.timepads)) {
+      let dropped = 0
+      const p = PADM.pruneTargets(p0, (t) => { const m = rm(t); const ok = live.has(m); if (!ok) dropped++; return ok })
+      const remapped = { ...p, buttons: p.buttons.map(b => ({ ...b, actions: b.actions.map(a => ({ ...a, target: rm(a.target) })) })) }
+      if (dropped) warnings.push('Pad "' + p.name + '": ' + dropped + ' action(s) pointed at missing cubes; dropped.')
+      remapped.id = fresh(remapped.id, used, 'Pad'); list.push(PADM.sanitizePad(remapped))
+    }
+    if (list.length) extras.timepads = list
+  }
+  if (raw.timeclock != null) { const c = sanitizeClock(raw.timeclock); if (c.source !== 'real') extras.timeclock = c }
   return { extras, warnings }
 }
 
@@ -88,5 +105,7 @@ export function describeExtras (e) {
   const nl = Object.keys(e.lineups?.lineups ?? {}).length; if (nl) bits.push(nl + ' lineup' + (nl === 1 ? '' : 's'))
   const nw = (e.docwindows ?? []).length; if (nw) bits.push(nw + ' doc window' + (nw === 1 ? '' : 's'))
   const nv = (e.vibration ?? []).length; if (nv) bits.push(nv + ' vibration program' + (nv === 1 ? '' : 's'))
+  const np = (e.timepads ?? []).length; if (np) bits.push(np + ' time pad' + (np === 1 ? '' : 's'))
+  if (e.timeclock) bits.push('scene time clock')
   return bits.join(', ')
 }

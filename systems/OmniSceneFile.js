@@ -34,10 +34,10 @@ export default class OmniSceneFile {
 
   _on () { if (!this.omniNode?.exportScene) throw new Error('the node system is not available'); return this.omniNode }
   _snapshot () {
-    return { lineups: SERVICES.lineup?.state?.() ?? null, docwindows: SERVICES.docwindow?.list?.() ?? null, vibration: SERVICES.vibration?.customPrograms?.() ?? null }
+    return { lineups: SERVICES.lineup?.state?.() ?? null, docwindows: SERVICES.docwindow?.list?.() ?? null, vibration: SERVICES.vibration?.customPrograms?.() ?? null, timepads: SERVICES.timenodes?.pads?.() ?? null, timeclock: SERVICES.timenodes?.getClock?.() ?? null }
   }
   _taken () {
-    return { lineups: Object.keys(SERVICES.lineup?.state?.().lineups ?? {}), windows: (SERVICES.docwindow?.list?.() ?? []).map(w => w.id), programs: (SERVICES.vibration?.customPrograms?.() ?? []).map(p => p.id) }
+    return { lineups: Object.keys(SERVICES.lineup?.state?.().lineups ?? {}), windows: (SERVICES.docwindow?.list?.() ?? []).map(w => w.id), programs: (SERVICES.vibration?.customPrograms?.() ?? []).map(p => p.id), pads: (SERVICES.timenodes?.pads?.() ?? []).map(p => p.id) }
   }
   exportFile ({ name = '' } = {}) { return J.buildFile(this._on().exportScene(), { name, version: this.context?.version ?? this.context?.appVersion ?? 'V253', extras: this._snapshot() }) }
   exportText (o) { return J.stringify(this.exportFile(o)) }
@@ -66,6 +66,8 @@ export default class OmniSceneFile {
     try { if (ex.lineups) SERVICES.lineup?.loadState?.(ex.lineups, mode) } catch (e) { r.warnings.push('Lineups: ' + e.message) }
     try { if (ex.docwindows) SERVICES.docwindow?.loadWindows?.(ex.docwindows, mode) } catch (e) { r.warnings.push('Doc windows: ' + e.message) }
     try { if (ex.vibration) SERVICES.vibration?.loadPrograms?.(ex.vibration, mode) } catch (e) { r.warnings.push('Vibration: ' + e.message) }
+    try { if (ex.timepads) SERVICES.timenodes?.loadPads?.(ex.timepads, mode) } catch (e) { r.warnings.push('Time pads: ' + e.message) }
+    try { if (ex.timeclock) SERVICES.timenodes?.setClockConfig?.(ex.timeclock) } catch (e) { r.warnings.push('Time clock: ' + e.message) }
     const msg = 'Loaded ' + J.describe(r.counts, r.extras) + (mode === 'merge' ? ' (added to the scene)' : ' (the scene was replaced)') + (r.warnings.length ? '\n' + r.warnings.slice(0, 8).map(w => '• ' + w).join('\n') : '')
     send('omni:notify-info', { text: 'Scene file: ' + msg.split('\n')[0] })
     return msg

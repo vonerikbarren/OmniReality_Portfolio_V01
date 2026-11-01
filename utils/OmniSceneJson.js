@@ -157,7 +157,7 @@ export function checkFile (file, { mode = 'replace', existingIds = [], genId = n
   }
   if (badEdges) warnings.push(badEdges + ' edge(s) skipped (missing node, self-link or duplicate).')
   // V253: lineups, doc windows, vibration programs (the stuff that lives beside the nodes)
-  const ex = readExtras(file.extras, { ids: mode === 'merge' ? [...ids, ...existing] : [...ids], remap, takenLineups: taken.lineups ?? [], takenWindows: taken.windows ?? [], takenPrograms: taken.programs ?? [] })
+  const ex = readExtras(file.extras, { ids: mode === 'merge' ? [...ids, ...existing] : [...ids], remap, takenLineups: taken.lineups ?? [], takenWindows: taken.windows ?? [], takenPrograms: taken.programs ?? [], takenPads: taken.pads ?? [] })
   warnings.push(...ex.warnings); out.extras = ex.extras
   out.nodes = kept; out.edges = edges; out.remap = remap
   out.counts = { nodes: kept.length, edges: edges.length, kinds: countKinds(kept) }

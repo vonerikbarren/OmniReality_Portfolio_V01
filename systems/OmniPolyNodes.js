@@ -300,6 +300,7 @@ export default class OmniPolyNodes {
   /** A face was clicked: fire the tooltip event with the options that fit what the face holds. */
   clickFace (nodeId, index, clientX = 0, clientY = 0) {
     const poly = this.getPoly(nodeId); if (!poly) return false
+    if (SERVICES.timenodes?.faceClicked?.(nodeId, index)) return true   // V259: a TimeCube shows its face panel instead of the menu
     const pages = this._pagesOf(nodeId, index)
     const options = P.menuOptions(poly, index, { pages, playing: this._vplay.has(VF.videoKey(nodeId, index)) })
     if (!options.length) return false

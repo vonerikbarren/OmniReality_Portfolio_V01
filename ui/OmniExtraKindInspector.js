@@ -24,6 +24,8 @@ import { docKindBlockHTML, wireDocKindBlock } from './OmniDocInspector.js'   // 
 import { noteKindBlockHTML, wireNoteKindBlock } from './OmniNoteInspector.js'   // V213
 import { voxelKindBlockHTML, wireVoxelKindBlock } from './OmniVoxelNodeInspector.js'   // V211
 import { dimKindBlockHTML, wireDimKindBlock } from './OmniDimensionalNodeInspector.js'   // V217
+import { claimKindBlockHTML, wireClaimKindBlock } from './OmniClaimInspector.js'   // V260: the ClaimNode section
+import { timeKindBlockHTML, wireTimeKindBlock } from './OmniTimeInspector.js'   // V259: the TimeNode section of a TimeCube
 import { polyKindBlockHTML, wirePolyKindBlock } from './OmniPolyInspector.js'   // V204: PolyNode — shape, edge, Open ⟐OmniPoly
 import { mixKindBlockHTML, wireMixKindBlock } from './OmniMixInspector.js'   // V201: OmniMusicMixNode — strips, Play / Stop, Record, Open mixer   // V198: SongNode — tempo, length, Play / Pause / Stop, Open song editor
 import { musicKindBlockHTML, wireMusicKindBlock } from './OmniMusicInspector.js'   // V195: MusicNode — tempo, Play / Stop / Record, Open sequencer
@@ -148,7 +150,8 @@ export function extraOptionsHTML (data) {
   if (data.nodeKind === Extra.KIND_SONG) return songKindBlockHTML(data)   // V198
   if (data.nodeKind === Extra.KIND_MIX) return mixKindBlockHTML(data)   // V201
   if (data.nodeKind === Extra.KIND_DOC) return docKindBlockHTML(data)   // V203
-  if (data.nodeKind === Extra.KIND_POLY) return polyKindBlockHTML(data)   // V204
+  if (data.nodeKind === Extra.KIND_CLAIM) return claimKindBlockHTML(data)   // V260
+  if (data.nodeKind === Extra.KIND_POLY) return polyKindBlockHTML(data) + (Extra.isTimeNodeData(data) ? timeKindBlockHTML(data) : '')   // V204 (+ V259 TimeNode section)
   if (data.nodeKind === Extra.KIND_VOXEL) return voxelKindBlockHTML(data)   // V211
   if (data.nodeKind === Extra.KIND_NOTE) return noteKindBlockHTML(data)   // V213
   if (data.nodeKind === Extra.KIND_DIMENSIONAL) return dimKindBlockHTML(data)   // V217
@@ -235,7 +238,8 @@ export function wireExtraOptions (root, data) {
   if (data.nodeKind === Extra.KIND_SONG) { wireSongKindBlock(root, data); return }   // V198
   if (data.nodeKind === Extra.KIND_MIX) { wireMixKindBlock(root, data); return }   // V201
   if (data.nodeKind === Extra.KIND_DOC) { wireDocKindBlock(root, data); return }   // V203
-  if (data.nodeKind === Extra.KIND_POLY) { wirePolyKindBlock(root, data); return }   // V204
+  if (data.nodeKind === Extra.KIND_CLAIM) { wireClaimKindBlock(root, data); return }   // V260
+  if (data.nodeKind === Extra.KIND_POLY) { wirePolyKindBlock(root, data); if (Extra.isTimeNodeData(data)) wireTimeKindBlock(root, data); return }   // V204
   if (data.nodeKind === Extra.KIND_VOXEL) { wireVoxelKindBlock(root, data); return }   // V211
   if (data.nodeKind === Extra.KIND_NOTE) { wireNoteKindBlock(root, data); return }   // V213
   if (data.nodeKind === Extra.KIND_DIMENSIONAL) { wireDimKindBlock(root, data); return }   // V217

@@ -6,7 +6,7 @@
  *   opacity 0.1..1 (1 = solid)   speed 0..10 (spin multiplier; 3 = default, the old look was about 1)   glow 0..4 (brightness)   bolts 0..20 (strikes per second)
  */
 export const STORE_KEY = 'omni:targeting:settings:v2'
-export const DEFAULTS = { geometry: 'TetrahedronGeometry', color: '#ffffff', opacity: 1, speed: 3, glow: 1.5, bolts: 4, activeSlot: null }
+export const DEFAULTS = { geometry: 'TetrahedronGeometry', color: '#ffffff', opacity: 1, speed: 10, glow: 1.5, bolts: 10, activeSlot: null }
 export const RANGES = { opacity: [0.1, 1], speed: [0, 10], glow: [0, 4], bolts: [0, 20] }
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))

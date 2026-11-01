@@ -38,6 +38,9 @@ import { buildPolyNodeMesh, releasePolyMesh } from './OmniPolyNodeMesh.js'      
 import { sanitizePoly, defaultPoly } from './OmniPolyModel.js'                    // V204: data.poly (shape + per-face data)                       // V203: data.doc (which document, which page, how big)
 import { sanitizeNote, defaultNote } from './OmniNoteModel.js'                      // V213: data.note (the rich-text note, saved with the node)
 import { buildDimensionalNodeMesh, releaseDimensionalMesh } from './OmniDimensionalNodeMesh.js'   // V217
+import { buildClaimNodeMesh, releaseClaimMesh } from './OmniClaimNodeMesh.js'               // V260: ClaimNode geometry
+import { sanitizeClaim, newClaim } from './OmniClaimModel.js'
+import { sanitizeTime } from './OmniTimeModel.js'                                  // V259: TimeNode (a polyNode with data.time)
 import { sanitizeDimensional, defaultDimensional } from './OmniDimensionalModel.js'
 import { buildVoxelNodeMesh, releaseVoxelMesh } from './OmniVoxelNodeMesh.js'    // V211: the OmniVoxelNode geometry (a diamond at a room's centre)
 import { sanitizeMix, defaultMix } from './OmniMixModel.js'                         // V201: data.mix (the desk: strips, master, crossfader, automation)                    // V198: data.song (the arrangement, saved with the node)
@@ -55,7 +58,10 @@ export const KIND_VOXEL = 'voxelNode'   // V211: OmniVoxelNode — data = { node
 export const KIND_NOTE = 'noteNode'     // V213: OmniNote — data = { nodeKind:'noteNode', note } (the rich text lives IN the node: utils/OmniNoteModel.js; drawn on the same thin sheet as the DocNode)
 export const KIND_DIMENSIONAL = 'dimensionalNode'   // V217: a pocket tuned to one dimensional channel — data = { nodeKind:'dimensionalNode', dimensional:{ axiom, perspective, signature, mode } } (utils/OmniDimensionalModel.js)
 export const GEO_DIMENSIONAL = 'DimensionalNode'
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_DIMENSIONAL]
+export const KIND_CLAIM = 'claimNode'   // V260: ClaimNode (DimensionalScripting) — data = { nodeKind:'claimNode', claim } (public) or { nodeKind, claimSealed } (private: utils/OmniClaimVault.js)
+export const GEO_CLAIM = 'ClaimNode'
+export const isClaimNodeData = (d) => !!d && d.nodeKind === KIND_CLAIM
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_DIMENSIONAL, KIND_CLAIM]
 export const GEO_NOTE = 'NoteNode'
 export const GEO_VOXEL = 'VoxelNode'
 export const sanitizeVoxel = (v) => { const room = typeof v?.room === 'string' && /^-?\d{1,4},-?\d{1,4},-?\d{1,4}$/.test(v.room) ? v.room : '0,0,0'; const point = typeof v?.point === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(v.point) ? v.point : ''; return point ? { room, point } : { room } }   // V214: point = the id of one of your points (a point node)
@@ -72,9 +78,9 @@ export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring 
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, timenodes: null, timepad: null, timepadboard: null, claimview: null, claims: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_DIMENSIONAL)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_DIMENSIONAL || d.nodeKind === KIND_CLAIM)
 export const isNoteNodeData = (d) => !!d && d.nodeKind === KIND_NOTE
 export const isDimensionalNodeData = (d) => !!d && d.nodeKind === KIND_DIMENSIONAL
 export const isVoxelNodeData = (d) => !!d && d.nodeKind === KIND_VOXEL
@@ -83,6 +89,7 @@ export const isSongNodeData = (d) => !!d && d.nodeKind === KIND_SONG
 export const isMixNodeData = (d) => !!d && d.nodeKind === KIND_MIX
 export const isDocNodeData = (d) => !!d && d.nodeKind === KIND_DOC
 export const isPolyNodeData = (d) => !!d && d.nodeKind === KIND_POLY
+export const isTimeNodeData = (d) => !!d && d.nodeKind === KIND_POLY && !!d.time && typeof d.time === 'object'   // V259
 export const isSoundNodeData = (d) => !!d && d.nodeKind === KIND_SOUND
 export const isTerminalShellData = (d) => !!d && d.nodeKind === KIND_TERMINAL_SHELL
 export const isFloorPanelData = (d) => !!d && d.nodeKind === KIND_FLOOR_PANEL
@@ -171,11 +178,16 @@ export function extraCreateFields (spec) {
   if (spec.nodeKind === KIND_DIMENSIONAL) {
     return { geometry: GEO_DIMENSIONAL, label: clip(spec.label || 'Dimensional node', 40), data: { nodeKind: KIND_DIMENSIONAL, dimensional: spec.dimensional && typeof spec.dimensional === 'object' ? sanitizeDimensional(spec.dimensional) : defaultDimensional() } }
   }
+  if (spec.nodeKind === KIND_CLAIM) {
+    const sealed = spec.claimSealed && typeof spec.claimSealed === 'object' && spec.claimSealed.format === 'omni-claim-vault/1' ? { claimSealed: spec.claimSealed } : null
+    const claim = sealed ? null : (spec.claim && typeof spec.claim === 'object' ? sanitizeClaim(spec.claim) : newClaim({ claim: clip(spec.title || 'A claim', 300) }))
+    return { geometry: GEO_CLAIM, label: clip(spec.label || claim?.claim || spec.claimSealed?.claim || 'Claim', 40), data: { nodeKind: KIND_CLAIM, ...(sealed ?? { claim }) } }
+  }
   if (spec.nodeKind === KIND_VOXEL) {
     return { geometry: GEO_VOXEL, label: clip(spec.label || 'Voxel node', 40), data: { nodeKind: KIND_VOXEL, voxel: sanitizeVoxel(spec.voxel) } }
   }
   if (spec.nodeKind === KIND_POLY) {
-    return { geometry: GEO_POLY, label: clip(spec.label || 'Poly node', 40), data: { nodeKind: KIND_POLY, poly: spec.poly && typeof spec.poly === 'object' ? sanitizePoly(spec.poly) : defaultPoly() } }
+    return { geometry: GEO_POLY, label: clip(spec.label || 'Poly node', 40), data: { nodeKind: KIND_POLY, poly: spec.poly && typeof spec.poly === 'object' ? sanitizePoly(spec.poly) : defaultPoly(), ...(spec.time && typeof spec.time === 'object' ? { time: sanitizeTime(spec.time) } : {}) } }   // V259: a TimeCube is a polyNode that also carries data.time
   }
   if (spec.nodeKind === KIND_DOC) {
     // which document and page travel WITH the node (a sanitized copy; a missing / hostile one becomes an empty sheet)
@@ -303,6 +315,13 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_CLAIM) {
+    const mesh = buildClaimNodeMesh(col)
+    mesh.userData.extraKind = { kind: KIND_CLAIM, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   if (data.nodeKind === KIND_POLY) {
     if (!data.poly || typeof data.poly !== 'object') data.poly = defaultPoly()
     const mesh = buildPolyNodeMesh(col, sanitizePoly(data.poly))
@@ -365,6 +384,7 @@ export function releaseExtraMesh (mesh) {
   if (ek.kind === KIND_MIX) releaseMixMesh(mesh)
   if (ek.kind === KIND_DOC || ek.kind === KIND_NOTE) releaseDocMesh(mesh)
   if (ek.kind === KIND_POLY) releasePolyMesh(mesh)
+  if (ek.kind === KIND_CLAIM) releaseClaimMesh(mesh)
   if (ek.kind === KIND_VOXEL) releaseVoxelMesh(mesh)
   if (ek.kind === KIND_DIMENSIONAL) releaseDimensionalMesh(mesh)
   LIVE.delete(mesh)
