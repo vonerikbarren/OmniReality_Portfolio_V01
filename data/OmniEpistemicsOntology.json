@@ -1,0 +1,535 @@
+{
+  "version": 1,
+  "name": "OmniEpistemics",
+  "engine": "OmniDynamix",
+  "principle": "Reality is passed down, lossy at every step. Certainty is derived from evidence, never typed in.",
+  "layers": [
+    {
+      "id": "event",
+      "label": "Event",
+      "shape": "sphere",
+      "color": "#9be3a8",
+      "glyph": "●",
+      "summary": "Something that happened. The root; everything else is a copy of it.",
+      "attrs": [
+        {
+          "key": "when",
+          "label": "When",
+          "type": "text",
+          "default": "",
+          "tip": "a time or period"
+        },
+        {
+          "key": "where",
+          "label": "Where",
+          "type": "text",
+          "default": "",
+          "tip": "a place"
+        },
+        {
+          "key": "magnitude",
+          "label": "Magnitude",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how big it was"
+        },
+        {
+          "key": "physicalTrace",
+          "label": "Physical trace",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how much it left behind in the world"
+        }
+      ]
+    },
+    {
+      "id": "observation",
+      "label": "Observation",
+      "shape": "sphere",
+      "color": "#66ccff",
+      "glyph": "◉",
+      "summary": "One person or sensor seeing the event.",
+      "attrs": [
+        {
+          "key": "observer",
+          "label": "Observer",
+          "type": "text",
+          "default": "",
+          "tip": "who or what saw it"
+        },
+        {
+          "key": "clarity",
+          "label": "Clarity",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how well it was seen"
+        },
+        {
+          "key": "proximity",
+          "label": "Proximity",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how close the observer was"
+        },
+        {
+          "key": "bias",
+          "label": "Bias",
+          "type": "unit",
+          "default": 0.2,
+          "tip": "how much expectation coloured it"
+        },
+        {
+          "key": "attention",
+          "label": "Attention",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how closely they were looking"
+        }
+      ]
+    },
+    {
+      "id": "memory",
+      "label": "Memory",
+      "shape": "sphere",
+      "color": "#c9a8ff",
+      "glyph": "◌",
+      "summary": "An observation after time has worked on it.",
+      "attrs": [
+        {
+          "key": "vividness",
+          "label": "Vividness",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how sharp it feels"
+        },
+        {
+          "key": "decay",
+          "label": "Decay",
+          "type": "unit",
+          "default": 0.2,
+          "tip": "how much has faded"
+        },
+        {
+          "key": "reconstruction",
+          "label": "Reconstruction",
+          "type": "unit",
+          "default": 0.3,
+          "tip": "how much was filled in afterwards"
+        },
+        {
+          "key": "confidence",
+          "label": "Felt confidence",
+          "type": "unit",
+          "default": 0.7,
+          "tip": "how sure the rememberer feels (not how right they are)"
+        }
+      ]
+    },
+    {
+      "id": "rumor",
+      "label": "Rumour",
+      "shape": "sphere",
+      "color": "#ffa860",
+      "glyph": "❍",
+      "summary": "A claim passed on without checking.",
+      "attrs": [
+        {
+          "key": "propagation",
+          "label": "Propagation",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how easily it spreads"
+        },
+        {
+          "key": "emotionalCharge",
+          "label": "Emotional charge",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how much it makes people feel"
+        },
+        {
+          "key": "evidence",
+          "label": "Evidence",
+          "type": "unit",
+          "default": 0.2,
+          "tip": "what actually backs it"
+        },
+        {
+          "key": "novelty",
+          "label": "Novelty",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how surprising it is"
+        }
+      ]
+    },
+    {
+      "id": "gossip",
+      "label": "Gossip",
+      "shape": "sphere",
+      "color": "#ff9ad2",
+      "glyph": "❋",
+      "summary": "A rumour told person to person, with colour added.",
+      "attrs": [
+        {
+          "key": "reach",
+          "label": "Reach",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "how many it got to"
+        },
+        {
+          "key": "intimacy",
+          "label": "Intimacy",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how close the tellers are"
+        },
+        {
+          "key": "embellishment",
+          "label": "Embellishment",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "how much was added"
+        },
+        {
+          "key": "trust",
+          "label": "Trust",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how much the listeners trust the teller"
+        },
+        {
+          "key": "emotionalCharge",
+          "label": "Emotional charge",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how much it makes people feel"
+        }
+      ]
+    },
+    {
+      "id": "narrative",
+      "label": "Narrative",
+      "shape": "cube",
+      "color": "#ffd36b",
+      "glyph": "▣",
+      "summary": "A story a group tells itself. A container with a limited number of faces.",
+      "attrs": [
+        {
+          "key": "coherence",
+          "label": "Coherence",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how well the parts hang together"
+        },
+        {
+          "key": "repetition",
+          "label": "Repetition",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how often it is told"
+        },
+        {
+          "key": "identity",
+          "label": "Identity",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "how much it says who \"we\" are"
+        },
+        {
+          "key": "emotionalCharge",
+          "label": "Emotional charge",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how much it makes people feel"
+        },
+        {
+          "key": "evidence",
+          "label": "Evidence",
+          "type": "unit",
+          "default": 0.2,
+          "tip": "what actually backs it"
+        },
+        {
+          "key": "reproducibility",
+          "label": "Reproducibility",
+          "type": "unit",
+          "default": 0.1,
+          "tip": "whether anyone could check it again"
+        },
+        {
+          "key": "predictiveAccuracy",
+          "label": "Predictive accuracy",
+          "type": "unit",
+          "default": 0.1,
+          "tip": "whether it predicts what happens next"
+        }
+      ]
+    },
+    {
+      "id": "meta",
+      "label": "Meta view",
+      "shape": "cube",
+      "color": "#8fe0d0",
+      "glyph": "◈",
+      "summary": "A view ABOUT the other views: how this story is told and why.",
+      "attrs": [
+        {
+          "key": "framing",
+          "label": "Framing",
+          "type": "text",
+          "default": "",
+          "tip": "the lens it is seen through"
+        },
+        {
+          "key": "reflexivity",
+          "label": "Reflexivity",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how much it examines itself"
+        },
+        {
+          "key": "humility",
+          "label": "Humility",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how open it is to being wrong"
+        }
+      ]
+    },
+    {
+      "id": "documentary",
+      "label": "Documentary",
+      "shape": "cube",
+      "color": "#e8eef8",
+      "glyph": "▤",
+      "summary": "A record meant to last: a report, article, file or archive.",
+      "attrs": [
+        {
+          "key": "medium",
+          "label": "Medium",
+          "type": "text",
+          "default": "",
+          "tip": "report, article, film..."
+        },
+        {
+          "key": "evidenceStrength",
+          "label": "Evidence strength",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how strong the evidence behind it is"
+        },
+        {
+          "key": "reproducibility",
+          "label": "Reproducibility",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "whether the result can be checked again"
+        },
+        {
+          "key": "predictiveAccuracy",
+          "label": "Predictive accuracy",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "whether it has predicted well"
+        },
+        {
+          "key": "authority",
+          "label": "Authority",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how much weight its source carries"
+        }
+      ]
+    },
+    {
+      "id": "absence",
+      "label": "Absence",
+      "shape": "hollow",
+      "color": "#8c96a8",
+      "glyph": "◌",
+      "summary": "Something that should exist and does not. A hole in the record is evidence too.",
+      "attrs": [
+        {
+          "key": "missing",
+          "label": "What is missing",
+          "type": "text",
+          "default": "",
+          "tip": "the thing that is not there"
+        },
+        {
+          "key": "expectedness",
+          "label": "Expectedness",
+          "type": "unit",
+          "default": 0.6,
+          "tip": "how strongly it should exist"
+        },
+        {
+          "key": "searchEffort",
+          "label": "Search effort",
+          "type": "unit",
+          "default": 0.4,
+          "tip": "how hard anyone looked"
+        }
+      ]
+    },
+    {
+      "id": "counterfactual",
+      "label": "What-if",
+      "shape": "sphere",
+      "color": "#b5a6ff",
+      "glyph": "◇",
+      "summary": "How it could have gone. Shown as a ghost.",
+      "attrs": [
+        {
+          "key": "hinge",
+          "label": "The change",
+          "type": "text",
+          "default": "",
+          "tip": "the one thing that differs"
+        },
+        {
+          "key": "plausibility",
+          "label": "Plausibility",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how believable the other path is"
+        },
+        {
+          "key": "divergence",
+          "label": "Divergence",
+          "type": "unit",
+          "default": 0.5,
+          "tip": "how far it ends up from what happened"
+        }
+      ]
+    }
+  ],
+  "transforms": [
+    {
+      "id": "observe",
+      "from": [
+        "event"
+      ],
+      "to": "observation",
+      "meaning": "derives",
+      "summary": "Seeing an event: clarity follows its size and the observer's closeness; some of it is lost."
+    },
+    {
+      "id": "remember",
+      "from": [
+        "observation"
+      ],
+      "to": "memory",
+      "meaning": "distorts",
+      "summary": "Time fades the picture and the mind fills the gaps."
+    },
+    {
+      "id": "propagate",
+      "from": [
+        "memory",
+        "observation"
+      ],
+      "to": "rumor",
+      "meaning": "propagates",
+      "summary": "Passed on without checking; the strongest bits survive."
+    },
+    {
+      "id": "gossip",
+      "from": [
+        "rumor"
+      ],
+      "to": "gossip",
+      "meaning": "propagates",
+      "summary": "Told person to person; colour is added."
+    },
+    {
+      "id": "narrate",
+      "from": [
+        "gossip",
+        "rumor",
+        "memory"
+      ],
+      "to": "narrative",
+      "meaning": "distorts",
+      "summary": "A group turns it into a story that explains something about itself."
+    },
+    {
+      "id": "represent",
+      "from": [
+        "narrative",
+        "event",
+        "observation"
+      ],
+      "to": "documentary",
+      "meaning": "derives",
+      "summary": "Written down: the record looks firmer than what it was made from."
+    }
+  ],
+  "forces": [
+    {
+      "id": "herd",
+      "label": "Herd",
+      "summary": "The more people already believe it, the more others do."
+    },
+    {
+      "id": "emotionalGravity",
+      "label": "Emotional gravity",
+      "summary": "A strong feeling pulls belief towards it."
+    },
+    {
+      "id": "incentive",
+      "label": "Incentive",
+      "summary": "Belief follows what it pays to believe."
+    },
+    {
+      "id": "authority",
+      "label": "Authority",
+      "summary": "A trusted source adds weight."
+    },
+    {
+      "id": "identity",
+      "label": "Identity",
+      "summary": "If it says who \"we\" are, it is defended."
+    },
+    {
+      "id": "realityResistance",
+      "label": "Reality resistance",
+      "summary": "Evidence, repeatable checks and good predictions push back."
+    }
+  ],
+  "equations": [
+    {
+      "id": "squash",
+      "text": "squash(x) = x / (1 + x)",
+      "note": "turns any non-negative number into 0..1"
+    },
+    {
+      "id": "rumorStrength",
+      "text": "squash(propagation x emotionalCharge / (evidence + 0.1))",
+      "note": "spreads fast when it feels big and has little behind it"
+    },
+    {
+      "id": "belief",
+      "text": "1 - exp(-3 x coherence x repetition x (0.5 + identity))",
+      "note": "a story told often, that hangs together and says who we are, is believed"
+    },
+    {
+      "id": "realityResistance",
+      "text": "mean(evidenceStrength, reproducibility, predictiveAccuracy)",
+      "note": "the pushback from the world"
+    },
+    {
+      "id": "narrativeStability",
+      "text": "realityResistance x (0.5 + 0.5 x coherence)",
+      "note": "stable only if the world supports it (coherence is counted once)"
+    }
+  ],
+  "visualization": [
+    "opacity follows certainty (a firm node is solid, a doubtful one is faint)",
+    "size follows how much information the node carries",
+    "glow follows emotional charge",
+    "spheres = alike in kind, cubes = containers with limited faces, hollow wire = absence, ghost = what-if"
+  ]
+}

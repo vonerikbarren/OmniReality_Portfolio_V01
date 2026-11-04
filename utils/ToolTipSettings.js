@@ -12,27 +12,30 @@
  */
 
 import { hexToRgba } from './ColorUtils.js'
+import { sanitizeCullPrefs, DEFAULT_CULL } from './OmniTooltipCull.js'
 
 const STORE_KEY = 'omni:tooltip:settings'
-const DEFAULTS = { background: '#08080c', border: '#ffffff', color: '#ffffff' }
+const DEFAULTS = { background: '#08080c', border: '#ffffff', color: '#ffffff', ...DEFAULT_CULL }   // V264: occlusion ('hide' | 'dim' | 'show'), max headers, dim opacity
 
 let settings = loadSettings()
 
 function loadSettings () {
   try {
     const raw = localStorage.getItem(STORE_KEY)
-    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS }
+    return raw ? clean({ ...DEFAULTS, ...JSON.parse(raw) }) : { ...DEFAULTS }
   } catch (_) {
     return { ...DEFAULTS }
   }
 }
+
+function clean (o) { return { ...o, ...sanitizeCullPrefs(o) } }
 
 export function getSettings () {
   return { ...settings }
 }
 
 export function setSettings (patch) {
-  settings = { ...settings, ...patch }
+  settings = clean({ ...settings, ...patch })
   try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)) } catch (_) { /* real save simply skipped if storage unavailable */ }
   applyToRoot()
 }

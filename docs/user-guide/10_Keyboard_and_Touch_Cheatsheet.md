@@ -16,7 +16,7 @@ Keys are ignored while you type in a text box. "Everywhere" means anywhere in th
 | Arrow Left / Right | Everywhere | RH pad: orbit left / right around the current target (the selected node, else the point just ahead of you), not the scene origin (V192) |
 | Y / H | Everywhere | RH pad corner buttons: orbit up / down around the current target; keeps going all the way around, over the top and under the bottom (V192; V191 stopped 5 degrees short of straight up / down) |
 | U / V | Everywhere | LH pad corner buttons: orbit up / down, the same continuous orbit as Y / H (V192) |
-| C | Everywhere (not while hovering Chronos) | Return to the landing view |
+| C | Everywhere (not while hovering Chronos) | Return to the landing view: camera (0, 2.5, -20), looking straight down -Z (V262) |
 | **Hands** | | |
 | 1 / 2 | Everywhere | ⟐OmniHand ☰ / ⟐ConsciousHand ☰ (top-row digits or numpad) |
 | 3 / 4 | Everywhere | OmniHand / ConsciousHand ⬢ Tools |

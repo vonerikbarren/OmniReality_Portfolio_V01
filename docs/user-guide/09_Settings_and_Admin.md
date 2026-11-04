@@ -72,7 +72,7 @@ Keys are in [Keyboard and Touch](10_Keyboard_and_Touch_Cheatsheet.md). A node th
 
 ### Reticle (Admin > UI Settings > Reticle, V190)
 
-A faint decorative technical circle in the middle of the screen, behind every panel. It cannot be clicked. It turns slowly (not when your device asks for reduced motion). Controls apply at once: **Show** (on by default), **Opacity** (5 to 100 %, default 15 %), **Reset reticle**.
+A faint decorative technical circle in the middle of the screen, behind every panel. It cannot be clicked. It turns slowly (not when your device asks for reduced motion). Controls apply at once: **Show** (on by default), **Opacity** (5 to 100 %, default 15 %), **Colour** (any colour, or **Follow theme** for the theme's accent, the default), **Brightness** (40 to 200 %, default 100 %), **Shadow** (0 to 100, default 0: a soft dark shadow behind the lines so they stay readable on a bright wallpaper), **Reset reticle**. Your choices are remembered in this browser (V271).
 
 ### Sound (Admin > UI Settings > Sound, V194)
 

@@ -9,6 +9,7 @@
 import * as D from '../utils/OmniDocModel.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as BM from '../utils/OmniDocBookmarks.js'
+import * as ARR from './OmniDocArrange.js'
 
 export const NAV_ITEM = '⟐OmniDoc'
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
@@ -153,7 +154,7 @@ export default class OmniDocView {
         <button data-act="next" ${lastShown ? 'disabled' : ''} aria-label="Page down (next page)" title="Page down (the PageDown key)">▼ Page down</button>
         <label>page <input type="number" data-act="page" min="1" max="${doc.pages || 5000}" value="${doc.page}" aria-label="Page number"> of ${pages}${vp[1] ? ` <span class="odc-note">(showing ${vp[0]}–${vp[1]})</span>` : ''}</label>
         <span class="odc-note" data-ref="status">${esc(st.text)}</span></div>
-      <div class="odc-row"><label>pages <select data-act="spread" aria-label="One page or two pages"><option value="single"${doc.spread === 'single' ? ' selected' : ''}>One page</option><option value="double"${doc.spread === 'double' ? ' selected' : ''}>Two pages (open book)</option></select></label>
+      <div class="odc-row"><label>pages <select data-act="spread" aria-label="One page or two pages"><option value="single"${doc.spread === 'single' ? ' selected' : ''}>One page</option><option value="double"${doc.spread === 'double' ? ' selected' : ''}>Two pages (open book)</option>${ARR.arrangeGroupHTML()}</select></label> ${ARR.countSelectHTML('data-act="arrcount"', this._arrCount ?? ARR.DEFAULT_COUNT)}
         <span class="odc-row" role="group" aria-label="Zoom"><button data-act="zoomout" ${doc.zoom <= D.ZOOM_MIN ? 'disabled' : ''} aria-label="Zoom out">−</button><label>zoom <input type="number" data-act="zoom" min="${D.ZOOM_MIN}" max="${D.ZOOM_MAX}" step="25" value="${doc.zoom}" aria-label="Zoom percent"> %</label><button data-act="zoomin" ${doc.zoom >= D.ZOOM_MAX ? 'disabled' : ''} aria-label="Zoom in">+</button><button data-act="zoomfit" ${doc.zoom === 100 ? 'disabled' : ''} aria-label="Zoom to fit (100 percent)">Fit</button></span>
         <span class="odc-row" role="group" aria-label="Move the zoomed view"><button data-act="panl" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look left">◀</button><button data-act="panu" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look up">▲</button><button data-act="pand" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look down">▼</button><button data-act="panr" ${doc.zoom > 100 ? '' : 'disabled'} aria-label="Look right">▶</button></span></div>
       <div class="odc-note">100 % shows the whole page on the sheet. Zooming in shows a part of it, sharper the closer you are (up to the device's texture limit). Two pages turn two at a time (1–2, 3–4 …).</div>
@@ -238,7 +239,8 @@ export default class OmniDocView {
       case 'pick': this.setNode(el.value); break
       case 'source': { const i = el.value.indexOf(':'); const type = el.value.slice(0, i); const sid = el.value.slice(i + 1); const label = el.options[el.selectedIndex]?.textContent?.replace(/ \((pdf|markdown|text|image)\)$/, '') ?? null; this._act('source', () => s.setSource(id, type === 'none' ? 'none' : type, sid, type === 'none' ? '' : label)); break }
       case 'page': this._act('page', () => s.goto(id, Number(el.value))); break
-      case 'spread': this._act('spread', () => s.setSpread(id, el.value)); break
+      case 'spread': if (ARR.isArrange(el.value)) { const v = el.value; el.value = s.getDoc(id)?.spread ?? 'single'; ARR.runArrange(id, v, this._arrCount).then(r => this.say(r.text, !r.ok)); break } this._act('spread', () => s.setSpread(id, el.value)); break
+      case 'arrcount': this._arrCount = Number(el.value) || ARR.DEFAULT_COUNT; break
       case 'zoom': this._act('zoom', () => s.setZoom(id, Number(el.value))); break
       case 'sides': this._act('sides', () => s.edit(id, 'sides', (m) => D.setSides(m, el.value))); break
       case 'quality': this._act('quality', () => s.edit(id, 'quality', (m) => D.setQuality(m, el.value))); break

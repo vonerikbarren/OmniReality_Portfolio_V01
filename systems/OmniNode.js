@@ -104,6 +104,7 @@ import * as Value from '../utils/OmniValueModel.js'
 import { classifyPointerGesture } from '../utils/OrbitRelease.js'
 import * as Kinds from '../utils/OmniNodeKinds.js'   // V183: StoreItemNode / OmniValueNode (data.nodeKind) — see docs/omniproducts/OMNISTORE_NODES_DESIGN.md
 import * as Extra from '../utils/OmniExtraKinds.js'   // V191: OmniPathNode / floorPanelNode (data.nodeKind) — see docs/architecture/OMNIPATHNODE_DESIGN.md, FLOORPANELNODE_DESIGN.md
+import * as LineModel from '../utils/OmniLineModel.js'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 
@@ -931,6 +932,7 @@ const STORE_EDGE_STYLES = 'omni:edge:styles'
 const EDGE_STYLE_DEFAULTS = {
   kind: 'cylinder', color: null, thickness: 1,
   dashed: false, highlight: false, highlightColor: '#66ccff',
+  dotted: false, startEnd: 'none', endEnd: 'none',   // V268: dotted + arrow / dot ends (see utils/OmniLineModel.js)
 }
 
 // Sequence Node transitions ("changes to") render distinctly from a plain
@@ -1309,6 +1311,23 @@ export default class OmniNode {
    */
   getAllEdges () {
     return this._edges.map(e => ({ from: e.from, to: e.to }))
+  }
+
+  /** V266: the id of the selected node, or null */
+  getSelectedId () { return this._selected ?? null }
+
+  /** V266: remove the line between two nodes (either direction). Returns true when one was removed. */
+  disconnectNodes (aId, bId) {
+    const before = this._edges.length
+    this._removeEdge(aId, bId); if (this._edges.length === before) this._removeEdge(bId, aId)
+    return this._edges.length < before
+  }
+
+  /** V265: join two nodes with an ordinary line (the select-and-connect tool uses this). Returns true when a NEW line was drawn (false: same node, a missing node, or already joined). */
+  connectNodes (fromId, toId) {
+    const before = this._edges.length
+    this._connectNodes(fromId, toId)
+    return this._edges.length > before
   }
 
   // ── Panel DOM ────────────────────────────────────────────────────────────
@@ -2298,7 +2317,7 @@ export default class OmniNode {
     // sight, never hand-picked, never overridden by a saved style.
     const style = isSequenceEdge
       ? { ...SEQUENCE_EDGE_STYLE }
-      : (loadEdgeStyles()[edgeStyleKey(fromId, toId)] ?? { ...EDGE_STYLE_DEFAULTS })
+      : LineModel.sanitizeLineStyle(loadEdgeStyles()[edgeStyleKey(fromId, toId)] ?? { ...EDGE_STYLE_DEFAULTS })
     const line = this._buildEdgeLine(posA, posB, childDepth, style)
     this.ctx.scene.add(line)
 
@@ -2915,7 +2934,7 @@ export default class OmniNode {
    *  `edge.line.geometry` directly and expects exactly that shape, so
    *  a Group or multi-object edge would silently break all three. */
   _buildEdgeLine (posA, posB, depth = 0, style = null) {
-    const s = { ...EDGE_STYLE_DEFAULTS, ...(style ?? {}) }
+    const s = LineModel.sanitizeLineStyle({ ...EDGE_STYLE_DEFAULTS, ...(style ?? {}) })
     const baseRadius = Math.max(EDGE_MIN_RADIUS, EDGE_BASE_RADIUS * Math.pow(EDGE_TAPER, depth))
     const radius = baseRadius * (s.thickness ?? 1)
 
@@ -2931,14 +2950,15 @@ export default class OmniNode {
       // consistent "line" look instead, without needing a second
       // object type every rebuild path would have to special-case.
       const thinRadius = Math.max(EDGE_MIN_RADIUS * 0.6, radius * 0.22)
-      geo = s.dashed ? this._buildDashedCylinderGeometry(thinRadius, length) : new THREE.CylinderGeometry(thinRadius, thinRadius, length, 6, 1)
+      geo = s.dotted ? this._buildDottedGeometry(thinRadius, length) : s.dashed ? this._buildDashedCylinderGeometry(thinRadius, length) : new THREE.CylinderGeometry(thinRadius, thinRadius, length, 6, 1)
     } else if (s.kind === 'double') {
       // Dashed + double isn't supported together (combinatorial corner
       // nobody asked for) — double always renders solid.
       geo = this._buildDoubleEdgeGeometry(radius * 0.55, length)
     } else {
-      geo = s.dashed ? this._buildDashedCylinderGeometry(radius, length) : new THREE.CylinderGeometry(radius, radius, length, 8, 1)
+      geo = s.dotted ? this._buildDottedGeometry(radius, length) : s.dashed ? this._buildDashedCylinderGeometry(radius, length) : new THREE.CylinderGeometry(radius, radius, length, 8, 1)
     }
+    if (s.startEnd !== 'none' || s.endEnd !== 'none') geo = this._addLineEnds(geo, radius, length, s.startEnd, s.endEnd)
 
     const mat = new THREE.MeshBasicMaterial({
       color       : s.color ? new THREE.Color(s.color) : 0xffffff,
@@ -2974,6 +2994,44 @@ export default class OmniNode {
 
     return mesh
   }
+
+  /** V268: round dots along the edge's length axis (a dashed row with short, evenly spaced pieces). */
+  _buildDottedGeometry (radius, length) {
+    const segs = Math.max(8, Math.min(80, Math.round(length / Math.max(0.12, radius * 6))))
+    return this._buildDashedCylinderGeometry(radius * 1.15, length, segs, 0.34)
+  }
+
+  /** V268: arrowheads / dots for the two ends, merged into the edge's ONE geometry. startEnd is at the FROM node (the -Y end), endEnd at the TO node (+Y).
+   *  They sit a little in from the node so the node itself does not hide them. Too-short edges get none. */
+  _addLineEnds (geo, radius, length, startEnd, endEnd) {
+    if (!(length > 1.6)) return geo
+    const gap = Math.min(length * 0.3, 1.1), h = Math.min(1.2, Math.max(0.4, radius * 7)), cr = Math.max(radius * 3.2, 0.16)
+    const parts = [geo]
+    const add = (kind, sign) => {
+      if (kind === 'arrow') { const c = new THREE.ConeGeometry(cr, h, 10, 1); if (sign < 0) c.rotateZ(Math.PI); c.translate(0, sign * (length / 2 - gap - h / 2), 0); parts.push(c) }
+      else if (kind === 'dot') { const d = new THREE.SphereGeometry(cr * 0.9, 10, 8); d.translate(0, sign * (length / 2 - gap), 0); parts.push(d) }
+    }
+    add(startEnd, -1); add(endEnd, 1)
+    return parts.length > 1 ? this._mergeNonIndexed(parts) : geo
+  }
+
+  /** V268: the look of the line between two nodes (either order). null when there is none. Arrow ends are reported as stored (startEnd = at the node the line was drawn FROM). */
+  getEdgeStyle (aId, bId) {
+    const e = this._edges.find(x => (x.from === aId && x.to === bId) || (x.from === bId && x.to === aId)); if (!e) return null
+    return LineModel.sanitizeLineStyle({ ...EDGE_STYLE_DEFAULTS, ...e.style })
+  }
+
+  /** V268: change a line's look. `style` is merged over the current one. Named in the order (aId, bId): if the line was stored the other way round, the ends are swapped so "arrow at b" stays at b. */
+  setEdgeStyle (aId, bId, style) {
+    const e = this._edges.find(x => (x.from === aId && x.to === bId) || (x.from === bId && x.to === aId)); if (!e) return false
+    let st = LineModel.sanitizeLineStyle({ ...EDGE_STYLE_DEFAULTS, ...e.style, ...(style ?? {}) })
+    if (e.from === bId && e.to === aId && style && (style.startEnd !== undefined || style.endEnd !== undefined)) st = LineModel.swapEnds(st)
+    e.style = st; saveEdgeStyle(e.from, e.to, st); this._rebuildSingleEdge(e); this._save()
+    window.dispatchEvent(new CustomEvent('omni:edge-style-changed', { detail: { from: e.from, to: e.to, style: st } })); return true
+  }
+
+  /** V268: every line with its look (a copy) */
+  getEdgesDetailed () { return this._edges.map(e => ({ from: e.from, to: e.to, style: LineModel.sanitizeLineStyle({ ...EDGE_STYLE_DEFAULTS, ...e.style }) })) }
 
   /** Concatenates several non-indexed BufferGeometries' position/normal
    *  arrays into one — no addon import needed, just plain Float32Array
@@ -3795,9 +3853,10 @@ export default class OmniNode {
       const edge = this._edges.find(ed =>
         (ed.from === from && ed.to === to) || (ed.from === to && ed.to === from))
       if (!edge) return
-      edge.style = { ...EDGE_STYLE_DEFAULTS, ...edge.style, ...style }
+      edge.style = LineModel.sanitizeLineStyle({ ...EDGE_STYLE_DEFAULTS, ...edge.style, ...style })
       saveEdgeStyle(edge.from, edge.to, edge.style)
       this._rebuildSingleEdge(edge)
+      window.dispatchEvent(new CustomEvent('omni:edge-style-changed', { detail: { from: edge.from, to: edge.to, style: edge.style } }))
     }
     window.addEventListener('omni:edge-style-set', this._onEdgeStyleSet)
 
@@ -4041,7 +4100,7 @@ export default class OmniNode {
           const isSequenceEdge = !!(entryA.data.isSequenceNode && entryB.data.isSequenceNode)
           const style = isSequenceEdge
             ? { ...SEQUENCE_EDGE_STYLE }
-            : (savedStyles[edgeStyleKey(from, to)] ?? { ...EDGE_STYLE_DEFAULTS })
+            : LineModel.sanitizeLineStyle(savedStyles[edgeStyleKey(from, to)] ?? { ...EDGE_STYLE_DEFAULTS })
           const line = this._buildEdgeLine(
             entryA.mesh.getWorldPosition(new THREE.Vector3()),
             entryB.mesh.getWorldPosition(new THREE.Vector3()),

@@ -22,6 +22,9 @@
 
 import * as THREE from 'three'
 import { goToObject } from '../utils/CameraTravel.js'
+import { SERVICES } from '../utils/OmniExtraKinds.js'
+import * as CULL from '../utils/OmniTooltipCull.js'
+import { getSettings as getTooltipSettings } from '../utils/ToolTipSettings.js'
 import { getOverride as getTooltipOverride, setOverride as setTooltipOverride, clearOverride as clearTooltipOverride, hasOverride as hasTooltipOverride } from '../utils/ToolTipNodeOverrides.js'
 import { hexToRgba } from '../utils/ColorUtils.js'
 
@@ -106,6 +109,7 @@ export default class ToolTipMenu {
 
   init () {
     injectStyles()
+    SERVICES.tooltips = this
     this._onDocClick = (e) => {
       if (!this._openMenuMesh) return
       if (this._ignoreNextDocClick) return
@@ -129,12 +133,13 @@ export default class ToolTipMenu {
     window.addEventListener('omni:node-contextmenu-request', this._onNodeContextMenu)
   }
 
+  /**
+   * V264: only the nearest few on-screen headers are positioned (the rest cost nothing), DOM is written only when a header actually moved, and a header whose node is
+   * behind another object is hidden (or dimmed, per ToolTipSettings 'occlusion'). The look-through test is a ray from the camera to the node, a few per frame, each result kept for ~300 ms.
+   */
   update () {
     const meshes = this.omniNode?.getAllMeshes?.() ?? []
     const liveSet = new Set(meshes)
-
-    // Remove headers for meshes that no longer exist — real sync,
-    // not a fixed list built once.
     for (const [mesh, entry] of this._headers) {
       if (!liveSet.has(mesh)) {
         entry.el.remove()
@@ -142,25 +147,57 @@ export default class ToolTipMenu {
         if (this._openMenuMesh === mesh) this._closeQuickMenu()
       }
     }
-
-    meshes.forEach(mesh => {
-      if (!this._headers.has(mesh)) this._headers.set(mesh, { el: this._buildHeaderEl(mesh), mesh })
-      this._positionHeader(this._headers.get(mesh))
-    })
-
+    const cam = this.ctx.camera; const prefs = getTooltipSettings(); const now = performance.now()
+    if (!cam) return
+    const tmp = (this._tmp ??= { v: new THREE.Vector3(), c: new THREE.Vector3(), ray: new THREE.Raycaster(), d: new THREE.Vector3() })
+    cam.getWorldPosition(tmp.c)
+    const items = []
+    for (const mesh of meshes) {
+      let e = this._headers.get(mesh); if (!e) { e = { el: this._buildHeaderEl(mesh), mesh, shown: true, lx: NaN, ly: NaN, occ: false, occAt: 0, state: 'visible' }; this._headers.set(mesh, e) }
+      mesh.getWorldPosition(tmp.v); e.dist = tmp.v.distanceTo(tmp.c)
+      tmp.v.y += HEADER_Y_OFFSET; const p = tmp.v.project(cam)
+      e.sx = (p.x * 0.5 + 0.5) * window.innerWidth; e.sy = (-p.y * 0.5 + 0.5) * window.innerHeight
+      e.onScreen = p.z <= 1 && e.sx > -40 && e.sx < window.innerWidth + 40 && e.sy > -40 && e.sy < window.innerHeight + 40
+      items.push({ id: mesh.uuid, dist: e.dist, onScreen: e.onScreen })
+    }
+    const keep = new Set(); if (this._openMenuMesh) keep.add(this._openMenuMesh.uuid)
+    const sel = this.omniNode?.getSelectedId?.() ?? this.omniNode?._selected; const selMesh = sel ? this.omniNode?.getMeshById?.(sel) : null; if (selMesh) keep.add(selMesh.uuid)
+    const show = CULL.chooseHeaders(items, prefs.max, keep)
+    // occlusion: a small budget of rays per frame, nearest-first among the headers that are showing
+    let budget = prefs.occlusion === 'show' ? 0 : 6
+    if (budget) {
+      const need = []
+      for (const mesh of meshes) { const e = this._headers.get(mesh); if (e && show.has(mesh.uuid) && e.onScreen && now - e.occAt > 300) need.push(e) }
+      need.sort((a, b) => a.occAt - b.occAt)
+      for (const e of need) { if (budget-- <= 0) break; e.occAt = now; e.occ = this._isOccluded(e, tmp, meshes) }
+    }
+    for (const mesh of meshes) {
+      const e = this._headers.get(mesh); const vis = show.has(mesh.uuid) && e.onScreen
+      const state = !vis ? 'hidden' : CULL.stateFor(keep.has(mesh.uuid) ? false : e.occ, prefs.occlusion)
+      if (state !== e.state) {
+        e.state = state
+        e.el.style.display = state === 'hidden' ? 'none' : ''
+        e.el.style.opacity = state === 'dim' ? String(prefs.dimOpacity) : ''
+      }
+      if (state === 'hidden') continue
+      const lx = Math.round(e.sx * 2) / 2; const ly = Math.round(e.sy * 2) / 2
+      if (lx !== e.lx || ly !== e.ly) { e.lx = lx; e.ly = ly; e.el.style.left = `${lx}px`; e.el.style.top = `${ly}px` }
+    }
     if (this._openMenuMesh && this._menuEl) this._positionQuickMenu(this._openMenuMesh)
   }
-
-  onResize () {}
-
-  destroy () {
-    document.removeEventListener('click', this._onDocClick)
-    window.removeEventListener('omni:node-contextmenu-request', this._onNodeContextMenu)
-    this._headers.forEach(entry => entry.el.remove())
-    this._headers.clear()
-    this._menuEl?.remove()
+  /** true when another node's mesh is between the camera and this node's centre */
+  _isOccluded (e, tmp, meshes) {
+    e.mesh.getWorldPosition(tmp.v); tmp.d.copy(tmp.v).sub(tmp.c); const dist = tmp.d.length(); if (dist < 0.01) return false
+    tmp.ray.set(tmp.c, tmp.d.normalize()); tmp.ray.far = dist
+    const others = meshes.filter(m => m !== e.mesh && m.visible !== false)
+    const hits = tmp.ray.intersectObjects(others, false)
+    for (const h of hits) { if (CULL.isBlocked(h.distance, dist, 0.05) && !this._isChildOf(h.object, e.mesh)) { e.blocker = h.object.userData?.nodeId ?? h.object.name ?? '?'; return true } }
+    e.blocker = null; return false
   }
-
+  _isChildOf (obj, parent) { for (let o = obj; o; o = o.parent) if (o === parent) return true; return false }
+  /** for tests and the settings panel: 'visible' | 'dim' | 'hidden' for a node id (null when it has no header) */
+  blockerOf (nodeId) { const m = this.omniNode?.getMeshById?.(nodeId); return (m && this._headers.get(m)?.blocker) || null }
+  headerState (nodeId) { const m = this.omniNode?.getMeshById?.(nodeId); const e = m ? this._headers.get(m) : null; return e ? e.state : null }
   _buildHeaderEl (mesh) {
     const el = document.createElement('div')
     el.className = 'ttm-header'
@@ -236,6 +273,12 @@ export default class ToolTipMenu {
       ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
       ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
       <button class="ttm-action-btn" data-action="edit-tooltip">🎨 Edit Tooltip</button>
+      <button class="ttm-action-btn" data-action="sticky">🗒 Stick a note on this</button>
+      <button class="ttm-action-btn" data-action="flash" style="display:none">🗂 Study / edit cards</button>
+      <button class="ttm-action-btn" data-action="epistemics" style="display:none">◉ Trace / next layer</button>
+      <button class="ttm-action-btn" data-action="rhythm">🥁 Put this on a beat</button>
+      <button class="ttm-action-btn" data-action="transform">⇄ Move / Rotate / Scale…</button>
+      <button class="ttm-action-btn" data-action="select-mode">☑ Select / Connect…</button>
       <button class="ttm-action-btn" data-action="duplicate">⧉ Duplicate</button>
       <button class="ttm-action-btn ttm-action-btn--danger" data-action="delete">🗑 Delete</button>
     `
@@ -264,6 +307,27 @@ export default class ToolTipMenu {
     // reuses the existing omni:node-delete-request event Inspector's own
     // delete button already dispatches; Duplicate is a new, generic
     // clone-with-offset request handled in systems/OmniNode.js.
+    this._menuEl.querySelector('[data-action="sticky"]').addEventListener('click', () => {
+      const nid = mesh.userData?.nodeId; this._closeQuickMenu()
+      if (nid) window.dispatchEvent(new CustomEvent('omni:sticky-note-create', { detail: { target: nid, select: true } }))
+    })
+    { const fb = this._menuEl.querySelector('[data-action="flash"]'); if (mesh.userData?.extraKind?.kind === 'flashNode') fb.style.display = ''
+      fb.addEventListener('click', () => { const nid = mesh.userData?.nodeId; this._closeQuickMenu(); if (nid) { window.dispatchEvent(new CustomEvent('omni:flash-ui-request', { detail: { action: 'study', id: nid } })); window.dispatchEvent(new CustomEvent('omni:flash-ui-request', { detail: { action: 'edit', id: nid } })) } }) }
+    { const eb = this._menuEl.querySelector('[data-action="epistemics"]'); const ek = mesh.userData?.extraKind?.kind
+      if (ek === 'epistemicsNode' || ek === 'claimNode') { eb.style.display = ''; eb.textContent = ek === 'claimNode' ? '◉ Trace this claim' : '◉ Make the next layer' }
+      eb.addEventListener('click', () => { const nid = mesh.userData?.nodeId; this._closeQuickMenu(); if (nid) window.dispatchEvent(new CustomEvent('omni:epistemics-node-create', { detail: { fromSelected: false, deriveFrom: ek === 'epistemicsNode' ? nid : undefined, claimId: ek === 'claimNode' ? nid : undefined, select: true } })) }) }
+    this._menuEl.querySelector('[data-action="rhythm"]').addEventListener('click', () => {
+      const nid = mesh.userData?.nodeId; this._closeQuickMenu()
+      if (nid) window.dispatchEvent(new CustomEvent('omni:rhythm-node-create', { detail: { bindTo: nid, start: true, openPanel: true, onlyBind: true } }))
+    })
+    this._menuEl.querySelector('[data-action="transform"]').addEventListener('click', () => {
+      const nid = mesh.userData?.nodeId; this._closeQuickMenu()
+      if (nid) { try { this.omniNode?._selectNode?.(nid) } catch (_) { /* not selectable */ } window.dispatchEvent(new CustomEvent('omni:transform-bar-request', { detail: { action: 'open' } })) }
+    })
+    this._menuEl.querySelector('[data-action="select-mode"]').addEventListener('click', () => {
+      const nid = mesh.userData?.nodeId; this._closeQuickMenu()
+      if (nid) window.dispatchEvent(new CustomEvent('omni:select-mode-request', { detail: { action: 'start', id: nid } }))
+    })
     this._menuEl.querySelector('[data-action="duplicate"]').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('omni:node-duplicate-request', { detail: { id: nodeId } }))
       this._closeQuickMenu()

@@ -23,10 +23,12 @@
  */
 
 import * as WindowManager from './WindowManager.js'
+import * as LM from '../utils/OmniLineModel.js'
 import { pairInfo } from '../utils/OmniNodeKinds.js'
 import { CHANGED_EVENT as VALUE_CHANGED } from '../utils/OmniValueModel.js'
 
 const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const endsValue = (s) => (s.startEnd === 'arrow' && s.endEnd === 'arrow' ? 'both' : s.endEnd === 'arrow' ? 'forward' : s.startEnd === 'arrow' ? 'back' : s.startEnd === 'dot' ? 'dot' : 'none')
 
 const STYLES = /* css */`
 
@@ -290,6 +292,26 @@ export default class OmniEdgeInspector {
       <div class="oei-relation">${this._fromLabel}<span class="oei-relation-arrow">→</span>${this._toLabel}</div>
       ${rateBlock}
 
+      <div class="oei-group-title">Meaning</div>
+      <div class="oei-row">
+        <span class="oei-label">Says</span>
+        <select class="oei-select" id="oei-meaning">${LM.MEANING_IDS.map(id => `<option value="${id}" ${(s.meaning ?? 'link') === id ? 'selected' : ''}>${LM.MEANINGS[id].label}</option>`).join('')}</select>
+      </div>
+      <div class="oei-note" id="oei-meaning-sum" style="margin:0 0 6px">${escHtml(LM.MEANINGS[s.meaning ?? 'link'].summary)}</div>
+      <div class="oei-row">
+        <span class="oei-label">Ends</span>
+        <select class="oei-select" id="oei-ends">${[['none', 'None'], ['forward', 'Arrow at ' + this._toLabel], ['back', 'Arrow at ' + this._fromLabel], ['both', 'Arrows at both'], ['dot', 'Dot at ' + this._fromLabel]].map(([v, t]) => `<option value="${v}" ${endsValue(s) === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="oei-row">
+        <span class="oei-label">Dotted</span>
+        <div class="oei-toggle-wrap"><label class="oei-toggle"><input type="checkbox" id="oei-dotted" ${s.dotted ? 'checked' : ''}><div class="oei-toggle-track"></div></label></div>
+      </div>
+      <div class="oei-row">
+        <span class="oei-label">Caption</span>
+        <input class="oei-select" id="oei-label" maxlength="80" placeholder="shown near the line" value="${escHtml(s.label ?? '')}">
+      </div>
+      <div class="oei-row"><button class="oei-select" id="oei-pulse" type="button" title="Send a travelling light along this line">✦ Pulse</button></div>
+
       <div class="oei-group-title">Kind</div>
       <div class="oei-row">
         <span class="oei-label">Style</span>
@@ -345,6 +367,11 @@ export default class OmniEdgeInspector {
       }))
     }
 
+    body.querySelector('#oei-meaning').addEventListener('change', (e) => { this._style = LM.applyMeaning(this._style, e.target.value); window.dispatchEvent(new CustomEvent('omni:edge-style-set', { detail: { from: this._from, to: this._to, style: this._style } })); this._render() })
+    body.querySelector('#oei-ends').addEventListener('change', (e) => commit(LM.withWords(this._style, { ends: e.target.value })))
+    body.querySelector('#oei-dotted').addEventListener('change', (e) => commit({ dotted: e.target.checked, dashed: e.target.checked ? false : this._style.dashed }))
+    body.querySelector('#oei-label').addEventListener('change', (e) => commit({ label: LM.sanitizeLineStyle({ label: e.target.value }).label ?? '' }))
+    body.querySelector('#oei-pulse').addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:line-pulse-request', { detail: { path: [this._from, this._to] } })))
     body.querySelector('#oei-kind').addEventListener('change', (e) => commit({ kind: e.target.value }))
     body.querySelector('#oei-color').addEventListener('input', (e) => commit({ color: e.target.value }))
     body.querySelector('#oei-thickness').addEventListener('input', (e) => {

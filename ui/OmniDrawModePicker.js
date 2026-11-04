@@ -80,6 +80,10 @@ export default class OmniDrawModePicker {
         <button class="odmp-btn" data-mode="doc" title="a DocNode: a flat sheet that shows a PDF, markdown, text, image or guide page inside the space; opens the document panel" aria-pressed="false"><span class="odmp-glyph">▤</span><span class="odmp-label">Doc</span></button>
         <button class="odmp-btn" data-mode="poly" title="a PolyNode: a cube, tetrahedron, octahedron, dodecahedron, icosahedron, plane, strip or ring whose every face holds its own colour, picture, text, document or sound; opens the poly panel" aria-pressed="false"><span class="odmp-glyph">⬡</span><span class="odmp-label">Poly</span></button>
         <button class="odmp-btn" data-mode="time" title="a TimeNode: a cube with six sides (start and end date and time, title, status), a ring and a spinning icosahedron that travels it as the time is fulfilled; add more to make a sequence. Opens its Inspector section" aria-pressed="false"><span class="odmp-glyph">⏱</span><span class="odmp-label">Time</span></button>
+        <button class="odmp-btn" data-mode="sticky" title="a small coloured sticky note; with a node selected it is stuck on that node and follows it" aria-pressed="false"><span class="odmp-glyph">🗒</span><span class="odmp-label">Sticky</span></button>
+        <button class="odmp-btn" data-mode="flash" title="a deck of flashcards in one node: text, pictures and sounds on each side" aria-pressed="false"><span class="odmp-glyph">🗂</span><span class="odmp-label">Flashcards</span></button>
+        <button class="odmp-btn" data-mode="rhythm" title="a beat source: every beat can pulse, bounce, spin or flash any node bound to it" aria-pressed="false"><span class="odmp-glyph">🥁</span><span class="odmp-label">Rhythm</span></button>
+        <button class="odmp-btn" data-mode="epistemics" title="one step in how a thing is passed down: event, observation, memory, rumour, gossip, narrative, record, absence, what-if" aria-pressed="false"><span class="odmp-glyph">◉</span><span class="odmp-label">Epistemics</span></button>
         <button class="odmp-btn" data-mode="claim" title="a ClaimNode (DimensionalScripting): a claim that is true, false and undefined at the same time, with testimonies from people, bots, AI and sensors; public, or private behind a key" aria-pressed="false"><span class="odmp-glyph">⟐</span><span class="odmp-label">Claim</span></button>
         <button class="odmp-btn" data-mode="path" title="an OmniPathNode: an ordered path of nodes, linked or from the hierarchy; opens the node order panel" aria-pressed="false"><span class="odmp-glyph">⤳</span><span class="odmp-label">Path</span></button>
         <button class="odmp-btn" data-mode="terminal" title="a TerminalShellTunnel: an in-scene terminal that moves with the node" aria-pressed="false"><span class="odmp-glyph">›_</span><span class="odmp-label">Terminal</span></button>
@@ -102,7 +106,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="mix"]').addEventListener('click', () => this._choose('mix'))        // V201
     this._el.querySelector('[data-mode="doc"]').addEventListener('click', () => this._choose('doc'))        // V203
     this._el.querySelector('[data-mode="poly"]').addEventListener('click', () => this._choose('poly'))      // V204
-    for (const m of ['time', 'claim']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
+    for (const m of ['time', 'claim', 'sticky', 'flash', 'rhythm', 'epistemics']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
     for (const m of ['path', 'terminal', 'floor']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V197
 
     this._onNavSelect = (e) => {
@@ -193,6 +197,29 @@ export default class OmniDrawModePicker {
     // V260: Time and Claim create real nodes (same events as the ribbon Create buttons) and open their Inspector sections.
     if (mode === 'time' || mode === 'claim') {
       window.dispatchEvent(new CustomEvent(`omni:${mode}-node-create`, { detail: { select: true } }))
+      this.close()
+      return
+    }
+
+    if (mode === 'epistemics') {   // V271
+      window.dispatchEvent(new CustomEvent('omni:epistemics-node-create', { detail: { select: true, fromSelected: true } }))
+      this.close()
+      return
+    }
+    if (mode === 'rhythm') {   // V270
+      window.dispatchEvent(new CustomEvent('omni:rhythm-node-create', { detail: { select: true, bindSelected: true, start: true } }))
+      this.close()
+      return
+    }
+
+    if (mode === 'flash') {   // V269
+      window.dispatchEvent(new CustomEvent('omni:flash-node-create', { detail: { select: true } }))
+      this.close()
+      return
+    }
+
+    if (mode === 'sticky') {   // V266
+      window.dispatchEvent(new CustomEvent('omni:sticky-note-create', { detail: { select: true, useSelected: true } }))
       this.close()
       return
     }

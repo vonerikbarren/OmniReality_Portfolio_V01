@@ -45,6 +45,27 @@ export default class OmniDocWindow {
   _save () { try { localStorage.setItem(STORE_KEY, JSON.stringify([...this._w.values()])) } catch (_) { /* full */ } }
   _nodeGone (id) { for (const w of [...this._w.values()]) if (w.slots.includes(id)) { this._busy.get(w.id)?.kill(); this._busy.delete(w.id); this._w.delete(w.id); this._save() } }
   list () { return [...this._w.values()].map(w => ({ ...w })) }
+  /** V263: the window whose sheets include this doc node (or null) */
+  windowOf (nodeId) { const w = [...this._w.values()].find(x => x.slots.includes(nodeId)); return w ? { ...w } : null }
+  /** V263: change the shape of a window in place: every sheet glides from where it is to its slot in the new layout. Resolves when done. */
+  setLayout (id, layout, seconds = 0.8) {
+    const w = this._w.get(id); if (!w) throw new Error('no window ' + id)
+    const L = pickLayout(layout); if (!L) throw new Error('layouts: ' + LAYOUTS.join(', '))
+    this._busy.get(id)?.kill(); this._busy.delete(id)
+    const dims = this._dims(w); const next = { ...w, layout: L }
+    const moves = w.slots.map((nid, s) => { const m = this.omniNode.getMeshById(nid); return m ? { m, a: { pos: m.position.clone(), quat: m.quaternion.clone() }, b: this._pose(next, s, dims) } : null }).filter(Boolean)
+    const proxy = { t: 0 }
+    return new Promise((resolve) => {
+      const done = () => {
+        for (const x of moves) { x.m.position.copy(x.b.pos); x.m.quaternion.copy(x.b.quat); x.m.scale.setScalar(1); if (x.m.userData?.restPosition) x.m.userData.restPosition.copy(x.m.position) }
+        this._w.set(id, { ...(this._w.get(id) ?? w), layout: L }); this._busy.delete(id); this._save(); send('omni:force-save', {}); send('omni:docwindow-changed', { id, start: w.start }); resolve(true)
+      }
+      const tw = gsap.to(proxy, { t: 1, duration: Math.max(0.05, Math.min(3, Number(seconds) || 0.8)), ease: 'power2.inOut',
+        onUpdate: () => { for (const x of moves) { x.m.position.lerpVectors(x.a.pos, x.b.pos, proxy.t); x.m.quaternion.slerpQuaternions(x.a.quat, x.b.quat, proxy.t) } },
+        onInterrupt: () => { this._busy.delete(id); resolve(false) }, onComplete: done })
+      this._busy.set(id, tw)
+    })
+  }
   get (id) { return this._w.get(id) ?? null }
   forget (id) { const had = this._w.delete(id); this._busy.get(id)?.kill(); this._busy.delete(id); this._save(); return had }
 

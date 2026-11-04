@@ -507,7 +507,7 @@ export default class OmniStartHUD {
     c.clearRect(0, 0, canvas.width, canvas.height)
 
     const CELL_SIZE = 20   // matches the floor's own real grid (OmniFloor.js) and OmniRealityGridSelector's own real cells
-    const LANDING = { x: 0, z: 0.001 }   // matches main.js's own real returnToLanding()
+    const LANDING = { x: 0, z: -20 }   // matches main.js's own real returnToLanding()
 
     const nodes = this.omniNode?.getAllNodes() ?? []
     const contexts = this.omniRealityGridSelector?.getContexts() ?? {}

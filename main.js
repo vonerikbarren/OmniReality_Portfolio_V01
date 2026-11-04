@@ -895,40 +895,9 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   })
 
   // ── R / F — vertical movement (Y axis) ───────────────────
-  const VERTICAL_SPEED = 20
-  const _vertPressed   = { r: false, f: false }
-
-  window.addEventListener('keydown', (e) => {
-    const active = document.activeElement
-    const isTyping = active && (
-      active.tagName === 'INPUT' ||
-      active.tagName === 'TEXTAREA' ||
-      active.isContentEditable
-    )
-    if (isTyping) return
-    if (e.code === 'KeyR') { _vertPressed.r = true;  orbitMod.disable() }
-    if (e.code === 'KeyF') { _vertPressed.f = true;  orbitMod.disable() }
-  })
-
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'KeyR') _vertPressed.r = false
-    if (e.code === 'KeyF') _vertPressed.f = false
-
-    if (!_vertPressed.r && !_vertPressed.f && _heldDirections.size === 0) {
-      _syncOrbitTarget()
-      orbitMod.enable()
-    }
-  })
-
-  base.addModule({
-    update (delta) {
-      if (!_vertPressed.r && !_vertPressed.f) return
-      const speed = VERTICAL_SPEED * delta
-      if (_vertPressed.r) base.camera.position.y += speed
-      if (_vertPressed.f) base.camera.position.y -= speed
-    },
-    destroy () {}
-  })
+  // V271: R / F are the RH pad's Rise / Fall keys (ui/MovementPad.js maps KeyR / KeyF to rh up / down), so they move at the pad's speed:
+  // the hand's Speed slider x the Admin altitude step. This block used to ALSO move the camera at a fixed 20 units/s, which is why the
+  // keys ignored the speed setting (and ran at double rate). The pad's own omni:movement event already pauses and resumes OrbitControls.
 
   // ── Sound is created earlier now, before BaseScene, so it can be
   // included in the frozen context object — see above.
@@ -971,19 +940,21 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
     }
   })
 
+  // V262: the landing point (entry animation ends here; C / the ribbon Landing button return here). Camera looks straight down -Z, no rotation.
+  const LANDING = { x: 0, y: 2.5, z: -20 }
   // ── 'c' — return to landing point coordinates ─────────────
   // Matches the exact resting pose playEntryAnimation() ends on: position
-  // (0, 2, 0.001), levelled off looking down -Z (lookAt (0, 2, -1)).
+  // (0, 2.5, -20) (V262), levelled off looking down -Z.
   function returnToLanding () {
     const cam = base.camera
     orbitMod.disable()
     gsap.to(cam.position, {
-      x: 0, y: 2, z: 0.001,
+      x: LANDING.x, y: LANDING.y, z: LANDING.z,
       duration: 1.2,
       ease: 'power2.inOut',
-      onUpdate: () => cam.lookAt(0, 2, -1),
+      onUpdate: () => cam.lookAt(LANDING.x, LANDING.y, LANDING.z - 1),
       onComplete: () => {
-        cam.lookAt(0, 2, -1)
+        cam.lookAt(LANDING.x, LANDING.y, LANDING.z - 1)
         // Explicit reset, not left to _syncOrbitTarget() — that either
         // skips entirely once a node has ever been selected, or
         // otherwise just recomputes a point in front of wherever the
@@ -1323,7 +1294,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
   // ── Camera entry animation ────────────────────────────────
   const CAM_ENTRY = {
     startY:   80,
-    endY:     2,
+    endY:     LANDING.y,
     duration: 2.6,
     ease:     'power2.inOut',
   }
@@ -1377,23 +1348,24 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
     // Phase 1 — fast fall, looking down
     tl.to(cam.position, {
       y:        22,
+      z:        LANDING.z,
       duration: 4.6,
       ease:     'power2.in',
       onUpdate: () => {
         const lookY = cam.position.y - 40
-        cam.lookAt(0, lookY, 0)
+        cam.lookAt(LANDING.x, lookY, cam.position.z)
       }
     })
 
     // Phase 2 — slow final approach, straighten up
     tl.to(cam.position, {
-      y:        2,
+      y:        LANDING.y,
       duration: 2.2,
       ease:     'power3.out',
       onUpdate: () => {
-        const t     = 1 - (cam.position.y - 2) / 20
-        const lookY = gsap.utils.interpolate(-18, 2, t)
-        cam.lookAt(0, lookY, -1)
+        const t     = 1 - (cam.position.y - LANDING.y) / 20
+        const lookY = gsap.utils.interpolate(-18, LANDING.y, t)
+        cam.lookAt(LANDING.x, lookY, LANDING.z - 1)
       }
     })
   }

@@ -628,17 +628,27 @@ export default class AdminPanel {
         <div class="ap-data-note" style="font-size:9px;color:var(--ap-text-muted,rgba(255,255,255,0.6));line-height:1.4">A faint technical circle in the middle of the screen (decoration only: it never blocks a click). It turns slowly unless your system asks for reduced motion. Changes apply at once.</div>
         ${row('Show', `<button class="ap-toggle ${c.show ? 'is-on' : ''}" data-ret="show" role="switch" aria-checked="${c.show}" aria-label="Show reticle" ${tip('Show reticle', 'Shows or hides the faint technical circle in the middle of the screen.')}></button>`)}
         ${row('Opacity (%)', `<input class="ap-range" type="range" min="${RET.OPACITY_MIN}" max="${RET.OPACITY_MAX}" step="1" value="${c.opacity}" data-ret="opacity" aria-label="Reticle opacity" ${tip('Reticle opacity', 'How visible the centre reticle is, in percent. The default is 15.')}>`)}
-        <div class="ap-row"><span class="ap-row-label">Reticle</span><button class="ap-file-btn" id="ap-ret-reset" type="button" ${tip('Reset reticle', 'Puts the reticle back to its defaults: shown, 15% opacity.')}>Reset reticle</button></div>`
+        ${row('Colour', `<input class="ap-color" type="color" value="${c.color === 'theme' ? '#ffffff' : c.color}" data-ret="color" aria-label="Reticle colour" ${tip('Reticle colour', 'The colour of the circle lines. Press "Follow theme" to use the theme accent colour again.')}><button class="ap-file-btn" id="ap-ret-theme" type="button" ${tip('Follow theme', 'Uses the accent colour of the chosen theme for the circle again.')}>${c.color === 'theme' ? 'Following theme' : 'Follow theme'}</button>`)}
+        ${row('Brightness (%)', `<input class="ap-range" type="range" min="${RET.BRIGHT_MIN}" max="${RET.BRIGHT_MAX}" step="1" value="${c.brightness}" data-ret="brightness" aria-label="Reticle brightness" ${tip('Reticle brightness', 'Dims (below 100) or brightens (above 100) the circle lines.')}>`)}
+        ${row('Shadow', `<input class="ap-range" type="range" min="0" max="${RET.SHADOW_MAX}" step="1" value="${c.shadow}" data-ret="shadow" aria-label="Reticle shadow" ${tip('Reticle shadow', 'A soft dark shadow behind the lines so they stay readable on a bright wallpaper. 0 is none.')}>`)}
+        <div class="ap-row"><span class="ap-row-label">Reticle</span><button class="ap-file-btn" id="ap-ret-reset" type="button" ${tip('Reset reticle', 'Puts the reticle back to its defaults: shown, 15% opacity, theme colour, 100% brightness, no shadow.')}>Reset reticle</button></div>`
   }
 
   _bindReticle (body) {
     const set = (patch) => window.dispatchEvent(new CustomEvent(RET.SET_EVENT, { detail: { patch } }))
     body.querySelector('[data-ret="show"]')?.addEventListener('click', (e) => set({ show: !e.currentTarget.classList.contains('is-on') }))
     body.querySelector('input[data-ret="opacity"]')?.addEventListener('input', (e) => set({ opacity: Number(e.currentTarget.value) }))
+    body.querySelector('input[data-ret="color"]')?.addEventListener('input', (e) => set({ color: e.currentTarget.value }))
+    body.querySelector('#ap-ret-theme')?.addEventListener('click', () => set({ color: 'theme' }))
+    body.querySelector('input[data-ret="brightness"]')?.addEventListener('input', (e) => set({ brightness: Number(e.currentTarget.value) }))
+    body.querySelector('input[data-ret="shadow"]')?.addEventListener('input', (e) => set({ shadow: Number(e.currentTarget.value) }))
     body.querySelector('#ap-ret-reset')?.addEventListener('click', () => window.dispatchEvent(new CustomEvent(RET.SET_EVENT, { detail: { reset: true } })))
     const sync = (c) => {
       const t = body.querySelector('[data-ret="show"]'); if (t) { t.classList.toggle('is-on', !!c.show); t.setAttribute('aria-checked', String(!!c.show)) }
       const o = body.querySelector('input[data-ret="opacity"]'); if (o && Number(o.value) !== c.opacity) o.value = String(c.opacity)
+      for (const k of ['brightness', 'shadow']) { const r = body.querySelector(`input[data-ret="${k}"]`); if (r && Number(r.value) !== c[k]) r.value = String(c[k]) }
+      const col = body.querySelector('input[data-ret="color"]'); if (col && c.color !== 'theme' && col.value !== c.color) col.value = c.color
+      const th = body.querySelector('#ap-ret-theme'); if (th) th.textContent = c.color === 'theme' ? 'Following theme' : 'Follow theme'
     }
     this._onReticleChanged = (e) => { if (e.detail?.settings) sync(e.detail.settings) }
     window.addEventListener(RET.CHANGED_EVENT, this._onReticleChanged)

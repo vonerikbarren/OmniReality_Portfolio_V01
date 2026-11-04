@@ -15,6 +15,7 @@
  * dangling references cut with a warning, and — for a merge — ids that clash are renamed (every string that equalled the old id is rewritten).
  */
 import { buildExtras, readExtras, describeExtras } from './OmniSceneExtras.js'
+import { sanitizeLineStyle } from './OmniLineModel.js'
 export const SCHEMA = 'omni-scene/1'
 export const EXT = '.omni.json'
 export const LIMITS = { bytes: 8 * 1024 * 1024, nodes: 2000, edges: 6000, depth: 14, string: 1000000, label: 300, id: 80 }
@@ -65,6 +66,15 @@ const edgeStyle = (s) => {
   for (const k of ['kind', 'color', 'highlightColor']) if (typeof s[k] === 'string') o[k] = s[k].slice(0, 40)
   for (const k of ['dashed', 'highlight']) if (typeof s[k] === 'boolean') o[k] = s[k]
   if (typeof s.thickness === 'number' && Number.isFinite(s.thickness)) o.thickness = Math.max(0.05, Math.min(20, s.thickness))
+  // V268: dotted, arrow / dot ends, meaning and label travel with the file (checked by the line model)
+  if (s.dotted === true || s.startEnd !== undefined || s.endEnd !== undefined || s.meaning !== undefined || s.label !== undefined) {
+    const c = sanitizeLineStyle(s)
+    if (c.dotted) o.dotted = true
+    if (c.startEnd !== 'none') o.startEnd = c.startEnd
+    if (c.endEnd !== 'none') o.endEnd = c.endEnd
+    if (c.meaning) o.meaning = c.meaning
+    if (c.label) o.label = c.label
+  }
   return Object.keys(o).length ? o : null
 }
 

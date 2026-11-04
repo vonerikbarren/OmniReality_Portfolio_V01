@@ -179,6 +179,24 @@ export default class ToolTipSettingsPanel {
             <span class="tts-swatch-label">Tooltip text color</span>
           </div>
         </div>
+        <div>
+          <div class="tts-field-label">Tooltips behind objects</div>
+          <div class="tts-row">
+            <select id="tts-occlusion" aria-label="What a tooltip does when something is in front of its node">
+              <option value="hide"${s.occlusion === 'hide' ? ' selected' : ''}>Hide them</option>
+              <option value="dim"${s.occlusion === 'dim' ? ' selected' : ''}>Dim them</option>
+              <option value="show"${s.occlusion === 'show' ? ' selected' : ''}>Show through</option>
+            </select>
+            <span class="tts-swatch-label">When a node is behind another object (a PDF sheet, say)</span>
+          </div>
+        </div>
+        <div>
+          <div class="tts-field-label">Most tooltips shown at once</div>
+          <div class="tts-row">
+            <input type="number" id="tts-max" min="5" max="400" step="5" value="${s.max}" style="width:70px" aria-label="Most tooltips shown at once" />
+            <span class="tts-swatch-label">Nearest first. Fewer = faster in a busy scene.</span>
+          </div>
+        </div>
         <div class="ttm-header tts-preview-header" id="tts-preview">⟐ Preview</div>
         <div class="tts-note">Applies to every tooltip's default appearance — a specific node's own override, when that exists later, will be a separate, real setting.</div>
       </div>
@@ -190,6 +208,8 @@ export default class ToolTipSettingsPanel {
     el.querySelector('#tts-background').addEventListener('input', (e) => setSettings({ background: e.target.value }))
     el.querySelector('#tts-border').addEventListener('input', (e) => setSettings({ border: e.target.value }))
     el.querySelector('#tts-color').addEventListener('input', (e) => setSettings({ color: e.target.value }))
+    el.querySelector('#tts-occlusion').addEventListener('change', (e) => setSettings({ occlusion: e.target.value }))
+    el.querySelector('#tts-max').addEventListener('change', (e) => { setSettings({ max: Number(e.target.value) }); e.target.value = getSettings().max })
 
     this._bindHeader(el)
     el.dataset.winId = 'tooltipsettings'

@@ -5,6 +5,7 @@
  */
 
 import { SERVICES } from '../utils/OmniExtraKinds.js'
+import { arrangeGroupHTML, countSelectHTML, isArrange, runArrange, DEFAULT_COUNT } from './OmniDocArrange.js'
 import { describeDoc, setWidth, ZOOM_MIN, ZOOM_MAX } from '../utils/OmniDocModel.js'
 import { esc } from './OmniSoundFields.js'
 
@@ -53,7 +54,7 @@ export function docKindBlockHTML (data) {
     <div class="oi-custom-title">⟐ Doc node</div>
     <div class="oidc-row"><span class="oidc-note" style="margin:0;flex:1 1 100%" data-testid="oidc-state">${esc(stateText(data.id))}</span></div>
     <div class="oidc-row"><button class="oi-btn-small" data-oidca="prev" aria-label="Page up (previous page)">▲ Page up</button><button class="oi-btn-small" data-oidca="next" aria-label="Page down (next page)">▼ Page down</button></div>
-    <div class="oidc-row"><span class="oi-label">Pages</span><select class="oidc-in" data-oidc="spread" aria-label="One page or two pages" style="flex:1 1 auto"><option value="single"${d?.spread !== 'double' ? ' selected' : ''}>One page</option><option value="double"${d?.spread === 'double' ? ' selected' : ''}>Two pages</option></select></div>
+    <div class="oidc-row"><span class="oi-label">Pages</span><select class="oidc-in" data-oidc="spread" aria-label="One page or two pages" style="flex:1 1 auto"><option value="single"${d?.spread !== 'double' ? ' selected' : ''}>One page</option><option value="double"${d?.spread === 'double' ? ' selected' : ''}>Two pages</option>${arrangeGroupHTML()}</select> ${countSelectHTML('data-oidc-count')}</div>
     <div class="oidc-row"><span class="oi-label">Zoom %</span><input class="oidc-in" type="number" data-oidc="zoom" min="${ZOOM_MIN}" max="${ZOOM_MAX}" step="25" value="${d?.zoom ?? 100}" aria-label="Zoom percent"></div>
     <div class="oidc-row"><span class="oi-label">Width</span><input class="oidc-in" type="number" data-oidc="width" min="0.5" max="60" step="0.5" value="${d?.width ?? 4}" aria-label="Sheet width"></div>
     <div class="oidc-row"><button class="oi-btn-small" data-oidca="open">⚙ Open ⟐OmniDoc</button></div>
@@ -72,6 +73,7 @@ export function wireDocKindBlock (root, data) {
   })
   sec.addEventListener('change', (e) => {
     const el = e.target; const k = el.dataset?.oidc; if (!k) return
+    if (k === 'spread' && isArrange(el.value)) { const v = el.value; el.value = svc()?.getDoc(data.id)?.spread ?? 'single'; runArrange(data.id, v, Number(sec.querySelector('[data-oidc-count]')?.value) || DEFAULT_COUNT).then(r => say(sec, r)); return }
     if (k === 'spread') { say(sec, runDocAction('spread', data.id, el.value)); refreshLive(sec, el); return }
     if (!Number.isFinite(Number(el.value))) return
     if (k === 'zoom') { say(sec, runDocAction('zoom', data.id, Number(el.value))); refreshLive(sec, el); return }

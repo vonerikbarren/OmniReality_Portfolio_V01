@@ -267,7 +267,7 @@ export default class TerminalShellTunnel {
       const angle = Math.atan2(camera.position.x - this.group.position.x, camera.position.z - this.group.position.z)
       this._panel.position.set(Math.sin(angle) * BUILTIN.radius * 0.85, camY, Math.cos(angle) * BUILTIN.radius * 0.85)
     } else if (Math.hypot(camera.position.x - this.group.position.x, camera.position.z - this.group.position.z) < NEAR_CENTER) {
-      // 'center', but the camera is standing in the centre (the landing point (0, 2, 0.001) is): a panel AT the camera is inside the near plane and
+      // 'center', but the camera is standing in the centre (the landing point (0, 2.5, -20) is): a panel AT the camera is inside the near plane and
       // never seen, so it stands in front of the camera along its horizontal look direction until the camera moves away from the axis.
       const dir = this._tmpV.set(0, 0, 0); camera.getWorldDirection(dir)
       const len = Math.hypot(dir.x, dir.z) || 1

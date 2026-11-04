@@ -1963,7 +1963,7 @@ export default class MovementPad {
 
   _handleKeyDown (e) {
     const tag = document.activeElement?.tagName
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return   // V271: also while typing in an editable area
     // V165: [ / ] cycle the loaded ammo of the last-touched lower hand (both keys were free).
     if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
       const hand = this._visible[this._ammoHand] ? this._ammoHand : CHIP_HANDS.find(h => this._visible[h])

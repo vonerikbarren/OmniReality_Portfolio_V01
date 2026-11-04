@@ -6,6 +6,9 @@
  *   key      values                      default   meaning
  *   show     true | false                true      draw the reticle at all
  *   opacity  5..100 (integer %)          15        overall opacity of the whole drawing (the owner's ".15")
+ *   color    'theme' | '#rrggbb'         'theme'   the line colour ('theme' follows the accent colour of the chosen theme)           (V271)
+ *   brightness 40..200 (integer %)       100       100 = as is; lower dims the lines, higher brightens them                           (V271)
+ *   shadow   0..100 (integer)            0         a soft dark shadow behind the lines (helps on a bright wallpaper); 0 = none          (V271)
  *
  * Storage 'omni:reticle-v1' = { v: 1, ...only the keys the person actually changed }. Anything missing falls back to the
  * default. Load is defensive like utils/OmniUserCompassSettings.js: bad JSON / wrong types / unknown keys / prototype keys /
@@ -13,7 +16,7 @@
  * true / "" / null / arrays are rejected (never coerced to 0 or 1). An unversioned (v0) blob is migrated: the old names
  * (visible / enabled / on -> show) and an opacity given as a 0..1 fraction -> percent. A v1 opacity is always a percent.
  *
- * Events: in   `omni:reticle-set`      { patch: {show?, opacity?} } | { reset: true }   (validated; unknown keys / bad values ignored)
+ * Events: in   `omni:reticle-set`      { patch: {show?, opacity?, color?, brightness?, shadow?} } | { reset: true }   (validated; unknown keys / bad values ignored)
  *         out  `omni:reticle-changed`  { settings }   after every accepted change, and once at init
  */
 
@@ -24,7 +27,11 @@ export const CHANGED_EVENT = 'omni:reticle-changed'
 export const OPACITY_MIN = 5
 export const OPACITY_MAX = 100
 
-export const DEFAULTS = Object.freeze({ show: true, opacity: 15 })
+export const BRIGHT_MIN = 40
+export const BRIGHT_MAX = 200
+export const SHADOW_MAX = 100
+
+export const DEFAULTS = Object.freeze({ show: true, opacity: 15, color: 'theme', brightness: 100, shadow: 0 })
 export const KEYS = Object.keys(DEFAULTS)
 
 export function prefersReducedMotion () {
@@ -42,8 +49,26 @@ export function cleanValue (key, v) {
       const n = Number(v)
       return Number.isFinite(n) ? Math.min(OPACITY_MAX, Math.max(OPACITY_MIN, Math.round(n))) : undefined
     }
+    case 'color': {
+      if (typeof v !== 'string') return undefined
+      const t = v.trim().toLowerCase(); if (t === 'theme') return 'theme'
+      return /^#[0-9a-f]{6}$/.test(t) ? t : undefined
+    }
+    case 'brightness': case 'shadow': {
+      if (typeof v === 'boolean' || v === null || v === '' || (typeof v !== 'number' && typeof v !== 'string')) return undefined
+      const n = Number(v); if (!Number.isFinite(n)) return undefined
+      return key === 'shadow' ? Math.min(SHADOW_MAX, Math.max(0, Math.round(n))) : Math.min(BRIGHT_MAX, Math.max(BRIGHT_MIN, Math.round(n)))
+    }
     default: return undefined
   }
+}
+
+/** settings -> the CSS filter for the whole drawing ('none' when brightness is 100 and there is no shadow). Pure. */
+export function filterFor (s) {
+  const b = Number(s?.brightness); const sh = Number(s?.shadow); const parts = []
+  if (Number.isFinite(b) && b !== 100) parts.push(`brightness(${Math.round(b) / 100})`)
+  if (Number.isFinite(sh) && sh > 0) parts.push(`drop-shadow(0 0 ${(1 + sh * 0.07).toFixed(2)}px rgba(0, 0, 0, ${(0.35 + 0.65 * sh / 100).toFixed(2)}))`)
+  return parts.length ? parts.join(' ') : 'none'
 }
 
 /** A patch (from an event or the UI) -> only its valid known keys. Never throws, never returns inherited keys. */

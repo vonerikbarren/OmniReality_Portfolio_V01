@@ -12,13 +12,13 @@
  * above the 3D canvas and below every UI element; it is the FIRST child of #omni-ui. Window-chrome class B (a decoration,
  * not a window: no header, no handles, never registered with the WindowManager).
  *
- * Options (show, opacity) + storage + events: utils/OmniReticleSettings.js; user-facing in Admin > UI Settings > Reticle.
+ * Options (show, opacity, colour, brightness, shadow) + storage + events: utils/OmniReticleSettings.js; user-facing in Admin > UI Settings > Reticle.
  * Module contract: constructor / init / update / destroy / onResize. A user-facing module: imports no Dev* module.
  */
 
 import {
   SET_EVENT, CHANGED_EVENT, STORE_KEY, DEFAULTS,
-  loadOverrides, saveOverrides, sanitizePatch, resolveSettings, prefersReducedMotion,
+  loadOverrides, saveOverrides, sanitizePatch, resolveSettings, prefersReducedMotion, filterFor,
 } from '../utils/OmniReticleSettings.js'
 
 export const ROOT_ID = 'omni-reticle'
@@ -31,7 +31,8 @@ const STYLES = /* css */`
   width: min(64vmin, 640px); height: min(64vmin, 640px); transform: translate(-50%, -50%);
   pointer-events: none; user-select: none; -webkit-user-select: none;
   opacity: var(--oret-opacity, 0.15);
-  color: var(--omni-theme-accent, #fff);
+  color: var(--oret-color, var(--omni-theme-accent, #fff));
+  filter: var(--oret-filter, none);
 }
 #${ROOT_ID}[data-show="false"] { display: none; }
 #${ROOT_ID} svg.oret-layer { position: absolute; left: 0; top: 0; display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -183,6 +184,8 @@ export default class OmniReticle {
     this._el.dataset.show = String(!!s.show)
     this._el.dataset.motion = prefersReducedMotion() ? 'off' : 'on'
     this._el.style.setProperty('--oret-opacity', String(s.opacity / 100))
+    if (s.color === 'theme') this._el.style.removeProperty('--oret-color'); else this._el.style.setProperty('--oret-color', s.color)   // V271
+    const fl = filterFor(s); if (fl === 'none') this._el.style.removeProperty('--oret-filter'); else this._el.style.setProperty('--oret-filter', fl)
   }
 
   _announce () {

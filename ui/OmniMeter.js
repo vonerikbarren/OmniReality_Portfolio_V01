@@ -419,7 +419,7 @@ export default class OmniMeter {
     const t = (clamped - min) / (max - min)
     if (!markerEl) return
     if (vertical) {
-      const pct = (1 - t) * 100 // higher real value = higher on screen
+      const pct = (axis === 'z' ? t : 1 - t) * 100 // Y: higher = higher on screen. Z (V262): forward is -Z, so forward = UP the top line
       markerEl.style.top = `${pct}%`
       if (labelEl) { labelEl.style.top = `${pct}%`; labelEl.textContent = value.toFixed(1) }
     } else {
@@ -530,7 +530,7 @@ export default class OmniMeter {
     const { min, max } = AXES.z
     for (let v = min; v <= max + 0.01; v += TICK_STEP) {
       const t = (v - min) / (max - min)
-      const pct = (1 - t) * 100
+      const pct = t * 100   // V262: forward (-Z) is at the top
       ticks += `<div class="om-d-tick" style="top:${pct}%"></div><div class="om-d-tick-label" style="top:${pct}%">${Math.round(v)}</div>`
     }
     el.innerHTML = `

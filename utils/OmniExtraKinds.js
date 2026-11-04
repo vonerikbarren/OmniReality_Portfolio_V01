@@ -37,6 +37,11 @@ import { sanitizeDoc, defaultDoc } from './OmniDocModel.js'
 import { buildPolyNodeMesh, releasePolyMesh } from './OmniPolyNodeMesh.js'          // V204: the PolyNode geometry (a solid / strip / ring whose every face has its own picture)
 import { sanitizePoly, defaultPoly } from './OmniPolyModel.js'                    // V204: data.poly (shape + per-face data)                       // V203: data.doc (which document, which page, how big)
 import { sanitizeNote, defaultNote } from './OmniNoteModel.js'                      // V213: data.note (the rich-text note, saved with the node)
+import { sanitizeDeck, defaultDeck } from './OmniFlashcardModel.js'
+import { sanitizeRhythm, defaultRhythm } from './OmniRhythmModel.js'                  // V270: data.rhythm (the beat source, saved with the node)
+import { sanitizeEpistemics, visualOf as epiVisualOf } from './OmniEpistemicsModel.js'                  // V271: data.epistemics (layer + attributes, saved with the node)
+import { buildEpistemicsNodeMesh, applyEpistemicsLook, releaseEpistemicsMesh } from './OmniEpistemicsNodeMesh.js'
+import { buildRhythmNodeMesh, releaseRhythmMesh } from './OmniRhythmNodeMesh.js'     // V270: the RhythmNode geometry (a small drum with a ring of step blocks)                // V269: data.flash (the flashcards deck, saved with the node)
 import { buildDimensionalNodeMesh, releaseDimensionalMesh } from './OmniDimensionalNodeMesh.js'   // V217
 import { buildClaimNodeMesh, releaseClaimMesh } from './OmniClaimNodeMesh.js'               // V260: ClaimNode geometry
 import { sanitizeClaim, newClaim } from './OmniClaimModel.js'
@@ -56,13 +61,19 @@ export const KIND_DOC = 'docNode'       // V203: DocNode — data = { nodeKind:'
 export const KIND_POLY = 'polyNode'     // V204: PolyNode — data = { nodeKind:'polyNode', poly } (shape and every face live IN the node: utils/OmniPolyModel.js)
 export const KIND_VOXEL = 'voxelNode'   // V211: OmniVoxelNode — data = { nodeKind:'voxelNode', voxel:{ room:'x,y,z' } } (the centre of one voxel room; systems/OmniVoxelSpace.js keeps one per room)
 export const KIND_NOTE = 'noteNode'     // V213: OmniNote — data = { nodeKind:'noteNode', note } (the rich text lives IN the node: utils/OmniNoteModel.js; drawn on the same thin sheet as the DocNode)
+export const KIND_FLASH = 'flashNode'   // V269: Flashcards node — data = { nodeKind:'flashNode', flash } (the whole deck lives IN the node: utils/OmniFlashcardModel.js; drawn on the same thin sheet as the DocNode)
+export const KIND_EPISTEMICS = 'epistemicsNode'   // V271: OmniEpistemicsNode — data = { nodeKind:'epistemicsNode', epistemics } (one node kind, a LAYER field: event, observation, memory, rumor, gossip, narrative, meta, documentary, absence, counterfactual)
+export const KIND_RHYTHM = 'rhythmNode'   // V270: RhythmNode — data = { nodeKind:'rhythmNode', rhythm } (a beat source; the beat animates any node bound to it: utils/OmniRhythmModel.js)
 export const KIND_DIMENSIONAL = 'dimensionalNode'   // V217: a pocket tuned to one dimensional channel — data = { nodeKind:'dimensionalNode', dimensional:{ axiom, perspective, signature, mode } } (utils/OmniDimensionalModel.js)
 export const GEO_DIMENSIONAL = 'DimensionalNode'
 export const KIND_CLAIM = 'claimNode'   // V260: ClaimNode (DimensionalScripting) — data = { nodeKind:'claimNode', claim } (public) or { nodeKind, claimSealed } (private: utils/OmniClaimVault.js)
 export const GEO_CLAIM = 'ClaimNode'
 export const isClaimNodeData = (d) => !!d && d.nodeKind === KIND_CLAIM
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_DIMENSIONAL, KIND_CLAIM]
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_FLASH, KIND_RHYTHM, KIND_EPISTEMICS, KIND_DIMENSIONAL, KIND_CLAIM]
 export const GEO_NOTE = 'NoteNode'
+export const GEO_FLASH = 'FlashcardsNode'
+export const GEO_RHYTHM = 'RhythmNode'
+export const GEO_EPISTEMICS = 'EpistemicsNode'
 export const GEO_VOXEL = 'VoxelNode'
 export const sanitizeVoxel = (v) => { const room = typeof v?.room === 'string' && /^-?\d{1,4},-?\d{1,4},-?\d{1,4}$/.test(v.room) ? v.room : '0,0,0'; const point = typeof v?.point === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(v.point) ? v.point : ''; return point ? { room, point } : { room } }   // V214: point = the id of one of your points (a point node)
 export const GEO_PATH = 'OmniPathNode'
@@ -78,9 +89,12 @@ export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring 
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, timenodes: null, timepad: null, timepadboard: null, claimview: null, claims: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, timenodes: null, timepad: null, timepadboard: null, claimview: null, tooltips: null, selectmode: null, sticky: null, transform: null, lines: null, flash: null, flashui: null, rhythm: null, rhythmui: null, epistemics: null, claims: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_DIMENSIONAL || d.nodeKind === KIND_CLAIM)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_FLASH || d.nodeKind === KIND_RHYTHM || d.nodeKind === KIND_EPISTEMICS || d.nodeKind === KIND_DIMENSIONAL || d.nodeKind === KIND_CLAIM)
+export const isEpistemicsNodeData = (d) => !!d && d.nodeKind === KIND_EPISTEMICS
+export const isRhythmNodeData = (d) => !!d && d.nodeKind === KIND_RHYTHM
+export const isFlashNodeData = (d) => !!d && d.nodeKind === KIND_FLASH
 export const isNoteNodeData = (d) => !!d && d.nodeKind === KIND_NOTE
 export const isDimensionalNodeData = (d) => !!d && d.nodeKind === KIND_DIMENSIONAL
 export const isVoxelNodeData = (d) => !!d && d.nodeKind === KIND_VOXEL
@@ -174,6 +188,16 @@ export function extraCreateFields (spec) {
   }
   if (spec.nodeKind === KIND_NOTE) {
     return { geometry: GEO_NOTE, label: clip(spec.label || 'Note', 40), data: { nodeKind: KIND_NOTE, note: spec.note && typeof spec.note === 'object' ? sanitizeNote(spec.note) : defaultNote() } }
+  }
+  if (spec.nodeKind === KIND_EPISTEMICS) {
+    const ep = sanitizeEpistemics(spec.epistemics)
+    return { geometry: GEO_EPISTEMICS, label: clip(spec.label || ep.text || 'Epistemics', 40), data: { nodeKind: KIND_EPISTEMICS, epistemics: ep } }
+  }
+  if (spec.nodeKind === KIND_RHYTHM) {
+    return { geometry: GEO_RHYTHM, label: clip(spec.label || 'Rhythm', 40), data: { nodeKind: KIND_RHYTHM, rhythm: spec.rhythm && typeof spec.rhythm === 'object' ? sanitizeRhythm(spec.rhythm) : defaultRhythm() } }
+  }
+  if (spec.nodeKind === KIND_FLASH) {
+    return { geometry: GEO_FLASH, label: clip(spec.label || 'Flashcards', 40), data: { nodeKind: KIND_FLASH, flash: spec.flash && typeof spec.flash === 'object' ? sanitizeDeck(spec.flash) : defaultDeck() } }
   }
   if (spec.nodeKind === KIND_DIMENSIONAL) {
     return { geometry: GEO_DIMENSIONAL, label: clip(spec.label || 'Dimensional node', 40), data: { nodeKind: KIND_DIMENSIONAL, dimensional: spec.dimensional && typeof spec.dimensional === 'object' ? sanitizeDimensional(spec.dimensional) : defaultDimensional() } }
@@ -299,6 +323,33 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_EPISTEMICS) {
+    data.epistemics = sanitizeEpistemics(data.epistemics)
+    const look = epiVisualOf(data.epistemics)
+    const mesh = buildEpistemicsNodeMesh(look.color)
+    applyEpistemicsLook(mesh, look)
+    mesh.userData.extraKind = { kind: KIND_EPISTEMICS, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_RHYTHM) {
+    if (!data.rhythm || typeof data.rhythm !== 'object') data.rhythm = defaultRhythm()
+    const mesh = buildRhythmNodeMesh(col)
+    mesh.userData.extraKind = { kind: KIND_RHYTHM, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
+  if (data.nodeKind === KIND_FLASH) {
+    if (!data.flash || typeof data.flash !== 'object') data.flash = defaultDeck()
+    const dk = sanitizeDeck(data.flash)
+    const mesh = buildDocNodeMesh(col, { width: dk.width, aspect: 0.625, paper: dk.paper })
+    mesh.userData.extraKind = { kind: KIND_FLASH, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   if (data.nodeKind === KIND_DIMENSIONAL) {
     data.dimensional = sanitizeDimensional(data.dimensional)
     const mesh = buildDimensionalNodeMesh(col, data.dimensional)
@@ -380,9 +431,11 @@ export function releaseExtraMesh (mesh) {
   try { window.dispatchEvent(new CustomEvent('omni:extra-mesh-released', { detail: { mesh, kind: ek.kind, id: mesh.userData.nodeId } })) } catch (_) { /* no window */ }
   if (ek.kind === KIND_SOUND) releaseSoundMesh(mesh)
   if (ek.kind === KIND_MUSIC) releaseMusicMesh(mesh)
+  if (ek.kind === KIND_RHYTHM) releaseRhythmMesh(mesh)
+  if (ek.kind === KIND_EPISTEMICS) releaseEpistemicsMesh(mesh)
   if (ek.kind === KIND_SONG) releaseSongMesh(mesh)
   if (ek.kind === KIND_MIX) releaseMixMesh(mesh)
-  if (ek.kind === KIND_DOC || ek.kind === KIND_NOTE) releaseDocMesh(mesh)
+  if (ek.kind === KIND_DOC || ek.kind === KIND_NOTE || ek.kind === KIND_FLASH) releaseDocMesh(mesh)
   if (ek.kind === KIND_POLY) releasePolyMesh(mesh)
   if (ek.kind === KIND_CLAIM) releaseClaimMesh(mesh)
   if (ek.kind === KIND_VOXEL) releaseVoxelMesh(mesh)
