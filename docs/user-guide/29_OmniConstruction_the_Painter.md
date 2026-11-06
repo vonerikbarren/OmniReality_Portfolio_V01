@@ -3,7 +3,7 @@
 Spray small nodes into the Sandbox by dragging, like a spray can. Everything painted is a normal node in the Sandbox, so Sandbox hide / lock / remix / clear all work on it.
 
 ## Use
-1. Sandbox tab → **Paint** (🖌). A "Painting" chip appears with Undo and Off.
+1. Sandbox tab → **Paint** (✐). A "Painting" chip appears with Undo and Off.
 2. Drag across the scene (mouse or finger). The camera does not turn while the brush is on.
 3. **Undo paint** (or the chip's Undo) takes back the last stroke. Esc or Off turns the brush off.
 

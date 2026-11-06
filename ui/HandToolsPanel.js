@@ -90,7 +90,7 @@ function injectStyles () {
 
 /** The option list (exported for tests / docs): id, glyph, label, tooltip. */
 export const TOOL_OPTIONS = [
-  { id: 'here',    glyph: '🎯', label: 'TakeMeThere', tip: 'Fly into the marker\'s current node (the same as TakeMeThere in the tunnel\'s node menu).' },
+  { id: 'here',    glyph: '◎', label: 'TakeMeThere', tip: 'Fly into the marker\'s current node (the same as TakeMeThere in the tunnel\'s node menu).' },
   { id: 'root',    glyph: '⟐', label: 'Root',        tip: 'Fly to this tunnel\'s root node at the origin.' },
   { id: 'back',    glyph: '◂', label: 'Back',        tip: 'One step back along the primary axis (the pad\'s left button).' },
   { id: 'forth',   glyph: '▸', label: 'Forth',       tip: 'One step forth along the primary axis (the pad\'s right button).' },

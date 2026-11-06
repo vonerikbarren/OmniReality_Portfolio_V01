@@ -726,7 +726,7 @@ real gap found, not a cosmetic one — `skipAutoSelect: true`
 (`modules/ChronosFloorClock.js`) only ever stopped the clock's
 Inspector from force-opening at the moment it's *created*; nothing
 stopped a later, ordinary raycast click on its small floating
-icosahedron from selecting it and popping the Inspector's "⏱ Clock
+icosahedron from selecting it and popping the Inspector's "◷ Clock
 Settings" section open anyway, which is what was actually happening.
 Fixed at the source: `_selectableMeshes()` filters any node whose
 `data.skipAutoSelect` is true out of hover, click-select, and

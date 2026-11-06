@@ -1,6 +1,6 @@
 /**
- * utils/OmniRhythmNodeMesh.js (V270) — the GEOMETRY of the RhythmNode: a small drum. A short round body, a skin on top that swells on every beat, and a ring of up to 32 little blocks
- * round the rim (one InstancedMesh, one draw call): a block is lit by its accent (soft / strong), the PLAYHEAD block is white, and a block flashes when its beat fires.
+ * utils/OmniRhythmNodeMesh.js (V270) — the GEOMETRY of the RhythmNode (V272: a geometry, no longer a drum): a glassy octahedron with a bright core that swells on every beat, and a ring of up to 32 little blocks
+ * round its middle (one InstancedMesh, one draw call): a block is lit by its accent (soft / strong), the PLAYHEAD block is white, and a block flashes when its beat fires.
  * The children are not hit-tested. Geometries are shared; each node owns its materials and its InstancedMesh (releaseRhythmMesh disposes them). No DOM, no audio: the state is
  * passed IN to reactRhythmMesh(), which allocates nothing per frame and writes only the blocks that changed.
  */
@@ -11,8 +11,8 @@ export const RHYTHM_LIVE = new Set()
 const G = {}
 function shared () {
   if (G.body) return G
-  G.body = new THREE.CylinderGeometry(0.62, 0.62, 0.34, 28)
-  G.skin = new THREE.CylinderGeometry(0.5, 0.5, 0.06, 28)
+  G.body = new THREE.OctahedronGeometry(0.5)
+  G.skin = new THREE.OctahedronGeometry(0.27)
   G.cell = new THREE.BoxGeometry(0.1, 0.07, 0.07)
   return G
 }
@@ -21,9 +21,9 @@ const SCR = new THREE.Color(); const DUMMY = new THREE.Object3D()
 
 export function buildRhythmNodeMesh (color) {
   const g = shared(); const col = new THREE.Color(color ?? 0xff9ad2)
-  const body = new THREE.Mesh(g.body, new THREE.MeshStandardMaterial({ color: new THREE.Color(0x22242e), roughness: 0.5, metalness: 0.4, emissive: 0x07080b }))
+  const body = new THREE.Mesh(g.body, new THREE.MeshStandardMaterial({ color: new THREE.Color(0x2a2e3c), roughness: 0.25, metalness: 0.3, emissive: 0x07080b, transparent: true, opacity: 0.4, depthWrite: false }))
   const skin = new THREE.Mesh(g.skin, new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.1, emissive: col.clone().multiplyScalar(0.25) }))
-  skin.position.y = 0.2; skin.raycast = () => {}
+  skin.raycast = () => {}
   const cells = new THREE.InstancedMesh(g.cell, new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_CELLS)
   cells.raycast = () => {}; cells.frustumCulled = false
   for (let i = 0; i < MAX_CELLS; i++) { cells.setMatrixAt(i, DUMMY.matrix.identity()); cells.setColorAt(i, OFF) }
@@ -35,7 +35,7 @@ export function buildRhythmNodeMesh (color) {
 function layout (v, n) {
   v.n = n
   for (let i = 0; i < MAX_CELLS; i++) {
-    if (i >= n) { DUMMY.position.set(0, -50, 0); DUMMY.scale.setScalar(0.0001) } else { const a = (i / n) * Math.PI * 2 - Math.PI / 2; DUMMY.position.set(Math.cos(a) * 0.62, 0.2, Math.sin(a) * 0.62); DUMMY.scale.setScalar(1); DUMMY.rotation.set(0, -a, 0) }
+    if (i >= n) { DUMMY.position.set(0, -50, 0); DUMMY.scale.setScalar(0.0001) } else { const a = (i / n) * Math.PI * 2 - Math.PI / 2; DUMMY.position.set(Math.cos(a) * 0.78, 0, Math.sin(a) * 0.78); DUMMY.scale.setScalar(1); DUMMY.rotation.set(0, -a, 0) }
     DUMMY.updateMatrix(); v.cells.setMatrixAt(i, DUMMY.matrix)
   }
   v.cells.instanceMatrix.needsUpdate = true; v.code.fill(-1)

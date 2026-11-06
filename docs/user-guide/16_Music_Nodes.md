@@ -44,7 +44,7 @@ The roll shows a **keyboard** on the left (the Cs are named; press a key to hear
 | **Paint** (button) | With Draw: dragging paints one note per cell, so you can sketch a melody in one stroke |
 | **▭ Select** | Drag a rectangle around notes; **Shift** adds / removes. Dragging a selected note moves the whole group |
 | **⌫ Erase** | Click or drag over notes to delete them |
-| **✋ Pan** | Dragging scrolls the roll (handy on a phone) |
+| **✥ Pan** | Dragging scrolls the roll (handy on a phone) |
 
 In every tool: **right click** or a **long press** (touch) on a note deletes it; the **wheel** scrolls (Shift = sideways), **Ctrl/Cmd + wheel** or a trackpad pinch zooms, two fingers scroll and pinch. **Snap** chooses what starts and lengths snap to: a step, half a step, a bar, or off. **Key** and **Scale** (major, minor, pentatonic, minor pentatonic, chromatic) dim the rows outside the scale; **♯ Scale** makes new and moved notes snap to the nearest scale note. **− / + / Fit** zoom, **↕** changes the row height, **Follow** scrolls with the playhead while the pattern plays.
 
@@ -96,7 +96,7 @@ Press **● Rec**. It records what you play on the **computer keys** (in the Omn
 5. Press **● Rec** again to finish; playback goes on. **■ Stop** stops everything.
 6. **↶ Take** takes the whole recording back in one go (only while nothing else was edited after it). **↶ / ↷** are the normal Undo and Redo (60 steps); a whole recording, a paint stroke or a velocity drag is one step.
 
-**Step record** (**⏭ Step**): no clock. Each note you play is written to the **next step** of the armed track and the cursor moves on; notes played together become a chord. **Rest** skips a step, **◀ Back** moves back. Press **⏭ Step** again to end.
+**Step record** (**▶❚ Step**): no clock. Each note you play is written to the **next step** of the armed track and the cursor moves on; notes played together become a chord. **Rest** skips a step, **◀ Back** moves back. Press **▶❚ Step** again to end.
 
 The recorded pitch is what you played minus the track's transpose, so the track sounds exactly like what you played.
 
@@ -106,7 +106,7 @@ With the OmniExpression typing mode on, **Enter** plays / stops the transport an
 
 ## Phone
 
-The window is a bottom sheet. Steps are at least 26 px wide with 44 px tall rows; a long pattern scrolls sideways in its lane. The piano roll has bigger rows (22 px), edges and buttons (40 px), a taller velocity lane and a smaller height; one finger draws, **two fingers scroll and zoom**, or use the **✋ Pan** tool. Sound starts muted on phones: the window shows an **Enable sound** button when sound is muted.
+The window is a bottom sheet. Steps are at least 26 px wide with 44 px tall rows; a long pattern scrolls sideways in its lane. The piano roll has bigger rows (22 px), edges and buttons (40 px), a taller velocity lane and a smaller height; one finger draws, **two fingers scroll and zoom**, or use the **✥ Pan** tool. Sound starts muted on phones: the window shows an **Enable sound** button when sound is muted.
 
 ## Limits
 

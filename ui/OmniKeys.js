@@ -78,17 +78,17 @@ const MEDIA_ROW = [
   { type: 'media', char: 'brightness-up',   label: '☀+' },
   { type: 'media', char: 'brightness-down', label: '☀−' },
   { type: 'media', char: 'start-menu',      label: '⟐' },
-  { type: 'media', char: 'search',          label: '🔍' },
-  { type: 'media', char: 'mic',             label: '🎤' },
-  { type: 'media', char: 'nightmode',       label: '🌙' },
-  { type: 'media', char: 'media-prev',      label: '⏮' },
-  { type: 'media', char: 'play-pause',      label: '⏯' },
-  { type: 'media', char: 'slow-down',       label: '⏪' },
-  { type: 'media', char: 'speed-up',        label: '⏩' },
-  { type: 'media', char: 'media-next',      label: '⏭' },
-  { type: 'media', char: 'vol-up',          label: '🔊' },
-  { type: 'media', char: 'vol-down',        label: '🔉' },
-  { type: 'media', char: 'mute',            label: '🔇' },
+  { type: 'media', char: 'search',          label: '⌕' },
+  { type: 'media', char: 'mic',             label: '◍' },
+  { type: 'media', char: 'nightmode',       label: '☾' },
+  { type: 'media', char: 'media-prev',      label: '❚◀' },
+  { type: 'media', char: 'play-pause',      label: '▶❚❚' },
+  { type: 'media', char: 'slow-down',       label: '◀◀' },
+  { type: 'media', char: 'speed-up',        label: '▶▶' },
+  { type: 'media', char: 'media-next',      label: '▶❚' },
+  { type: 'media', char: 'vol-up',          label: '♪+' },
+  { type: 'media', char: 'vol-down',        label: '♪−' },
+  { type: 'media', char: 'mute',            label: '⊘' },
   { type: 'media', char: 'power',           label: '⏻' },
   { type: 'media', char: 'refresh',         label: '⟳' },
 ]
@@ -184,7 +184,7 @@ function letterPageDefault (pageNum) {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
   letters.forEach((l, i) => { slots[i] = { type: 'letter', char: l, label: l } })
   // 26 letters, slot 26 skipped (blank) per request, slot 27 = language selector
-  slots[27] = { type: 'lang-selector', char: 'lang', label: '🌐 Lang' }
+  slots[27] = { type: 'lang-selector', char: 'lang', label: '⊕ Lang' }
   slots[28] = { type: 'function', char: 'Enter', label: 'Enter' }
   slots[29] = { type: 'modifier', char: 'ShiftRight', label: 'Shift R' }
   return slots

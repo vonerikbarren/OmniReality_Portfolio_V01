@@ -23,7 +23,7 @@ Hiding hands does not turn off their keys.
 
 1. Is the sound on? In the Inspector section **Sound** (or the window ⟐SoundNodeSettings) the Sound switch must be on, and the small sign above the node must be ▶ or ❚❚, not missing.
 2. Press **▶ Play** on the node. A sound does not start by itself unless its Start setting says so.
-3. Press the speaker in the Inspector: if it shows 🔇 Unmute, all sound is muted. On a phone sound starts muted. Press it once.
+3. Press the speaker in the Inspector: if it shows ⊘ Unmute, all sound is muted. On a phone sound starts muted. Press it once.
 4. If a bar with **Enable sound** appears, press it: your browser blocks audio until you tap or press a key once.
 5. Check Admin > UI Settings > Sound: Master volume is not near 0, and "Ask before sound" is off (or you pressed Enable sound).
 6. Turn the volume of your device up, and check the browser tab is not muted (a speaker icon on the tab).

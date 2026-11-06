@@ -32,7 +32,7 @@ The "Candidate" column is **my placeholder suggestion**, plain Unicode geometric
 | Q | ⟠ | (nothing yet) | | |
 | R | ✦ | OmniRealities (planned / design only) | | |
 | S | ◈ | OmniStore (built), OmniSelect (built), OmniSystemCreator (built), OmniStarLight (built), OmniSense (planned / design only), OmniSystemAnimator (planned / design only), OmniSystemDimensionalizer (planned / design only) | | |
-| T | ⏱ | OmniTalent (built), OmniTranslator (built), OmniTargeting (built), OmniTruths (planned / design only) | | |
+| T | ◷ | OmniTalent (built), OmniTranslator (built), OmniTargeting (built), OmniTruths (planned / design only) | | |
 | U | ◇ | OmniUserCompass (built) | | |
 | V | ◬ | OmniValue (built), OmniVisor (built), OmniVision (planned / design only) | | |
 | W | ⌘ | (nothing yet) | | |

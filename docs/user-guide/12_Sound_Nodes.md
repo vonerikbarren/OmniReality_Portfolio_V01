@@ -33,7 +33,7 @@ To give an ordinary node a sound: select it, open the Inspector section **Sound*
 | Presets | Replaces the sound with a ready-made one. Your label, colour and tags stay. |
 | Quick controls | The note, the dynamic mark, the volume, loop and positional (spatial) sound. |
 | ▶ Play / ■ Stop | Plays or stops this node's sound. |
-| 🔊 Mute / 🔇 Unmute | The speaker. It mutes or unmutes **all** sound, not just this node. |
+| ♪ Mute / ⊘ Unmute | The speaker. It mutes or unmutes **all** sound, not just this node. |
 | Open sound settings | Opens ⟐SoundNodeSettings. |
 
 ## The window ⟐SoundNodeSettings

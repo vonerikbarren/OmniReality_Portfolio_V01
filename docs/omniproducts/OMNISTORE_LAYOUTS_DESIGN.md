@@ -67,7 +67,7 @@ The backdrop dome has radius 120 around the anchor. Each layout reports `bounds.
 
 - `layout` is a key of the store settings (`omni:store-settings-v1`, `utils/OmniStoreSettings.js`), per store, default `shelf`; unknown or missing (data saved before V179) reads as `shelf` (the version stays 1). A patch with an unknown id is ignored. **Presets never carry or change it** (decision: the layout is independent of the colour look); "Reset to default" resets the look and keeps the name AND the layout.
 - Scene: the effective layout is the saved setting, or a temporary DEV PREVIEW. `omni:store-layout-set {layout}` saves (via the settings); `{layout, preview:true}` previews (not saved; ends on close, on `{layout:null, preview:true}`, or when the user picks a layout; ignored while the store is closed). `omni:store-settings-changed` with the `layout` key switches in place (rebuild + fly to the layout's default pose). `omni:store-state` now also carries `layout`, `stop`, `view`.
-- HUD (third row): a chip `🗄️ Shelf` that cycles shelf -> ring -> aisle -> island (`data-omni-tip`, saved through the same setting); aisle: `◀ <stop label> ▶`; ring: `Enter` / `Exit`.
+- HUD (third row): a chip `▤ Shelf` that cycles shelf -> ring -> aisle -> island (`data-omni-tip`, saved through the same setting); aisle: `◀ <stop label> ▶`; ring: `Enter` / `Exit`.
 - User panel (Look tab): four radio cards with an inline SVG icon, the name and a one-line description. Dev panel: the record `layout` select (all four), "Preview layout" / "End preview" per record, per-layout readout lines, layout stats in "Dump state".
 
 ## How a store type or a mall hub picks a layout

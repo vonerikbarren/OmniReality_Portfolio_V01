@@ -54,7 +54,7 @@ export const ensureWalletStyles = injectStyles
 /** One balance row: the value type, its own balance (never merged with another type) and its stated remainder with a claim button when a whole step is available. */
 export function balanceRowHtml (t, balance, remainderTotal, { claim = true, pin = false } = {}) {
   const canClaim = claim && remainderTotal >= t.step - 1e-9
-  const pinBtn = pin ? ` <button type="button" class="wl-btn" data-act="pin:${esc(t.id)}" style="min-height:24px;padding:0 6px" aria-label="Pin ${esc(t.name)} to my space" title="Pin ${esc(t.name)} to my space" data-omni-tip="Pin this value type" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that shows this value type and your live balance in front of the camera.">📌</button>` : ''
+  const pinBtn = pin ? ` <button type="button" class="wl-btn" data-act="pin:${esc(t.id)}" style="min-height:24px;padding:0 6px" aria-label="Pin ${esc(t.name)} to my space" title="Pin ${esc(t.name)} to my space" data-omni-tip="Pin this value type" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that shows this value type and your live balance in front of the camera.">⚓︎</button>` : ''
   return `<tr data-type="${esc(t.id)}"><td>${esc(t.emoji)} ${esc(t.name)}${pinBtn}<div class="wl-dim">${esc(t.tier)}${t.payable ? '' : ' · not payable'}</div></td>
         <td class="num"><b data-bal="${esc(t.id)}">${fmt(balance ?? 0)}</b> <span class="wl-dim">${esc(t.unit)}</span></td>
         <td class="num">${remainderTotal > 0 ? `<span class="wl-dim">rem</span> ${fmt(remainderTotal)} ${canClaim ? `<button type="button" class="wl-btn" data-act="claim:${esc(t.id)}" style="min-height:24px">claim</button>` : ''}` : ''}</td></tr>`

@@ -504,7 +504,7 @@ export default class OmniChat {
         <div class="oc-preview">
           <canvas class="oc-preview-canvas"></canvas>
           <div class="oc-preview-controls">
-            <button class="oc-play-btn" data-action="play-pause">⏸</button>
+            <button class="oc-play-btn" data-action="play-pause">❚❚</button>
           </div>
         </div>
         <div class="oc-messages"><div class="oc-msg-empty">No messages yet.</div></div>
@@ -727,7 +727,7 @@ export default class OmniChat {
 
   _togglePlay () {
     this._isPlaying = !this._isPlaying
-    this._el.querySelector('.oc-play-btn').textContent = this._isPlaying ? '⏸' : '▶'
+    this._el.querySelector('.oc-play-btn').textContent = this._isPlaying ? '❚❚' : '▶'
   }
 
   /** Honest, real, proportionate mechanism for a confirmed dummy

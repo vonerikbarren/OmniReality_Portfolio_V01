@@ -693,7 +693,7 @@ export default class OmniDraw {
         <span class="od-title">⟐OmniDraw</span>
         <div class="od-controls">
           <button class="od-ctrl od-ctrl--minimize" data-action="minimize" title="Minimize" aria-label="Minimize">–</button>
-          <button class="od-ctrl od-ctrl--save" data-action="save" title="Save to local storage" aria-label="Save">💾</button>
+          <button class="od-ctrl od-ctrl--save" data-action="save" title="Save to local storage" aria-label="Save">⇩</button>
           <button class="od-ctrl od-ctrl--maximize" data-action="maximize" title="Maximize" aria-label="Maximize"></button>
           <button class="od-ctrl od-ctrl--close" data-action="close" title="Close" aria-label="Close">×</button>
         </div>

@@ -902,7 +902,7 @@ export default class OmniStartHUD {
     list.innerHTML = entries.map(e => `
       <div class="osh-pocket-item" draggable="true" data-id="${e.id}">
         <span class="osh-pocket-item-label">${e.node.label ?? e.id}</span>
-        <button class="osh-pocket-btn" data-action="preview" data-id="${e.id}">👁</button>
+        <button class="osh-pocket-btn" data-action="preview" data-id="${e.id}">⊙</button>
         <button class="osh-pocket-btn" data-action="take-out" data-id="${e.id}">Take Out</button>
       </div>
     `).join('')

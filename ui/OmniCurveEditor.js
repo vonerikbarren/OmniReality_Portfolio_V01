@@ -17,24 +17,27 @@ export function createCurveEditor ({ points, beat = null, grid = '1/8', onChange
   const cv = el.querySelector('canvas'); const sel = el.querySelector('select'); const del = el.querySelector('.ocv-del'); const smoothBtn = el.querySelector('.ocv-smooth'); const flatBtn = el.querySelector('.ocv-flat'); const mirror = el.querySelector('.ocv-mirror')
   sel.innerHTML = Object.keys(GRIDS).map(g => `<option value="${g}">${g}</option>`).join(''); sel.value = GRIDS[grid] ? grid : '1/8'
   const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1)
-  cv.width = W * dpr; cv.height = H * dpr; cv.style.cssText = `width:100%;max-width:${W}px;aspect-ratio:${W}/${H};touch-action:none;display:block;background:rgba(0,0,0,.35);border-radius:6px`
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.cssText = `width:100%;max-width:${W}px;aspect-ratio:${W}/${H};touch-action:none;display:block;background:var(--omni-theme-input-bg, rgba(0,0,0,.35));border-radius:6px`
   let pts = sanitizeCurve(points); let beatAt = beat; let sel_i = -1; let drag = false; let dragH = null
   const gridOf = () => GRIDS[sel.value] ?? GRIDS.off
   const toPx = (x, y) => [PAD + x * (W - 2 * PAD), PAD + (1 - (y + 1) / 2) * (H - 2 * PAD)]
   const fromEv = (e) => { const r = cv.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width * W; const py = (e.clientY - r.top) / r.height * H; return [(px - PAD) / (W - 2 * PAD), 1 - 2 * ((py - PAD) / (H - 2 * PAD))] }
+  // V273: the lines follow the OS theme (read at each redraw, so a theme change shows at once)
+  const themeColor = (name, fallback) => { try { const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fallback } catch (_) { return fallback } }
   function draw () {
+    const gridCol = themeColor('--omni-theme-border', 'rgba(255,255,255,.10)'), axisCol = themeColor('--omni-theme-text-dim', 'rgba(255,255,255,.3)'), curveCol = themeColor('--omni-theme-accent', '#7ec8ff'), dotCol = themeColor('--omni-theme-text', '#fff')
     const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H)
     const g = gridOf(); c.lineWidth = 1
     const gx = g.x || 0.25; const gy = g.y || 0.5
-    c.strokeStyle = 'rgba(255,255,255,.10)'
+    c.strokeStyle = gridCol
     for (let x = 0; x <= 1 + 1e-9; x += gx) { const [px] = toPx(x, 0); c.beginPath(); c.moveTo(px, PAD); c.lineTo(px, H - PAD); c.stroke() }
     for (let y = -1; y <= 1 + 1e-9; y += gy) { const [, py] = toPx(0, y); c.beginPath(); c.moveTo(PAD, py); c.lineTo(W - PAD, py); c.stroke() }
-    c.strokeStyle = 'rgba(255,255,255,.3)'; { const [, z] = toPx(0, 0); c.beginPath(); c.moveTo(PAD, z); c.lineTo(W - PAD, z); c.stroke() }
+    c.strokeStyle = axisCol; { const [, z] = toPx(0, 0); c.beginPath(); c.moveTo(PAD, z); c.lineTo(W - PAD, z); c.stroke() }
     if (beatAt !== null && beatAt !== undefined) { const [bx] = toPx(beatAt, 0); c.strokeStyle = '#ffd36b'; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(bx, PAD - 4); c.lineTo(bx, H - PAD + 4); c.stroke(); c.setLineDash([]); c.fillStyle = '#ffd36b'; c.font = '9px system-ui'; c.fillText('beat', Math.min(W - 28, bx + 3), 9) }
-    c.strokeStyle = '#7ec8ff'; c.lineWidth = 2; c.beginPath()
+    c.strokeStyle = curveCol; c.lineWidth = 2; c.beginPath()
     for (let i = 0; i <= 160; i++) { const u = i / 160; const [px, py] = toPx(u, curveAt(pts, Math.min(u, 0.999999))); if (i) c.lineTo(px, py); else c.moveTo(px, py) }
     c.stroke()
-    pts.forEach((p, i) => { const [px, py] = toPx(p[0], p[1]); c.beginPath(); c.arc(px, py, i === sel_i ? 6 : 4.5, 0, Math.PI * 2); c.fillStyle = i === sel_i ? '#ffd36b' : '#fff'; c.fill(); c.strokeStyle = '#102030'; c.lineWidth = 1.5; c.stroke() })
+    pts.forEach((p, i) => { const [px, py] = toPx(p[0], p[1]); c.beginPath(); c.arc(px, py, i === sel_i ? 6 : 4.5, 0, Math.PI * 2); c.fillStyle = i === sel_i ? '#ffd36b' : dotCol; c.fill(); c.strokeStyle = '#102030'; c.lineWidth = 1.5; c.stroke() })
     // handles of the selected point (and a faint dot for every point that has them)
     const drawHandle = (i, which, strong) => { const h = handleOf(pts, i, which); if (!h) return; const [ax, ay] = toPx(pts[i][0], pts[i][1]); const [hx, hy] = toPx(h[0], h[1]); c.strokeStyle = strong ? '#ffd36b' : 'rgba(255,211,107,.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(ax, ay); c.lineTo(hx, hy); c.stroke(); c.beginPath(); c.arc(hx, hy, strong ? 4 : 2.5, 0, Math.PI * 2); c.fillStyle = strong ? '#ffd36b' : 'rgba(255,211,107,.5)'; c.fill() }
     pts.forEach((p, i) => { if (i !== sel_i && hasHandles(p)) { drawHandle(i, 'in', false); drawHandle(i, 'out', false) } })

@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 
 const MAX_HOPS = 40, MAX_PULSES = 3, SPEED = 16, MIN_SEG = 0.35, CAP_NEAR = 200, CAP_MAX = 12, SCAN_MS = 500
-const STYLES = `.olf-cap { position: fixed; left: 0; top: 0; z-index: 9000; pointer-events: none; padding: 1px 6px; font: 10.5px system-ui, sans-serif; color: #eaf1ff; background: rgba(14,18,28,.82); border: 1px solid rgba(154,208,255,.45); border-radius: 8px; white-space: nowrap; transform: translate(-50%, -50%); }`
+const STYLES = `.olf-cap { position: fixed; left: 0; top: 0; z-index: 9000; pointer-events: none; padding: 1px 6px; font: 10.5px var(--omni-theme-font, system-ui, sans-serif); color: var(--omni-theme-text, #eaf1ff); background: var(--omni-theme-bg, rgba(14,18,28,.95)); border: 1px solid var(--omni-theme-border, rgba(154,208,255,.45)); border-radius: 8px; white-space: nowrap; transform: translate(-50%, -50%); }`
 let glowTex = null
 const glow = () => {
   if (glowTex) return glowTex

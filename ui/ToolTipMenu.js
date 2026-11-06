@@ -264,23 +264,23 @@ export default class ToolTipMenu {
     const childrenVisible = jsonNode ? jsonNode.isOpen : (hasChildren && this.omniNode?.getChildrenOf?.(nodeId)?.[0]?.mesh?.visible)
 
     this._menuEl.innerHTML = `
-      <button class="ttm-action-btn" data-action="take-me-there">🎯 Take Me There</button>
+      <button class="ttm-action-btn" data-action="take-me-there">◎ Take Me There</button>
       <button class="ttm-action-btn" data-action="edit">✎ Edit</button>
       <button class="ttm-action-btn" data-action="pocket-this">⟐ PocketThis⟐</button>
-      <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '🖐 Release' : '✊ Grab'}</button>
+      <button class="ttm-action-btn" data-action="${isPlaced ? 'release' : 'grab'}">${isPlaced ? '○ Release' : '● Grab'}</button>
       <button class="ttm-action-btn" data-action="translator-vault">⟐ Add to Translator</button>
-      ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">🌳 ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
-      ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">📐 Structure</button>` : ''}
-      ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">👁 Show Value</button>` : ''}
-      <button class="ttm-action-btn" data-action="edit-tooltip">🎨 Edit Tooltip</button>
-      <button class="ttm-action-btn" data-action="sticky">🗒 Stick a note on this</button>
-      <button class="ttm-action-btn" data-action="flash" style="display:none">🗂 Study / edit cards</button>
+      ${hasChildren ? `<button class="ttm-action-btn" data-action="toggle-children">⑂ ${childrenVisible ? 'Hide' : 'Show'} Children (${childCount})</button>` : ''}
+      ${hasChildren ? `<button class="ttm-action-btn" data-action="structure">⊿ Structure</button>` : ''}
+      ${isJsonLeaf ? `<button class="ttm-action-btn" data-action="show-value">⊙ Show Value</button>` : ''}
+      <button class="ttm-action-btn" data-action="edit-tooltip">◒ Edit Tooltip</button>
+      <button class="ttm-action-btn" data-action="sticky">❏ Stick a note on this</button>
+      <button class="ttm-action-btn" data-action="flash" style="display:none">▥ Study / edit cards</button>
       <button class="ttm-action-btn" data-action="epistemics" style="display:none">◉ Trace / next layer</button>
-      <button class="ttm-action-btn" data-action="rhythm">🥁 Put this on a beat</button>
+      <button class="ttm-action-btn" data-action="rhythm">♩ Put this on a beat</button>
       <button class="ttm-action-btn" data-action="transform">⇄ Move / Rotate / Scale…</button>
       <button class="ttm-action-btn" data-action="select-mode">☑ Select / Connect…</button>
       <button class="ttm-action-btn" data-action="duplicate">⧉ Duplicate</button>
-      <button class="ttm-action-btn ttm-action-btn--danger" data-action="delete">🗑 Delete</button>
+      <button class="ttm-action-btn ttm-action-btn--danger" data-action="delete">⌫ Delete</button>
     `
     this._menuEl.querySelector('[data-action="take-me-there"]').addEventListener('click', () => {
       goToObject(this.ctx, mesh)
@@ -384,7 +384,7 @@ export default class ToolTipMenu {
     const hands = [['tl', 'Top Left'], ['tr', 'Top Right'], ['bl', 'Bottom Left'], ['br', 'Bottom Right']]
     this._menuEl.innerHTML = `
       <button class="ttm-action-btn" data-action="back">← Back</button>
-      ${hands.map(([id, label]) => `<button class="ttm-action-btn" data-hand="${id}">✊ ${label}</button>`).join('')}
+      ${hands.map(([id, label]) => `<button class="ttm-action-btn" data-hand="${id}">● ${label}</button>`).join('')}
     `
     this._menuEl.querySelector('[data-action="back"]').addEventListener('click', () => this._renderMainMenu(mesh))
     hands.forEach(([id]) => {

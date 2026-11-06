@@ -604,7 +604,7 @@ export default class OmniHandsPanel {
 
   /** V220: Boost (systems/OmniBoost.js): its own multiplier on top of Speed, and the layered effects. */
   _viewBoost (body, hand) {
-    const g = this._group(body, '⚡ Boost (hold the BOOST button above the pad)')
+    const g = this._group(body, '↯ Boost (hold the BOOST button above the pad)')
     this._numRow(g, 'Boost multiplier (× Speed)', 'boostMult', this._storeNum(hand, 'boostMult', 0.5, '×'))
     this._numRow(g, 'Ramp up / down', 'boostRamp', this._storeNum(hand, 'boostRamp', 0.05, 's'))
     this._numRow(g, 'Sustain after release', 'boostSustain', this._storeNum(hand, 'boostSustain', 0.1, 's'))

@@ -15,12 +15,12 @@ import * as SA from '../utils/StrictAlign.js'
 const send = (n, d) => { try { window.dispatchEvent(new CustomEvent(n, { detail: d })) } catch (_) { /* no window */ } }
 const STORE = 'omni.transformbar.v1', AX = ['x', 'y', 'z'], DEG = 180 / Math.PI
 const STYLES = `
-.otb { position: fixed; z-index: 10030; left: 0; top: 0; width: 262px; max-width: 96vw; padding: 6px 8px; background: rgba(14,18,28,.95); color: #eaf1ff; border: 1px solid rgba(154,208,255,.5); border-radius: 10px; font: 11px system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.45); touch-action: manipulation; }
+.otb { position: fixed; z-index: 10030; left: 0; top: 0; width: 262px; max-width: 96vw; padding: 6px 8px; background: var(--omni-theme-bg, rgba(14,18,28,.95)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-border, rgba(154,208,255,.5)); border-radius: 10px; font: 11px var(--omni-theme-font, system-ui, sans-serif); box-shadow: 0 4px 18px rgba(0,0,0,.45); touch-action: manipulation; }
 .otb.otb-docked { left: 50% !important; top: auto !important; bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); transform: translateX(-50%); }
 .otb-row { display: flex; gap: 4px; align-items: center; margin: 3px 0; flex-wrap: wrap; }
-.otb button, .otb select, .otb input { font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 3px 6px; min-height: 26px; }
-.otb button { cursor: pointer; } .otb button:hover { background: rgba(154,208,255,.25); }
-.otb .otb-on { background: rgba(120,220,160,.3); border-color: rgba(120,220,160,.8); }
+.otb button, .otb select, .otb input { font: inherit; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.22)); border-radius: 6px; padding: 3px 6px; min-height: 26px; }
+.otb button { cursor: pointer; } .otb button:hover { color-mix(in srgb, var(--omni-theme-accent, #9ad0ff) 28%, transparent); }
+.otb .otb-on { background: color-mix(in srgb, var(--omni-theme-accent, #78dca0) 35%, transparent); border-color: var(--omni-theme-accent, #78dca0); }
 .otb-ax { display: flex; align-items: center; gap: 2px; flex: 1 1 0; }
 .otb-ax b { width: 12px; text-align: center; } .otb-ax input { width: 100%; min-width: 0; text-align: right; }
 .otb-ax button { padding: 3px 5px; }
@@ -133,7 +133,7 @@ export default class OmniTransformBar {
   _build () {
     if (!document.getElementById('otb-style')) { const s = document.createElement('style'); s.id = 'otb-style'; s.textContent = STYLES; document.head.appendChild(s) }
     const el = document.createElement('div'); el.className = 'otb'; el.setAttribute('role', 'toolbar'); el.setAttribute('aria-label', 'Transform bar')
-    el.innerHTML = `<div class="otb-row"><b style="color:#9ad0ff">Transform</b><span style="flex:1"></span><button data-k="min" title="Collapse">▁</button><button data-k="pin" title="Dock at the bottom">📌</button><button data-k="close" title="Close">✕</button></div>
+    el.innerHTML = `<div class="otb-row"><b style="color: var(--omni-theme-accent, #9ad0ff)">Transform</b><span style="flex:1"></span><button data-k="min" title="Collapse">▁</button><button data-k="pin" title="Dock at the bottom">⚓︎</button><button data-k="close" title="Close">✕</button></div>
 <div class="otb-body"><div class="otb-row" data-r="modes">${TM.MODES.map(m => `<button data-mode="${m}">${m[0].toUpperCase() + m.slice(1)}</button>`).join('')}<select data-k="space" title="World: rotate buttons turn about the world axes. Local: change the node's own angle."><option value="world">World</option><option value="local">Local</option></select></div>
 <div class="otb-row" data-r="axes">${AX.map(a => `<div class="otb-ax"><b style="color:${SA.AXIS_COLORS[a]}">${a.toUpperCase()}</b><button data-n="${a}-" aria-label="${a} minus">−</button><input data-a="${a}" inputmode="decimal" aria-label="${a} value"><button data-n="${a}+" aria-label="${a} plus">+</button></div>`).join('')}</div>
 <div class="otb-row"><label title="On: change one scale box and all three change together, so the shape is kept."><input type="checkbox" data-k="uniform"> Keep shape (scale all 3)</label></div>

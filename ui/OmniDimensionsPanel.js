@@ -91,8 +91,8 @@ export default class OmniDimensionsPanel extends OmniSettingsPanelBase {
       <div class="oss-row"><label>Default channel</label><select class="oss-select" data-act="sp-ch">${chOpts(s.channel)}</select>
         ${s.channel ? `<select class="oss-select" data-act="sp-chp">${dimPerspectiveOptions(s.channel.axiom, s.channel.perspective)}</select>` : ''}</div>
       ${s.planes.map(p => `<div class="odm-pl" data-pid="${esc(p.id)}"><span>${esc(p.name)} · ${Object.values(s.members).filter(v => v === p.id).length}</span>
-        <button type="button" class="oss-btn${p.visible ? ' is-on' : ''}" data-act="pl-vis" aria-pressed="${p.visible}" title="Show or hide this plane's nodes">${p.visible ? '👁' : '—'}</button>
-        <button type="button" class="oss-btn${p.locked ? ' is-on' : ''}" data-act="pl-lock" aria-pressed="${p.locked}" title="Lock: behaviours stop moving this plane's nodes">${p.locked ? '🔒' : '🔓'}</button>
+        <button type="button" class="oss-btn${p.visible ? ' is-on' : ''}" data-act="pl-vis" aria-pressed="${p.visible}" title="Show or hide this plane's nodes">${p.visible ? '⊙' : '—'}</button>
+        <button type="button" class="oss-btn${p.locked ? ' is-on' : ''}" data-act="pl-lock" aria-pressed="${p.locked}" title="Lock: behaviours stop moving this plane's nodes">${p.locked ? '⚿' : '⚷'}</button>
         <button type="button" class="oss-btn" data-act="pl-add-sel" title="Put the selected node on this plane" ${this._sel ? '' : 'disabled'}>+ node</button>
         <button type="button" class="oss-btn" data-act="pl-del" title="Delete this plane" ${s.planes.length > 1 ? '' : 'disabled'}>×</button></div>`).join('')}
       <div class="oss-row"><button type="button" class="oss-btn" data-act="pl-create">+ Plane</button>

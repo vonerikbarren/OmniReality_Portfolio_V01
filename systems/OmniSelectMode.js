@@ -16,12 +16,12 @@ import * as LM from '../utils/OmniLineModel.js'
 const send = (n, d) => { try { window.dispatchEvent(new CustomEvent(n, { detail: d })) } catch (_) { /* no window */ } }
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const STYLES = `
-.osm-bar { position: fixed; top: calc(var(--omni-top-offset, 48px) + 38px); left: 50%; transform: translateX(-50%); z-index: 10040; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(96vw, 760px); padding: 6px 10px; background: rgba(14,18,28,.94); color: #eaf1ff; border: 1px solid rgba(154,208,255,.55); border-radius: 10px; font: 11px system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.45); }
-.osm-bar b { color: #9ad0ff; }
-.osm-bar button, .osm-bar select { font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 5px 9px; min-height: 30px; cursor: pointer; }
-.osm-bar button:hover:not(:disabled) { background: rgba(154,208,255,.25); }
+.osm-bar { position: fixed; top: calc(var(--omni-top-offset, 48px) + 38px); left: 50%; transform: translateX(-50%); z-index: 10040; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: min(96vw, 760px); padding: 6px 10px; background: var(--omni-theme-bg, rgba(14,18,28,.95)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-border, rgba(154,208,255,.55)); border-radius: 10px; font: 11px var(--omni-theme-font, system-ui, sans-serif); box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+.osm-bar b { color: var(--omni-theme-accent, #9ad0ff); }
+.osm-bar button, .osm-bar select { font: inherit; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.22)); border-radius: 6px; padding: 5px 9px; min-height: 30px; cursor: pointer; }
+.osm-bar button:hover:not(:disabled) { color-mix(in srgb, var(--omni-theme-accent, #9ad0ff) 28%, transparent); }
 .osm-bar button:disabled { opacity: .4; cursor: default; }
-.osm-bar .osm-on { background: rgba(120,220,160,.3); border-color: rgba(120,220,160,.8); }
+.osm-bar .osm-on { background: color-mix(in srgb, var(--omni-theme-accent, #78dca0) 35%, transparent); border-color: var(--omni-theme-accent, #78dca0); }
 .osm-bar .osm-danger { border-color: rgba(255,120,120,.6); }
 .osm-msg { flex: 1 1 100%; font-size: 10.5px; opacity: .8; }
 @media (pointer: coarse) { .osm-bar button, .osm-bar select { min-height: 44px; } }
@@ -129,7 +129,7 @@ export default class OmniSelectMode {
       <select data-a="pattern" aria-label="Line pattern"><option value="star">Star (all from the origin)</option><option value="chain">Chain (one after another)</option></select>
       <select data-a="meaning" aria-label="What the new lines say" title="What the new lines say (their look and meaning)">${LM.MEANING_IDS.map(m => `<option value="${m}">${LM.MEANINGS[m].label}</option>`).join('')}</select>
       <button data-a="clear" title="Forget the picks. Lines already drawn stay">Clear</button>
-      <button data-a="delete" class="osm-danger" title="Delete the picked nodes">🗑 Delete picked</button>
+      <button data-a="delete" class="osm-danger" title="Delete the picked nodes">⌫ Delete picked</button>
       <button data-a="done" title="Leave (Esc)">Done</button><span class="osm-msg" role="status" aria-live="polite"></span>`
     bar.addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (!b || b.tagName === 'SELECT') return; try { ({ connect: () => this.connect(), clear: () => this.clear(), delete: () => this.remove(false), done: () => this.done() })[b.dataset.a]?.() } catch (err) { this._say(String(err?.message ?? err)) } })
     bar.addEventListener('change', (e) => { if (e.target.dataset?.a === 'pattern') this.setPattern(e.target.value); else if (e.target.dataset?.a === 'meaning') this.setMeaning(e.target.value) })

@@ -38,7 +38,7 @@ export const AXIOMS = [
       { id: 'bullet',     name: 'Bullet time', view: 'Nearly stopped: slowed by a large multiplier.', mult: { value: 20, min: 5, max: 200, kind: 'slowdown' } },
       { id: 'looped',     name: 'Looped event', view: 'A stretch of time that repeats. Multiplier = seconds in the loop.', loop: true, mult: { value: 3, min: 0.5, max: 60, kind: 'loop' } },
     ] },
-  { id: 'power', name: 'Power', symbol: '⚡', color: '#ff7a5c', view: 'What can act, and how strongly.',
+  { id: 'power', name: 'Power', symbol: '↯', color: '#ff7a5c', view: 'What can act, and how strongly.',
     perspectives: [
       { id: 'force',     name: 'Force',     view: 'Raw push.' },
       { id: 'authority', name: 'Authority', view: 'Right to decide.' },

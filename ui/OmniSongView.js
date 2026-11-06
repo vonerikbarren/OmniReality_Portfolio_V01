@@ -382,7 +382,7 @@ export default class OmniSongView {
     const keys = KEYS.map(k => `<option value="${k}">${k}</option>`).join('')
     const b = (act, label, name, desc, extra = '') => `<button type="button" class="osg-btn" data-act="${act}" ${extra} ${T(name, desc)}>${label}</button>`
     return `
-      ${b('rewind', '⏮', 'Rewind', 'Moves the playhead to the start of the song.')}
+      ${b('rewind', '❚◀', 'Rewind', 'Moves the playhead to the start of the song.')}
       ${b('play', '▶', 'Play / Pause', 'Plays the song from the playhead, or pauses it. Space does the same while this window has focus.', 'data-ref="playbtn"')}
       ${b('stop', '■', 'Stop', 'Stops the song and returns to the start.')}
       ${b('loop', '⟳ Loop', 'Loop', 'On: the loop region repeats. Shift-drag on the ruler sets the region.', 'data-ref="loopbtn" aria-pressed="false"')}
@@ -401,7 +401,7 @@ export default class OmniSongView {
       ${b('split', '✂', 'Split', 'Cuts the selected clip at the playhead (S).')}${b('dup', '⎘', 'Duplicate', 'Copies the selected clip right after itself (Ctrl/Cmd+D).')}
       ${b('marker', '⚑', 'Add marker', 'Puts a marker flag on the ruler at the playhead.')}
       <span class="osg-sep"></span>
-      ${b('togLib', '☰ Library', 'Clip library', 'Shows or hides the list of patterns and audio you can put on the lanes.', 'aria-pressed="true" data-ref="libbtn"')}${b('togMaster', '🎚 Master', 'Master strip', 'Shows or hides the master controls: gain, limiter, reverb, delay.', 'aria-pressed="false" data-ref="masterbtn"')}`
+      ${b('togLib', '☰ Library', 'Clip library', 'Shows or hides the list of patterns and audio you can put on the lanes.', 'aria-pressed="true" data-ref="libbtn"')}${b('togMaster', '⫶ Master', 'Master strip', 'Shows or hides the master controls: gain, limiter, reverb, delay.', 'aria-pressed="false" data-ref="masterbtn"')}`
   }
   _skeletonDesk () {
     return `<div class="osg-tb" data-ref="tb"></div><div class="osg-clipbar" data-ref="clipbar" hidden></div>
@@ -430,7 +430,7 @@ export default class OmniSongView {
   _buildToolbar (s) {
     const tb = this.r.tb; if (!tb) return
     if (this.simple) {
-      tb.innerHTML = `<button type="button" class="osg-btn" data-act="rewind" ${T('Rewind', 'Moves the playhead to the start of the song.')}>⏮</button>
+      tb.innerHTML = `<button type="button" class="osg-btn" data-act="rewind" ${T('Rewind', 'Moves the playhead to the start of the song.')}>❚◀</button>
         <button type="button" class="osg-btn" data-act="play" data-ref="playbtn" ${T('Play / Pause', 'Plays the song from the playhead, or pauses it.')}>▶</button>
         <button type="button" class="osg-btn" data-act="stop" ${T('Stop', 'Stops the song and returns to the start.')}>■</button>
         <button type="button" class="osg-btn" data-act="loop" data-ref="loopbtn" aria-pressed="false" ${T('Loop', 'On: the loop region repeats.')}>⟳</button>
@@ -440,7 +440,7 @@ export default class OmniSongView {
         <button type="button" class="osg-btn" data-act="addLane" data-kind="pattern" ${T('Add pattern lane', 'Adds a lane for patterns.')}>＋ Lane</button>
         <button type="button" class="osg-btn" data-act="addLane" data-kind="audio" ${T('Add audio lane', 'Adds a lane for audio clips.')}>＋ Audio</button>
         <button type="button" class="osg-btn" data-act="togLib" data-ref="libbtn" aria-pressed="false" ${T('Clip library', 'Shows the patterns and audio you can add.')}>☰</button>
-        <button type="button" class="osg-btn" data-act="togMaster" data-ref="masterbtn" aria-pressed="false" ${T('Master strip', 'Shows the master controls.')}>🎚</button>`
+        <button type="button" class="osg-btn" data-act="togMaster" data-ref="masterbtn" aria-pressed="false" ${T('Master strip', 'Shows the master controls.')}>⫶</button>`
     } else tb.innerHTML = this._toolbarHTML()
     this.r.playbtn = tb.querySelector('[data-ref="playbtn"]'); this.r.loopbtn = tb.querySelector('[data-ref="loopbtn"]'); this.r.pos = tb.querySelector('[data-ref="pos"]')
     this.r.libbtn = tb.querySelector('[data-ref="libbtn"]'); this.r.masterbtn = tb.querySelector('[data-ref="masterbtn"]')
@@ -509,7 +509,7 @@ export default class OmniSongView {
   _syncPlayBtn () {
     const b = this.r?.playbtn; if (!b) return
     const pl = !!this.svc?.isPlaying(this.nodeId)
-    b.textContent = pl ? '⏸' : '▶'; b.classList.toggle('is-on', pl)
+    b.textContent = pl ? '❚❚' : '▶'; b.classList.toggle('is-on', pl)
   }
 
   // lanes ------------------------------------------------------------------------------------------------------------

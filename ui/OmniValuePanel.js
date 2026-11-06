@@ -148,7 +148,7 @@ export default class OmniValuePanel extends OmniSettingsPanelBase {
       const edges = edgeLines(node.typeId)
       el.innerHTML = `<div class="oss-sec">${esc(node.label)}</div>
         <table data-testid="detail-balance"><tbody>${balanceRowHtml(t, bal, rem, { claim: false })}</tbody></table>
-        <div class="oss-row"><button type="button" class="oss-btn" data-act="pin-type" data-type="${esc(t.id)}" data-testid="pin-type" data-omni-tip="Pin this value type" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that shows ${esc(t.name)} and your live balance in front of the camera.">📌 Pin this value type</button></div>
+        <div class="oss-row"><button type="button" class="oss-btn" data-act="pin-type" data-type="${esc(t.id)}" data-testid="pin-type" data-omni-tip="Pin this value type" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that shows ${esc(t.name)} and your live balance in front of the camera.">⚓︎ Pin this value type</button></div>
         <div class="oss-sec">Conversions that use ${esc(t.name)}</div>${edges.length ? edges.map(l => `<div class="ovp-edge">${esc(l)}</div>`).join('') : '<div class="oss-dim">None: this value type has no conversion rates.</div>'}`
     } else {
       el.innerHTML = `<div class="oss-sec">${esc(node.label)}</div><div class="oss-dim">${esc(node.detail ?? '')}</div>`

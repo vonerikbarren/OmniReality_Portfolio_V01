@@ -5,7 +5,7 @@
  *   keyboard strip   left: white / black rows, the Cs are labelled; press a key to hear it (SoundEngine.playNote through the track's instrument = sequencer.preview), slide for a glissando
  *   grid             pitch rows x step columns (bar / beat / step lines, half-step lines when zoomed), scale highlight (key + scale) and optional snap-to-scale
  *   notes            ✎ Draw: click an empty cell = a note (drag sideways = its length; with Paint on, drag = a run of notes) · drag a note = move (steps + pitch) ·
- *                    drag its right (or left) edge = resize · ▭ Select: rubber band, Shift+click adds · ⌫ Erase: click / drag deletes · ✋ Pan · right click or LONG PRESS
+ *                    drag its right (or left) edge = resize · ▭ Select: rubber band, Shift+click adds · ⌫ Erase: click / drag deletes · ✥ Pan · right click or LONG PRESS
  *                    (touch) on a note deletes it · two fingers pan and pinch-zoom, the wheel scrolls (Shift = sideways), Ctrl/Cmd + wheel = zoom (a trackpad pinch too)
  *   velocity lane    under the grid: one bar per note, drag a bar (or sweep across several) to set the velocity; a selected group follows the dragged bar
  *   keys             Delete · arrows (move by the snap / transpose; Shift = bar / octave) · Ctrl/Cmd+A all · +C copy · +V paste · +D duplicate after the selection · +Z / +Y undo / redo · Esc
@@ -57,7 +57,7 @@ const TOOLS = [
   ['draw', '✎', 'Draw', 'Click an empty cell to add a note, drag sideways to set its length. Drag a note to move it, drag its edge to resize it.'],
   ['select', '▭', 'Select', 'Drag a rectangle to select notes (Shift adds). Drag a selected note to move the whole group.'],
   ['erase', '⌫', 'Erase', 'Click or drag over notes to delete them. (Right click or a long press on a note deletes it in every tool.)'],
-  ['pan', '✋', 'Pan', 'Drag to scroll the roll (useful on a phone; two fingers scroll and zoom in every tool).'],
+  ['pan', '✥', 'Pan', 'Drag to scroll the roll (useful on a phone; two fingers scroll and zoom in every tool).'],
 ]
 const SNAPS = [['step', 'Snap: step'], ['half', 'Snap: ½ step'], ['bar', 'Snap: bar'], ['off', 'Snap: off']]
 
@@ -395,7 +395,7 @@ export default class OmniPianoRoll {
       ${b('undo', '↶', 'Undo', 'Takes back the last change of the pattern (the same Undo as the grid).')}${b('redo', '↷', 'Redo', 'Puts back what Undo took away.')}
       ${b('all', 'All', 'Select all', 'Selects every note of the track (Ctrl / Cmd + A).')}${b('dup', '⧉', 'Duplicate', 'Copies the selected notes right after the selection (Ctrl / Cmd + D).')}${b('copy', 'Copy', 'Copy', 'Copies the selected notes (Ctrl / Cmd + C).')}${b('paste', 'Paste', 'Paste', 'Pastes the copied notes at the last place you clicked (Ctrl / Cmd + V).')}
       ${b('up', '♯+', 'Transpose up', 'Moves the selected notes up a semitone (Shift: an octave). With Snap to scale on, to the next scale note.')}${b('down', '♭−', 'Transpose down', 'Moves the selected notes down a semitone (Shift: an octave).')}
-      ${b('delete', '🗑', 'Delete notes', 'Deletes the selected notes (Delete key).')}</div>`
+      ${b('delete', '⌫', 'Delete notes', 'Deletes the selected notes (Delete key).')}</div>`
   }
 
   _syncButtons () {

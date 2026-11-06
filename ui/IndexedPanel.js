@@ -165,7 +165,7 @@ export default class IndexedPanel {
    * @param {object} [config.specialSlots] — { [index]: { label, onClick } }, 1-based, static
    * @param {function} [config.getSlotLabel] — (index) => string, called at render/refresh
    *   time instead of the static prefix+index label, for sections whose slot
-   *   labels depend on runtime state (e.g. Spaces: "Space01" vs "Space01 📍").
+   *   labels depend on runtime state (e.g. Spaces: "Space01" vs "Space01 ⌖").
    * @param {function} [config.getSlotAction] — (index) => (() => void), called at
    *   click time instead of the generic omni:section-shortcut dispatch.
    */

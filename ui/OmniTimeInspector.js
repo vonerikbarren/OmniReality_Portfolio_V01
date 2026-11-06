@@ -11,10 +11,10 @@ const svc = () => SERVICES.timenodes
 const STYLES = `
 .oitm-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; align-items: center; }
 .oitm-row .oi-btn-small { flex: 1 1 auto; min-height: 28px; }
-.oitm-in { min-height: 28px; box-sizing: border-box; padding: 2px 6px; font: inherit; font-size: 10.5px; color: inherit; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.2); border-radius: 5px; }
+.oitm-in { min-height: 28px; box-sizing: border-box; padding: 2px 6px; font: inherit; font-size: 10.5px; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.07)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.2)); border-radius: 5px; }
 .oitm-note { font-size: 9.5px; opacity: .75; line-height: 1.4; margin: 4px 0; }
 .oitm-msg { min-height: 12px; font-size: 9.5px; color: #8cffb4; } .oitm-msg.is-err { color: #ff9c9c; }
-.oitm-cal { font-size: 10px; line-height: 1.5; max-height: 160px; overflow: auto; border: 1px solid rgba(255,255,255,.15); border-radius: 5px; padding: 4px 6px; }
+.oitm-cal { font-size: 10px; line-height: 1.5; max-height: 160px; overflow: auto; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.15)); border-radius: 5px; padding: 4px 6px; }
 @media (max-width: 700px) { .oitm-row .oi-btn-small, .oitm-in { min-height: 40px; } }
 `
 function injectStyles () { if (typeof document === 'undefined' || document.getElementById('oitm-styles')) return; const s = document.createElement('style'); s.id = 'oitm-styles'; s.textContent = STYLES; document.head.appendChild(s) }
@@ -44,7 +44,7 @@ export function timeKindBlockHTML (data) {
   const reps = REPEATS.map(k => `<option value="${k}"${e.repeat.every === k ? ' selected' : ''}>${k}</option>`).join('')
   const units = UNITS.map(k => `<option value="${k}">${k}</option>`).join('')
   return `<div class="oi-custom-section" id="oi-custom-time" data-oitm-root data-node-id="${esc(data.id)}">
-    <div class="oi-custom-title">⏱ TimeNode</div>
+    <div class="oi-custom-title">◷ TimeNode</div>
     <div class="oitm-note" data-testid="oitm-state">${esc(stateLine(data.id))}</div>
     ${fields}
     <div class="oitm-row"><span class="oi-label" style="min-width:64px">Notes</span><textarea class="oitm-in" data-oitm="notes" rows="2" aria-label="Notes" style="flex:1">${esc(e.notes)}</textarea></div>
@@ -53,7 +53,7 @@ export function timeKindBlockHTML (data) {
     <div class="oitm-row"><span class="oi-label" style="min-width:64px">Repeat</span><select class="oitm-in" data-oitm="repeatEvery" aria-label="Repeat">${reps}</select><span class="oi-label">times</span><input class="oitm-in" type="number" data-oitm="repeatTimes" min="0" max="1000" value="${e.repeat.times}" style="width:60px" aria-label="Repeat times (0 = forever)"></div>
     <div class="oitm-row"><label><input type="checkbox" data-oitm="chain"${e.chain ? ' checked' : ''}> Start when the cube before is fulfilled</label></div>
     <div class="oitm-row"><label><input type="checkbox" data-oitm="loop"${e.loop ? ' checked' : ''}> Loop (for analysis)</label></div>
-    <div class="oitm-row"><button class="oi-btn-small" data-oitma="activate">▶ Activate</button><button class="oi-btn-small" data-oitma="toggle-halt">⏸ Halt / resume</button><button class="oi-btn-small" data-oitma="reset">↺ Reset</button><button class="oi-btn-small" data-oitma="replay">⟲ Replay</button></div>
+    <div class="oitm-row"><button class="oi-btn-small" data-oitma="activate">▶ Activate</button><button class="oi-btn-small" data-oitma="toggle-halt">❚❚ Halt / resume</button><button class="oi-btn-small" data-oitma="reset">↺ Reset</button><button class="oi-btn-small" data-oitma="replay">⟲ Replay</button></div>
     <div class="oitm-row"><button class="oi-btn-small" data-oitma="next">＋ Add the next cube to this sequence</button></div>
     <div class="oitm-row"><span class="oi-label" style="min-width:64px">Calendar</span><select class="oitm-in" data-oitmv="span" aria-label="Calendar view">${spans}</select><input class="oitm-in" type="number" data-oitmv="days" min="1" max="36500" value="45" style="width:60px" aria-label="Custom days"></div>
     <div class="oitm-cal" data-ref="oitm-cal" aria-live="polite"></div>

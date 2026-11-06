@@ -12,7 +12,7 @@
 export const DURATION = 10
 export const IDS = ['demo_meaning_a', 'demo_meaning_b', 'demo_meaning_c']
 export const AXES = {
-  power: { name: 'Power', symbol: '⚡', color: '#ff7a5c' },
+  power: { name: 'Power', symbol: '↯', color: '#ff7a5c' },
   time: { name: 'Time', symbol: '⧖', color: '#ffd36b' },
   expression: { name: 'Expression', symbol: '❖', color: '#c79bff' },
   space: { name: 'Space', symbol: '▦', color: '#8dffb0' },

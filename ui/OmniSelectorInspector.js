@@ -243,7 +243,7 @@ export default class OmniSelectorInspector {
       <div class="osi-header">
         <span class="osi-title">⟐OmniSelect Inspector</span>
         <div class="osi-controls">
-          <button class="osi-ctrl osi-ctrl--save" data-action="save" title="Save now">💾</button>
+          <button class="osi-ctrl osi-ctrl--save" data-action="save" title="Save now">⇩</button>
           <button class="osi-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>

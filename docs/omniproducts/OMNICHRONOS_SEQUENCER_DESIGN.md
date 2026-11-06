@@ -86,7 +86,7 @@ past `out` just plays on; scrubbing never wraps. Primary Time itself still never
 Desktop: **EDITOR** (docked like Premiere: Program Monitor + selected-clip strip on top, timeline below) and **SETTINGS**.
 Phones (<= 700 px): **PLAYER | TIMELINE | SETTINGS**, one at a time. Movable (header), resizable (corner), maximisable, minimisable
 (tray) and registered with `WindowManager` as before (`omnichronos`, panel opacity honoured). Timeline edits are live and auto-persist (debounced);
-SETTINGS keeps the Admin-style staged 💾 save.
+SETTINGS keeps the Admin-style staged ⇩ save.
 Shortcuts only while the pointer is over the window or focus is inside it (and never while typing in a field): Space, ←/→ (Shift = 1 s), Home/End, I/O, M, C (split), Delete, + / -.
 They are captured and stopped before the global handlers in `main.js` (which bind `m`, `c` ...), and unhandled keys pass through.
 

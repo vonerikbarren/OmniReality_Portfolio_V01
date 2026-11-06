@@ -137,7 +137,7 @@ export default class OmniFlashcards {
       for (; size >= 16; size -= 2) { g.font = `600 ${size}px system-ui, sans-serif`; lines = this._wrap(g, side.text, maxW); if (lines.length * size * 1.25 <= boxH) break }
       const lh = size * 1.25, y0 = textTop + boxH / 2 - (lines.length * lh) / 2 + lh / 2; lines.slice(0, Math.max(1, Math.floor(boxH / lh))).forEach((ln, i) => g.fillText(ln, PW / 2, y0 + i * lh))
     } else if (!hasImg) { g.font = 'italic 24px system-ui, sans-serif'; g.fillStyle = '#9aa3b4'; g.fillText('(nothing on this side)', PW / 2, PH / 2) }
-    if (side.snd) { g.font = '20px system-ui, sans-serif'; g.textAlign = 'right'; g.fillStyle = '#7b8496'; g.fillText('🔊', PW - 16, PH - 18) }
+    if (side.snd) { g.font = '20px system-ui, sans-serif'; g.textAlign = 'right'; g.fillStyle = '#7b8496'; g.fillText('♪', PW - 16, PH - 18) }
     this._stats.draws++; return true
   }
   get _stats () { return (this.__stats ??= { draws: 0 }) }

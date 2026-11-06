@@ -275,7 +275,7 @@ export default class OmniSoundPanel extends OmniSettingsPanelBase {
         <button class="oss-btn" data-act="play" ${playing ? 'disabled' : ''} ${tip('Play', '—', 'Starts the sound of this node.')}>▶ Play</button>
         <button class="oss-btn" data-act="stop" ${playing ? '' : 'disabled'} ${tip('Stop', '—', 'Stops the sound (it fades out with its release).')}>■ Stop</button>
         <button class="oss-btn" data-act="audition" ${tip('Audition', '—', 'Plays the sound for 2 seconds, then stops it.')}>◔ Audition 2 s</button>
-        <button class="oss-btn ${muted ? 'is-on' : ''}" data-act="mute" aria-pressed="${muted}" ${tip(muted ? 'Sound is muted' : 'Mute sound', '—', 'The speaker: mutes or unmutes ALL sound (the global switch, also in Admin > UI Settings).')}>${muted ? '🔇 Muted' : '🔊 Sound on'}</button>
+        <button class="oss-btn ${muted ? 'is-on' : ''}" data-act="mute" aria-pressed="${muted}" ${tip(muted ? 'Sound is muted' : 'Mute sound', '—', 'The speaker: mutes or unmutes ALL sound (the global switch, also in Admin > UI Settings).')}>${muted ? '⊘ Muted' : '♪ Sound on'}</button>
         <button class="oss-btn" data-act="undo" ${this.svc.canUndo(this._nodeId) ? '' : 'disabled'} ${tip('Undo', '—', 'Takes back the last preset, reset, paste or switch (30 steps).')}>↶ Undo</button>
         <button class="oss-btn" data-act="disable" ${tip('Switch sound off', '—', 'Switches the sound of this node off. The settings are kept.')}>Off</button>
       </div>
@@ -326,7 +326,7 @@ export default class OmniSoundPanel extends OmniSettingsPanelBase {
     if (p) p.disabled = playing
     if (s) s.disabled = !playing
     const m = body.querySelector('[data-act="mute"]')
-    if (m) { const muted = Settings.engineMuted(); m.classList.toggle('is-on', muted); m.setAttribute('aria-pressed', String(muted)); m.textContent = muted ? '🔇 Muted' : '🔊 Sound on' }
+    if (m) { const muted = Settings.engineMuted(); m.classList.toggle('is-on', muted); m.setAttribute('aria-pressed', String(muted)); m.textContent = muted ? '⊘ Muted' : '♪ Sound on' }
     const u = body.querySelector('[data-act="undo"]'); if (u) u.disabled = !this.svc.canUndo(this._nodeId)
   }
 

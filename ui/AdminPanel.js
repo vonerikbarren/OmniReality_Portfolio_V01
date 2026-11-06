@@ -457,12 +457,12 @@ export default class AdminPanel {
         <span class="ap-title">⟐Admin</span>
         <div class="ap-controls">
           <button class="ap-ctrl ap-ctrl--minimize" data-action="minimize" title="Minimize">–</button>
-          <button class="ap-ctrl ap-ctrl--save" data-action="save" title="Save (nothing applies until you do)">💾</button>
+          <button class="ap-ctrl ap-ctrl--save" data-action="save" title="Save (nothing applies until you do)">⇩</button>
           <button class="ap-ctrl ap-ctrl--maximize" data-action="maximize" title="Maximize"></button>
           <button class="ap-ctrl ap-ctrl--close" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="ap-unsaved-banner" id="ap-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
+      <div class="ap-unsaved-banner" id="ap-unsaved-banner">⚠ Unsaved changes — click ⇩ to apply</div>
       <div class="ap-body" id="ap-body"></div>
       <div class="ap-resize-handle" aria-hidden="true"></div>
     `
@@ -576,7 +576,7 @@ export default class AdminPanel {
         SND.adminRowsHtml() + ETS.adminRowsHtml()
       ) +
       group('Data Management', 'datamanagement',
-        `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">🗑 Clear Scene</button>
+        `<button class="ap-action-btn ap-action-btn--danger" id="ap-clear-scene">⌫ Clear Scene</button>
          <button class="ap-action-btn" id="ap-export-data">⬇ Export Reality</button>
          <label class="ap-action-btn" for="ap-import-input" style="display:block;text-align:center;box-sizing:border-box">⬆ Import Reality</label>
          <input type="file" accept="application/zip,.zip" class="ap-import-input" id="ap-import-input">
@@ -1022,7 +1022,7 @@ export default class AdminPanel {
     obj[parts[0]] = value
     const banner = this._el?.querySelector('#ap-unsaved-banner')
     if (banner) {
-      banner.textContent = '⚠ Unsaved changes — click 💾 to apply'
+      banner.textContent = '⚠ Unsaved changes — click ⇩ to apply'
       banner.classList.add('is-visible')
     }
   }

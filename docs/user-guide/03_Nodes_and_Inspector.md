@@ -48,7 +48,7 @@ In PLACE mode a crosshair follows the view. Click the floor to drop the node (if
 
 It opens on the right (340px wide) when you select a node. Empty state: "No node selected — Click a node in the scene or select one in ⟐N".
 
-Header buttons: ✕ close, _ minimize, ⟐ attach, 💾 save, Ξ select the whole genealogy, 🗑 delete, ⇥ snap right, maximize.
+Header buttons: ✕ close, _ minimize, ⟐ attach, ⇩ save, Ξ select the whole genealogy, ⌫ delete, ⇥ snap right, maximize.
 
 **Delete is immediate: no confirmation and no undo.**
 

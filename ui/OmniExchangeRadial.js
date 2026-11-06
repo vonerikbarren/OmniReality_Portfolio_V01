@@ -678,7 +678,7 @@ export default class OmniExchangeRadial {
     }).join('')
     const deltaKeys = Object.keys(cmp.delta).filter(k => cmp.delta[k] !== 0)
     const remTypes = Object.keys(Value.getRemainders()).filter(k => Value.getRemainderTotal(k) > 0)
-    return `<div data-testid="list">${sec('window', '◌ Window-shop (browsing reality)')}${sec('wish', '♡ Wishlist')}${sec('cart', '🛒 Cart (to buy)')}
+    return `<div data-testid="list">${sec('window', '◌ Window-shop (browsing reality)')}${sec('wish', '♡ Wishlist')}${sec('cart', '⊞ Cart (to buy)')}
       <div class="xr-sec">Compare: window reality vs cart</div>
       ${cmp.rows.length ? `<table class="xr-t" data-testid="compare"><thead><tr><th style="width:auto">product</th><th style="width:auto">window</th><th style="width:auto">cart</th><th style="width:auto">state</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="xr-dim">Nothing in window or cart yet.</div>'}
       <div class="xr-line">Window total: ${this._totalsHtml(cmp.totals.window)}</div>
@@ -696,16 +696,16 @@ export default class OmniExchangeRadial {
     const p = this.product
     if (this.tab === 'list' || !p) return '<div class="xr-msg" role="status" aria-live="polite"></div>'
     if (this.tab === 'sell') {
-      return `<div class="xr-row"><button type="button" class="xr-btn is-primary xr-state${this._q?.qs?.canExecute ? '' : ' is-blocked'}" data-act="sell" ${this.sel == null ? 'disabled' : ''}>Sell now</button></div><div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">📌 Pin to my space</button></div><div class="xr-msg" role="status" aria-live="polite"></div>`
+      return `<div class="xr-row"><button type="button" class="xr-btn is-primary xr-state${this._q?.qs?.canExecute ? '' : ' is-blocked'}" data-act="sell" ${this.sel == null ? 'disabled' : ''}>Sell now</button></div><div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">⚓︎ Pin to my space</button></div><div class="xr-msg" role="status" aria-live="polite"></div>`
     }
     const mk = (state, label) => {
       const it = Store.getItemFor(p.id, state)
       return `<button type="button" class="xr-btn xr-state${it ? ' is-on' : ''}" data-act="list:${state}" title="${it ? 'In ' + state + ' ×' + it.qty + ' — click to update' : 'Add to ' + state}">${label}${it ? ' ×' + it.qty : ''}</button>`
     }
     const ok = this._q?.qt?.canExecute
-    return `<div class="xr-row" style="flex-wrap:nowrap">${mk('window', '◌ Window')}${mk('wish', '♡ Wish')}${mk('cart', '🛒 Cart')}
+    return `<div class="xr-row" style="flex-wrap:nowrap">${mk('window', '◌ Window')}${mk('wish', '♡ Wish')}${mk('cart', '⊞ Cart')}
       <button type="button" class="xr-btn is-primary xr-state${ok ? '' : ' is-blocked'}" data-act="buy" ${this.sel == null ? 'disabled' : ''} data-omni-tip="Buy now" data-omni-tip-desc="Executes this trade through the sandbox ledger. Fake value only.">Buy now</button></div>
-      <div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">📌 Pin to my space</button></div>
+      <div class="xr-row" style="margin-top:4px"><button type="button" class="xr-chip" data-act="pin" data-testid="pin-btn" data-omni-tip="Pin to my space" data-omni-tip-key="—" data-omni-tip-desc="Drops a node that represents this product in front of the camera. The node only points at the product; it follows the catalog. Sandbox.">⚓︎ Pin to my space</button></div>
       <div class="xr-msg" role="status" aria-live="polite"></div>`
   }
 

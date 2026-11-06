@@ -263,7 +263,7 @@ than requiring the branch to be closed and reopened.
 `ui/OmniStructurePanel.js` is the real panel, retargeted by
 selection with the same real UX fix already proven elsewhere (never
 force-opens for a node with no real children). `ToolTipMenu`'s quick
-menu gained a real "📐 Structure" option, shown under the same
+menu gained a real "⊿ Structure" option, shown under the same
 condition as the children-toggle.
 
 ## Real, configurable Take Me There — speed, ease, and stagger
@@ -330,7 +330,7 @@ ToolTipNodeOverrides.js` keys by a node's own real, stable id
 specific header element, which naturally takes precedence over the
 `:root`-level global default in the actual CSS cascade — no special
 override-checking logic needed anywhere else. Reachable from the
-quick menu's new "🎨 Edit Tooltip" option (shown for every node, not
+quick menu's new "◒ Edit Tooltip" option (shown for every node, not
 gated behind having children), with a real "↺ Reset to Default"
 option that only appears once an override actually exists, and
 genuinely clears it rather than just hiding it. Extracted
@@ -351,7 +351,7 @@ node's header in the 3D scene did. Fixed by wiring a direct
 looks up the node's real mesh and dispatches a genuine
 `omni:node-selected` event with it — safe for every other listener
 that expects a real mesh, not just Structure's own. Jsonifier's own
-toolbar also gained a direct "📐 Structure" button, opening the panel
+toolbar also gained a direct "⊿ Structure" button, opening the panel
 for the root node without needing to click a specific row first.
 
 Two new real shapes added to `utils/TreeLayout.js`: 'sphere' (a real

@@ -13,7 +13,7 @@
  * the ribbon buttons and the Inspector's Time section work with this window closed. Timeline edits are LIVE
  * (auto-persisted, debounced). The SETTINGS tab keeps the original Admin-style STAGED save:
  *
- *   Tunnel Enabled / Z-axis Mode / Transparency / Time Format  ->  nothing is applied until 💾 is pressed, then
+ *   Tunnel Enabled / Z-axis Mode / Transparency / Time Format  ->  nothing is applied until ⇩ is pressed, then
  *   omni:chronos-toggle | omni:chronos-axis-set | omni:chronos-transparency-set go to modules/RootSpace.js.
  *
  * Keyboard shortcuts (Space, ←/→, Home/End, I/O, M, C, Delete, +/-) are handled ONLY while the pointer is over this
@@ -478,7 +478,7 @@ export default class OmniChronos {
     sp.value = v
     el.querySelector('[data-t="loop"]').classList.toggle('is-on', TL.getState().loop)
     const sb = el.querySelector('#oc-play-pause')
-    if (sb) sb.textContent = playing ? '⏸ Pause' : '▶ Play'
+    if (sb) sb.textContent = playing ? '❚❚ Pause' : '▶ Play'
   }
 
   _playerHTML () {
@@ -629,13 +629,13 @@ export default class OmniChronos {
       <div class="chr-header">
         <span class="chr-title">⟐OmniChronos</span>
         <div class="chr-controls">
-          <button class="chr-ctrl chr-ctrl--save" data-action="save" title="Save the SETTINGS tab (tunnel toggles)">💾</button>
+          <button class="chr-ctrl chr-ctrl--save" data-action="save" title="Save the SETTINGS tab (tunnel toggles)">⇩</button>
           <button class="chr-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="chr-ctrl" data-action="maximize" title="Maximize">▢</button>
           <button class="chr-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="oc-unsaved-banner" id="oc-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
+      <div class="oc-unsaved-banner" id="oc-unsaved-banner">⚠ Unsaved changes — click ⇩ to apply</div>
       <div class="chr-tabs" role="tablist">
         <button class="chr-tab desk-only" data-tab="edit" role="tab">EDITOR</button>
         <button class="chr-tab mob-only" data-tab="player" role="tab">PLAYER</button>
@@ -684,7 +684,7 @@ export default class OmniChronos {
 
             <div class="chr-primary-time">
               <div class="oc-clock-display" id="oc-clock-display">00:00</div>
-              <button class="chr-play-btn" id="oc-play-pause">${PrimaryTime.isPlaying() ? '⏸ Pause' : '▶ Play'}</button>
+              <button class="chr-play-btn" id="oc-play-pause">${PrimaryTime.isPlaying() ? '❚❚ Pause' : '▶ Play'}</button>
             </div>
           </div>
         </div>

@@ -66,7 +66,7 @@ export function songKindBlockHTML (data) {
     <div class="oisg-row"><span class="oi-label">Length</span>
       <input class="oisg-in" type="number" data-oisg="len" min="4" max="256" step="1" value="${s?.lengthBars ?? 32}" aria-label="Length in bars" ${tip('Length (bars)', 'How many bars the song lasts (4 to 256).')}><span class="oisg-note" style="margin:0">bars</span></div>
     <div class="oisg-row" data-ref="oisg-buttons">
-      <button class="oi-btn-small ${playing ? 'is-on' : ''}" data-oisga="play" ${tip(playing ? 'Pause' : 'Play', playing ? 'Pauses the song.' : 'Plays the song of this node: every lane and clip.')}>${playing ? '⏸ Pause' : '▶ Play'}</button>
+      <button class="oi-btn-small ${playing ? 'is-on' : ''}" data-oisga="play" ${tip(playing ? 'Pause' : 'Play', playing ? 'Pauses the song.' : 'Plays the song of this node: every lane and clip.')}>${playing ? '❚❚ Pause' : '▶ Play'}</button>
       <button class="oi-btn-small" data-oisga="stop" ${tip('Stop', 'Stops the song and returns to the start.')}>■ Stop</button>
       <button class="oi-btn-small ${s?.loop?.on ? 'is-on' : ''}" data-oisga="loop" aria-pressed="${!!s?.loop?.on}" ${tip('Loop', 'On: the loop region of the song repeats. Off: the song plays once.')}>⟳ Loop</button>
       <button class="oi-btn-small" data-oisga="open" ${tip('Open song editor', 'Opens ⟐OmniSong: the timeline with lanes, clips, sections, the mixer and automation of this node.')}>⚙ Open song editor</button></div>
@@ -105,7 +105,7 @@ function refreshLive (root, skip = null) {
   const song = s.getSong(id); if (!song) return
   const playing = s.isPlaying(id)
   const play = root.querySelector('[data-oisga="play"]')
-  if (play) { play.classList.toggle('is-on', playing); play.textContent = playing ? '⏸ Pause' : '▶ Play' }
+  if (play) { play.classList.toggle('is-on', playing); play.textContent = playing ? '❚❚ Pause' : '▶ Play' }
   const lp = root.querySelector('[data-oisga="loop"]'); if (lp) { lp.classList.toggle('is-on', !!song.loop.on); lp.setAttribute('aria-pressed', String(!!song.loop.on)) }
   const st = root.querySelector('[data-testid="oisg-state"]'); if (st) st.textContent = stateText(id)
   root.querySelectorAll('[data-oisg="bpm"]').forEach(el => { if (el !== skip && document.activeElement !== el) el.value = String(Math.round(song.bpm)) })

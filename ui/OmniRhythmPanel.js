@@ -11,14 +11,15 @@ import * as R from '../utils/OmniRhythmModel.js'
 
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const STYLES = `
-.orp { position: fixed; z-index: 10034; right: 8px; top: calc(var(--omni-top-offset, 48px) + 8px); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); width: min(380px, 96vw); overflow-y: auto; padding: 8px 10px; background: rgba(14,18,28,.96); color: #eaf1ff; border: 1px solid rgba(255,154,210,.55); border-radius: 10px; font: 12px system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.45); }
-.orp h4 { margin: 8px 0 4px; color: #ff9ad2; font-size: 12px; } .orp .orp-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
-.orp button, .orp select, .orp input { font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 4px 8px; min-height: 28px; cursor: pointer; }
-.orp button:hover { background: rgba(255,154,210,.25); } .orp input[type=number], .orp input[type=text] { cursor: text; } .orp input[type=checkbox] { min-height: 0; width: 15px; height: 15px; }
-.orp .orp-steps { display: flex; flex-wrap: wrap; gap: 3px; } .orp .orp-step { width: 28px; padding: 0; text-align: center; min-height: 34px; } .orp .orp-step[data-v="1"] { background: rgba(255,217,90,.85); color: #222; } .orp .orp-step[data-v="0.5"] { background: rgba(230,140,70,.65); } .orp .orp-step.beat { border-color: #ff9ad2; } .orp .orp-step.head { outline: 2px solid #fff; }
-.orp .orp-bind { border: 1px solid rgba(255,255,255,.15); border-radius: 8px; padding: 5px 6px; margin: 5px 0; } .orp .orp-bind b { color: #ffd0ea; }
-.orp .orp-msg { font-size: 10.5px; opacity: .85; min-height: 14px; } .orp .orp-on { background: rgba(120,220,160,.3); border-color: rgba(120,220,160,.8); }
+.orp { position: fixed; z-index: 10034; right: 8px; top: calc(var(--omni-top-offset, 48px) + 8px); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); width: min(380px, 96vw); overflow-y: auto; padding: 8px 10px; background: var(--omni-theme-bg, rgba(14,18,28,.96)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-border, rgba(255,154,210,.55)); border-radius: 10px; font: 12px var(--omni-theme-font, system-ui, sans-serif); box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+.orp h4 { margin: 8px 0 4px; color: var(--omni-theme-accent, #ff9ad2); font-size: 12px; } .orp .orp-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+.orp button, .orp select, .orp input { font: inherit; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.22)); border-radius: 6px; padding: 4px 8px; min-height: 28px; cursor: pointer; }
+.orp button:hover { background: color-mix(in srgb, var(--omni-theme-accent, #ff9ad2) 28%, transparent); } .orp input[type=number], .orp input[type=text] { cursor: text; } .orp input[type=checkbox] { min-height: 0; width: 15px; height: 15px; }
+.orp .orp-steps { display: flex; flex-wrap: wrap; gap: 3px; } .orp .orp-step { width: 28px; padding: 0; text-align: center; min-height: 34px; } .orp .orp-step[data-v="1"] { background: var(--omni-theme-accent, #ffd95a); color: #111; } .orp .orp-step[data-v="0.5"] { background: color-mix(in srgb, var(--omni-theme-accent, #e68c46) 55%, transparent); } .orp .orp-step.beat { border-color: var(--omni-theme-accent, #ff9ad2); } .orp .orp-step.head { outline: 2px solid var(--omni-theme-text, #fff); }
+.orp .orp-bind { border: 1px solid var(--omni-theme-border, rgba(255,255,255,.15)); border-radius: 8px; padding: 5px 6px; margin: 5px 0; } .orp .orp-bind b { color: var(--omni-theme-text, #ffd0ea); }
+.orp .orp-msg { font-size: 10.5px; color: var(--omni-theme-text-dim, inherit); min-height: 14px; } .orp .orp-on { background: color-mix(in srgb, var(--omni-theme-accent, #78dca0) 35%, transparent); border-color: var(--omni-theme-accent, #78dca0); }
 @media (pointer: coarse) { .orp button, .orp select, .orp input { min-height: 44px; } .orp .orp-step { width: 38px; min-height: 44px; } .orp input[type=checkbox] { width: 24px; height: 24px; } }
+.orp .orp-head { background: var(--omni-theme-header-bg, rgba(255,255,255,.04)); border-radius: 6px; padding: 2px 4px; margin-top: 0; }
 `
 export default class OmniRhythmPanel {
   constructor (context, omniNode = null) { this.ctx = context; this.omniNode = omniNode ?? context?.omniNode ?? null; this._el = null; this._id = null; this._bound = []; this._inited = false; this._msg = ''; this._pick = false; this._headT = 0 }
@@ -51,7 +52,7 @@ export default class OmniRhythmPanel {
     const keep = this._el.scrollTop; const running = s.isRunning(this._id)
     const musics = (this.omniNode?.getAllNodes?.() ?? []).filter(d => d?.nodeKind === 'musicNode')
     const fm = r.follow ? this.omniNode?.getNodeData?.(r.follow.nodeId)?.music : null
-    this._el.innerHTML = `<div class="orp-row"><b style="color:#ff9ad2;flex:1">Rhythm</b><button data-a="close" title="Close">✕</button></div>
+    this._el.innerHTML = `<div class="orp-row orp-head"><b style="color:var(--omni-theme-accent,#ff9ad2);flex:1">♩ Rhythm</b><button data-a="close" title="Close">✕</button></div>
 <input type="text" data-f="title" maxlength="40" value="${esc(r.title)}" aria-label="Title" style="width:100%;box-sizing:border-box">
 <div class="orp-row"><button data-a="toggle" class="${running ? 'orp-on' : ''}">${running ? '■ Stop' : '▶ Start'}</button><button data-a="tap" title="Tap along to set the tempo">Tap</button><label>BPM <input type="number" data-f="tempo" min="20" max="300" step="1" value="${r.tempo}" style="width:64px"></label><label>Swing <input type="number" data-f="swing" min="0" max="0.75" step="0.05" value="${r.swing}" style="width:58px"></label></div>
 <div class="orp-row"><label><input type="checkbox" data-f="autostart" ${r.autostart ? 'checked' : ''}> Start when the scene loads</label></div>

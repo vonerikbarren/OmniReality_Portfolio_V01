@@ -281,8 +281,8 @@ export default class OmniKeysInspector {
       <div class="oki-header">
         <span class="oki-title">⟐OmniKeys Inspector</span>
         <div class="oki-controls">
-          <button class="oki-ctrl oki-ctrl--save" data-action="save" title="Save now">💾</button>
-          <button class="oki-ctrl oki-ctrl--reset" data-action="reset" title="Reset this key to its default">🗑</button>
+          <button class="oki-ctrl oki-ctrl--save" data-action="save" title="Save now">⇩</button>
+          <button class="oki-ctrl oki-ctrl--reset" data-action="reset" title="Reset this key to its default">⌫</button>
           <button class="oki-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>

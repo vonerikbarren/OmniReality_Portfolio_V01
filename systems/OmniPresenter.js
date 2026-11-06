@@ -73,8 +73,8 @@
  *   │  ID input  ────────────── [Add by ID]   │  30px id row
  *   ├─────────────────────────────────────────┤
  *   │  ┌──────────────────────────────────┐   │
- *   │  │  ◀◀  ◀  ▶/⏸  ▶  ▶▶            │   │  56px transport
- *   │  │  [⏮ First]  [⏭ Last]           │   │
+ *   │  │  ◀◀  ◀  ▶/❚❚  ▶  ▶▶            │   │  56px transport
+ *   │  │  [❚◀ First]  [▶❚ Last]           │   │
  *   │  └──────────────────────────────────┘   │
  *   ├─────────────────────────────────────────┤
  *   │  ① / ③  Node A label                   │  40px current node
@@ -1094,12 +1094,12 @@ export default class OmniPresenter {
       <!-- Transport -->
       <div class="op-transport">
         <div class="op-transport-main">
-          <button class="op-t-btn op-t-btn--sm" id="op-t-prev-start" title="First (Home)">⏮</button>
+          <button class="op-t-btn op-t-btn--sm" id="op-t-prev-start" title="First (Home)">❚◀</button>
           <button class="op-t-btn op-t-btn--md" id="op-t-prev"       title="Previous (←)">◀</button>
           <button class="op-t-btn op-t-btn--lg op-t-btn--play" id="op-t-play"
                   title="Play / Pause (Space)">▶</button>
           <button class="op-t-btn op-t-btn--md" id="op-t-next"       title="Next (→)">▶</button>
-          <button class="op-t-btn op-t-btn--sm" id="op-t-next-end"   title="Last (End)">⏭</button>
+          <button class="op-t-btn op-t-btn--sm" id="op-t-next-end"   title="Last (End)">▶❚</button>
         </div>
         <div class="op-transport-aux">
           <button class="op-t-aux" id="op-t-stop" title="Stop (Esc)">■ Stop</button>
@@ -1361,7 +1361,7 @@ export default class OmniPresenter {
     // Play button icon and state
     const playBtn = el.querySelector('#op-t-play')
     if (playBtn) {
-      playBtn.textContent = isPlaying ? '⏸' : '▶'
+      playBtn.textContent = isPlaying ? '❚❚' : '▶'
       playBtn.classList.toggle('is-playing', isPlaying)
     }
 

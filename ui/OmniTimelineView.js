@@ -176,7 +176,7 @@ export default class OmniTimelineView {
         <span class="sep"></span>
         <button class="otv-btn" data-a="split" title="Razor: split the selected clips (or every clip under the playhead) at the playhead — C">✂ Split</button>
         <button class="otv-btn" data-a="dup" title="Duplicate the selected clips after themselves">⧉</button>
-        <button class="otv-btn" data-a="del" title="Delete the selected clip / keyframe / marker — Delete">🗑</button>
+        <button class="otv-btn" data-a="del" title="Delete the selected clip / keyframe / marker — Delete">⌫</button>
         <span class="sep"></span>
         <select class="otv-sel" data-r="keyprop" title="Property for the keyframe button"></select>
         <button class="otv-btn" data-a="key" title="Add a keyframe at the playhead on the selected clip (value = the node's current value)">◇ Key</button>

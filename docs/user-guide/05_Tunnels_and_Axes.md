@@ -27,7 +27,7 @@ Some node names and values in these tunnels are still placeholders.
 ## Click a node on a tunnel
 
 Click (do not drag) a tunnel node. A small menu appears with:
-- **🎯 TakeMeThere** flies the camera into that node.
+- **◎ TakeMeThere** flies the camera into that node.
 - **⟐ Root** returns to the root.
 Escape closes the menu. Hovering shows a tooltip.
 

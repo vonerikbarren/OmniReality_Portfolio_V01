@@ -10,19 +10,19 @@ import { esc } from './OmniSoundFields.js'
 
 const CSS = `
 #omni-timepad { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 62; display: none; width: min(560px, calc(100vw - 16px)); max-height: 70vh; overflow: auto; box-sizing: border-box;
-  padding: 8px; border-radius: 12px; background: rgba(10,12,18,.9); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  font: 11px "Courier New", monospace; color: rgba(255,255,255,.88); pointer-events: auto; user-select: none; touch-action: manipulation; }
+  padding: 8px; border-radius: 12px; background: var(--omni-theme-bg, rgba(10,12,18,.9)); border: 1px solid var(--omni-theme-border, rgba(255,255,255,.22)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font: 11px var(--omni-theme-font, "Courier New", monospace); color: var(--omni-theme-text, rgba(255,255,255,.88)); pointer-events: auto; user-select: none; touch-action: manipulation; }
 #omni-timepad.is-on { display: block; }
 #omni-timepad .tpb-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 6px; }
 #omni-timepad .tpb-title { flex: 1 1 auto; letter-spacing: .06em; opacity: .75; }
-#omni-timepad select, #omni-timepad input { min-height: 28px; box-sizing: border-box; font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 2px 6px; }
-#omni-timepad button.tpb-small { min-height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: inherit; font: inherit; cursor: pointer; }
-#omni-timepad button.tpb-small:hover { background: rgba(255,255,255,.18); }
+#omni-timepad select, #omni-timepad input { min-height: 28px; box-sizing: border-box; font: inherit; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.25)); border-radius: 6px; padding: 2px 6px; }
+#omni-timepad button.tpb-small { min-height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.25)); background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); color: inherit; font: inherit; cursor: pointer; }
+#omni-timepad button.tpb-small:hover { background: color-mix(in srgb, var(--omni-theme-accent, #fff) 28%, transparent); }
 #omni-timepad .tpb-grid { display: grid; gap: 6px; }
-#omni-timepad button.tpb-pad { min-height: 64px; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); color: #fff; font: bold 12px "Courier New", monospace; cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.6); word-break: break-word; }
+#omni-timepad button.tpb-pad { min-height: 64px; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); color: #fff; font: bold 12px var(--omni-theme-font, "Courier New", monospace); cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.6); word-break: break-word; }
 #omni-timepad button.tpb-pad:active, #omni-timepad button.tpb-pad.is-hit { filter: brightness(1.6); transform: scale(.97); }
-#omni-timepad button.tpb-pad.is-sel { outline: 2px solid #fff; }
-#omni-timepad .tpb-edit { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.15); }
+#omni-timepad button.tpb-pad.is-sel { outline: 2px solid var(--omni-theme-text, #fff); }
+#omni-timepad .tpb-edit { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--omni-theme-border, rgba(255,255,255,.15)); }
 #omni-timepad .tpb-act { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 3px 0; }
 #omni-timepad .tpb-note { opacity: .65; font-size: 10px; margin: 4px 0; }
 #omni-timepad .tpb-msg { min-height: 12px; font-size: 10px; color: #8cffb4; } #omni-timepad .tpb-msg.is-err { color: #ff9c9c; }
@@ -57,7 +57,7 @@ export default class OmniTimePadBoard {
     const pad = pads.find(p => p.id === this._pad)
     const opts = pads.map(p => `<option value="${esc(p.id)}"${p.id === this._pad ? ' selected' : ''}>${esc(p.name)}</option>`).join('')
     const grid = pad ? `<div class="tpb-grid" style="grid-template-columns:repeat(${pad.columns},1fr)">${pad.buttons.map(b => `<button type="button" class="tpb-pad${b.id === this._btn && this._edit ? ' is-sel' : ''}" data-btn="${esc(b.id)}" style="background:${esc(b.color)}" title="${b.actions.length} action(s)">${esc(b.label)}</button>`).join('')}</div>` : '<div class="tpb-note">No pad yet. Press ＋ Pad.</div>'
-    this._el.innerHTML = `<div class="tpb-bar"><span class="tpb-title">⏱ OMNITIMEPAD</span>${pads.length ? `<select data-f="pad" aria-label="Pad">${opts}</select>` : ''}
+    this._el.innerHTML = `<div class="tpb-bar"><span class="tpb-title">◷ OMNITIMEPAD</span>${pads.length ? `<select data-f="pad" aria-label="Pad">${opts}</select>` : ''}
       <button type="button" class="tpb-small" data-a="newpad">＋ Pad</button>${pad ? '<button type="button" class="tpb-small" data-a="newbtn">＋ Button</button>' : ''}${pad ? `<button type="button" class="tpb-small" data-a="edit" aria-pressed="${this._edit}">${this._edit ? '✓ Done' : '✎ Edit'}</button>` : ''}<button type="button" class="tpb-small" data-a="close" aria-label="Close">✕</button></div>${grid}${this._edit && pad ? this._editHTML(pad) : ''}<div class="tpb-msg" role="status" aria-live="polite"></div>`
     if (this._msg) this._say(this._msg.text, this._msg.err)
   }

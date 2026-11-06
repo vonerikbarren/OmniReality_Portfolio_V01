@@ -11,7 +11,7 @@
  *
  * A node is a REFERENCE. Only the reference (and the usual position / scale / rotation / colour ...) is saved; name, price, stock, emoji, balance,
  * remainder and conversion rates are read LIVE from OmniStoreModel / OmniValueModel and never copied into the node. A missing reference gives a
- * 'missing' description (grey ❓ + a plain label), never a throw. CONVERSION STAYS AN EDGE: the rate for a pair of value nodes is read from the
+ * 'missing' description (grey ? + a plain label), never a throw. CONVERSION STAYS AN EDGE: the rate for a pair of value nodes is read from the
  * model (`pairInfo`); there is no rate field anywhere on a node or an edge.
  *
  * Contents
@@ -76,7 +76,7 @@ const GLYPH_BG = { veg: ['#eaf6dc', '#cfe8b8'], other: ['#fff1dc', '#ffd9b8'], m
  */
 export function describeStoreItem (d) {
   const out = {
-    kind: KIND_STORE_ITEM, state: 'ok', storeId: d?.storeId ?? '', productId: d?.productId ?? '', storeName: '', storeEmoji: '', name: '', emoji: '❓', shape: 'cube', category: '',
+    kind: KIND_STORE_ITEM, state: 'ok', storeId: d?.storeId ?? '', productId: d?.productId ?? '', storeName: '', storeEmoji: '', name: '', emoji: '?', shape: 'cube', category: '',
     stock: 0, price: [], priceText: '', hiddenForms: 0, accepts: [], acceptsText: '', lines: [], glyph: null, missing: false,
   }
   try {
@@ -88,7 +88,7 @@ export function describeStoreItem (d) {
       const p = st.products.find(x => x.id === d.productId)
       if (!p) Object.assign(out, { state: 'missing-product', missing: true, lines: ['Missing product', clip(st.name, LIMITS.labelChars)] })
       else {
-        out.name = p.name; out.emoji = p.media?.emoji || p.emoji || '❓'; out.shape = p.shape === 'disc' ? 'disc' : 'cube'; out.category = p.category; out.stock = p.stock
+        out.name = p.name; out.emoji = p.media?.emoji || p.emoji || '?'; out.shape = p.shape === 'disc' ? 'disc' : 'cube'; out.category = p.category; out.stock = p.stock
         const acc = Store.storeAccepts(st.id)
         out.accepts = acc.map(id => Value.getType(id)?.name ?? id)
         out.acceptsText = acc.length ? out.accepts.join(', ') : 'any value type'
@@ -100,9 +100,9 @@ export function describeStoreItem (d) {
       }
     }
     const veg = out.category === 'vegetable'
-    out.glyph = out.missing ? { key: 'g|❓|missing', emoji: '❓', bg: GLYPH_BG.missing } : { key: `g|${out.emoji}|${veg ? 'v' : 'o'}`, emoji: out.emoji, bg: veg ? GLYPH_BG.veg : GLYPH_BG.other }
+    out.glyph = out.missing ? { key: 'g|?|missing', emoji: '?', bg: GLYPH_BG.missing } : { key: `g|${out.emoji}|${veg ? 'v' : 'o'}`, emoji: out.emoji, bg: veg ? GLYPH_BG.veg : GLYPH_BG.other }
   } catch (_) {
-    Object.assign(out, { state: 'missing-product', missing: true, lines: ['Missing product'], glyph: { key: 'g|❓|missing', emoji: '❓', bg: GLYPH_BG.missing } })
+    Object.assign(out, { state: 'missing-product', missing: true, lines: ['Missing product'], glyph: { key: 'g|?|missing', emoji: '?', bg: GLYPH_BG.missing } })
   }
   return out
 }
@@ -110,7 +110,7 @@ export function describeStoreItem (d) {
 /** What an omniValue node shows right now. state: 'ok' | 'missing-type'. Balance and remainder are the CURRENT account's. */
 export function describeValueNode (d) {
   const out = {
-    kind: KIND_VALUE, state: 'ok', valueTypeId: d?.valueTypeId ?? '', name: '', emoji: '❓', tier: '', unit: '', balance: 0, remainder: 0, step: 1,
+    kind: KIND_VALUE, state: 'ok', valueTypeId: d?.valueTypeId ?? '', name: '', emoji: '?', tier: '', unit: '', balance: 0, remainder: 0, step: 1,
     balanceText: '', remainderText: '', color: '#8892a6', payable: true, lines: [], glyph: null, missing: false,
   }
   try {
@@ -127,9 +127,9 @@ export function describeValueNode (d) {
       if (out.remainder > 0) out.lines.push(clip(`left over ${fmt(out.remainder)}`, LIMITS.labelChars))
     }
     const c = out.missing ? GLYPH_BG.missing : [out.color, out.color]
-    out.glyph = out.missing ? { key: 'g|❓|missing', emoji: '❓', bg: GLYPH_BG.missing } : { key: `g|${out.emoji}|t${out.tier}`, emoji: out.emoji, bg: c, tint: true }
+    out.glyph = out.missing ? { key: 'g|?|missing', emoji: '?', bg: GLYPH_BG.missing } : { key: `g|${out.emoji}|t${out.tier}`, emoji: out.emoji, bg: c, tint: true }
   } catch (_) {
-    Object.assign(out, { state: 'missing-type', missing: true, lines: ['Missing value type'], glyph: { key: 'g|❓|missing', emoji: '❓', bg: GLYPH_BG.missing } })
+    Object.assign(out, { state: 'missing-type', missing: true, lines: ['Missing value type'], glyph: { key: 'g|?|missing', emoji: '?', bg: GLYPH_BG.missing } })
   }
   return out
 }

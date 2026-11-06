@@ -5,8 +5,8 @@
 **The Sandbox** is a marked-off area for these experiments, apart from your portfolio. It is a Dimensional Space called "Sandbox" with its own spawn point (default x 60, away from the middle of the scene). Remix on the Sandbox never touches a portfolio node, and clearing it only deletes Sandbox nodes.
 
 ## Buttons (ribbon, and OmniStarLight search "remix" or "sandbox")
-- 🎲 **Remix**: every node, or only the selected one. An Undo button sits on the note that appears.
-- 🧪 **Sandbox**: makes 6 random nodes in the Sandbox and remixes them. Tap again for more (up to 24 per tap, 60 in all).
+- ⚂ **Remix**: every node, or only the selected one. An Undo button sits on the note that appears.
+- ⚗ **Sandbox**: makes 6 random nodes in the Sandbox and remixes them. Tap again for more (up to 24 per tap, 60 in all).
 - ✺ **Sparks**: five ideas as text only; nothing changes.
 
 ## Commands

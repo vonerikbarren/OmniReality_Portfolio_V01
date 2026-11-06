@@ -615,11 +615,11 @@ export default class OmniPointing {
 
     this._menuEl.innerHTML = /* html */`
       <div class="omp-menu-title">⟐ ${header} — (${p.x.toFixed(1)}, ${p.y.toFixed(2)}, ${p.z.toFixed(1)})</div>
-      <button class="omp-action-btn" data-action="take-me-there">🎯 TakeMeThere</button>
+      <button class="omp-action-btn" data-action="take-me-there">◎ TakeMeThere</button>
       <button class="omp-action-btn" data-action="title">✎ Title</button>
       <button class="omp-action-btn omp-stub" data-action="pocket" disabled
               title="Pocket — real, honest stub. Not yet implemented, same convention as Developer → OmniCommandTerminal in main.js.">⟐ Pocket (soon)</button>
-      <button class="omp-action-btn" data-action="stem">${isStem ? '✕ Deactivate STEM' : '📍 STEM'}</button>
+      <button class="omp-action-btn" data-action="stem">${isStem ? '✕ Deactivate STEM' : '⌖ STEM'}</button>
       <button class="omp-action-btn" data-action="highlight-edit">✦ Highlight and Edit</button>
     `
 

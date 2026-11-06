@@ -18,3 +18,7 @@ A **beat source**. Every beat can animate any node you bind to it, so geometry c
 **Commands:** `Omni Rhythm create|start|stop|tempo|pattern|bind|unbind|trigger|follow|edit|list|anims`, for example `Omni Rhythm bind id(r) to(cube) anim(bounce) means(heartbeat)`.
 
 Not in this version: an audible click, several patterns in one node, recording taps into the pattern.
+
+
+## Look (V272)
+The node is a glassy octahedron with a bright core that swells on every beat and a ring of step blocks round its middle. The ♩ glyph marks it in the menus. The Rhythm panel takes its colours, font and header from the OS theme, so it changes with the theme you pick.

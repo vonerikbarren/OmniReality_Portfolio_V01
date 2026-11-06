@@ -235,11 +235,11 @@ export default class OmniInternalPanel {
       <div class="oip-header">
         <span class="oip-title">Internal Data</span>
         <div class="oip-controls">
-          <button class="oip-ctrl oip-ctrl--save" data-action="save" title="Save">💾</button>
+          <button class="oip-ctrl oip-ctrl--save" data-action="save" title="Save">⇩</button>
           <button class="oip-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="oip-unsaved-banner" id="oip-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
+      <div class="oip-unsaved-banner" id="oip-unsaved-banner">⚠ Unsaved changes — click ⇩ to apply</div>
       <div class="oip-saved-banner" id="oip-saved-banner"></div>
       <div class="oip-empty" id="oip-empty">Open a node's Inspector and click "Open Panel" next to Internal Data.</div>
       <div class="oip-body" id="oip-body"></div>

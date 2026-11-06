@@ -1,6 +1,6 @@
 /**
  * ui/OmniFlashUI.js (V269) — the Flashcards node's two panels, built here (DOM only; everything goes through SERVICES.flash):
- *   STUDY BAR   docked at the bottom: Prev · Flip · Again · Got it · Next · Restart/Shuffle · 🔊 · ✕.   Keys while it is open: Space flip · 1 again · 2 got it · [ prev · ] next
+ *   STUDY BAR   docked at the bottom: Prev · Flip · Again · Got it · Next · Restart/Shuffle · ♪ · ✕.   Keys while it is open: Space flip · 1 again · 2 got it · [ prev · ] next
  *   EDITOR      a side panel: deck title, "read aloud", the card list (add / delete / move), each side's text + picture + sound clip, Export JSON / CSV, Import.
  * Pictures are shrunk to fit (max 480 px, JPEG) and sounds must be short (<= 150 KB) so a deck always fits the browser's storage.
  *   SERVICES.flashui: openStudy(id) closeStudy() openEditor(id) closeEditor() isStudying() isEditing()      Events in: omni:flash-ui-request { action: 'study'|'edit'|'close', id }
@@ -10,17 +10,17 @@ import { LIMITS } from '../utils/OmniFlashcardModel.js'
 
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const STYLES = `
-.ofl-bar { position: fixed; z-index: 10035; left: 50%; transform: translateX(-50%); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; max-width: 96vw; padding: 6px 10px; background: rgba(14,18,28,.95); color: #eaf1ff; border: 1px solid rgba(127,214,162,.6); border-radius: 10px; font: 12px system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.45); }
-.ofl-bar button, .ofl-ed button, .ofl-ed select, .ofl-ed input, .ofl-ed textarea { font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 5px 9px; min-height: 30px; cursor: pointer; }
-.ofl-bar button:hover, .ofl-ed button:hover { background: rgba(127,214,162,.25); }
+.ofl-bar { position: fixed; z-index: 10035; left: 50%; transform: translateX(-50%); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; max-width: 96vw; padding: 6px 10px; background: var(--omni-theme-bg, rgba(14,18,28,.95)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-border, rgba(127,214,162,.6)); border-radius: 10px; font: 12px var(--omni-theme-font, system-ui, sans-serif); box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+.ofl-bar button, .ofl-ed button, .ofl-ed select, .ofl-ed input, .ofl-ed textarea { font: inherit; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.08)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.22)); border-radius: 6px; padding: 5px 9px; min-height: 30px; cursor: pointer; }
+.ofl-bar button:hover, .ofl-ed button:hover { color-mix(in srgb, var(--omni-theme-accent, #7fd6a2) 28%, transparent); }
 .ofl-bar .ofl-got { border-color: rgba(120,220,160,.8); } .ofl-bar .ofl-again { border-color: rgba(255,170,100,.8); }
 .ofl-bar .ofl-info { opacity: .8; min-width: 110px; text-align: center; }
-.ofl-ed { position: fixed; z-index: 10034; right: 8px; top: calc(var(--omni-top-offset, 48px) + 8px); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); width: min(360px, 96vw); overflow-y: auto; padding: 8px 10px; background: rgba(14,18,28,.96); color: #eaf1ff; border: 1px solid rgba(127,214,162,.5); border-radius: 10px; font: 12px system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.45); }
-.ofl-ed h4 { margin: 8px 0 4px; color: #7fd6a2; font-size: 12px; } .ofl-ed .ofl-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+.ofl-ed { position: fixed; z-index: 10034; right: 8px; top: calc(var(--omni-top-offset, 48px) + 8px); bottom: calc(var(--omni-dock-stack-h, 52px) + 8px); width: min(360px, 96vw); overflow-y: auto; padding: 8px 10px; background: var(--omni-theme-bg, rgba(14,18,28,.95)); color: var(--omni-theme-text, #eaf1ff); border: 1px solid var(--omni-theme-border, rgba(127,214,162,.5)); border-radius: 10px; font: 12px var(--omni-theme-font, system-ui, sans-serif); box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+.ofl-ed h4 { margin: 8px 0 4px; color: var(--omni-theme-accent, #7fd6a2); font-size: 12px; } .ofl-ed .ofl-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
 .ofl-ed textarea, .ofl-ed input[type=text] { width: 100%; cursor: text; box-sizing: border-box; } .ofl-ed textarea { min-height: 54px; resize: vertical; }
-.ofl-list { max-height: 150px; overflow-y: auto; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; }
+.ofl-list { max-height: 150px; overflow-y: auto; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.15)); border-radius: 6px; }
 .ofl-list button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; min-height: 26px; padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ofl-list button.on { background: rgba(127,214,162,.28); }
+.ofl-list button.on { background: color-mix(in srgb, var(--omni-theme-accent, #7fd6a2) 30%, transparent); }
 .ofl-ed img.ofl-thumb { max-width: 96px; max-height: 64px; border-radius: 4px; vertical-align: middle; }
 .ofl-msg { font-size: 10.5px; opacity: .85; min-height: 14px; }
 @media (pointer: coarse) { .ofl-bar button, .ofl-ed button, .ofl-ed select, .ofl-ed input { min-height: 44px; } }
@@ -59,7 +59,7 @@ export default class OmniFlashUI {
     const f = this._svc(); if (!f.isFlashNode(id)) throw new Error('That is not a flashcards node.')
     this.closeStudy(); this._styles(); this._sid = id
     const bar = document.createElement('div'); bar.className = 'ofl-bar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Flashcards study')
-    bar.innerHTML = `<button data-a="prev" title="Previous card ([)">◀</button><button data-a="flip" title="Flip (Space)">⟲ Flip</button><button data-a="again" class="ofl-again" title="Again (1): it comes round once more">✗ Again</button><button data-a="got" class="ofl-got" title="Got it (2): out of this round">✓ Got it</button><button data-a="next" title="Next card (])">▶</button><span class="ofl-info" role="status" aria-live="polite"></span><button data-a="play" title="Play / speak this side">🔊</button><button data-a="restart" title="Start the round again">↺ Restart</button><button data-a="shuffle" title="Start again in a new order">🔀</button><button data-a="close" title="Close">✕</button>`
+    bar.innerHTML = `<button data-a="prev" title="Previous card ([)">◀</button><button data-a="flip" title="Flip (Space)">⟲ Flip</button><button data-a="again" class="ofl-again" title="Again (1): it comes round once more">✗ Again</button><button data-a="got" class="ofl-got" title="Got it (2): out of this round">✓ Got it</button><button data-a="next" title="Next card (])">▶</button><span class="ofl-info" role="status" aria-live="polite"></span><button data-a="play" title="Play / speak this side">♪</button><button data-a="restart" title="Start the round again">↺ Restart</button><button data-a="shuffle" title="Start again in a new order">⇌</button><button data-a="close" title="Close">✕</button>`
     bar.addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (!b) return; this._act(b.dataset.a) })
     document.body.appendChild(bar); this._bar = bar; this._refreshBar(); return true
   }
@@ -97,16 +97,16 @@ export default class OmniFlashUI {
   _sideHTML (name, s) {
     return `<h4>${name}</h4><textarea data-f="${name}-text" maxlength="${LIMITS.text}" placeholder="${name} text" aria-label="${name} text">${esc(s.text)}</textarea>
 <div class="ofl-row">${s.img ? `<img class="ofl-thumb" src="${esc(s.img)}" alt=""><button data-a="rm-${name}-img">Remove picture</button>` : `<label>Picture <input type="file" accept="image/*" data-f="${name}-img"></label>`}</div>
-<div class="ofl-row">${s.snd ? `<span>🔊 sound clip</span><button data-a="play-${name}">Play</button><button data-a="rm-${name}-snd">Remove</button>` : `<label>Sound <input type="file" accept="audio/*" data-f="${name}-snd"></label>`}</div>`
+<div class="ofl-row">${s.snd ? `<span>♪ sound clip</span><button data-a="play-${name}">Play</button><button data-a="rm-${name}-snd">Remove</button>` : `<label>Sound <input type="file" accept="audio/*" data-f="${name}-snd"></label>`}</div>`
   }
   _renderEditor () {
     if (!this._ed || !this._eid) return; const f = SERVICES.flash; const k = f?.getDeck(this._eid); if (!k) { this.closeEditor(); return }
     const keepScroll = this._ed.scrollTop; const c = k.cards.find(x => x.id === this._card) ?? null
-    this._ed.innerHTML = `<div class="ofl-row"><b style="color:#7fd6a2;flex:1">Flashcards editor</b><button data-a="study" title="Study this deck">▶ Study</button><button data-a="done">✕</button></div>
+    this._ed.innerHTML = `<div class="ofl-row"><b style="color: var(--omni-theme-accent, #7fd6a2);flex:1">Flashcards editor</b><button data-a="study" title="Study this deck">▶ Study</button><button data-a="done">✕</button></div>
 <input type="text" data-f="title" maxlength="${LIMITS.title}" value="${esc(k.title)}" aria-label="Deck title">
 <div class="ofl-row"><label><input type="checkbox" data-f="speak" ${k.speak ? 'checked' : ''}> Read aloud when a side appears</label></div>
 <h4>Cards (${k.cards.length})</h4><div class="ofl-list" role="listbox">${k.cards.map((x, i) => `<button role="option" data-card="${esc(x.id)}" class="${x.id === this._card ? 'on' : ''}">${i + 1}. ${esc(x.front.text || (x.front.img ? '(picture)' : '(empty)'))}</button>`).join('') || '<div style="padding:6px;opacity:.7">No cards yet</div>'}</div>
-<div class="ofl-row"><button data-a="add">＋ Add card</button><button data-a="up" ${c ? '' : 'disabled'}>↑</button><button data-a="down" ${c ? '' : 'disabled'}>↓</button><button data-a="delete" ${c ? '' : 'disabled'} style="border-color:rgba(255,120,120,.6)">🗑 Delete</button></div>
+<div class="ofl-row"><button data-a="add">＋ Add card</button><button data-a="up" ${c ? '' : 'disabled'}>↑</button><button data-a="down" ${c ? '' : 'disabled'}>↓</button><button data-a="delete" ${c ? '' : 'disabled'} style="border-color:rgba(255,120,120,.6)">⌫ Delete</button></div>
 ${c ? this._sideHTML('front', c.front) + this._sideHTML('back', c.back) : ''}
 <h4>Files</h4><div class="ofl-row"><button data-a="export-json">Export JSON</button><button data-a="export-csv">Export CSV</button></div>
 <div class="ofl-row"><label>Import <input type="file" accept=".json,.csv,application/json,text/csv" data-f="import"></label><select data-f="import-mode" aria-label="Import mode"><option value="replace">Replace the deck</option><option value="merge">Add to the deck</option></select></div>

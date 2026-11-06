@@ -25,7 +25,7 @@ The window follows your selection. With no song node selected it says so and off
 
 | Part | What it does |
 |---|---|
-| Toolbar | Rewind, **▶ / ⏸**, **■**, **Loop** with its start and end bars, the position (**bar.beat** and **mm:ss**), tempo, time signature, key, zoom − / ＋ / **Fit**, **snap** (1/4 bar, 1/2 bar, 1 bar), Undo / Redo, Split, Duplicate, Add marker, show / hide the library and the master strip |
+| Toolbar | Rewind, **▶ / ❚❚**, **■**, **Loop** with its start and end bars, the position (**bar.beat** and **mm:ss**), tempo, time signature, key, zoom − / ＋ / **Fit**, **snap** (1/4 bar, 1/2 bar, 1 bar), Undo / Redo, Split, Duplicate, Add marker, show / hide the library and the master strip |
 | Ruler | Bar numbers. **Click** moves the playhead (drag to scrub). **Shift-drag** sets the loop region. **Right click** (or a **long press** on a touch screen) opens a menu: add a section or a marker, set the loop, move the playhead |
 | Tempo track | **Click** to add a tempo point, **drag** it up and down to change the bpm, sideways to move it. The first point is the base bpm and cannot be removed. **Double click** or **right click** a point (or press **Delete**) to remove it |
 | Lanes | One row per lane. The **lane header is the mixer** (below). The clips are the blocks |
@@ -68,7 +68,7 @@ Press **Import…** in the library (or drop audio files anywhere on the window).
 
 ## Master strip
 
-Press **🎚 Master**. **Gain**, **Limiter** (on / off and its threshold in dB: it holds the loudest peaks back so many lanes together do not clip), **reverb** (size, mix), **delay** (time, feedback, mix) and the master level meter.
+Press **⫶ Master**. **Gain**, **Limiter** (on / off and its threshold in dB: it holds the loudest peaks back so many lanes together do not clip), **reverb** (size, mix), **delay** (time, feedback, mix) and the master level meter.
 
 ## Tempo, time signature, key, loop
 

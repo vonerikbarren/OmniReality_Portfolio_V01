@@ -786,13 +786,13 @@ export default class OmniExpression {
       <div class="oe-header">
         <span class="oe-title">⟐OmniExpression</span>
         <div class="oe-controls">
-          <button class="oe-ctrl oe-ctrl--save" data-action="save" title="Save">💾</button>
+          <button class="oe-ctrl oe-ctrl--save" data-action="save" title="Save">⇩</button>
           <button class="oe-ctrl oe-ctrl--inspector" data-action="inspector" title="Open Inspector">⟐i</button>
           <button class="oe-ctrl" data-action="minimize" title="Minimize">–</button>
           <button class="oe-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="oe-unsaved-banner" id="oe-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
+      <div class="oe-unsaved-banner" id="oe-unsaved-banner">⚠ Unsaved changes — click ⇩ to apply</div>
       <div class="oe-body" id="oe-body">
 
         <div class="oe-mode-row">

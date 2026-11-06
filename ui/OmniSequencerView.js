@@ -266,7 +266,7 @@ export default class OmniSequencerView {
         <button type="button" class="osq-btn" data-act="play" ${tip('Play', '—', 'Plays the pattern from the start. Press again (Stop) to stop. Needs sound switched on (the speaker).')}>▶ Play</button>
         <button type="button" class="osq-btn" data-act="stop" ${tip('Stop', '—', 'Stops the transport and the notes it started.')}>■ Stop</button>
         <button type="button" class="osq-btn is-rec" data-act="rec" ${tip('Record', '—', 'Records what you play on the keys, MIDI or the touch keyboards / BeatPad into the ARMED track (the red dot). After the count-in it records while the pattern loops. Press again to finish the take.')}>● Rec</button>
-        <button type="button" class="osq-btn is-rec" data-act="steprec" ${tip('Step record', '—', 'Step recording: each note you play is written to the next step of the armed track and the cursor advances. No clock. Notes played together make a chord.')}>⏭ Step</button>
+        <button type="button" class="osq-btn is-rec" data-act="steprec" ${tip('Step record', '—', 'Step recording: each note you play is written to the next step of the armed track and the cursor advances. No clock. Notes played together make a chord.')}>▶❚ Step</button>
         <button type="button" class="osq-btn" data-act="rest" ${tip('Rest', '—', 'Step recording: skip a step without a note.')}>Rest</button>
         <button type="button" class="osq-btn" data-act="back" ${tip('Step back', '—', 'Step recording: move the cursor one step back.')}>◀ Back</button>
         <button type="button" class="osq-btn" data-act="loop" ${tip('Loop', '—', 'On: the pattern repeats. Off: it plays once and stops.')}>⟳ Loop</button>
@@ -275,7 +275,7 @@ export default class OmniSequencerView {
         <button type="button" class="osq-btn" data-act="redo" ${tip('Redo', '—', 'Puts back what Undo took away.')}>↷</button>
         <button type="button" class="osq-btn" data-act="undotake" ${tip('Undo recording', '—', 'Takes back the last recording take (only while nothing else was edited after it).')}>↶ Take</button>
       </div>
-      <div class="osq-row" data-ref="mute" hidden><span data-testid="osq-muted">Sound is muted.</span><button type="button" class="osq-btn is-on" data-act="enable" ${tip('Enable sound', '—', 'Switches sound on for this session (the same as the Enable sound prompt).')}>🔊 Enable sound</button></div>`
+      <div class="osq-row" data-ref="mute" hidden><span data-testid="osq-muted">Sound is muted.</span><button type="button" class="osq-btn is-on" data-act="enable" ${tip('Enable sound', '—', 'Switches sound on for this session (the same as the Enable sound prompt).')}>♪ Enable sound</button></div>`
   }
 
   _mainHTML (m) {

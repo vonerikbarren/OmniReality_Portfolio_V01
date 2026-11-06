@@ -104,7 +104,7 @@ export function registerOmniBuiltins () {
       const r = comm().route({ id: String(need(call.props.id, 'id(...)')), from: String(need(call.props.from, 'from(...)')).toLowerCase(), to: String(need(call.props.to, 'to(...)')).toLowerCase(), via: list(call.props.via) })
       if (!r.ok) throw new Error(r.error); return `Routed "${r.packet.label}" to ${r.packet.to}` } })
   registerOmni('Communication', 'inbox', { summary: 'List what a tunnel holds', props: { tunnel: TUN },
-    run (call) { const t = tun(call), l = comm().inbox(t); return l.length ? l.map(p => `${p.id}  ${p.pinned ? '📌' : '  '} ${p.kind === 'node' ? '◆' : '¶'} ${p.label}  (from ${p.from}${p.via.length ? ' via ' + p.via.join(',') : ''}, ${p.state})`).join('\n') : `${t} is empty` } })
+    run (call) { const t = tun(call), l = comm().inbox(t); return l.length ? l.map(p => `${p.id}  ${p.pinned ? '⚓︎' : '  '} ${p.kind === 'node' ? '◆' : '¶'} ${p.label}  (from ${p.from}${p.via.length ? ' via ' + p.via.join(',') : ''}, ${p.state})`).join('\n') : `${t} is empty` } })
   registerOmni('Communication', 'take', { summary: 'Place a held piece in the space: Omni Communication take tunnel(lh) id(<piece>) [pos(x, y, z)]', props: { tunnel: TUN, id: 'piece id', pos: 'x, y, z (default in front of you)' },
     run (call) { const r = comm().acquire(tun(call), String(need(call.props.id, 'id(...)')), { position: call.props.pos === undefined ? undefined : asVec3(call.props.pos, 'pos') }); if (!r.ok) throw new Error(r.error); return `Placed at (${r.position.join(', ')})` } })
   registerOmni('Communication', 'drop', { summary: 'Remove a held piece', props: { tunnel: TUN, id: 'piece id' }, run (call) { return comm().drop(tun(call), String(need(call.props.id, 'id(...)'))) ? 'Dropped' : 'No such piece' } })
@@ -469,7 +469,7 @@ export function registerOmniBuiltins () {
   registerOmni('Claim', 'unlock', { summary: 'Open a private claim for this session: Omni Claim unlock id(cup) key(...)', props: { id: 'claim', key: 'the key' }, async run (call) { await cl().unlock(cid(call), String(need(call.props.key, 'key(...)'))); return 'Unlocked for this session' } })
   registerOmni('Claim', 'lock', { summary: 'Seal an unlocked private claim again (forgets the key): Omni Claim lock id(cup)', props: { id: 'claim' }, async run (call) { await cl().lock(cid(call)); return 'Locked' } })
   registerOmni('Claim', 'public', { summary: 'Take the seal off an unlocked private claim: Omni Claim public id(cup)', props: { id: 'claim' }, run (call) { cl().makePublic(cid(call)); return 'Now public' } })
-  registerOmni('Claim', 'list', { summary: 'The claims in the scene (private ones show only their title)', props: {}, run () { const a = cl().list(); return a.length ? a.map(id => cl().isLocked(id) ? `${id}: 🔒 ${cl().title(id)}` : `${id}: ${cl().title(id)} — ${shareLine(id)}`).join('\n') : 'No claims yet. Omni Claim create claim(...)' } })
+  registerOmni('Claim', 'list', { summary: 'The claims in the scene (private ones show only their title)', props: {}, run () { const a = cl().list(); return a.length ? a.map(id => cl().isLocked(id) ? `${id}: ⚿ ${cl().title(id)}` : `${id}: ${cl().title(id)} — ${shareLine(id)}`).join('\n') : 'No claims yet. Omni Claim create claim(...)' } })
 
   // ── Scene file (V236) — the .omni.json scene ──
   const sf = () => { if (!SERVICES.scenefile) throw new Error('the scene file module is not running'); return SERVICES.scenefile }

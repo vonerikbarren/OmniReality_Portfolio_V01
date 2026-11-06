@@ -39,7 +39,7 @@ const open = () => window.dispatchEvent(new CustomEvent('omni:nav-select', { det
 
 const speakerHTML = () => {
   const m = Settings.engineMuted()
-  return `<button class="oi-btn-small ${m ? 'is-on' : ''}" data-ois="mute" aria-pressed="${m}" ${tip(m ? 'Unmute' : 'Mute', '—', 'The speaker: mutes or unmutes ALL sound (the global switch, also in Admin > UI Settings > Sound).')}>${m ? '🔇 Unmute' : '🔊 Mute'}</button>`
+  return `<button class="oi-btn-small ${m ? 'is-on' : ''}" data-ois="mute" aria-pressed="${m}" ${tip(m ? 'Unmute' : 'Mute', '—', 'The speaker: mutes or unmutes ALL sound (the global switch, also in Admin > UI Settings > Sound).')}>${m ? '⊘ Unmute' : '♪ Mute'}</button>`
 }
 const playHTML = (id) => {
   const p = !!svc()?.isPlaying(id)

@@ -8,7 +8,7 @@
  *   - add       "Add selected" appends the node selected in the scene; "Record links" appends every node you select, one after another (LINK mode);
  *   - genealogy choose the ROOT ("Use selected as root"), pre-order or breadth first, then "Build from hierarchy" (GENEALOGY mode);
  *   - manage    New path, Delete path, rename, choose which path, mode, closed loop, show / hide the line.
- * A member that no longer exists is shown as ❓ and can be removed; nodes dropped because they were deleted are noted under the list.
+ * A member that no longer exists is shown as ? and can be removed; nodes dropped because they were deleted are noted under the list.
  *
  * Built on ui/OmniSettingsPanelBase.js (WindowManager registration => resize + maximize from utils/OmniWindowChrome.js, bottom sheet on phones).
  * Opened by omni:nav-select '⟐OmniNodeOrder' (Inspector block, ribbon Home > Create > Node order, Admin / dock lists).
@@ -141,7 +141,7 @@ export default class OmniNodeOrderPanel extends OmniSettingsPanelBase {
       case 'closed': { const p = Paths.getPath(id); say(Paths.setClosed(id, !p?.closed), p?.closed ? 'Loop opened.' : 'Loop closed.'); break }
       case 'line': { const p = Paths.getPath(id); Paths.setVisible(id, !p?.visible); this.say(p?.visible ? 'Line hidden.' : 'Line shown.'); break }
       case 'notes': Paths.clearNotes(id); break
-      case 'check': { const gone = (Paths.getPath(id)?.members ?? []).filter(m => !this.pn?.nodeInfo(m).exists).length; this.say(gone ? `${gone} node${gone > 1 ? 's are' : ' is'} missing (marked ❓).` : 'All nodes exist.'); break }
+      case 'check': { const gone = (Paths.getPath(id)?.members ?? []).filter(m => !this.pn?.nodeInfo(m).exists).length; this.say(gone ? `${gone} node${gone > 1 ? 's are' : ' is'} missing (marked ?).` : 'All nodes exist.'); break }
       default: break
     }
   }
@@ -208,7 +208,7 @@ export default class OmniNodeOrderPanel extends OmniSettingsPanelBase {
       const pad = (depths[m] ?? 0) * 12
       return `<li class="ono-item ${info.exists ? '' : 'is-missing'}" draggable="true" data-i="${i}" data-id="${esc(m)}">
         <span class="ono-handle" aria-hidden="true" ${tip('Drag to reorder', 'Drag this handle up or down to move the node in the order.')}>⠿</span><span class="ono-idx">${i + 1}</span>
-        <span class="ono-name" style="padding-left:${pad}px" title="${esc(info.label)}">${info.exists ? '' : '❓ '}${esc(info.exists ? info.label : 'missing node ' + m)}</span>
+        <span class="ono-name" style="padding-left:${pad}px" title="${esc(info.label)}">${info.exists ? '' : '? '}${esc(info.exists ? info.label : 'missing node ' + m)}</span>
         <button class="ono-b" data-act="up" ${i === 0 ? 'disabled' : ''} aria-label="Move up" ${tip('Move up', 'One place earlier in the order.')}>▲</button>
         <button class="ono-b" data-act="down" ${i === p.members.length - 1 ? 'disabled' : ''} aria-label="Move down" ${tip('Move down', 'One place later in the order.')}>▼</button>
         <button class="ono-b" data-act="jump" ${info.exists ? '' : 'disabled'} aria-label="Jump to node" ${tip('Jump to node', 'Selects the node and flies the camera to it.')}>⌖</button>

@@ -23,7 +23,7 @@ export function noteKindBlockHTML (data) {
     <div class="oi-custom-title">⟐ Note node</div>
     <div style="font-size:10px;opacity:.8;margin:4px 0" data-testid="oinote-state">${text}</div>
     <div style="margin:4px 0"><button class="oi-btn-small" data-oinotea="open">✎ Open ⟐OmniNote</button></div>
-    <div style="margin:4px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center" data-testid="oinote-sticky"><span style="font-size:10px;opacity:.8">🗒 Sticky colour</span>${COLOR_NAMES.map(c => `<button class="oi-btn-small" data-oinotea="color:${c}" title="${c}" aria-label="Colour ${c}" style="background:${STICKY_COLORS[c]};min-width:22px;min-height:22px;padding:0;border:1px solid rgba(0,0,0,.4)"></button>`).join('')}${SERVICES.sticky?.attachOf(data.id) ? '<button class="oi-btn-small" data-oinotea="unstick">Unstick</button>' : ''}</div>
+    <div style="margin:4px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center" data-testid="oinote-sticky"><span style="font-size:10px;opacity:.8">❏ Sticky colour</span>${COLOR_NAMES.map(c => `<button class="oi-btn-small" data-oinotea="color:${c}" title="${c}" aria-label="Colour ${c}" style="background:${STICKY_COLORS[c]};min-width:22px;min-height:22px;padding:0;border:1px solid rgba(0,0,0,.4)"></button>`).join('')}${SERVICES.sticky?.attachOf(data.id) ? '<button class="oi-btn-small" data-oinotea="unstick">Unstick</button>' : ''}</div>
     <div style="font-size:9.5px;opacity:.75;line-height:1.4">A rich-text note: headings, lists, tables, pictures, fonts and colours. What you write shows on the sheet.</div>
   </div>`
 }

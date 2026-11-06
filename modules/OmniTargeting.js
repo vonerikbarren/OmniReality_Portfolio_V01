@@ -69,6 +69,7 @@ export default class OmniTargeting {
     this._texture = null
     this._tooltipEl = null
     this._onNodeSelected = null
+    this._onNodeDeleted = null; this._targetId = null
     this._onSettingsSet = null
   }
 
@@ -102,6 +103,9 @@ export default class OmniTargeting {
 
     this._onNodeSelected = (e) => this._setTarget(e.detail?.node, e.detail?.mesh)
     window.addEventListener('omni:node-selected', this._onNodeSelected)
+    // V272: when the targeted node is deleted, its targeting rings and label go with it (they used to stay hanging where the node was)
+    this._onNodeDeleted = (e) => { const id = e.detail?.id; if (id && (id === this._targetId || this._targetMesh?.userData?.nodeId === id)) this._clearTarget() }
+    window.addEventListener('omni:node-deleted', this._onNodeDeleted)
 
     this._onSettingsSet = (e) => {
       const patch = e.detail ?? {}
@@ -129,6 +133,7 @@ export default class OmniTargeting {
   }
 
   update (delta) {
+    if (this._targetMesh && !this._targetMesh.parent) this._clearTarget()   // V272: its mesh left the scene (deleted, scene cleared, replaced)
     if (!this._group.visible || !this._targetMesh) return
     this._group.position.copy(this._targetMesh.position)
     // V227: faster spin that breathes (the ring tightens and eases as if trying to focus), and white bolts striking the node
@@ -155,6 +160,7 @@ export default class OmniTargeting {
 
   destroy () {
     window.removeEventListener('omni:node-selected', this._onNodeSelected)
+    window.removeEventListener('omni:node-deleted', this._onNodeDeleted)
     window.removeEventListener('omni:targeting-set', this._onSettingsSet)
     this._texture?.dispose(); this._haloTex?.dispose()
     this._tooltipEl?.remove()
@@ -164,9 +170,18 @@ export default class OmniTargeting {
     }
   }
 
+  /** V272: forget the target: rings, bolts and label disappear. */
+  _clearTarget () {
+    this._targetMesh = null; this._targetId = null
+    if (this._group) this._group.visible = false
+    if (this._tooltipEl) this._tooltipEl.style.display = 'none'
+    for (const b of this._bolts) { b.age = BOLT_LIFE; b.line.visible = false; b.flash.visible = false }
+  }
+
   _setTarget (node, mesh) {
     if (!mesh) { this._group.visible = false; this._tooltipEl.style.display = 'none'; return }
     this._targetMesh = mesh
+    this._targetId = mesh.userData?.nodeId ?? node?.id ?? null
     this._group.visible = true
     this._tooltipEl.textContent = node?.label ?? node?.id ?? 'Target'
   }

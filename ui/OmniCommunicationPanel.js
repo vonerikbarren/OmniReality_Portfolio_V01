@@ -267,7 +267,7 @@ export default class OmniCommunicationPanel {
     return `
       <div class="ocp-transport">
         <button class="ocp-tbtn" data-action="backward" title="Previous index">|◀</button>
-        <button class="ocp-tbtn ${!t.isPaused ? '' : 'is-active'}" data-action="play-pause" title="Play/Pause">${t.isPaused ? '▶' : '⏸'}</button>
+        <button class="ocp-tbtn ${!t.isPaused ? '' : 'is-active'}" data-action="play-pause" title="Play/Pause">${t.isPaused ? '▶' : '❚❚'}</button>
         <button class="ocp-tbtn" data-action="forward" title="Next index">▶|</button>
         <button class="ocp-tbtn ${t.direction < 0 ? 'is-active' : ''}" data-action="reverse" title="Reverse auto-play direction">⟲</button>
       </div>

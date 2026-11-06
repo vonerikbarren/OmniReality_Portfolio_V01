@@ -1518,7 +1518,7 @@ export default class OmniAxinator {
     el.innerHTML =
       `<div class="oax-menu-title">${esc(t.def.symbol)} ${esc(nodeText(t.def, nd))}</div>` +
       `<div class="oax-menu-root" data-role="root-tooltip" title="${esc(rootText)}">${isRoot ? 'ROOT — ' : 'Root: '}${esc(rootText)}</div>` +
-      `<button class="oax-action-btn" data-action="take-me-there">🎯 TakeMeThere</button>` +
+      `<button class="oax-action-btn" data-action="take-me-there">◎ TakeMeThere</button>` +
       `<button class="oax-action-btn" data-action="root" title="${esc(rootText)}"${root ? '' : ' disabled'}>⟐ Root</button>`
     document.body.appendChild(el)
     el.style.left = `${x}px`

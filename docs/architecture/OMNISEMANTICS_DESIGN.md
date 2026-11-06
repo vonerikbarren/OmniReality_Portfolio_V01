@@ -20,7 +20,7 @@ Existing pieces this reuses: the PolyNode (every face has colour, label, tags, a
 | 2 | Information | ⓘ | #7ec8ff | what is known, how |
 | 3 | Space | ▦ | #8dffb0 | where, how big |
 | 4 | Time | ⧖ | #ffd36b | when, how fast |
-| 5 | Power | ⚡ | #ff7a5c | what can act |
+| 5 | Power | ↯ | #ff7a5c | what can act |
 | 6 | Expression | ❖ | #c79bff | how is it shown |
 A face that is blank means "not defined yet" (the alphabet's honest failure). Opposite faces are fixed pairs; the pairing is an open question (section 9).
 

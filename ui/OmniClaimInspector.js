@@ -12,11 +12,11 @@ const svc = () => SERVICES.claims
 const STYLES = `
 .oicl-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; align-items: center; }
 .oicl-row .oi-btn-small { flex: 1 1 auto; min-height: 28px; }
-.oicl-in { min-height: 28px; box-sizing: border-box; padding: 2px 6px; font: inherit; font-size: 10.5px; color: inherit; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.2); border-radius: 5px; }
+.oicl-in { min-height: 28px; box-sizing: border-box; padding: 2px 6px; font: inherit; font-size: 10.5px; color: inherit; background: var(--omni-theme-input-bg, rgba(255,255,255,.07)); border: 1px solid var(--omni-theme-input-border, rgba(255,255,255,.2)); border-radius: 5px; }
 .oicl-note { font-size: 9.5px; opacity: .75; line-height: 1.4; margin: 4px 0; }
 .oicl-msg { min-height: 12px; font-size: 9.5px; color: #8cffb4; } .oicl-msg.is-err { color: #ff9c9c; }
-.oicl-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,.25); }
-.oicl-card { border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 4px 6px; margin: 4px 0; font-size: 10px; }
+.oicl-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; border: 1px solid var(--omni-theme-border, rgba(255,255,255,.25)); }
+.oicl-card { border: 1px solid var(--omni-theme-border, rgba(255,255,255,.15)); border-radius: 6px; padding: 4px 6px; margin: 4px 0; font-size: 10px; }
 .oicl-t, .oicl-lock { font-size: 10px; } .oicl-sub { font-size: 10px; opacity: .8; margin-top: 6px; letter-spacing: .05em; }
 @media (max-width: 700px) { .oicl-row .oi-btn-small, .oicl-in { min-height: 40px; } }
 `
@@ -64,7 +64,7 @@ function chartSVG (cv, cells) {
 export function claimKindBlockHTML (data) {
   injectStyles(); const s = svc(); if (!s) return ''
   const id = data.id
-  if (s.isLocked(id)) return `<div class="oi-custom-section" id="oi-custom-claim" data-oicl-root data-node-id="${esc(id)}"><div class="oi-custom-title">⟐ ClaimNode 🔒</div>
+  if (s.isLocked(id)) return `<div class="oi-custom-section" id="oi-custom-claim" data-oicl-root data-node-id="${esc(id)}"><div class="oi-custom-title">⟐ ClaimNode ⚿</div>
     <div class="oicl-card"><b>${esc(s.title(id))}</b><div class="oicl-note">This claim is private. Only its title is visible. Enter the key to read or change it.</div></div>
     <div class="oicl-row"><input class="oicl-in" type="password" data-oicl="key" placeholder="Key" aria-label="Key" autocomplete="off" style="flex:1"><button class="oi-btn-small" data-oicla="unlock">Unlock</button></div><div class="oicl-msg" role="status" aria-live="polite" data-ref="oicl-msg"></div></div>`
   const c = s.get(id); if (!c) return ''
@@ -75,7 +75,7 @@ export function claimKindBlockHTML (data) {
   const can = canPromote(c); const th = c.theories.map(t => `<div class="oicl-card"><b>${esc(t.status)}</b> ${esc(t.statement)}${t.reason ? `<div>Because: ${esc(t.reason)}</div>` : ''}${t.status === 'staged' ? `<div class="oicl-row"><input class="oicl-in" data-oicl="reason-${esc(t.id)}" placeholder="Reason" style="flex:1" aria-label="Reason"><button class="oi-btn-small" data-oicla="confirm" data-tid="${esc(t.id)}">Confirm</button><button class="oi-btn-small" data-oicla="reject" data-tid="${esc(t.id)}">Reject</button></div>` : ''}</div>`).join('')
   const un = ['known_unknown', 'unknown_unknown', 'declined'].map(k => c.items[k].map(i => `<div>${esc(k.replace('_', ' '))}: ${esc(i.text)}${i.by ? ' (' + esc(i.by) + ')' : ''}</div>`).join('')).join('')
   return `<div class="oi-custom-section" id="oi-custom-claim" data-oicl-root data-node-id="${esc(id)}">
-    <div class="oi-custom-title">⟐ ClaimNode ${priv ? '🔓 private' : '· public'}</div>
+    <div class="oi-custom-title">⟐ ClaimNode ${priv ? '⚷ private' : '· public'}</div>
     <div class="oicl-row"><input class="oicl-in" data-oicl="text" value="${esc(c.claim)}" aria-label="The claim" style="flex:1"></div>
     <div class="oicl-row"><span class="oi-label">Scale (cells)</span><input class="oicl-in" type="number" data-oicl="scale" min="1" max="4096" value="${c.state.scale}" style="width:84px" aria-label="Scale"><span class="oicl-note" style="margin:0">${d.objective ? '✔ objective at this scale' : 'not objective here (needs nothing undefined and a Law)'}</span></div>
     <div class="oicl-bar" aria-hidden="true"><div style="flex:${sh.truth};background:${d.objective ? '#fff' : '#00c800'}"></div><div style="flex:${sh.false};background:${d.objective ? '#000' : '#dc0000'}"></div><div style="flex:${sh.undefined};background:${d.objective ? '#808080' : '#e6d200'}"></div></div>
@@ -107,7 +107,7 @@ export function claimKindBlockHTML (data) {
     <div class="oicl-row"><input class="oicl-in" data-oicl="subject" placeholder="Subject to identify" aria-label="Subject" style="flex:1"><button class="oi-btn-small" data-oicla="identify">Identify</button></div>
     ${c.branches.map(b => `<div class="oicl-card"><b>Branch</b> “${esc(b.subject)}” <span style="opacity:.7">(${esc(b.status)}${b.nodes.length ? ', ' + b.nodes.length + ' reality' : ''})</span><div class="oicl-row"><button class="oi-btn-small" data-oicla="grow" data-tid="${esc(b.id)}">Grow a reality</button><button class="oi-btn-small" data-oicla="branch" data-st="dormant" data-tid="${esc(b.id)}">Dormant</button><button class="oi-btn-small" data-oicla="branch" data-st="forked" data-tid="${esc(b.id)}">Fork</button><button class="oi-btn-small" data-oicla="branch" data-st="merged" data-tid="${esc(b.id)}">Merge</button></div></div>`).join('')}
     <div class="oicl-sub">PRIVACY</div>
-    ${priv ? '<div class="oicl-row"><button class="oi-btn-small" data-oicla="lock">🔒 Lock</button><button class="oi-btn-small" data-oicla="public">Make public</button></div>' : '<div class="oicl-row"><input class="oicl-in" type="password" data-oicl="newkey" placeholder="Choose a key (4+ characters)" aria-label="New key" autocomplete="new-password" style="flex:1"><button class="oi-btn-small" data-oicla="private">Make private</button></div><div class="oicl-note">The key is never saved. If you lose it, the claim cannot be read again.</div>'}
+    ${priv ? '<div class="oicl-row"><button class="oi-btn-small" data-oicla="lock">⚿ Lock</button><button class="oi-btn-small" data-oicla="public">Make public</button></div>' : '<div class="oicl-row"><input class="oicl-in" type="password" data-oicl="newkey" placeholder="Choose a key (4+ characters)" aria-label="New key" autocomplete="new-password" style="flex:1"><button class="oi-btn-small" data-oicla="private">Make private</button></div><div class="oicl-note">The key is never saved. If you lose it, the claim cannot be read again.</div>'}
     <div class="oicl-msg" role="status" aria-live="polite" data-ref="oicl-msg"></div></div>`
 }
 export function wireClaimKindBlock (root, data) {

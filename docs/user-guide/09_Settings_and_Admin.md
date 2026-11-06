@@ -13,7 +13,7 @@ Open the left drawer (☰ on ⟐OmniHand, or ribbon Hands tab > Menus > ⟐mniMe
 | ⟐Admin | You, the user. Settings you may change | Panels are called `<System>Settings`, e.g. OmniStoreSettings |
 | ⟐Developer | Builders and testing. Not for normal use | Panels are called `Dev<System>Settings`, e.g. DevOmniStoreSettings |
 
-Both open a numbered list of slots. Admin slots include OmniAdminSettings (1), OmniParticleSettings (2), OmniWallpaperSettings (3), MiniMapSettings (4), OmniCameraMovementOptions (5), UserTime (6), WindowInspector (7), FloorSettings (8), ToolTipSettings (9), TerminalSettings (11), OmniMeter(Internal) (13), FloorManager (16), DimensionalAxesSettings (17), OmniAxinator (18) and OmniStoreSettings (19). Slot 10 "🔄 Reset All JSON Data" asks first, then clears every JSON tree; it cannot be undone. Developer slots hold test tools; leave them alone. Access control is not built: anyone can open them. Slot 7 is DevClaudeCheck (see below).
+Both open a numbered list of slots. Admin slots include OmniAdminSettings (1), OmniParticleSettings (2), OmniWallpaperSettings (3), MiniMapSettings (4), OmniCameraMovementOptions (5), UserTime (6), WindowInspector (7), FloorSettings (8), ToolTipSettings (9), TerminalSettings (11), OmniMeter(Internal) (13), FloorManager (16), DimensionalAxesSettings (17), OmniAxinator (18) and OmniStoreSettings (19). Slot 10 "⟳ Reset All JSON Data" asks first, then clears every JSON tree; it cannot be undone. Developer slots hold test tools; leave them alone. Access control is not built: anyone can open them. Slot 7 is DevClaudeCheck (see below).
 
 ## Claude Check (developer-only; not for normal use)
 
@@ -21,7 +21,7 @@ Slot 7 of ⟐Developer opens DevClaudeCheck, a checklist the builders use to tes
 
 ## The ⟐Admin panel (slot 1)
 
-Staged: changes apply when you press 💾.
+Staged: changes apply when you press ⇩.
 
 | Group | Options |
 |---|---|
@@ -30,11 +30,11 @@ Staged: changes apply when you press 💾.
 | Domain Grid | Grid colour, Opacity (0–1), Wireframe, Visible |
 | User Space | Colour, Size multiplier, Visible, Spinning, Texture |
 | UI Settings | Panel opacity (0.3 to 1); **Window sizes: Reset** puts every panel back to its original size and forgets saved sizes (V187); the **userCompass** section (V188, below) |
-| Data Management | 🗑 Clear Scene, ⬇ Export Reality, ⬆ Import Reality |
+| Data Management | ⌫ Clear Scene, ⬇ Export Reality, ⬆ Import Reality |
 
 ### userCompass (Admin > UI Settings > userCompass, V188; own panel since V190)
 
-The userCompass is the small clear globe in its own little panel. **Drag it anywhere** (it remembers the spot on this device); it stays inside the window and never covers the ribbon. Its controls apply **at once** (no 💾 needed) and are remembered on this device. Clicking the globe, or right-clicking it, opens this section.
+The userCompass is the small clear globe in its own little panel. **Drag it anywhere** (it remembers the spot on this device); it stays inside the window and never covers the ribbon. Its controls apply **at once** (no ⇩ needed) and are remembered on this device. Clicking the globe, or right-clicking it, opens this section.
 
 | Option | Choices | Default |
 |---|---|---|
@@ -127,3 +127,6 @@ Open with a pad's ⚙, ribbon Hands tab > Settings, or drawer ⟐OmniHands. Four
 | Everything | Clear browser site data ([Troubleshooting](11_Troubleshooting.md)) | Erases all saved data |
 
 Panel opacity and the theme make panels see-through or recoloured; they do not change what is saved in your scene.
+
+### Symbols, not emoji (V274)
+The interface uses plain Unicode symbols, not emoji, so every icon takes the theme colour. For example: save ⇩, delete ⌫, pin ⚓︎, sound ♪ and mute ⊘, play/pause ▶ ❚❚, lock ⚿ / unlock ⚷, target ◎, search ⌕. Emoji still appear where they are your content: the emoji picker, store goods, currency flags and value-type icons.

@@ -277,11 +277,11 @@ export default class OmniProgramEditorPanel {
       <div class="ope-header">
         <span class="ope-title">⟐ Program Editor</span>
         <div class="ope-controls">
-          <button class="ope-ctrl ope-ctrl--save" data-action="save" title="Save">💾</button>
+          <button class="ope-ctrl ope-ctrl--save" data-action="save" title="Save">⇩</button>
           <button class="ope-ctrl" data-action="close" title="Close">×</button>
         </div>
       </div>
-      <div class="ope-unsaved-banner" id="ope-unsaved-banner">⚠ Unsaved changes — click 💾 to apply</div>
+      <div class="ope-unsaved-banner" id="ope-unsaved-banner">⚠ Unsaved changes — click ⇩ to apply</div>
       <div class="ope-saved-banner" id="ope-saved-banner"></div>
       <div class="ope-empty" id="ope-empty">Open a node's Inspector, expand ▶ Program, and click "Open Full Editor ⟐".</div>
       <div class="ope-body" id="ope-body"></div>

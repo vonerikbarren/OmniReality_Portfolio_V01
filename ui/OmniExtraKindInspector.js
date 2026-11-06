@@ -60,13 +60,13 @@ function injectStyles () {
 const SEL = { id: null, key: null }   // the selected panel cell of the selected floorPanel node, as 'x,z'
 const MSG = { id: null, text: '', err: false }
 const say = (id, text, err = false) => { MSG.id = id; MSG.text = text; MSG.err = err }
-const KIND_ICON = { image: '🖼', gif: '🎞', video: '🎬' }
+const KIND_ICON = { image: '▨', gif: '▧', video: '▷' }
 
 // ── OmniPathNode ──────────────────────────────────────────────────────────────
 
 function pathHTML (d) {
   const p = Paths.getPath(d.pathId)
-  if (!p) return `<div class="oik-missing" data-testid="path-missing">❓ This path no longer exists. The node can be deleted.</div>`
+  if (!p) return `<div class="oik-missing" data-testid="path-missing">? This path no longer exists. The node can be deleted.</div>`
   const rec = Extra.SERVICES.paths?.recordingId === p.id
   const root = p.rootId ? esc(Extra.SERVICES.paths?.nodeInfo(p.rootId).label ?? p.rootId) : 'none'
   return `
@@ -90,7 +90,7 @@ function pathHTML (d) {
 function panelHTML (d) {
   const svc = Extra.SERVICES.panels
   const live = svc?.getSection(d.id) ?? d
-  if (!live || !Array.isArray(live.cells)) return `<div class="oik-missing">❓ This floor panel node has no cells.</div>`
+  if (!live || !Array.isArray(live.cells)) return `<div class="oik-missing">? This floor panel node has no cells.</div>`
   if (SEL.id !== d.id || !live.cells.some(c => c.x + ',' + c.z === SEL.key)) { SEL.id = d.id; SEL.key = live.cells[0] ? live.cells[0].x + ',' + live.cells[0].z : null }
   const w = Math.max(...live.cells.map(c => c.x)) + 1; const h = Math.max(...live.cells.map(c => c.z)) + 1
   const by = new Map(live.cells.map(c => [c.x + ',' + c.z, c]))

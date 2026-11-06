@@ -675,7 +675,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
     getSlotLabel: (i) => {
       const data = loadSpacesData()
       const padded = String(i).padStart(2, '0')
-      return data[i] ? `Space${padded} 📍` : `Space${padded}`
+      return data[i] ? `Space${padded} ⌖` : `Space${padded}`
     },
     getSlotAction: (i) => () => {
       const data = loadSpacesData()
@@ -733,7 +733,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
         8: { label: 'FloorSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐FloorSettings' } })) },
         9: { label: 'ToolTipSettings', onClick: () => window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐ToolTipSettings' } })) },
         10: {
-          label: '🔄 Reset All JSON Data', onClick: () => {
+          label: '⟳ Reset All JSON Data', onClick: () => {
             // Real, missing action, confirmed absent before this —
             // the only prior way to clear a large or problematic
             // tree was manually trashing the root by hand. Clears

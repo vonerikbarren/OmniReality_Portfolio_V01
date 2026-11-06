@@ -43,7 +43,7 @@ const GEOMETRIES = [
   'PlaneGeometry', 'CircleGeometry', 'RingGeometry', 'CapsuleGeometry',
 ]
 const GEO_ICONS = {
-  BoxGeometry: '⬜', SphereGeometry: '⬤', CylinderGeometry: '⬭', ConeGeometry: '▲',
+  BoxGeometry: '□', SphereGeometry: '⬤', CylinderGeometry: '⬭', ConeGeometry: '▲',
   TorusGeometry: '◎', TorusKnotGeometry: '✤', OctahedronGeometry: '◆', TetrahedronGeometry: '△',
   IcosahedronGeometry: '⬡', DodecahedronGeometry: '⬠', PlaneGeometry: '▭', CircleGeometry: '○',
   RingGeometry: '◯', CapsuleGeometry: '⬮',
@@ -635,7 +635,7 @@ export default class OmniSystemCreatorPanel {
         <div class="sc-node-main">
           <div class="sc-node-head">
             <span class="sc-node-index">${def.label}</span>
-            <button class="sc-goto-btn" data-goto="${def.key}" disabled title="Create the system first">🎯</button>
+            <button class="sc-goto-btn" data-goto="${def.key}" disabled title="Create the system first">◎</button>
           </div>
           <input class="sc-node-label-input" data-field="label" value="${meta.label}">
           <div class="sc-node-grid">

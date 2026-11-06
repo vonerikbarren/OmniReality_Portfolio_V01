@@ -25,7 +25,7 @@ export const NAV_ITEM = '⟐FloorNodeMakerSettings'
 export const PANEL_ID = 'floornodemaker'
 const tip = (name, desc) => `data-omni-tip="${esc(name)}" data-omni-tip-key="—" data-omni-tip-desc="${esc(desc)}"`
 const COLORS = ['#7fd6ff', '#ffb02e', '#8fe3a2', '#ff8ad0', '#c4a6ff', '#ff7a7a']
-const KIND_ICON = { image: '🖼', gif: '🎞', video: '🎬' }
+const KIND_ICON = { image: '▨', gif: '▧', video: '▷' }
 
 const STYLES = `
 .fnm-panel .fnm-pieces { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 4px; margin: 4px 0; }
@@ -230,7 +230,7 @@ export default class FloorNodeMakerSettingsPanel extends OmniSettingsPanelBase {
       <div class="oss-sec">Grid ${st.gridN} × ${st.gridN} (blueprint)</div>
       <div class="oss-row">
         <button class="oss-btn ${this.tool === 'piece' ? 'is-on' : ''}" data-act="tool-piece" aria-pressed="${this.tool === 'piece'}" ${tip('Piece tool', 'Click an empty cell to put the piece there. Click a panel to remove that one panel.')}>▦ Piece</button>
-        <button class="oss-btn ${this.tool === 'face' ? 'is-on' : ''}" data-act="tool-face" aria-pressed="${this.tool === 'face'}" ${tip('Face tool', 'Click a panel to choose it, then give it a picture, GIF or video.')}>🖼 Face</button>
+        <button class="oss-btn ${this.tool === 'face' ? 'is-on' : ''}" data-act="tool-face" aria-pressed="${this.tool === 'face'}" ${tip('Face tool', 'Click a panel to choose it, then give it a picture, GIF or video.')}>▨ Face</button>
         <button class="oss-btn is-danger" data-act="clear" ${blueCount ? '' : 'disabled'} ${tip('Clear grid', 'Empties the blueprint grid. Nothing in the scene changes.')}>Clear grid</button>
       </div>
       ${grid}

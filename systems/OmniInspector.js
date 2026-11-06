@@ -2236,9 +2236,9 @@ export default class OmniInspector {
           <button class="oi-ctrl oi-ctrl--close"    data-action="close"    title="✕ Close"         >✕</button>
           <button class="oi-ctrl oi-ctrl--minimize" data-action="minimize" title="_ Minimize"      >_</button>
           <button class="oi-ctrl oi-ctrl--attach"   data-action="attach"   title="⟐ Pocket attach" >⟐</button>
-          <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">💾</button>
+          <button class="oi-ctrl oi-ctrl--save"     data-action="save"     title="Save to local storage">⇩</button>
           <button class="oi-ctrl oi-ctrl--genealogy" data-action="genealogy" title="Select whole genealogy tree">Ξ</button>
-          <button class="oi-ctrl oi-ctrl--delete" data-action="delete" title="Delete this node">🗑</button>
+          <button class="oi-ctrl oi-ctrl--delete" data-action="delete" title="Delete this node">⌫</button>
           <button class="oi-ctrl oi-ctrl--snap-right" data-action="snap-right" title="⇥ Snap to right edge">⇥</button>
           <button class="oi-ctrl oi-ctrl--maximize" data-action="maximize" title="Maximize"></button>
         </div>
@@ -2529,7 +2529,7 @@ export default class OmniInspector {
     btn.classList.add('is-armed')
     setTimeout(() => btn.classList.remove('is-armed'), 400)
 
-    this._flashBanner('🗑 Node deleted', 'delete')
+    this._flashBanner('⌫ Node deleted', 'delete')
     this.clearNode()
   }
 
@@ -3006,7 +3006,7 @@ export default class OmniInspector {
     {
       const r = row('Track')
       const sel = mk('select', 'oi-select'); sel.id = 'oi-time-track'
-      for (const t of TL.getTracks().filter(x => x.kind === 'node')) { const o = mk('option', null, t.name + (t.locked ? ' 🔒' : '')); o.value = t.id; sel.appendChild(o) }
+      for (const t of TL.getTracks().filter(x => x.kind === 'node')) { const o = mk('option', null, t.name + (t.locked ? ' ⚿' : '')); o.value = t.id; sel.appendChild(o) }
       const nw = mk('option', null, '＋ New track'); nw.value = '__new'; sel.appendChild(nw)
       sel.value = clip.trackId
       sel.addEventListener('change', () => {
@@ -3451,7 +3451,7 @@ export default class OmniInspector {
 
     return /* html */`
       <div class="oi-custom-section" id="oi-custom-masterclock">
-        <div class="oi-custom-title">⏱ Clock Settings</div>
+        <div class="oi-custom-title">◷ Clock Settings</div>
         <div class="oi-row">
           <span class="oi-label">Tunnel enabled</span>
           <div class="oi-toggle-wrap">
@@ -3992,7 +3992,7 @@ export default class OmniInspector {
       <div class="oi-slot">
         <span class="oi-slot-label">Texture</span>
         <div class="oi-drop-zone" id="oi-tex-drop">
-          <span class="oi-drop-zone-icon">🖼</span>
+          <span class="oi-drop-zone-icon">▨</span>
           Drop image file or enter URL
         </div>
         <img class="oi-tex-preview" id="oi-tex-preview" alt="Texture preview">
@@ -4087,7 +4087,7 @@ export default class OmniInspector {
     return /* html */`
       <div class="oi-row">
         <span class="oi-label" style="width:auto">GoTo / TravelTo</span>
-        <button class="oi-btn-small" id="oi-goto-object">🎯 Take Me There</button>
+        <button class="oi-btn-small" id="oi-goto-object">◎ Take Me There</button>
       </div>
       <div class="oi-data-note">
         Moves the camera to a spot right in front of this object,
@@ -4095,7 +4095,7 @@ export default class OmniInspector {
       </div>
       <div class="oi-row" id="oi-delete-system-row" style="display:none">
         <span class="oi-label" style="width:auto">This is an OmniCore</span>
-        <button class="oi-btn-small oi-btn-small--danger" id="oi-delete-system">🗑 Delete Entire System</button>
+        <button class="oi-btn-small oi-btn-small--danger" id="oi-delete-system">⌫ Delete Entire System</button>
       </div>
       <div class="oi-data-note" id="oi-delete-system-note" style="display:none">
         Removes every node created together with this one in the same
@@ -4349,9 +4349,9 @@ export default class OmniInspector {
 
   _mediaHTML (ext) {
     const slots = [
-      { key: 'images', label: 'Images', icon: '🖼',  accept: 'image/*'  },
-      { key: 'sound',  label: 'Sound',  icon: '🔊',  accept: 'audio/*'  },
-      { key: 'media',  label: 'Media',  icon: '📎',  accept: '*/*'      },
+      { key: 'images', label: 'Images', icon: '▨',  accept: 'image/*'  },
+      { key: 'sound',  label: 'Sound',  icon: '♪',  accept: 'audio/*'  },
+      { key: 'media',  label: 'Media',  icon: '⊏',  accept: '*/*'      },
     ]
 
     return slots.map(slot => {
@@ -5701,7 +5701,7 @@ export default class OmniInspector {
     if (urlInp)  { urlInp.value = '' }
 
     const drop = body.querySelector('#oi-tex-drop')
-    if (drop) drop.innerHTML = `<span class="oi-drop-zone-icon">🖼</span>Drop image file or enter URL`
+    if (drop) drop.innerHTML = `<span class="oi-drop-zone-icon">▨</span>Drop image file or enter URL`
   }
 
   // ── Media helpers ─────────────────────────────────────────────────────────

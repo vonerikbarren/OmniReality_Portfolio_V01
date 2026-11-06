@@ -18,7 +18,7 @@ Ribbon Realities > Value > Store, or drawer ⟐OmniStore. The store appears in f
 | 2 | Section chips and a pager ‹ 1/N · count › |
 | 3 | A layout chip, aisle stop buttons ◀ ▶, ring Enter / Exit |
 
-**Layouts** (click the layout chip to cycle, or pick in Settings): Shelf wall 🗄️, Ring 🎠, Aisle 🛒, Island table 🍽️. Arrow keys do nothing in the store.
+**Layouts** (click the layout chip to cycle, or pick in Settings): Shelf wall ▤, Ring 🎠, Aisle ⊞, Island table 🍽️. Arrow keys do nothing in the store.
 
 **Sections** filter the products: Physical, Life, Social, Emotional, plus media lenses Emoji, Images, Videos (dashed chips). Up to 4 videos play at once. 24 products per page by default. The starting catalog is 16 fruit and vegetables (the Produce type).
 
@@ -31,7 +31,7 @@ A panel with tabs BUY / SELL / LIST.
 0. A row of four chips above the chart switches the view: **Radial wheel** (default), **Sunburst**, **Treemap**, **Sankey**. They draw the same accepted payment forms. Tap or click a slice or ribbon to select the same form the wheel would select (tap it again to go deeper). Tab and Enter work on the slices too. The choice is remembered on this device. If the chart library cannot load, the chart area says so and the wheel keeps working.
 1. The wheel shows the product in the middle with − qty + controls. Each spoke is an accepted payment form (arc length = quantity on a log scale, dots = grade, "bal N" = your balance).
 2. Tap a spoke, then tap it again to go deeper: Wheel, Form, Channels, Line detail.
-3. Press "Buy now" or "Sell now". "◌ Window" adds to window shopping, "♡ Wish" to the wish list, "🛒 Cart" to the cart; "Checkout cart (sandbox)" buys the cart.
+3. Press "Buy now" or "Sell now". "◌ Window" adds to window shopping, "♡ Wish" to the wish list, "⊞ Cart" to the cart; "Checkout cart (sandbox)" buys the cart.
 4. The "Product · media · lifecycle" box lets you set what the product shows (emoji, image, video): Set emoji, Set image (a link, or a file up to 512 KB), Set video (link only), Clear.
 5. LIST shows Window-shop, Wishlist and Cart, plus a compare view of window versus cart totals per value type.
 

@@ -170,7 +170,7 @@ export default class OmniJsonifier {
     window.addEventListener('omni:nav-select', this._onNavSelect)
     this._restoreState()
 
-    // Real fix — trashing a node (Inspector's own 🗑) previously only
+    // Real fix — trashing a node (Inspector's own ⌫) previously only
     // ever removed that one node's own mesh; every descendant's real
     // mesh was silently orphaned in the scene, since OmniNode's own
     // delete handler re-parents children rather than deleting them —
@@ -645,7 +645,7 @@ export default class OmniJsonifier {
   _renderNode (node) {
     const valuePreview = node.isLeaf ? ` = ${JSON.stringify(node.value)}` : ` (${node.children.length})`
     const toggleSymbol = node.isLeaf ? '·' : (node.isOpen ? '▾' : '▸')
-    const chartIcon = node.isChartEligible ? ' 📊' : ''
+    const chartIcon = node.isChartEligible ? ' ▟' : ''
     let html = `
       <div class="oj-node">
         <div class="oj-row" data-node-id="${node.nodeId}">
@@ -728,7 +728,7 @@ export default class OmniJsonifier {
         <textarea class="oj-text-input" id="oj-json-input" placeholder='{"example": {"nested": "value"}}'></textarea>
         <div class="oj-toolbar-row">
           <button class="oj-create-btn" id="oj-create">Build Tree</button>
-          <button class="oj-create-btn" id="oj-open-structure" title="Open the Structure panel for the root node">📐 Structure</button>
+          <button class="oj-create-btn" id="oj-open-structure" title="Open the Structure panel for the root node">⊿ Structure</button>
         </div>
         <div class="oj-error" id="oj-error" style="display:none"></div>
         <div id="oj-tree"></div>

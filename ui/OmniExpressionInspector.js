@@ -283,7 +283,7 @@ export default class OmniExpressionInspector {
             <span class="oei-wp-item-label">${c.label}</span>
             <input type="text" class="oei-wp-hold" style="width:90px" data-circle-media="${c.id}" value="${c.mediaUrl}" placeholder="media URL">
             <button class="oei-wp-hold" style="width:32px;cursor:pointer" data-circle-type="${c.id}">${c.mediaType === 'video' ? 'Vid' : 'Img'}</button>
-            <button class="oei-wp-delete" data-circle-delete="${c.id}" title="Remove">🗑</button>
+            <button class="oei-wp-delete" data-circle-delete="${c.id}" title="Remove">⌫</button>
           </div>
         `).join('')}
       </div>
@@ -297,7 +297,7 @@ export default class OmniExpressionInspector {
             <div class="oei-wp-item" data-wp-index="${i}">
               <span class="oei-wp-item-label">#${i + 1} - ${wp.mode}</span>
               <input type="number" class="oei-wp-hold" data-wp-hold="${i}" value="${wp.holdMs}" step="100" title="Hold duration (ms)">
-              <button class="oei-wp-delete" data-wp-delete="${i}" title="Delete">🗑</button>
+              <button class="oei-wp-delete" data-wp-delete="${i}" title="Delete">⌫</button>
             </div>
           `).join('')}
       </div>

@@ -91,7 +91,7 @@ export default class OmniConstruction {
     const c = document.createElement('div'); c.className = 'omc-chip'
     c.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:3000;pointer-events:auto;display:flex;gap:6px;align-items:center;padding:6px 10px;border:1px solid #7fd6ff;border-radius:16px;background:rgba(10,20,30,.85);color:#cfefff;font:12px system-ui;touch-action:manipulation'
     const mk = (t, fn) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'background:none;border:1px solid #7fd6ff55;color:inherit;border-radius:10px;padding:3px 8px;font:inherit;cursor:pointer'; b.addEventListener('click', fn); return b }
-    const lab = document.createElement('span'); lab.textContent = '🖌 Painting'
+    const lab = document.createElement('span'); lab.textContent = '✐ Painting'
     c.append(lab, mk('Undo', () => this.undo()), mk('Off', () => this.arm(false))); document.body.appendChild(c); this._chip = c
   }
   _rayFrom (x, y) {

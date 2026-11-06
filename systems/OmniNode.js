@@ -883,7 +883,7 @@ function injectStyles () {
 // ── Geometry icon map (Unicode approximations) ────────────────────────────────
 
 const GEO_ICONS = {
-  BoxGeometry          : '⬜',
+  BoxGeometry          : '□',
   SphereGeometry       : '⬤',
   CylinderGeometry     : '⬭',
   ConeGeometry         : '▲',
@@ -900,12 +900,12 @@ const GEO_ICONS = {
   LatheGeometry        : '⌀',
   TubeGeometry         : '〜',
   ExtrudeGeometry      : '⬟',
-  ShapeGeometry        : '⭐',
+  ShapeGeometry        : '★',
   EdgesGeometry        : '⬕',
   WireframeGeometry    : '⊹',
   EssenceData          : '◈',
-  StoreItemNode        : '🛍',
-  OmniValueNode        : '🪙',
+  StoreItemNode        : '▣',
+  OmniValueNode        : '⊚',
   OmniPathNode         : '⤳',   // V191
   FloorPanelNode       : '▦',   // V191
 }

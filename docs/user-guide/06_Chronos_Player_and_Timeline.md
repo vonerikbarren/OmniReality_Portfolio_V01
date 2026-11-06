@@ -31,7 +31,7 @@ Inside a clip the node is visible and its keyframes (position, scale, rotation Y
 | Control | Does |
 |---|---|
 | ✂ Split | Cut the clip at the playhead |
-| ⧉ / 🗑 | Duplicate / delete |
+| ⧉ / ⌫ | Duplicate / delete |
 | ＋ Track | New track |
 | − ＋ ⤢ | Zoom out, in, fit |
 | Track header | Double-click renames; M mute, S solo, L lock; ▸ expands keyframe lanes |
@@ -63,7 +63,7 @@ While you hover the window these keys are taken, so the global **m** (mini map) 
 
 ## SETTINGS tab
 
-Staged: nothing applies until you press 💾. Options: Tunnel Enabled, Z-axis Mode, Transparency, Time Format (military or ampm).
+Staged: nothing applies until you press ⇩. Options: Tunnel Enabled, Z-axis Mode, Transparency, Time Format (military or ampm).
 
 ## Limits
 

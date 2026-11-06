@@ -5,7 +5,7 @@ Three nodes appear ahead of you: A, B (a neighbour) and C.
 
 | Time | Axiom | What changes | What it reads as |
 |---|---|---|---|
-| 1.5–3.5 s | Power ⚡ | A grows and glows | strength |
+| 1.5–3.5 s | Power ↯ | A grows and glows | strength |
 | 3.5–5.5 s | Time ⧖ | B spins faster | urgency |
 | 5.5–7.5 s | Expression ❖ | C shifts cool → warm | mood |
 | 7.5–9.5 s | Space ▦ | A and B move apart | distance |

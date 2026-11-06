@@ -23,7 +23,7 @@ Added on top of where the node is, and taken away exactly afterwards. Drag a vib
 `window.dispatchEvent(new CustomEvent('omni:vibration-start', { detail: { target: 'user' | nodeId, programId: 'dance', hold: 3, attack: 0.1, release: 1 } }))` and `omni:vibration-stop { target | runId, immediate }`. Service: `Extra.SERVICES.vibration` (start, stop, stopAll, runs, programs, saveProgram). Next build: the LH/RH Boost button starts a vibration and sustains it after a dash.
 
 ## Boost (V220)
-Hold the **BOOST** button that appears above the LH or RH pad (it shows with the pad). Your speed is multiplied by the Boost multiplier on top of Speed, eased in and out. Settings: ⟐OmniHands → LH / RH → ⚡ Boost. Terminal: `Omni Boost start hand(lh)`, `Omni Boost stop`, `Omni Boost set hand(lh) key(mult) value(5)`.
+Hold the **BOOST** button that appears above the LH or RH pad (it shows with the pad). Your speed is multiplied by the Boost multiplier on top of Speed, eased in and out. Settings: ⟐OmniHands → LH / RH → ↯ Boost. Terminal: `Omni Boost start hand(lh)`, `Omni Boost stop`, `Omni Boost set hand(lh) key(mult) value(5)`.
 
 Layered effects (any mix):
 - **OmniVibration while boosting** — any program, run on you, sustained until the boost ends (attack and release are the Boost's own).

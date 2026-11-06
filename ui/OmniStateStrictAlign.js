@@ -714,7 +714,7 @@ export default class OmniStateStrictAlign {
       f.dataset.active = String(act)
       inp.readOnly = !act || !!reason
       inp.tabIndex = act && !reason ? 0 : -1
-      f.querySelector('.osa-lock').textContent = act ? '' : '🔒'
+      f.querySelector('.osa-lock').textContent = act ? '' : '⚿'
       if (document.activeElement !== inp || inp.readOnly) inp.value = pos ? SA.formatCoord(pos[SA.axisIndex(a)], dec) : ''
       inp.setAttribute('aria-label', `${a.toUpperCase()} coordinate${act ? '' : ' (locked)'}`)
     })
