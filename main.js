@@ -172,6 +172,8 @@ import OmniValuePanel from './ui/OmniValuePanel.js'                      // V181
 import OmniStoreSettingsPanel from './ui/OmniStoreSettingsPanel.js'          // V177 user settings (Admin slot 19)
 import DevOmniStoreSettingsPanel from './ui/DevOmniStoreSettingsPanel.js'    // V177 DEV ONLY (Developer slot 6)
 import DevClaudeCheckPanel from './ui/DevClaudeCheckPanel.js'                // V184 DEV ONLY (Developer slot 7): what Claude wants checked + a way to answer back
+import { openGateForm } from './ui/OmniGateForm.js'                    // V276: the OmniPassKeyRing form (glass panel, mid-fall)
+import { loadGateSettings } from './utils/OmniGateSettings.js'          // V276
 import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js'  // V190 DEV ONLY (Developer slot 8): boot / intro colours, texture, star + shooting-star settings
 
 
@@ -1299,22 +1301,51 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
     ease:     'power2.inOut',
   }
 
+  // V276: the OmniPassKeyRing gate. Enter starts the fall from TWICE the old height (y 2000); at the old start height (y 1000) the fall holds, the form
+  // slides in, and when it accepts the entry the fall carries on exactly as before. Embedded copies (an OmniBrowser inside an OmniBrowser) never ask,
+  // and ?gate=off skips it. The opening screen (#omni-boot) stays up as a veil the whole time and fades out as the real fall resumes.
+  const GATE_START_Y = 2000, GATE_HOLD_Y = 1000
+  function shouldUseGate() {
+    try {
+      if (window.self !== window.top) return false
+      if (/(^|[?&])gate=off(&|$)/.test(window.location.search)) return false
+      return loadGateSettings().gate !== false
+    } catch (_) { return false }
+  }
+  // streaks on the opening screen react to how fast the camera drops (window.__omniGate.fallSpeed is read by boot/OmniStarBoot.js)
+  function trackFall(cam) {
+    const G = (window.__omniGate = window.__omniGate || {})
+    let prevY = cam.position.y, prevT = performance.now()
+    return () => {
+      const t = performance.now(), dt = Math.max(1, t - prevT)
+      const v = Math.abs(prevY - cam.position.y) / dt * 1000
+      prevY = cam.position.y; prevT = t
+      G.fallSpeed = Math.max(0.15, Math.min(5, v / 260))
+    }
+  }
+
   function playEntryAnimation() {
     const cam = base.camera
+    const gateOn = shouldUseGate()
+    const G = (window.__omniGate = window.__omniGate || {})
 
-    cam.position.set(0, 1000, 0.001)
+    cam.position.set(0, gateOn ? GATE_START_Y : GATE_HOLD_Y, 0.001)
     cam.lookAt(0, 0, 0)
 
-    // The actual "user first descends into the scene" moment —
-    // matches CAM_ENTRY phase 1's own duration below by default.
-    omniExpressionator.play('entrance', {})
+    if (!gateOn) {
+      // The actual "user first descends into the scene" moment —
+      // matches CAM_ENTRY phase 1's own duration below by default.
+      omniExpressionator.play('entrance', {})
 
-    // Dismiss boot screen immediately — reveal the scene
-    // so the user actually sees the fall happen
-    dismissBoot()
+      // Dismiss boot screen immediately — reveal the scene
+      // so the user actually sees the fall happen
+      dismissBoot()
+    }
 
     const tl = gsap.timeline({
+      paused: gateOn,
       onComplete: () => {
+        G.fallSpeed = 0
         orbitMod.enable()
         // The actual "landed" moment — for anything that needs to know
         // exactly when arrival completes (UserTimePanel's session timer).
@@ -1346,6 +1377,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
     })
 
     // Phase 1 — fast fall, looking down
+    const fall1 = trackFall(cam)
     tl.to(cam.position, {
       y:        22,
       z:        LANDING.z,
@@ -1354,6 +1386,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
       onUpdate: () => {
         const lookY = cam.position.y - 40
         cam.lookAt(LANDING.x, lookY, cam.position.z)
+        fall1()
       }
     })
 
@@ -1366,6 +1399,33 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
         const t     = 1 - (cam.position.y - LANDING.y) / 20
         const lookY = gsap.utils.interpolate(-18, LANDING.y, t)
         cam.lookAt(LANDING.x, lookY, LANDING.z - 1)
+      }
+    })
+
+    if (!gateOn) return
+
+    // Before the hold: the new first half of the fall (y 2000 -> 1000), slowing into the hold.
+    G.phase = 'falling'
+    const fall0 = trackFall(cam)
+    const pre = gsap.timeline({
+      onComplete: () => {
+        G.phase = 'hold'; G.fallSpeed = 0.18     // the camera floats; the streaks drift slowly
+        const form = openGateForm({ title: 'Omni\u27D0StarOS' })
+        form.promise.then(() => {
+          G.phase = 'descending'
+          omniExpressionator.play('entrance', {})
+          dismissBoot()                            // the veil fades while the real fall resumes
+          tl.play()
+        })
+      }
+    })
+    pre.to(cam.position, {
+      y:        GATE_HOLD_Y,
+      duration: 3.2,
+      ease:     'power2.out',
+      onUpdate: () => {
+        cam.lookAt(LANDING.x, cam.position.y - 40, cam.position.z)
+        fall0()
       }
     })
   }

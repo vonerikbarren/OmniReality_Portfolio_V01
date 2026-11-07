@@ -1,10 +1,31 @@
 // The smoke steps: boot, then drive the Omni command language and the services against the live scene. Returns { failed, report }.
 export default async function smoke (pg, errs) {
   await pg.waitForSelector('#boot-enter-btn.is-ready', { timeout: 280000 })
+  // V276: the opening screen is light with a gear, the version label and the spaces; Enter starts the fall, which holds at the key ring form
+  const pre = []; const pcheck = (name, ok, detail = '') => pre.push({ name, ok: !!ok, detail: String(detail).slice(0, 220) })
+  const look = await pg.evaluate(() => { const cs = getComputedStyle(document.getElementById('omni-boot')); return { bg: cs.getPropertyValue('--boot-bg').trim(), ink: cs.getPropertyValue('--boot-ink').trim(), overall: cs.getPropertyValue('--boot-overall').trim(), ver: document.getElementById('boot-version')?.textContent, gear: !!document.getElementById('omni-gear'), cap: document.getElementById('boot-caption')?.textContent || '' } })
+  pcheck('opening screen: light by default (white, black ink, 68 percent)', look.bg === '#ffffff' && look.ink === '#000000' && look.overall === '0.68', JSON.stringify(look))
+  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V276' && look.gear, JSON.stringify(look))
+  pcheck('opening screen: a space is named', /space/i.test(look.cap), look.cap)
+  await pg.click('#omni-gear'); await pg.selectOption('#og-bar', 'rainbow'); await pg.waitForTimeout(300)
+  pcheck('gear: rainbow bar applies at once and is saved', await pg.evaluate(() => document.getElementById('boot-progress-bar').classList.contains('is-rainbow') && JSON.parse(localStorage.getItem('omni:gate-v1')).bar === 'rainbow'))
+  await pg.selectOption('#og-bar', 'plain'); await pg.click('#omni-gear')
   await pg.evaluate(() => document.getElementById('boot-enter-btn').click())
+  await pg.waitForSelector('#omni-gate-form.is-in', { timeout: 120000 })
+  pcheck('Enter: the fall holds and the key ring form is up', await pg.evaluate(() => window.__omniGate.phase === 'hold' && !!document.getElementById('omni-boot')))
+  await pg.click('#ogf-submit'); const st1 = await pg.textContent('#ogf-status')
+  pcheck('form: empty entry names the empty fields, no strike', /Still empty: glyph, string, digits/.test(st1), st1)
+  await pg.click('#ogf-glyph'); await pg.click('#ogf-palette [data-glyph="13"]'); await pg.fill('#ogf-string', 'AllyBank'); await pg.fill('#ogf-digits', '000000')
+  await pg.click('#ogf-submit'); const st2 = await pg.textContent('#ogf-status')
+  pcheck('form: the demo code is denied with one generic message', /Access denied/.test(st2) && !/glyph (is|was)|digits (is|was)/i.test(st2), st2)
+  await pg.fill('#ogf-digits', '000000'); await pg.click('#ogf-submit'); await pg.fill('#ogf-digits', '000000'); await pg.click('#ogf-submit')
+  pcheck('form: the third wrong try pauses the gate', await pg.isDisabled('#ogf-submit') && /Paused/.test(await pg.textContent('#ogf-status')), await pg.textContent('#ogf-status'))
+  await pg.waitForFunction(() => !document.getElementById('ogf-submit').disabled, null, { timeout: 20000 })
+  await pg.fill('#ogf-digits', '034256'); await pg.click('#ogf-submit')
   await pg.waitForFunction(() => !document.getElementById('omni-boot'), null, { timeout: 120000 }).catch(() => {})
+  pcheck('form: a complete entry opens the gate and the fall resumes', await pg.evaluate(() => !document.getElementById('omni-boot') && !document.getElementById('omni-gate-form')))
   await pg.waitForTimeout(4000)
-  const results = await pg.evaluate(async () => {
+  const results = pre.concat(await pg.evaluate(async () => {
     const out = []; const check = (name, ok, detail = '') => out.push({ name, ok: !!ok, detail: String(detail).slice(0, 220) })
     const { SERVICES } = await import('/utils/OmniExtraKinds.js'); const { runOmniScript, listKeywords } = await import('/utils/OmniLangRegistry.js')
     const on = SERVICES.lineup?.omniNode; const cam = SERVICES.lineup?.context?.camera
@@ -473,7 +494,7 @@ export default async function smoke (pg, errs) {
     check('semantics skin survives', JSON.stringify(SERVICES.poly.getPoly('sk1')?.faces ?? SERVICES.poly.getPoly('sk1')) === faces)
     const mtxt = sf.check(txt, { mode: 'merge' }); check('merge check renames clashing lineup and window', mtxt.ok && !!mtxt.extras.lineups?.lineups?.L_2 && mtxt.extras.docwindows?.some(w => w.id === 'w2_2'), mtxt.summary)
     return out
-  })
+  }))
   const failed = results.filter(r => !r.ok); const errors = errs.filter(e => !/ERR_FAILED/.test(e))
   const report = results.map(r => `${r.ok ? 'ok     ' : 'FAILED '} ${r.name}${r.ok ? '' : '  ->  ' + r.detail}`).join('\n') + `\n\n${results.length - failed.length}/${results.length} passed, ${errors.length} page error(s)` + (errors.length ? '\n' + errors.join('\n') : '')
   return { failed: failed.length + errors.length, report }

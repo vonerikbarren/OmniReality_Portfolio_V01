@@ -92,7 +92,7 @@
   // The value in localStorage is NEVER trusted: parsed in try/catch, every field regex-validated / clamped, defaults on any doubt.
   // `?bootintro=off` in the page URL ignores the saved value (escape hatch if a colour made the intro unreadable).
   var INTRO_KEY = 'omni:dev-intro-v1'
-  var INTRO_DEFAULTS = { bg: '#000000', texture: 'none', textureOpacity: 0.35, customUrl: '', starColor: '#ffffff', starOpacity: 0.7, fieldOpacity: 1, shootColor: '#ffffff' }
+  var INTRO_DEFAULTS = { bg: '#ffffff', texture: 'none', textureOpacity: 0.35, customUrl: '', starColor: '#000000', starOpacity: 0.7, fieldOpacity: 1, shootColor: '#000000' }   // V276: LIGHT by default
   var INTRO_TEXTURES = ['none', 'noise', 'grid', 'scanlines', 'dots', 'custom']
   var MAX_DATA_URL = 400000, MAX_HTTPS_URL = 500
   function introHex (v, d) {
@@ -136,19 +136,55 @@
     } catch (e) { return sanitizeIntro(null) }
   }
   function rgbOf (hex) { return parseInt(hex.slice(1, 3), 16) + ',' + parseInt(hex.slice(3, 5), 16) + ',' + parseInt(hex.slice(5, 7), 16) }
-  var INTRO = readIntro()
+  // V276: the few gate settings the boot needs at once (the rest arrive after a dynamic import of utils/OmniGateSettings.js). Same validation rules;
+  // tests/32 runs the same inputs through both. `look` (set by the gear panel) wins over the dev intro colours.
+  var GATE_KEY = 'omni:gate-v1'
+  function readGateLite () {
+    var o = { overall: 0.68, bar: 'plain', reduceMotion: false, look: null }
+    try {
+      if (/(^|[?&])bootintro=off(&|$)/.test(window.location.search)) return o
+      var txt = window.localStorage.getItem(GATE_KEY)
+      if (!txt || txt.length > 100000) return o
+      var j = JSON.parse(txt)
+      if (!j || typeof j !== 'object' || Array.isArray(j)) return o
+      var n = typeof j.overall === 'number' ? j.overall : (typeof j.overall === 'string' && j.overall.trim() !== '' ? Number(j.overall) : NaN)
+      if (isFinite(n)) o.overall = Math.round(Math.min(1, Math.max(0.3, n)) * 100) / 100
+      if (j.bar === 'rainbow') o.bar = 'rainbow'
+      if (j.reduceMotion === true) o.reduceMotion = true
+      if (j.look && typeof j.look === 'object' && !Array.isArray(j.look)) {
+        o.look = { bg: introHex(j.look.bg, '#ffffff'), ink: introHex(j.look.ink, '#000000'), starOpacity: Math.round(intro01(j.look.starOpacity, 0.7) * 100) / 100, fieldOpacity: Math.round(intro01(j.look.fieldOpacity, 1) * 100) / 100 }
+        o.look.shootColor = introHex(j.look.shootColor, o.look.ink)
+      }
+    } catch (e) {}
+    return o
+  }
+  function withLook (base, look) {
+    var o = {}, k
+    for (k in base) o[k] = base[k]
+    if (look) { o.bg = look.bg; o.starColor = look.ink; o.starOpacity = look.starOpacity; o.fieldOpacity = look.fieldOpacity; o.shootColor = look.shootColor }
+    return o
+  }
+  var GATE_LITE = readGateLite()
+  var INTRO_BASE = readIntro()
+  var INTRO = withLook(INTRO_BASE, GATE_LITE.look)
   var STAR_RGB = rgbOf(INTRO.starColor), SHOOT_RGB = rgbOf(INTRO.shootColor)
-  ;(function applyIntroStyle () {
+  function lum (hex) { var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 }
+  function applyLookVars () {
+    STAR_RGB = rgbOf(INTRO.starColor); SHOOT_RGB = rgbOf(INTRO.shootColor)
     var brand = boot.querySelector('.boot-brand')
     if (brand) brand.style.setProperty('--boot-star', CONFIG.STAR_EM + 'em')
-    if (INTRO.bg !== INTRO_DEFAULTS.bg) boot.style.background = INTRO.bg
+    boot.style.setProperty('--boot-bg', INTRO.bg)
+    boot.style.setProperty('--boot-ink', INTRO.starColor)
+    boot.style.setProperty('--boot-ink-rgb', STAR_RGB)
+    boot.style.setProperty('--boot-halo-rgb', rgbOf(INTRO.bg))
     boot.style.setProperty('--boot-star-alpha', String(INTRO.starOpacity))
-    if (INTRO.starColor !== INTRO_DEFAULTS.starColor) {
-      boot.style.setProperty('--boot-star-color', INTRO.starColor)
-      boot.style.setProperty('--boot-star-rgb', STAR_RGB)
-      boot.style.setProperty('--boot-comet-mid', STAR_RGB)
-    }
-  })()
+    boot.style.setProperty('--boot-star-color', INTRO.starColor)
+    boot.style.setProperty('--boot-star-rgb', STAR_RGB)
+    boot.style.setProperty('--boot-comet-mid', STAR_RGB)
+    boot.style.setProperty('--boot-star-halo', lum(INTRO.bg) > 0.5 ? '0.10' : '0.22')
+    boot.style.setProperty('--boot-overall', String(GATE_LITE.overall))
+  }
+  applyLookVars()
   var MARK = CONFIG.FINAL_MARK
   try {
     var qm = new URLSearchParams(window.location.search).get('bootmark')
@@ -268,6 +304,9 @@
 
   var reduced = false
   try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch (e) {}
+  var SYSTEM_REDUCED = reduced
+  if (GATE_LITE.reduceMotion) reduced = true      // V276: the gear panel's Reduce motion
+  if (reduced) boot.classList.add('boot-calm')
 
   function clamp01 (x) { return x < 0 ? 0 : x > 1 ? 1 : x }
   function easeOutCubic (u) { return 1 - Math.pow(1 - u, 3) }
@@ -380,12 +419,18 @@
   function cleanup () {   // V190: the loop is over (boot removed): drop the window listeners so a preview replay does not pile them up
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('resize', onResize)
+    window.removeEventListener('omni:gate-settings-changed', onGateChanged)
   }
   function onMove (e) {
     var onBtn = !!(enterBtn && e.target && e.target.closest && e.target.closest('#boot-enter-btn'))
     moveLevel = onBtn ? 0.5 : 0.15
     lastMove = T
   }
+  function enterNow () {      // V276: Enter pressed: the wordmark, bar and button let go; the spaces and the fall carry on (main.js drives the camera and the form)
+    falling = true; GATE.phase = 'falling'
+    boot.classList.add('boot-entering')
+  }
+  if (enterBtn) enterBtn.addEventListener('click', enterNow, { once: true })
   if (!reduced) {
     window.addEventListener('pointermove', onMove, { passive: true })
     if (enterBtn) {
@@ -466,6 +511,156 @@
     }
     ctx.globalAlpha = 1
     if (!reduced) drawShooters(dt, alphaAll * fade, converging)
+  }
+
+  // ── V276: the spaces + plexus engine ───────────────────────
+  // ONE fixed pool of points (utils/OmniSpaces.js decides where each sits in the current space) joined by faint lines (the plexus).
+  // The modules arrive by dynamic import (small, no dependency on main.js's import graph); until then, or if the import fails, the old star field above runs.
+  var ENG = null, CFG = null, tsp = 0, lastCaption = '', yawNow = 0
+  var POOL_MAX = 200
+  var psx = new Float32Array(POOL_MAX), psy = new Float32Array(POOL_MAX), psk = new Float32Array(POOL_MAX), psa = new Float32Array(POOL_MAX)
+  var ppull = new Float32Array(POOL_MAX), ppairs = new Uint16Array(POOL_MAX * 8), pdist = new Float32Array(POOL_MAX * 4)
+  var pt = { x: 0, y: 0, z: 0, s: 1, a: 1 }, pj = { sx: 0, sy: 0, k: 1, depth: 0 }
+  var falling = false
+  var GATE = window.__omniGate = window.__omniGate || {}
+  GATE.fallSpeed = 0.15; GATE.shudder = 0; GATE.phase = 'idle'
+  var barEl = document.getElementById('boot-progress-bar'), trackEl = barEl && barEl.parentNode, capEl = document.getElementById('boot-caption')
+  function moduleUrl (rel) { try { return new URL(rel, SELF_SRC || document.baseURI).href } catch (e) { return rel } }
+  function applyGateCfg () {
+    if (!CFG) return
+    GATE_LITE.overall = CFG.overall; GATE_LITE.bar = CFG.bar; GATE_LITE.reduceMotion = CFG.reduceMotion
+    INTRO = withLook(INTRO_BASE, CFG.look)
+    applyLookVars(); halo = makeHalo()
+    if (barEl) barEl.classList.toggle('is-rainbow', CFG.bar === 'rainbow')
+    reduced = SYSTEM_REDUCED || CFG.reduceMotion
+    boot.classList.toggle('boot-calm', reduced)
+    if (!CFG.spaces.caption && capEl) capEl.classList.remove('is-on')
+    if (reduced && ENG) { lastCaption = ''; drawSpaces(0, 0.9) }     // calm: one still frame, redrawn when a setting changes
+  }
+  function onGateChanged (e) { if (e && e.detail && e.detail.settings && ENG) { CFG = ENG.C.sanitizeGateSettings(e.detail.settings); applyGateCfg() } }
+  window.addEventListener('omni:gate-settings-changed', onGateChanged)
+  if (barEl && GATE_LITE.bar === 'rainbow') barEl.classList.add('is-rainbow')
+  try {
+    Promise.all([import(moduleUrl('../utils/OmniSpaces.js')), import(moduleUrl('../utils/OmniGateSettings.js'))]).then(function (m) {
+      if (!document.getElementById('omni-boot')) return
+      ENG = { S: m[0], C: m[1] }; CFG = ENG.C.loadGateSettings()
+      GATE.settings = CFG
+      applyGateCfg()
+      import(moduleUrl('../ui/OmniGateGear.js')).then(function (g) { if (document.getElementById('omni-boot') && !boot.querySelector('#omni-gear')) g.mountGear(boot) }).catch(function () {})
+    }).catch(function () { ENG = null })
+  } catch (e) { ENG = null }
+
+  function drawSpaces (dt, alphaAll) {
+    var S = ENG.S, P = CFG.plexus, calm = reduced
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, vw, vh)
+    if (alphaAll <= 0.001) return
+    var n = Math.min(POOL_MAX, vw < 700 ? Math.min(P.count, 60) : P.count)
+    if (!calm) tsp += dt / 1000 * P.speed
+    var plan = S.rotationPlan(CFG.spaces.enabled, tsp, CFG.spaces)
+    var yaw = calm ? 0.3 : tsp * 0.07 + 0.3, pitch = 0.38
+    var cx = geo.slotX, cy = geo.slotY
+    var idle = T - lastMove
+    if (idle > 600) moveLevel *= Math.exp(-dt / 700)
+    var att = falling ? 0 : Math.max(over ? 0.5 : 0, moveLevel)
+    var rate = 1 - Math.exp(-dt / 550)
+    var fieldT = calm ? FIELD_FADE + 5000 : T - FIELD_START
+    var shake = GATE.shudder > 0.01 ? GATE.shudder * 6 : 0
+    if (GATE.shudder > 0) GATE.shudder *= Math.exp(-dt / 320)
+    var i, vis = 0
+    for (i = 0; i < n; i++) {
+      S.blendPoint(plan, i, n, tsp, pt)
+      if (!S.project(pt, vw, vh, yaw, pitch, pj)) { psx[i] = NaN; psy[i] = NaN; continue }
+      var appear = clamp01((fieldT - (i * 37 % 900)) / FIELD_FADE)
+      if (appear <= 0) { psx[i] = NaN; psy[i] = NaN; continue }
+      ppull[i] += (att * 0.8 * (0.6 + 0.4 * ((i * 7 % 10) / 10)) - ppull[i]) * rate
+      var x = pj.sx + (cx - pj.sx) * ppull[i], y = pj.sy + (cy - pj.sy) * ppull[i]
+      if (shake) { x += (Math.random() - 0.5) * shake; y += (Math.random() - 0.5) * shake }
+      psx[i] = x; psy[i] = y
+      psk[i] = pj.k * pt.s * P.size
+      psa[i] = pt.a * appear * (0.4 + 0.6 * (1 - pj.depth * 0.75)) * INTRO.fieldOpacity * alphaAll
+      vis++
+    }
+    // plexus lines: near points join; five alpha buckets keep it to five strokes
+    if (P.lineAlpha > 0.005 && vis > 1) {
+      var maxD = P.link * S.planLink(plan) * Math.max(0.6, Math.min(vw, vh) / 800)
+      var cnt = S.linkPairs(psx, psy, n, maxD, n * 4, 5, ppairs, pdist)
+      ctx.lineWidth = 0.7 * Math.max(0.6, P.size * 0.8)
+      for (var bk = 0; bk < 5; bk++) {
+        ctx.beginPath()
+        var any = false
+        for (i = 0; i < cnt; i++) {
+          var a = ppairs[i * 2], b = ppairs[i * 2 + 1], q = (1 - pdist[i] / maxD) * Math.min(psa[a], psa[b])
+          if (Math.min(4, Math.floor(q * 5)) !== bk) continue
+          ctx.moveTo(psx[a], psy[a]); ctx.lineTo(psx[b], psy[b]); any = true
+        }
+        if (any) { ctx.strokeStyle = 'rgba(' + STAR_RGB + ',' + (P.lineAlpha * (0.2 + 0.2 * bk)).toFixed(3) + ')'; ctx.stroke() }
+      }
+    }
+    ctx.fillStyle = INTRO.starColor
+    for (i = 0; i < n; i++) {
+      if (psx[i] !== psx[i]) continue
+      var al = psa[i]; if (al <= 0.01) continue
+      var tw = calm ? 1 : 0.85 + 0.15 * Math.sin(tsp * 2 + i)
+      ctx.globalAlpha = Math.min(1, al * tw)
+      var r = Math.max(0.5, 0.75 * psk[i])
+      if (r > 1.5) ctx.drawImage(halo, psx[i] - r * 5, psy[i] - r * 5, r * 10, r * 10)
+      ctx.beginPath(); ctx.arc(psx[i], psy[i], r, 0, 6.2832); ctx.fill()
+    }
+    ctx.globalAlpha = 1
+    // the name of the space on show
+    if (capEl) {
+      var shown = plan.moving && plan.u > 0.5 ? plan.b : plan.a
+      var txt = CFG.spaces.caption ? S.spaceInfo(shown).name + '  ·  ' + S.spaceInfo(shown).scale : ''
+      if (txt !== lastCaption) { lastCaption = txt; capEl.textContent = txt }
+      capEl.classList.toggle('is-on', !!txt && fieldT > FIELD_FADE && !falling)
+    }
+  }
+
+  // the fall: streaks rush out of the middle, faster as the camera drops (main.js writes window.__omniGate.fallSpeed)
+  var warp = [], warpV = 0.15
+  function drawWarp (dt) {
+    var tgt = typeof GATE.fallSpeed === 'number' && isFinite(GATE.fallSpeed) ? Math.max(0, Math.min(6, GATE.fallSpeed)) : 0.15
+    warpV += (tgt - warpV) * (1 - Math.exp(-dt / 260))
+    var cx = vw / 2, cy = vh / 2, maxR = Math.hypot(cx, cy) * 1.05, i, w
+    if (!warp.length) for (i = 0; i < 90; i++) warp.push({ a: Math.random() * 6.2832, r: 6 + Math.random() * maxR, k: 0.4 + Math.random() })
+    ctx.lineWidth = 0.9; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(' + STAR_RGB + ',0.42)'
+    ctx.beginPath()
+    for (i = 0; i < warp.length; i++) {
+      w = warp[i]
+      var r0 = w.r
+      w.r += (4 + w.r * 0.9) * warpV * w.k * dt / 1000
+      if (w.r > maxR) { w.r = 6 + Math.random() * 30; w.a = Math.random() * 6.2832; r0 = w.r }
+      var ca = Math.cos(w.a), sa = Math.sin(w.a), tail = Math.max(0, r0 - (w.r - r0) * 1.6)
+      ctx.moveTo(cx + ca * tail, cy + sa * tail); ctx.lineTo(cx + ca * w.r, cy + sa * w.r)
+    }
+    ctx.stroke()
+  }
+
+  // energy particles riding just outside the loading beam (they look part of it)
+  var beamP = [], beamAcc = 0
+  function drawBeam (dt) {
+    if (!barEl || !trackEl || reduced || falling) return
+    var br = barEl.getBoundingClientRect(), tr = trackEl.getBoundingClientRect()
+    if (br.width < 8) return
+    var rainbow = barEl.classList.contains('is-rainbow'), i, p
+    beamAcc += dt / 1000 * 46
+    while (beamAcc >= 1 && beamP.length < 40) {
+      beamAcc -= 1
+      var side = Math.random() < 0.5 ? -1 : 1
+      beamP.push({ x: br.left + Math.random() * br.width, y: tr.top + tr.height / 2 + side * tr.height * 0.4, vx: 10 + Math.random() * 34, vy: side * (6 + Math.random() * 20), life: 0, span: 700 + Math.random() * 900, r: 0.6 + Math.random() * 1.1 })
+    }
+    beamAcc = Math.min(beamAcc, 2)
+    for (i = beamP.length - 1; i >= 0; i--) {
+      p = beamP[i]; p.life += dt
+      if (p.life >= p.span) { beamP.splice(i, 1); continue }
+      p.x += p.vx * dt / 1000; p.y += p.vy * dt / 1000; p.vy *= Math.exp(-dt / 900)
+      var u = p.life / p.span, al = Math.sin(Math.PI * u) * 0.85
+      ctx.globalAlpha = al
+      ctx.fillStyle = rainbow ? 'hsl(' + (((p.x - br.left) / 260) * 360 % 360).toFixed(0) + ',90%,55%)' : INTRO.starColor
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill()
+    }
+    ctx.globalAlpha = 1
   }
 
   // ── V190: light shooting stars (after the landing) ─────────
@@ -598,8 +793,15 @@
     if (key !== lastKey) { lastKey = key; pathEl.setAttribute('d', pathFor(ea, eb)) }
     if (b >= 1 && URCHIN && !finalShown) showFinal(true)
 
-    drawField(dt, 1)
-    if (clickedAt >= 0 && T - clickedAt > CONVERGE_MS + 50) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height) }
+    if (ENG && CFG) {       // V276: spaces + plexus, the beam's particles, the fall's streaks
+      drawSpaces(dt, 1)
+      if (!reduced) drawShooters(dt, 1, falling)
+      drawBeam(dt)
+      if (falling && !reduced) drawWarp(dt)
+    } else {
+      drawField(dt, 1)
+      if (clickedAt >= 0 && T - clickedAt > CONVERGE_MS + 50) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height) }
+    }
     var cost = performance.now() - t0
     stats.script.push(cost); if (stats.script.length > 900) stats.script.shift()
   }
@@ -674,6 +876,7 @@
     starEl.style.opacity = '1'
     stars.length = Math.min(stars.length, 40)
     drawStatic()
+    if (ENG && CFG) drawSpaces(0, 0.9)
   } else {
     pathEl.setAttribute('d', pathFor(0, 0))
     comet = document.createElement('span')      // tapered tail behind the flying star (compositor-animated)

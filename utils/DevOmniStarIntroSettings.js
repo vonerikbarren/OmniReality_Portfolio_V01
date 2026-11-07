@@ -26,7 +26,7 @@ export const TEXTURES = ['none', 'noise', 'grid', 'scanlines', 'dots', 'custom']
 export const MAX_DATA_URL = 400000
 export const MAX_HTTPS_URL = 500
 export const MAX_UPLOAD_BYTES = 200 * 1024   // raw image bytes accepted by the panel's file picker (base64 makes it ~1.37x, still under MAX_DATA_URL)
-export const DEFAULTS = Object.freeze({ bg: '#000000', texture: 'none', textureOpacity: 0.35, customUrl: '', starColor: '#ffffff', starOpacity: 0.7, fieldOpacity: 1, shootColor: '#ffffff' })
+export const DEFAULTS = Object.freeze({ bg: '#ffffff', texture: 'none', textureOpacity: 0.35, customUrl: '', starColor: '#000000', starOpacity: 0.7, fieldOpacity: 1, shootColor: '#000000' })   // V276: LIGHT by default (the gear panel's Look wins over these: utils/OmniGateSettings.js)
 
 /** '#rrggbb' (lower case) from '#rgb' / 'rgb' / '#RRGGBB'; `fallback` for anything else. */
 export function normalizeHex (v, fallback = '#000000') {
