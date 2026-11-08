@@ -12,7 +12,7 @@ const Dev = await imp('utils/DevOmniStarIntroSettings.js')
 const Gate = await imp('utils/OmniGateSettings.js')
 
 test('the version label is one string at the bottom right', () => {
-  assert.match(html, /<div id="boot-version">OmniOS_sandbox_A00_V276<\/div>/)
+  assert.match(html, /<div id="boot-version">OmniOS_sandbox_A00_V279<\/div>/)
   assert.match(html, /#boot-version \{[^}]*right: 14px; bottom: 10px/)
 })
 

@@ -1758,6 +1758,17 @@ export default class OmniPresenter {
     )
     const destPos = target.clone().add(offset)
 
+    // V278: when an EdgeNode sits on the line between the previous step and this one, ride its route (line, tunnel, torus or orbit) instead of the straight flight
+    try {
+      const prev = this._index > 0 ? this._sequence[this._index - 1] : null
+      const route = prev?.id && node.id ? window.__omniEdgeNodes?.routeFor?.(prev.id, node.id) : null
+      if (route) {
+        this._stopFly(); this._flying = true; this._showFlyBadge(true); this._syncTransport()
+        window.__omniEdgeNodes.rideRoute(route, { id: route.id }).then(() => { if (this._flying) this._onFlyComplete() }).catch(() => { this._flying = false; this._onFlyComplete() })
+        return
+      }
+    } catch (_) { /* fall through to the ordinary flight */ }
+
     this._flying = true
     this._disableOrbit()
     this._showFlyBadge(true)
@@ -1813,6 +1824,7 @@ export default class OmniPresenter {
     }
     if (this._flying) {
       this._flying = false
+      try { window.__omniEdgeNodes?.stop?.() } catch (_) { /* no edge nodes */ }   // V278
       this._showFlyBadge(false)
       this._enableOrbit()
     }

@@ -1945,6 +1945,7 @@ export default class OmniNode {
    */
   _applyAppearanceFlags (mesh, data) {
     if (!mesh.material || Array.isArray(mesh.material)) return
+    if (mesh.material.isShaderMaterial) return   // V277: a keyed video plane draws itself; swapping its material would break the key
 
     if (data.material && data.material !== 'MeshStandardMaterial') {
       const MatCtor = THREE[data.material] ?? THREE.MeshStandardMaterial

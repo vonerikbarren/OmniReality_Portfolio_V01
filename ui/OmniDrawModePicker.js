@@ -14,6 +14,9 @@
 
 import gsap from 'gsap'
 import { declareDesire } from '../utils/DesirePrimaryForce.js'
+import * as THREE from 'three'
+import { SERVICES } from '../utils/OmniExtraKinds.js'
+import { generateId } from '../systems/OmniNode.js'
 
 const STYLES = `
 
@@ -84,6 +87,12 @@ export default class OmniDrawModePicker {
         <button class="odmp-btn" data-mode="flash" title="a deck of flashcards in one node: text, pictures and sounds on each side" aria-pressed="false"><span class="odmp-glyph">▥</span><span class="odmp-label">Flashcards</span></button>
         <button class="odmp-btn" data-mode="rhythm" title="a beat source: every beat can pulse, bounce, spin or flash any node bound to it" aria-pressed="false"><span class="odmp-glyph">♩</span><span class="odmp-label">Rhythm</span></button>
         <button class="odmp-btn" data-mode="epistemics" title="one step in how a thing is passed down: event, observation, memory, rumour, gossip, narrative, record, absence, what-if" aria-pressed="false"><span class="odmp-glyph">◉</span><span class="odmp-label">Epistemics</span></button>
+        <button class="odmp-btn" data-mode="voxel" title="a VoxelNode: makes the fixed-size voxel room in front of you (a node marks its centre) and opens the voxel panel" aria-pressed="false"><span class="odmp-glyph">▦</span><span class="odmp-label">Voxel</span></button>
+        <button class="odmp-btn" data-mode="dimtext" title="a DimensionalTextNode: words floating in the space in front of you" aria-pressed="false"><span class="odmp-glyph">Aa</span><span class="odmp-label">Dimensional text</span></button>
+        <button class="odmp-btn" data-mode="note" title="an OmniNote: a rich-text note (headings, lists, tables, pictures) shown on a sheet in the space" aria-pressed="false"><span class="odmp-glyph">✎</span><span class="odmp-label">Note</span></button>
+        <button class="odmp-btn" data-mode="edgenode" title="how you travel a line between two nodes: ride it, go through it as a tunnel, loop a torus or circle an orbit" aria-pressed="false"><span class="odmp-glyph">⟷</span><span class="odmp-label">Edge node</span></button>
+        <button class="odmp-btn" data-mode="storedvideo" title="a library video on a flat plane, with a chroma key to remove a green backdrop" aria-pressed="false"><span class="odmp-glyph">▭</span><span class="odmp-label">Stored video</span></button>
+        <button class="odmp-btn" data-mode="storedreality" title="a whole course kept in one box: store nodes in it, expand it back out" aria-pressed="false"><span class="odmp-glyph">▣</span><span class="odmp-label">Stored reality</span></button>
         <button class="odmp-btn" data-mode="claim" title="a ClaimNode (DimensionalScripting): a claim that is true, false and undefined at the same time, with testimonies from people, bots, AI and sensors; public, or private behind a key" aria-pressed="false"><span class="odmp-glyph">⟐</span><span class="odmp-label">Claim</span></button>
         <button class="odmp-btn" data-mode="path" title="an OmniPathNode: an ordered path of nodes, linked or from the hierarchy; opens the node order panel" aria-pressed="false"><span class="odmp-glyph">⤳</span><span class="odmp-label">Path</span></button>
         <button class="odmp-btn" data-mode="terminal" title="a TerminalShellTunnel: an in-scene terminal that moves with the node" aria-pressed="false"><span class="odmp-glyph">›_</span><span class="odmp-label">Terminal</span></button>
@@ -106,7 +115,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="mix"]').addEventListener('click', () => this._choose('mix'))        // V201
     this._el.querySelector('[data-mode="doc"]').addEventListener('click', () => this._choose('doc'))        // V203
     this._el.querySelector('[data-mode="poly"]').addEventListener('click', () => this._choose('poly'))      // V204
-    for (const m of ['time', 'claim', 'sticky', 'flash', 'rhythm', 'epistemics']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
+    for (const m of ['time', 'claim', 'sticky', 'flash', 'rhythm', 'epistemics', 'storedvideo', 'storedreality', 'edgenode', 'note', 'voxel', 'dimtext']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
     for (const m of ['path', 'terminal', 'floor']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V197
 
     this._onNavSelect = (e) => {
@@ -201,6 +210,39 @@ export default class OmniDrawModePicker {
       return
     }
 
+    if (mode === 'voxel') {   // V279
+      const r = SERVICES.voxel?.addRoomHere?.()
+      if (r && r.ok === false) window.dispatchEvent(new CustomEvent('omni:notify-info', { detail: { name: 'Voxel', desc: r.error || 'Could not make a room here.', holdMs: 3500 } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniVoxel' } }))
+      this.close()
+      return
+    }
+    if (mode === 'dimtext') {   // V279: same node the keyboard makes, with words you type
+      const cam = SERVICES.lineup?.context?.camera
+      const text = (typeof window.prompt === 'function' ? window.prompt('Text for the node', 'Text') : 'Text')
+      if (text && text.trim() && cam) {
+        const f = new THREE.Vector3(); cam.getWorldDirection(f)
+        window.dispatchEvent(new CustomEvent('omni:node-create-request', { detail: { id: generateId(), label: 'Text_' + text.trim().slice(0, 12), geometry: 'DimensionalText', primitive: 'objective', color: '#ffffff', text: text.trim().slice(0, 200), textSequence: null, position: [cam.position.x + f.x * 5, Math.max(0.5, cam.position.y + f.y * 5), cam.position.z + f.z * 5], parentId: null } }))
+      }
+      this.close()
+      return
+    }
+    if (mode === 'note') {   // V278: it was in the Ribbon but not in this list
+      window.dispatchEvent(new CustomEvent('omni:note-node-create', { detail: { select: true } }))
+      window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniNote' } }))
+      this.close()
+      return
+    }
+    if (mode === 'edgenode') {   // V278
+      window.dispatchEvent(new CustomEvent('omni:edgenode-create', { detail: { select: true } }))
+      this.close()
+      return
+    }
+    if (mode === 'storedvideo' || mode === 'storedreality') {   // V277
+      window.dispatchEvent(new CustomEvent(mode === 'storedvideo' ? 'omni:stored-video-node-create' : 'omni:stored-reality-node-create', { detail: { select: true } }))
+      this.close()
+      return
+    }
     if (mode === 'epistemics') {   // V271
       window.dispatchEvent(new CustomEvent('omni:epistemics-node-create', { detail: { select: true, fromSelected: true } }))
       this.close()

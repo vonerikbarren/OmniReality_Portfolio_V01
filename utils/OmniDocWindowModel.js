@@ -52,5 +52,12 @@ export function jumpPlan (win, start) {
   const s = clampStart(start, w.count, w.pages)
   return { start: s, pages: w.slots.map((id, i) => ({ id, slot: i, page: s + i })), changed: s !== w.start }
 }
+/** V278: PageDown / PageUp on an arrangement move by a whole set (its sheet count): 8 sheets showing 1-8 go to 9-16. The last set stops at the end of the document (the window keeps every sheet on a real page, so the final set can overlap the one before). null at the first / last page. */
+export function pagePlan (win, dir) {
+  const w = sanitizeWindow(win); if (!w) return null
+  const d = dir < 0 ? -1 : 1; const start = clampStart(w.start + d * w.count, w.count, w.pages)
+  if (start === w.start) return null
+  return { dir: d, start, from: w.start, count: w.count, pages: w.slots.map((id, i) => ({ id, slot: i, page: start + i })) }
+}
 export const describe = (w) => `${w.id} [${w.layout}] ${w.count} sheets showing pages ${w.start}-${w.start + w.count - 1}${w.pages ? ' of ' + w.pages : ''}`
-export default { MAX_WINDOWS, MAX_COUNT, LAYOUTS, COUNTS, sanitizeWindow, clampStart, pageOfSlot, stepPlan, jumpPlan, describe }
+export default { MAX_WINDOWS, MAX_COUNT, LAYOUTS, COUNTS, sanitizeWindow, clampStart, pageOfSlot, stepPlan, jumpPlan, pagePlan, describe }

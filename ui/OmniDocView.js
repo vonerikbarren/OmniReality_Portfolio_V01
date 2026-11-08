@@ -75,6 +75,8 @@ export default class OmniDocView {
       const t = e.target; if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && ['text', 'number'].includes(t.type)) || t.tagName === 'SELECT')) return
       if (!this.nodeId) return
       e.preventDefault(); e.stopPropagation()
+      const dw = SERVICES.docwindow, win = dw?.windowOf?.(this.nodeId)   // V278: in an arrangement, a whole set (Shift: one page)
+      if (win && !e.shiftKey) { this._act('turn', () => dw.pageSet(win.id, e.key === 'PageUp' ? -1 : 1)); return }
       this._act('turn', () => this.svc?.turn(this.nodeId, e.key === 'PageUp' ? -1 : 1))
     })
     on(this.host, 'pointerdown', (e) => { if (e.target?.type === 'range') this.svc?.beginStroke?.(this.nodeId) })
@@ -215,8 +217,8 @@ export default class OmniDocView {
       case 'create': { const r = s?.createDocNode({ select: true }); if (r?.ok) { this.nodeId = r.nodeId; this.refresh() } else this.say(r?.error || 'Could not create.', true); break }
       case 'undo': s?.undo(id); break
       case 'redo': s?.redo(id); break
-      case 'prev': this._act('turn', () => s.turn(id, -1)); break
-      case 'next': this._act('turn', () => s.turn(id, 1)); break
+      case 'prev': case 'next': { const dw = SERVICES.docwindow, win = dw?.windowOf?.(id); const d = a === 'prev' ? -1 : 1   // V278: in an arrangement, a whole set
+        this._act('turn', () => (win ? dw.pageSet(win.id, d) : s.turn(id, d))); break }
       case 'zoomin': this._act('zoom', () => s.zoomBy(id, 1)); break
       case 'zoomout': this._act('zoom', () => s.zoomBy(id, -1)); break
       case 'zoomfit': this._act('zoom', () => s.setZoom(id, 100)); break

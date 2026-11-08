@@ -91,7 +91,7 @@ export const handDividerBetween = (prev, cur) => !!prev && (prev.hand ?? null) !
 export const RIBBON_LAYOUT = {
   create:  { id: 'create',  label: 'Create',  icon: '✚', tip: 'Create tab: draw nodes and make special and media nodes', groups: [
     ['Draw', ['draw', 'draw-static', 'draw-dynamic', 'draw-behavior']],
-    ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'sticky-note', 'flash-node', 'rhythm-node', 'epistemics-node', 'node-order', 'floor-panels', 'voxel-rooms']],
+    ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'sticky-note', 'flash-node', 'rhythm-node', 'epistemics-node', 'stored-video-node', 'stored-reality-node', 'edge-node', 'node-order', 'floor-panels', 'voxel-rooms']],
     ['Media nodes', ['sound-node', 'music-node', 'song-node', 'mix-node', 'doc-node', 'poly-node']],
     ['Time and logic', ['time-node', 'time-pad', 'claim-node']] ] },
   tools:   { id: 'tools',   label: 'Tools',   icon: '⬢', tip: 'Tools tab: code, scanning, dimensions, studios and editors', groups: [
@@ -147,6 +147,8 @@ function buildTabs () {
       groups: [
         { caption: 'OmniStar', btns: [
           b('docs', '≡', 'Docs', '—', 'Opens the Docs panel: the user guide inside the app, a table of contents on the left, the page on the right, a search field that finds and highlights words across all pages. PageDown / PageUp turn pages while it is focused.', nav('⟐OmniDocs'), { name: 'Docs' }),
+          b('profile', '☺', 'Profile', '—', 'Opens your profile card: the active OmniIdentity and your OmniPlayer progress.', nav('Profile')),
+          b('profiler', '✎', 'Profiler', '—', 'Opens the Profiler: a notebook of the people and things you meet or interact with. It logs by itself when a tracked node is visited or a claim gets a testimony, and you can add notes. Saved in this browser only.', () => ev('omni:profiler-toggle')),
           b('starlight', '✧', 'OmniStarLight', 'Q', 'Opens OmniStarLight, the Spotlight-style search: it lists the main sites of the app (Available or Unavailable) and finds user-guide pages. Arrow keys move, Enter opens, Escape closes.', () => ev('omni:starlight-toggle'), { name: 'OmniStarLight' }),
         ] },
       ],
@@ -181,6 +183,9 @@ function buildTabs () {
           b('transform-bar', '⇄', 'Transform bar', '—', 'Opens a small bar that follows the selected node: Move, Rotate or Scale it with exact numbers. Scale keeps the shape by default (all three axes together). Has Undo and Reset.', () => ev('omni:transform-bar-request', { action: 'toggle' }), { name: 'Transform bar' }),
           b('rhythm-node', '♩', 'Rhythm', '—', 'Makes a Rhythm node: a beat source. Every beat can pulse, bounce, spin or flash any node you bind to it. With a node selected it is bound to that node and started.', () => ev('omni:rhythm-node-create', { select: true, bindSelected: true, start: true }), { name: 'New rhythm node' }),
           b('epistemics-node', '◉', 'Epistemics', '—', 'Makes an Epistemics node: one step in how a thing gets passed down (event, observation, memory, rumour, gossip, narrative, record, absence, what-if). With one selected, makes the NEXT layer from it. Never says what is true: it shows what was kept and lost.', () => ev('omni:epistemics-node-create', { select: true, fromSelected: true }), { name: 'New epistemics node' }),
+          b('edge-node', '⟷', 'Edge node', '—', 'Makes an EdgeNode on a line between two nodes (select one end first): it says how you travel that line. A line you ride, a tunnel you go through, a torus you loop or an orbit you circle, with control points that bend the route. The Presenter rides it.', () => ev('omni:edgenode-create', { select: true }), { name: 'New edge node' }),
+          b('stored-video-node', '▭', 'Stored video', '—', 'Makes a StoredVideoNode: a flat plane that plays a video from your library. Key out a green (or blue) backdrop so only the person is left.', () => ev('omni:stored-video-node-create', { select: true }), { name: 'New stored video node' }),
+          b('stored-reality-node', '▣', 'Stored reality', '—', 'Makes a StoredRealityNode: a whole course kept inside one small box. With nodes inside it or selected, Store keeps them in the box; Expand lays them out again. Many nodes cost one mesh while stored.', () => ev('omni:stored-reality-node-create', { select: true }), { name: 'New stored reality node' }),
           b('flash-node', '▥', 'Flashcards', '—', 'Makes a Flashcards node: a deck of cards in one node. Each side can hold text, a picture and a sound. Edit the cards, then Study: flip, got it, again.', () => ev('omni:flash-node-create', { select: true }), { name: 'New flashcards node' }),
           b('sticky-note', '❏', 'Sticky note', '—', 'Makes a small coloured sticky note in front of the camera. With a node selected it is stuck on that node: it follows the node, and keeps its place if you drag it. Edit it like any note.', () => ev('omni:sticky-note-create', { select: true, useSelected: true }), { name: 'New sticky note' }),
         b('claim-node', '⟐', 'Claim node', '—', 'Creates a ClaimNode (DimensionalScripting) in front of the camera: a claim that is true, false and undefined at once, judged at a scale you choose, with testimonies from people, bots, AI and sensors kept apart. Public, or sealed with a key.', () => ev('omni:claim-node-create', { select: true }), { name: 'New ClaimNode' }),

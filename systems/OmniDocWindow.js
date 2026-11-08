@@ -12,6 +12,7 @@ import { walkKeyAction, isTypingTarget } from '../utils/OmniWalkKeys.js'
 import { SERVICES } from '../utils/OmniExtraKinds.js'
 import * as WM from '../utils/OmniDocWindowModel.js'
 import { layoutPages, pickLayout, LAYOUTS } from '../utils/OmniDocPageLayouts.js'
+import * as J from '../utils/OmniSceneJson.js'
 
 export const STORE_KEY = 'omni:docwindows:v1'
 const send = (n, d) => { try { window.dispatchEvent(new CustomEvent(n, { detail: d })) } catch (_) { /* no window */ } }
@@ -31,9 +32,17 @@ export default class OmniDocWindow {
     // drop a window whose sheets are no longer in the scene (a reload that restored a different scene)
     setTimeout(() => { for (const w of [...this._w.values()]) if (!w.slots.every(id => this.omniNode?.getNodeData?.(id))) { this._w.delete(w.id) } this._save() }, 1500)
     this._akey = (e) => { const a = walkKeyAction(e, isTypingTarget(document.activeElement)); if (a && a.event === 'omni:docwindow-request') { e.preventDefault(); window.dispatchEvent(new CustomEvent(a.event, { detail: a.detail })) } }; document.addEventListener('keydown', this._akey)
+    // V278: PageUp / PageDown on a selected sheet of an arrangement move a whole set (Shift = one page at a time)
+    this._pkey = (e) => {
+      if (e.key !== 'PageUp' && e.key !== 'PageDown') return
+      if (e.ctrlKey || e.metaKey || e.altKey || isTypingTarget(document.activeElement)) return
+      const w = this.windowOf(this.omniNode?.getSelectedId?.()); if (!w) return
+      e.preventDefault(); e.stopPropagation()
+      if (e.shiftKey) this.flip(w.id, { dir: e.key === 'PageUp' ? -1 : 1 }).catch(() => {}); else this.pageSet(w.id, e.key === 'PageUp' ? -1 : 1)
+    }; document.addEventListener('keydown', this._pkey)
     SERVICES.docwindow = this
   }
-  destroy () { try { document.removeEventListener('keydown', this._akey) } catch (_) { /* gone */ } for (const t of this._busy.values()) t.kill(); this._busy.clear(); for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.docwindow === this) SERVICES.docwindow = null; this._inited = false }
+  destroy () { try { document.removeEventListener('keydown', this._akey); document.removeEventListener('keydown', this._pkey) } catch (_) { /* gone */ } this.clearSelection(); for (const t of this._busy.values()) t.kill(); this._busy.clear(); for (const [n, h] of this._bound) window.removeEventListener(n, h); this._bound = []; if (SERVICES.docwindow === this) SERVICES.docwindow = null; this._inited = false }
   onResize () {}
   get doc () { if (!SERVICES.doc) throw new Error('the doc module is not running'); return SERVICES.doc }
   /** V253: load windows from a scene file (replace = swap all; merge = add). The sheets themselves come with the nodes. */
@@ -67,6 +76,58 @@ export default class OmniDocWindow {
     })
   }
   get (id) { return this._w.get(id) ?? null }
+
+  // ── V278: whole sets, and the arrangement as one object ─────────────────────
+  /** PageDown / PageUp: the next / previous SET of pages (as many as the arrangement has sheets). { ok, start, count } */
+  pageSet (id, dir = 1) {
+    let w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }
+    w.pages = this._pagesOf(w); const plan = WM.pagePlan(w, dir)
+    if (!plan) return { ok: true, same: true, start: w.start, count: w.count, pages: w.pages }
+    const start = this.goto(id, plan.start); return { ok: true, start, count: w.count, pages: w.pages }
+  }
+  /** every sheet of a window outlined (the selection the settings act on) */
+  selectAll (id) {
+    const w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }
+    this.clearSelection(); this._sel = { id, rings: [] }
+    for (const nid of w.slots) { const m = this.omniNode.getMeshById(nid); if (!m) continue; const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.04, 1.04)), new THREE.LineBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.95, depthTest: false })); e.raycast = () => {}; e.renderOrder = 999; m.add(e); this._sel.rings.push(e) }
+    send('omni:docwindow-selection', { id, selected: true }); return { ok: true, count: w.slots.length }
+  }
+  clearSelection () { const s = this._sel; this._sel = null; if (!s) return false; for (const r of s.rings) { try { r.parent?.remove(r); r.geometry.dispose(); r.material.dispose() } catch (_) { /* gone */ } } send('omni:docwindow-selection', { id: s.id, selected: false }); return true }
+  isSelected (id) { return this._sel?.id === id }
+  /** delete the whole arrangement (every sheet and the window). The sheets are ordinary nodes, so Ctrl+Z of the scene and the scene file still apply. */
+  removeAll (id) {
+    const w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }
+    this.clearSelection(); const slots = w.slots.slice(); this.forget(id)
+    for (const nid of slots) send('omni:node-delete-request', { id: nid })
+    return { ok: true, removed: slots.length }
+  }
+  /** move the whole arrangement: by [dx,dy,dz], or so its centre is at `center` */
+  moveBy (id, d) {
+    const w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }
+    const v = Array.isArray(d) && d.length >= 3 ? d.slice(0, 3).map(Number) : null; if (!v || !v.every(Number.isFinite)) return { ok: false, error: 'a move needs three numbers' }
+    const lim = (n) => Math.max(-5000, Math.min(5000, n))
+    for (const nid of w.slots) { const m = this.omniNode.getMeshById(nid); if (!m) continue; m.position.set(lim(m.position.x + v[0]), lim(m.position.y + v[1]), lim(m.position.z + v[2])); if (m.userData?.restPosition) m.userData.restPosition.copy(m.position); const nd = this.omniNode.getNodeData?.(nid); if (nd) nd.position = m.position.toArray(); send('omni:node-updated', { id: nid, data: nd }) }
+    const c = (w.center ?? [0, 0, 0]).map((x, i) => lim(x + v[i])); this._w.set(id, { ...w, center: c }); this._save(); send('omni:force-save', {}); send('omni:docwindow-changed', { id, start: w.start }); return { ok: true, center: c }
+  }
+  moveTo (id, center) { const w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }; const c = Array.isArray(center) ? center.slice(0, 3).map(Number) : null; if (!c || c.length < 3 || !c.every(Number.isFinite)) return { ok: false, error: 'a place needs three numbers' }; const o = w.center ?? [0, 0, 0]; return this.moveBy(id, [c[0] - o[0], c[1] - o[1], c[2] - o[2]]) }
+  /** the arrangement in front of the camera */
+  moveToCamera (id, distance = 9) {
+    const cam = this.context?.camera; if (!cam) return { ok: false, error: 'no camera' }
+    const dir = new THREE.Vector3(); cam.getWorldDirection(dir); const q = cam.position.clone().addScaledVector(dir, distance); return this.moveTo(id, [q.x, q.y, q.z])
+  }
+  /** the arrangement as an .omni.json (its sheets and the window). path given: written into the app's file system; otherwise downloaded. Returns { ok, path | file }. */
+  saveFile (id, { name = '', path = '' } = {}) {
+    try {
+      const w = this._w.get(id); if (!w) return { ok: false, error: 'no window ' + id }
+      const scene = this.omniNode.exportScene(); const set = new Set(w.slots)
+      const sub = { nodes: scene.nodes.filter(n => set.has(n.id)), edges: scene.edges.filter(e => set.has(e.from) && set.has(e.to)) }
+      const nm = String(name || id).slice(0, 60)
+      const text = J.stringify(J.buildFile(sub, { name: nm, version: this.context?.version ?? this.context?.appVersion ?? 'V278', extras: { docwindows: [{ ...w }] } }))
+      if (path) { const fs = SERVICES.fs; if (!fs) return { ok: false, error: 'the file system is not running' }; let p = String(path); if (!p.endsWith(J.EXT)) p += J.EXT; fs.write(p, text); return { ok: true, path: p } }
+      const fn = J.fileName(nm); const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })); const a = document.createElement('a')
+      a.href = url; a.download = fn; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); return { ok: true, file: fn }
+    } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
+  }
   forget (id) { const had = this._w.delete(id); this._busy.get(id)?.kill(); this._busy.delete(id); this._save(); return had }
 
   _pose (w, slot, dims) {

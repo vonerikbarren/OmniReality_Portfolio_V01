@@ -38,15 +38,36 @@ export function runDocAction (act, id, arg = null) {
   if (!s) return { ok: false, text: 'The document system is not running.' }
   const d = s.getDoc(id); if (!d) return { ok: false, text: 'This node has no document.' }
   switch (act) {
-    case 'prev': case 'next': { const r = s.turn(id, act === 'prev' ? -1 : 1); return r.ok ? { ok: true, text: r.same ? (act === 'prev' ? 'This is the first page.' : 'This is the last page.') : `Page ${s.getDoc(id).page}.` } : { ok: false, text: r.error || 'Could not turn the page.' } }
+    case 'prev': case 'next': {
+      const dw = SERVICES.docwindow, win = dw?.windowOf?.(id)   // V278: inside an arrangement a page turn moves a whole set
+      if (win) { const r = dw.pageSet(win.id, act === 'prev' ? -1 : 1); if (!r.ok) return { ok: false, text: r.error }; return { ok: true, text: r.same ? (act === 'prev' ? 'This is the first set.' : 'This is the last set.') : `Pages ${r.start}-${r.start + r.count - 1}${r.pages ? ' of ' + r.pages : ''}.` } }
+      const r = s.turn(id, act === 'prev' ? -1 : 1); return r.ok ? { ok: true, text: r.same ? (act === 'prev' ? 'This is the first page.' : 'This is the last page.') : `Page ${s.getDoc(id).page}.` } : { ok: false, text: r.error || 'Could not turn the page.' } }
     case 'width': { const r = s.edit(id, 'width', (m) => setWidth(m, Number(arg)), 'width'); return r.ok ? { ok: true, text: `Width ${s.getDoc(id).width}.` } : { ok: false, text: r.error } }
     case 'spread': { const r = s.setSpread(id, String(arg)); return r.ok ? { ok: true, text: s.getDoc(id).spread === 'double' ? 'Two pages.' : 'One page.' } : { ok: false, text: r.error } }
     case 'zoom': { const r = s.setZoom(id, Number(arg)); return r.ok ? { ok: true, text: `Zoom ${s.getDoc(id).zoom}%.` } : { ok: false, text: r.error } }
+    case 'arr-all': case 'arr-clear': case 'arr-delete': case 'arr-save': case 'arr-move': case 'arr-front': {
+      const dw = SERVICES.docwindow, win = dw?.windowOf?.(id); if (!win) return { ok: false, text: 'This sheet is not part of an arrangement.' }
+      if (act === 'arr-all') { const r = dw.selectAll(win.id); return r.ok ? { ok: true, text: `Selected all ${r.count} sheets.` } : { ok: false, text: r.error } }
+      if (act === 'arr-clear') { dw.clearSelection(); return { ok: true, text: 'Selection cleared.' } }
+      if (!dw.isSelected(win.id)) return { ok: false, text: 'Press Select all first; these actions act on the whole selection.' }
+      if (act === 'arr-delete') { const r = dw.removeAll(win.id); return r.ok ? { ok: true, text: `Deleted ${r.removed} sheets.` } : { ok: false, text: r.error } }
+      if (act === 'arr-save') { const r = dw.saveFile(win.id, { name: win.id, path: typeof arg === 'string' ? arg.trim() : '' }); return r.ok ? { ok: true, text: r.path ? 'Saved to ' + r.path : 'Saved ' + r.file } : { ok: false, text: r.error } }
+      if (act === 'arr-front') { const r = dw.moveToCamera(win.id); return r.ok ? { ok: true, text: 'Moved in front of you.' } : { ok: false, text: r.error } }
+      const r = dw.moveBy(win.id, arg); return r.ok ? { ok: true, text: 'Moved.' } : { ok: false, text: r.error }
+    }
     case 'open': openPanel(); return { ok: true, text: 'Opening ⟐OmniDoc…' }
     default: return { ok: false, text: 'Unknown action.' }
   }
 }
 
+function arrangementHTML (id) {
+  const w = SERVICES.docwindow?.windowOf?.(id); if (!w) return ''
+  return `<div class="oidc-arr" data-testid="oidc-arr"><div class="oidc-note" style="margin:2px 0">Arrangement ${esc(w.id)}: ${w.count} sheets. Page up / Page down move ${w.count} pages at a time (Shift+Page down: one page).</div>
+    <div class="oidc-row"><button class="oi-btn-small" data-oidca="arr-all">Select all</button><button class="oi-btn-small" data-oidca="arr-clear">Clear</button><button class="oi-btn-small" data-oidca="arr-delete" title="Deletes every sheet of the arrangement">Delete all</button></div>
+    <div class="oidc-row"><input class="oidc-in" type="text" data-oidc-path placeholder="folder/name (blank: download)" style="flex:1 1 auto" aria-label="Where to save the arrangement"><button class="oi-btn-small" data-oidca="arr-save">Save</button></div>
+    <div class="oidc-row"><span class="oi-label">Move by</span><input class="oidc-in" type="number" step="1" value="0" data-oidc-mv="0" style="width:46px" aria-label="Move x"><input class="oidc-in" type="number" step="1" value="0" data-oidc-mv="1" style="width:46px" aria-label="Move y"><input class="oidc-in" type="number" step="1" value="0" data-oidc-mv="2" style="width:46px" aria-label="Move z"><button class="oi-btn-small" data-oidca="arr-move">Move</button><button class="oi-btn-small" data-oidca="arr-front" title="Put the whole arrangement in front of the camera">To me</button></div>
+  </div>`
+}
 export function docKindBlockHTML (data) {
   injectStyles(); bindLive()
   const d = svc()?.getDoc(data.id)
@@ -57,6 +78,7 @@ export function docKindBlockHTML (data) {
     <div class="oidc-row"><span class="oi-label">Pages</span><select class="oidc-in" data-oidc="spread" aria-label="One page or two pages" style="flex:1 1 auto"><option value="single"${d?.spread !== 'double' ? ' selected' : ''}>One page</option><option value="double"${d?.spread === 'double' ? ' selected' : ''}>Two pages</option>${arrangeGroupHTML()}</select> ${countSelectHTML('data-oidc-count')}</div>
     <div class="oidc-row"><span class="oi-label">Zoom %</span><input class="oidc-in" type="number" data-oidc="zoom" min="${ZOOM_MIN}" max="${ZOOM_MAX}" step="25" value="${d?.zoom ?? 100}" aria-label="Zoom percent"></div>
     <div class="oidc-row"><span class="oi-label">Width</span><input class="oidc-in" type="number" data-oidc="width" min="0.5" max="60" step="0.5" value="${d?.width ?? 4}" aria-label="Sheet width"></div>
+    ${arrangementHTML(data.id)}
     <div class="oidc-row"><button class="oi-btn-small" data-oidca="open">⚙ Open ⟐OmniDoc</button></div>
     <div class="oidc-msg" role="status" aria-live="polite" data-ref="oidc-msg"></div>
     <div class="oidc-note">A doc node shows a PDF, markdown, text, image or guide page as a flat sheet. It is drawn only as sharp as its distance needs, and not at all when it is off screen.</div>
@@ -69,7 +91,11 @@ export function wireDocKindBlock (root, data) {
   sec.dataset.wired = '1'
   sec.addEventListener('click', (e) => {
     const b = e.target.closest?.('[data-oidca]'); if (!b || b.disabled) return
-    say(sec, runDocAction(b.dataset.oidca, data.id)); setTimeout(() => refreshLive(sec), 0)
+    const a = b.dataset.oidca; let arg = null
+    if (a === 'arr-save') arg = sec.querySelector('[data-oidc-path]')?.value ?? ''
+    if (a === 'arr-move') arg = [0, 1, 2].map(i => Number(sec.querySelector(`[data-oidc-mv="${i}"]`)?.value))
+    if (a === 'arr-delete' && !(typeof window.confirm !== 'function' || window.confirm('Delete every sheet of this arrangement?'))) return
+    say(sec, runDocAction(a, data.id, arg)); setTimeout(() => refreshLive(sec), 0)
   })
   sec.addEventListener('change', (e) => {
     const el = e.target; const k = el.dataset?.oidc; if (!k) return

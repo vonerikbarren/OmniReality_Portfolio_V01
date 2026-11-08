@@ -188,7 +188,7 @@ export default class ToolTipMenu {
   /** true when another node's mesh is between the camera and this node's centre */
   _isOccluded (e, tmp, meshes) {
     e.mesh.getWorldPosition(tmp.v); tmp.d.copy(tmp.v).sub(tmp.c); const dist = tmp.d.length(); if (dist < 0.01) return false
-    tmp.ray.set(tmp.c, tmp.d.normalize()); tmp.ray.far = dist
+    tmp.ray.set(tmp.c, tmp.d.normalize()); tmp.ray.far = dist; tmp.ray.camera = this.ctx.camera   // V279: a text sprite in the way needs the camera to be raycast
     const others = meshes.filter(m => m !== e.mesh && m.visible !== false)
     const hits = tmp.ray.intersectObjects(others, false)
     for (const h of hits) { if (CULL.isBlocked(h.distance, dist, 0.05) && !this._isChildOf(h.object, e.mesh)) { e.blocker = h.object.userData?.nodeId ?? h.object.name ?? '?'; return true } }

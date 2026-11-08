@@ -5598,6 +5598,7 @@ export default class OmniInspector {
     // regular Mesh material types in MATERIALS — swapping it out breaks
     // Three.js's sprite renderer. See the matching guard in loadNode().
     if (mesh instanceof THREE.Sprite) return
+    if (mesh.material?.isShaderMaterial) return   // V277: a keyed video plane draws itself; a material swap would drop the key
 
     const MatClass = MATERIALS[typeName]
     if (!MatClass) return
