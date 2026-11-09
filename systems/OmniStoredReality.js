@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import * as M from '../utils/OmniStoredRealityModel.js'
 import { cellKey, parseKey, ROOM_SIZE } from '../utils/OmniVoxelGrid.js'
 import { KIND_STORED_REALITY, GEO_STORED_REALITY, KIND_VOXEL, SERVICES } from '../utils/OmniExtraKinds.js'
+import * as MBTA from '../data/OmniMbtaCourse.js'
 import { applyStoredRealityLook } from '../utils/OmniStoredRealityNodeMesh.js'
 
 const PIN_DISTANCE = 9, PERSIST_MS = 300
@@ -22,6 +23,7 @@ export default class OmniStoredReality {
     if (this._inited) return; this._inited = true
     const on = (n, fn) => { const h = (e) => fn(e.detail ?? {}, e); window.addEventListener(n, h); this._bound.push([n, h]) }
     on('omni:stored-reality-node-create', (d, e) => { const out = this.create(d); if (e.detail && typeof e.detail === 'object') e.detail.out = out })
+    on('omni:stored-reality-example', (d, e) => { const out = this.buildExample(d.name || 'mbta', d); if (e.detail && typeof e.detail === 'object') e.detail.out = out; send('omni:notify-info', { name: 'Stored reality', desc: out.ok ? (out.already ? 'The MBTA course is already in this scene.' : 'Made the MBTA course in front of you, stored in one box. Select the box and press Expand to walk it.') : out.error, holdMs: 5000 }) })
     on('omni:node-created', (d) => this._fixNode(d.node))
     this._syncAll(); SERVICES.storedreality = this
   }
@@ -107,6 +109,36 @@ export default class OmniStoredReality {
     const d = this._data(id); if (d) d.position = centre
     this._commit(id, M.sanitizeStoredReality({ ...s, room: cellKey(c.x, c.y, c.z), scale: Math.min(s.scale, ROOM_SIZE - 2) }), 'room')
     return { ok: true, room: cellKey(c.x, c.y, c.z) }
+  }
+
+  // ── examples ──
+  /** Build a whole course in the scene and keep it stored in ONE box (Expand lays it out). Today: 'mbta' (data/OmniMbtaCourse.js). Building it twice adds nothing. */
+  buildExample (name = 'mbta', o = {}) {
+    try {
+      if (String(name).toLowerCase() !== 'mbta') return { ok: false, error: 'Examples: mbta' }
+      if (this.isNode(MBTA.COURSE.id)) return { ok: true, nodeId: MBTA.COURSE.id, already: true }
+      const EP = SERVICES.epistemics; if (!EP) return { ok: false, error: 'The epistemics module is not running.' }
+      const clash = [...MBTA.NODES, ...MBTA.sourceNodes()].filter(n => this._data(n.id)).map(n => n.id); if (clash.length || this._data(MBTA.COURSE.id)) return { ok: false, error: 'Some ids of this course are already in the scene.' }
+      const anchor = this._positionFor(o); const made = []
+      const undo = () => { for (const id of made) send('omni:node-delete-request', { id }) }
+      const box = this.create({ id: MBTA.COURSE.id, name: MBTA.COURSE.name, summary: MBTA.COURSE.summary, scale: MBTA.COURSE.scale, position: anchor, select: false }); if (!box.ok) return box
+      made.push(MBTA.COURSE.id)
+      for (const n of MBTA.NODES) {
+        const r = EP.create({ id: n.id, layer: n.layer, text: n.text, source: n.source, note: n.note, position: MBTA.positionOf(n, anchor) })
+        if (!r.ok) { undo(); return { ok: false, error: r.error } }
+        made.push(n.id)
+      }
+      for (const l of MBTA.EDGES) EP._line(l.from, l.to, l.meaning)
+      const SRC = SERVICES.sources; const srcs = SRC ? MBTA.sourceNodes() : []   // V281: shared sources, cited by the nodes that rest on them
+      for (const sn of srcs) {
+        const r = SRC.create({ id: sn.id, ...sn.spec, position: MBTA.positionOf(sn, anchor), select: false })
+        if (!r.ok) { undo(); return { ok: false, error: r.error } }
+        made.push(sn.id)
+      }
+      for (const sn of srcs) for (const c of sn.citedBy) SRC.link(c, sn.id)
+      const st = this.store(MBTA.COURSE.id, { ids: [...MBTA.NODES.map(n => n.id), ...srcs.map(x => x.id)] }); if (!st.ok) { undo(); return st }
+      return { ok: true, nodeId: MBTA.COURSE.id, stored: st.stored }
+    } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
   }
 
   // ── create ──

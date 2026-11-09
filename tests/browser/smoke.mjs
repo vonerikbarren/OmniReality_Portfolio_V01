@@ -5,7 +5,7 @@ export default async function smoke (pg, errs) {
   const pre = []; const pcheck = (name, ok, detail = '') => pre.push({ name, ok: !!ok, detail: String(detail).slice(0, 220) })
   const look = await pg.evaluate(() => { const cs = getComputedStyle(document.getElementById('omni-boot')); return { bg: cs.getPropertyValue('--boot-bg').trim(), ink: cs.getPropertyValue('--boot-ink').trim(), overall: cs.getPropertyValue('--boot-overall').trim(), ver: document.getElementById('boot-version')?.textContent, gear: !!document.getElementById('omni-gear'), cap: document.getElementById('boot-caption')?.textContent || '' } })
   pcheck('opening screen: light by default (white, black ink, 68 percent)', look.bg === '#ffffff' && look.ink === '#000000' && look.overall === '0.68', JSON.stringify(look))
-  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V279' && look.gear, JSON.stringify(look))
+  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V283' && look.gear, JSON.stringify(look))
   pcheck('opening screen: a space is named', /space/i.test(look.cap), look.cap)
   await pg.click('#omni-gear'); await pg.selectOption('#og-bar', 'rainbow'); await pg.waitForTimeout(300)
   pcheck('gear: rainbow bar applies at once and is saved', await pg.evaluate(() => document.getElementById('boot-progress-bar').classList.contains('is-rainbow') && JSON.parse(localStorage.getItem('omni:gate-v1')).bar === 'rainbow'))
@@ -248,6 +248,108 @@ export default async function smoke (pg, errs) {
       const pr = PF.add({ name: 'Ada', kind: 'person' }); PF.log(pr.id, 'Met at the bridge'); check('profiler: add and log', PF.get(pr.id).met === 1 && PF.list('met at the bridge').length === 1)
       PF.open(); await wait(150); check('profiler panel shows the entry', !!document.querySelector('.opf.is-open') && document.querySelector('.opf').textContent.includes('Ada')); PF.close(); PF.remove(pr.id)
       check('profiler keeps a journal of nodes made', !!PF.get('journal')?.log.some(l => l.what.startsWith('Made en_')), JSON.stringify(PF.get('journal')?.log.slice(-2))) }
+    // V282: the LH and RH pads get a TUNNEL button (their view-only tunnels had none)
+    { const seen = {}; const hnd = (e) => { const d = e.detail ?? {}; if (d.id) seen[d.id] = !!d.visible }; window.addEventListener('omni:axinator-tunnel-visible', hnd)
+      for (const hand of ['lh', 'rh']) window.dispatchEvent(new CustomEvent('omni:pad-toggle', { detail: { hand, visible: true } })); await wait(1500)
+      for (const hand of ['lh', 'rh']) {
+        const el = document.getElementById('omni-pad-sat-' + hand + '-tunnel'); check(hand + ': a TUNNEL button on the pad', !!el && el.textContent.includes('TUNL') && el.getAttribute('aria-pressed') !== null)
+        const roles = ['release', 'speed', 'activate', 'settings', 'tunnel']; const rs = roles.map(r => document.getElementById('omni-pad-sat-' + hand + '-' + r)?.getBoundingClientRect())
+        const clear = rs.every(r => r && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight); let hit = ''
+        for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) if (rs[i] && rs[j] && rs[i].left < rs[j].right && rs[j].left < rs[i].right && rs[i].top < rs[j].bottom && rs[j].top < rs[i].bottom) hit += roles[i] + '/' + roles[j] + ' '
+        check(hand + ': the five buttons are on screen and do not touch', clear && !hit, hit || JSON.stringify(rs.map(r => r && [Math.round(r.left), Math.round(r.top)])))
+      }
+      check('the tunnels show while their pads are open', seen.lh === true && seen.rh === true, JSON.stringify(seen))
+      const lh = document.getElementById('omni-pad-sat-lh-tunnel'); lh.click(); await wait(500); check('LH tunnel button hides the LH tunnel', seen.lh === false && !lh.classList.contains('is-active'), JSON.stringify(seen))
+      lh.click(); await wait(500); check('and shows it again (lit)', seen.lh === true && lh.classList.contains('is-active'))
+      lh.click(); await wait(500)
+      await ok('command: toggle the RH tunnel', 'Omni Tunnel toggle hand(rh)'); await wait(500); check('RH tunnel hidden by the command', seen.rh === false, JSON.stringify(seen)); await bad('bad hand refused', 'Omni Tunnel toggle hand(nope)')
+      const rhb = document.getElementById('omni-pad-sat-rh-tunnel'); rhb.click(); await wait(500); rhb.click(); await wait(500); check('RH button works after the command', seen.rh === false, JSON.stringify(seen))
+      check('the pad Activate button still fires ammo, not the tunnel', !!document.getElementById('omni-pad-sat-lh-activate')?.textContent.includes('FIRE'))
+      check('omnihand and conscious keep four buttons', !document.getElementById('omni-pad-sat-omnihand-tunnel') && !document.getElementById('omni-pad-sat-conscious-tunnel') && !!document.getElementById('omni-pad-sat-omnihand-activate'))
+      for (const hand of ['lh', 'rh']) window.dispatchEvent(new CustomEvent('omni:pad-toggle', { detail: { hand, visible: false } })); await wait(800); window.removeEventListener('omni:axinator-tunnel-visible', hnd) }
+    // V283: the two OrbitTunnels, the panel, the ride (corkscrew round the tube wall) and the hand-over from one to the other
+    { const OT = SERVICES.orbitTunnels, sc = SERVICES.lineup?.context?.scene; check('orbit tunnel service', !!OT && !!sc)
+      const H = sc.getObjectByName('OmniOrbitTunnel:horizontal'), V = sc.getObjectByName('OmniOrbitTunnel:vertical'); check('both default OrbitTunnels are in the scene', !!H && !!V)
+      const tor = (g) => g?.children.find(c => c.geometry?.type === 'TorusGeometry')?.geometry.parameters
+      check('they sit as far out as the regular tunnels end', tor(H)?.radius === 8440 && tor(V)?.radius === 8440, JSON.stringify([tor(H), tor(V)]))
+      check('particles flow in each', !!H.getObjectByName('OmniOrbitParticles') && !!V.getObjectByName('OmniOrbitParticles'))
+      const p0 = H.getObjectByName('OmniOrbitParticles').geometry.attributes.position.array.slice(0, 3).join(); await wait(600)
+      check('the particles move', H.getObjectByName('OmniOrbitParticles').geometry.attributes.position.array.slice(0, 3).join() !== p0)
+      window.dispatchEvent(new CustomEvent('omni:orbit-tunnel-panel-toggle')); await wait(400); const pan = document.querySelector('.oot'); check('ribbon event opens the panel', pan?.classList.contains('is-open'))
+      check('the panel has Enter, Exit and the loops control', [...pan.querySelectorAll('button')].some(b => /^Enter horizontal/.test(b.textContent)) && [...pan.querySelectorAll('button')].some(b => b.textContent === 'Exit') && !!pan.querySelector('[data-key=loops]'))
+      const tabV = [...pan.querySelectorAll('.oot-tabs button')][1]; tabV.click(); await wait(200); check('the vertical tab offers Enter vertical and the turn control', [...pan.querySelectorAll('button')].some(b => /^Enter vertical/.test(b.textContent)) && !!pan.querySelector('[data-key=yaw]'))
+      pan.querySelector('[data-key="media.kind"]').value = 'image'; pan.querySelector('[data-key="media.kind"]').dispatchEvent(new Event('change')); await wait(200); check('media kind is saved in the preferences', OT.get('vertical').media.kind === 'none', 'no link yet, so it stays none')
+      await ok('command: scale the vertical tunnel', 'Omni OrbitTunnel set tunnel(vertical) key(tube) value(900)'); check('tube width applied to the mesh', tor(V).tube === 900 && OT.get('vertical').tube === 900, JSON.stringify(tor(V)))
+      await ok('command: wireframe off', 'Omni OrbitTunnel set tunnel(vertical) key(mode) value(solid)'); check('solid style applied', OT.get('vertical').mode === 'solid')
+      await bad('bad key refused', 'Omni OrbitTunnel set tunnel(vertical) key(nope) value(1)')
+      check('settings are saved as the user preferences', JSON.parse(localStorage.getItem('omni:orbittunnels:v1') || '{}')?.tunnels?.vertical?.tube === 900 || (await wait(500), JSON.parse(localStorage.getItem('omni:orbittunnels:v1') || '{}')?.tunnels?.vertical?.tube === 900))
+      OT.reset('vertical')
+      // ride: fast, one loop each, horizontal first then vertical, then back
+      OT.set('horizontal', { traversal: { speed: 40000, roll: 120 } }); OT.set('vertical', { traversal: { speed: 40000, roll: 120 } }); OT.setPrefs({ loops: 1 })
+      const home = cam.position.clone(); const log = []; const h = (e) => log.push(e.detail.state + ':' + e.detail.id); window.addEventListener('omni:orbit-tunnel-ride', h)
+      await ok('command: enter the horizontal tunnel', 'Omni OrbitTunnel enter tunnel(horizontal)'); check('riding', OT.state().riding && OT.state().id === 'horizontal')
+      let t = 0; while (OT.state().phase !== 'ride' && t++ < 80) await wait(100); check('flew to the wall', OT.state().phase === 'ride', JSON.stringify(OT.state()))
+      const sp = OT.get('horizontal'); await wait(300)
+      const dist = (() => { const p = cam.position; const th = Math.atan2(p.z, p.x); const c = [8440 * Math.cos(th), 0, 8440 * Math.sin(th)]; return Math.hypot(p.x - c[0], p.y - c[1], p.z - c[2]) })()
+      check('the camera rides inside the tube wall', Math.abs(dist - sp.tube * sp.traversal.inset) < 2, String(dist))
+      OT.pause(true); const a = cam.position.clone(); await wait(400); check('pause holds the camera', cam.position.distanceTo(a) < 0.01); OT.pause(false)
+      t = 0; while (!log.includes('next:vertical') && t++ < 150) await wait(100); check('after its loops the ride hands over to the vertical tunnel', log.includes('next:vertical'), log.join())
+      t = 0; while (OT.state().riding && t++ < 250) await wait(100); check('then it ends and flies back', !OT.state().riding && log.includes('exit:vertical') && cam.position.distanceTo(home) < 5, log.join() + ' ' + cam.position.distanceTo(home))
+      window.removeEventListener('omni:orbit-tunnel-ride', h)
+      OT.setPrefs({ enabled: { vertical: false } }); OT.enter('horizontal'); check('an unticked tunnel is skipped', OT.state().queue.join() === 'horizontal', OT.state().queue.join()); OT.exit(); t = 0; while (OT.state().riding && t++ < 80) await wait(100)
+      check('exit puts the camera back', !OT.state().riding && cam.position.distanceTo(home) < 5)
+      OT.setPrefs({ enabled: { vertical: true }, loops: 1 }); OT.reset('horizontal'); OT.reset('vertical'); window.dispatchEvent(new CustomEvent('omni:orbit-tunnel-panel-toggle')) }
+    // V281: SourceNode on its own: create, lift from a claim, reuse, edit, commands, inspector
+    { const SO = SERVICES.sources, EP = SERVICES.epistemics; check('source service', !!SO)   // (test nodes sit near the origin: selecting a node flies the camera to it, and the line captions test later needs it near)
+      EP.create({ id: 'sx_c1', layer: 'event', text: 'A thing happened.', source: 'Daily Example 2026-01-02', note: 'https://www.example.com/story?utm_source=x', position: [0, 0, -30] })
+      EP.create({ id: 'sx_c2', layer: 'observation', text: 'Someone saw it.', source: 'Daily Example', note: 'https://example.com/story', position: [4, 0, -30] })
+      await wait(300); const n0 = SO.list().length
+      const a = SO.liftFrom('sx_c1'); await wait(300); check('lift makes a source node and links it', a.ok && !a.merged && SO.isNode(a.sourceId) && EP.get('sx_c1').sourceId === a.sourceId && SO.list().length === n0 + 1, JSON.stringify(a))
+      check('the lift kept the address and the host', SO.get(a.sourceId).publisher === 'www.example.com' || SO.get(a.sourceId).publisher === 'example.com' || /example\.com/.test(SO.get(a.sourceId).publisher))
+      const b = SO.liftFrom('sx_c2'); await wait(200); check('a second claim with the same address REUSES it', b.ok && b.merged === true && b.sourceId === a.sourceId && SO.list().length === n0 + 1 && SO.citedBy(a.sourceId).length === 2, JSON.stringify(b))
+      check('lifting again changes nothing', SO.liftFrom('sx_c1').already === true)
+      SO.link('sx_c1', a.sourceId, { page: 'p. 4', quote: 'It happened.' }); check('cite page and quote are kept on the claim', EP.get('sx_c1').cite.page === 'p. 4' && EP.get('sx_c1').cite.quote === 'It happened.')
+      SO.set(a.sourceId, { title: 'Daily Example: the story', trust: 0.9, proximity: 'primary', url: 'http://not-https.example' }); const sv = SO.get(a.sourceId); check('edits are sanitized (http dropped, trust kept)', sv.trust === 0.9 && sv.url === '' && sv.title.startsWith('Daily Example'))
+      check('the claims\' short label follows the title', EP.get('sx_c2').source === 'Daily Example: the story')
+      SO.set(a.sourceId, { url: 'https://example.com/story' })
+      // inspector
+      on.selectById(a.sourceId); await wait(500); const secs = document.querySelector('#oi-custom-src'); check('inspector shows the source block', !!secs && secs.textContent.includes('cited by') && !!secs.querySelector('[data-oisrc="trust"]'))
+      on.selectById('sx_c1'); await wait(500); check('the claim\'s inspector has a Source section', !!document.querySelector('#oi-custom-epi [data-oiep-src]') && !!document.querySelector('#oi-custom-epi [data-oiepa-act="unlink"]'))
+      // commands
+      await ok('command: create', 'Omni Source create title(Plain Report) url(https://example.org/r) kind(report) trust(0.7) proximity(primary) id(sx_s2)'); await wait(300); check('command made it', SO.isNode('sx_s2') && SO.get('sx_s2').kind === 'report' && SO.get('sx_s2').trust === 0.7)
+      await ok('command: cite', 'Omni Source cite claim(sx_c2) source(sx_s2) page(9)'); check('command linked it', EP.get('sx_c2').sourceId === 'sx_s2' && EP.get('sx_c2').cite.page === '9' && SO.citedBy(a.sourceId).length === 1)
+      await ok('command: status', 'Omni Source status id(sx_s2) way(moved)'); check('status set', SO.get('sx_s2').status === 'moved'); await bad('bad status refused', 'Omni Source status id(sx_s2) way(gone)')
+      await ok('command: recheck', 'Omni Source recheck id(sx_s2)'); check('checked today', SO.get('sx_s2').accessed === new Date().toISOString().slice(0, 10))
+      await ok('command: report', 'Omni Source report'); SO.unlink('sx_c1'); check('unlink clears the pointer and the line', EP.get('sx_c1').sourceId === '' && !on.exportScene().edges.some(e => e.from === 'sx_c1' && e.to === a.sourceId))
+      // duplicates and merge
+      SO.create({ id: 'sx_dup', title: 'Plain Report', publisher: 'example.org', url: 'https://www.example.org/r/' }); await wait(300); check('merge folds a duplicate away', SO.mergeDuplicates() === 1 && !SO.isNode('sx_dup'))
+      // survives save/restore of the scene and a StoredReality box
+      const sc = on.exportScene(); check('scene export keeps the source data', sc.nodes.some(nn => nn.id === 'sx_s2' && nn.source?.kind === 'report'))
+      for (const id of ['sx_c1', 'sx_c2', 'sx_s2', a.sourceId]) window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id } })); await wait(300); check('cleanup', !SO.isNode('sx_s2')) }
+    // V280: the MBTA course lives inside one StoredRealityNode
+    { const SR = SERVICES.storedreality, EP = SERVICES.epistemics; const n0 = on.getAllNodes().length
+      const ev = { detail: { name: 'mbta' } }; window.dispatchEvent(new CustomEvent('omni:stored-reality-example', ev)); await wait(600)
+      check('the MBTA course is built', ev.detail.out?.ok && ev.detail.out.stored === 52, JSON.stringify(ev.detail.out))
+      check('stored: only the box is in the scene', SR.isNode('mbta_course') && on.getAllNodes().length === n0 + 1 && SR.info('mbta_course').count === 52 && SR.info('mbta_course').edges === 59, JSON.stringify(SR.info('mbta_course')))
+      check('the box shows what is inside', SR.info('mbta_course').labels.length > 0 && on.getMeshById('mbta_course').userData.srv.pts.visible === true)
+      const ex = SR.expand('mbta_course'); await wait(900)
+      check('expand shows the reality: 31 claims and 21 sources', ex.ok && ex.expanded === 52 && on.getAllNodes().length === n0 + 1 + 52, JSON.stringify(ex))
+      const ids = EP.list().filter(i => i.startsWith('mbta_')); check('they are epistemics nodes with their sources', ids.length === 31 && EP.get('mbta_r4').layer === 'documentary' && /NTSB/.test(EP.get('mbta_r4').source) && /^https:/.test(EP.get('mbta_r4').note))
+      check('the lines came back with their meanings', on.exportScene().edges.filter(e => e.from.startsWith('mbta_') && e.to.startsWith('mbta_')).length === 59)
+      const mr = on.getMeshById('mbta_r1'), mo = on.getMeshById('mbta_o1'); check('the lanes are laid out in space', !!mr && !!mo && Math.abs(mr.position.z - mo.position.z - (-12)) < 0.01, mr && mo ? mr.position.z + ' ' + mo.position.z : 'missing')
+      check('building it twice adds nothing', SR.buildExample('mbta').already === true)
+      // V281: the course cites shared SourceNodes
+      { const SO = SERVICES.sources; const srcs = SO.list().filter(i => i.startsWith('mbta_src'))
+        check('21 source nodes, each with an https address and a reason for its trust', srcs.length === 21 && srcs.every(i => /^https:/.test(SO.get(i).url) && SO.get(i).trustWhy.length > 0), srcs.length + '')
+        check('every claim with an address cites one source, and the pointer matches the label side', ids.filter(i => i !== 'mbta_ov').every(i => SO.isNode(EP.get(i).sourceId)) && EP.get('mbta_ov').sourceId === '')
+        check('the NTSB report is one node cited by its claim', SO.get(EP.get('mbta_r4').sourceId).publisher === 'NTSB' && SO.citedBy(EP.get('mbta_r4').sourceId).includes('mbta_r4'))
+        check('a source cited by several claims is ONE node', SO.citedBy(EP.get('mbta_r1').sourceId).length === 2 && EP.get('mbta_r1').sourceId === EP.get('mbta_r2').sourceId)
+        const cl = on.exportScene().edges.filter(e => EP.isNode(e.from) && SO.isNode(e.to)); check('Cites lines run claim to source', cl.length === 30 && on.getEdgeStyle(cl[0].from, cl[0].to)?.meaning === 'cites')
+        check('support is derived from the cited source', SO.support('mbta_r4').support > 0.9 && SO.support('mbta_g5').support < 0.6, JSON.stringify([SO.support('mbta_r4'), SO.support('mbta_g5')]))
+        check('the source node has a mesh and a look', !!on.getMeshById(srcs[0]) && on.getMeshById(srcs[0]).userData.extraKind.kind === 'sourceNode')
+        SO.markStatus(EP.get('mbta_r4').sourceId, 'dead'); const rep = SO.report('2026-11-08'); check('a dead source shows in the report with its claim', rep.problems.some(p => p.claims.includes('mbta_r4') && p.flags.includes('dead')), JSON.stringify(rep.problems.slice(0, 2))); SO.markStatus(EP.get('mbta_r4').sourceId, 'live') }
+      const st = SR.store('mbta_course'); await wait(600); check('stored again, still 52', st.ok && st.stored === 52 && SR.info('mbta_course').count === 52, JSON.stringify(st))
+      window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'mbta_course' } })); await wait(300) }
     // V279: the N picker makes a voxel room and a dimensional text node
     { const P = document.querySelector('.omni-draw-mode-picker'); const modes = [...document.querySelectorAll('.omni-draw-mode-picker [data-mode]')].map(b => b.dataset.mode); check('picker lists voxel, dimensional text, note, edge node', ['voxel', 'dimtext', 'note', 'edgenode', 'storedvideo', 'storedreality'].every(m => modes.includes(m)), modes.join())
       const v0 = on.getAllNodes().filter(d => d.nodeKind === 'voxelNode').length; document.querySelector('.omni-draw-mode-picker [data-mode="voxel"]')?.click(); await wait(500); check('picker: voxel makes a room node', on.getAllNodes().filter(d => d.nodeKind === 'voxelNode').length > v0)

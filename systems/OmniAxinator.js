@@ -70,6 +70,7 @@
  * Events consumed (window):
  *   omni:axinator-tunnel-visible-set { id, visible }   -> manual pin
  *   omni:hand-activate { hand }   -> V165 Activation: toggles that hand's tunnel
+ *   omni:hand-tunnel-toggle { hand } -> V282: toggles that hand's tunnel whatever its kind (lh / rh view-only tunnels too)
  *        (visible -> explicit OFF; hidden -> explicit ON = pin). Pad-follow stays the
  *        default when Activation is never pressed.
  *   omni:axinator-list-request                         -> omni:axinator-list
@@ -354,6 +355,12 @@ export default class OmniAxinator {
       // event (their ✦ fires ammo, systems/OmniHandAmmo.js) and their tunnels are view only.
       this._tunnels.forEach(t => { if (t.steppable && t.def.padHand === hand) this.activateTunnel(t.id) })
     }
+    // V282: the TUNNEL button of every hand (lh / rh have no other tunnel control; Activation fires their ammo): show / hide that hand's tunnel, steppable or view only
+    this._onHandTunnelToggle = (e) => {
+      const hand = e.detail?.hand
+      if (!hand) return
+      this._tunnels.forEach(t => { if (t.def.padHand === hand) this.activateTunnel(t.id) })
+    }
     // V163 ⟐OmniHands: durations / stagger are read from utils/OmniHandsSettings.js
     // at use time (nothing to do here); the clock hour needs the tunnel re-aimed.
     this._onHandSetting = (e) => {
@@ -399,6 +406,7 @@ export default class OmniAxinator {
     window.addEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     if (this.opts.padSource) {
       window.addEventListener('omni:hand-activate', this._onHandActivate)
+      window.addEventListener('omni:hand-tunnel-toggle', this._onHandTunnelToggle)   // V282
       window.addEventListener('omni:pad-toggle', this._onPadToggle)
       window.addEventListener('omni:pads-global', this._onPadsGlobal)
       window.addEventListener('omni:pad-state', this._onPadState)
@@ -427,6 +435,7 @@ export default class OmniAxinator {
     window.removeEventListener('omni:axinator-tunnel-visible-set', this._onVisibleSet)
     window.removeEventListener('omni:axinator-list-request', this._onListRequest)
     window.removeEventListener('omni:hand-activate', this._onHandActivate)
+    window.removeEventListener('omni:hand-tunnel-toggle', this._onHandTunnelToggle)   // V282
     window.removeEventListener(HANDS_CHANGE_EVENT, this._onHandSetting)
     window.removeEventListener('omni:pad-toggle', this._onPadToggle)
     window.removeEventListener('omni:pads-global', this._onPadsGlobal)

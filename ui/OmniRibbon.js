@@ -91,7 +91,7 @@ export const handDividerBetween = (prev, cur) => !!prev && (prev.hand ?? null) !
 export const RIBBON_LAYOUT = {
   create:  { id: 'create',  label: 'Create',  icon: '✚', tip: 'Create tab: draw nodes and make special and media nodes', groups: [
     ['Draw', ['draw', 'draw-static', 'draw-dynamic', 'draw-behavior']],
-    ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'sticky-note', 'flash-node', 'rhythm-node', 'epistemics-node', 'stored-video-node', 'stored-reality-node', 'edge-node', 'node-order', 'floor-panels', 'voxel-rooms']],
+    ['Nodes', ['path-node', 'terminal-shell', 'note-node', 'sticky-note', 'flash-node', 'rhythm-node', 'epistemics-node', 'stored-video-node', 'stored-reality-node', 'edge-node', 'source-node', 'node-order', 'floor-panels', 'voxel-rooms']],
     ['Media nodes', ['sound-node', 'music-node', 'song-node', 'mix-node', 'doc-node', 'poly-node']],
     ['Time and logic', ['time-node', 'time-pad', 'claim-node']] ] },
   tools:   { id: 'tools',   label: 'Tools',   icon: '⬢', tip: 'Tools tab: code, scanning, dimensions, studios and editors', groups: [
@@ -183,6 +183,7 @@ function buildTabs () {
           b('transform-bar', '⇄', 'Transform bar', '—', 'Opens a small bar that follows the selected node: Move, Rotate or Scale it with exact numbers. Scale keeps the shape by default (all three axes together). Has Undo and Reset.', () => ev('omni:transform-bar-request', { action: 'toggle' }), { name: 'Transform bar' }),
           b('rhythm-node', '♩', 'Rhythm', '—', 'Makes a Rhythm node: a beat source. Every beat can pulse, bounce, spin or flash any node you bind to it. With a node selected it is bound to that node and started.', () => ev('omni:rhythm-node-create', { select: true, bindSelected: true, start: true }), { name: 'New rhythm node' }),
           b('epistemics-node', '◉', 'Epistemics', '—', 'Makes an Epistemics node: one step in how a thing gets passed down (event, observation, memory, rumour, gossip, narrative, record, absence, what-if). With one selected, makes the NEXT layer from it. Never says what is true: it shows what was kept and lost.', () => ev('omni:epistemics-node-create', { select: true, fromSelected: true }), { name: 'New epistemics node' }),
+          b('source-node', '❡', 'Source node', '—', 'Makes a SourceNode: where a claim came from, kept once so many claims can cite it. With an Epistemics node selected it lifts that node\'s source label and address into a source (or reuses a matching one) and links it with a Cites line. Needs an https address; it is never fetched.', () => ev('omni:source-node-create', { fromSelected: true, select: true }), { name: 'New source node' }),
           b('edge-node', '⟷', 'Edge node', '—', 'Makes an EdgeNode on a line between two nodes (select one end first): it says how you travel that line. A line you ride, a tunnel you go through, a torus you loop or an orbit you circle, with control points that bend the route. The Presenter rides it.', () => ev('omni:edgenode-create', { select: true }), { name: 'New edge node' }),
           b('stored-video-node', '▭', 'Stored video', '—', 'Makes a StoredVideoNode: a flat plane that plays a video from your library. Key out a green (or blue) backdrop so only the person is left.', () => ev('omni:stored-video-node-create', { select: true }), { name: 'New stored video node' }),
           b('stored-reality-node', '▣', 'Stored reality', '—', 'Makes a StoredRealityNode: a whole course kept inside one small box. With nodes inside it or selected, Store keeps them in the box; Expand lays them out again. Many nodes cost one mesh while stored.', () => ev('omni:stored-reality-node-create', { select: true }), { name: 'New stored reality node' }),
@@ -276,6 +277,7 @@ function buildTabs () {
           b('perspectives', EYE_GLYPH, 'Perspectives', '—', 'PLANNED. Will list the dimensions (perspectives) of the product the ⟐OmniHand selects, on the ⟐ConsciousHand. Not built yet: the button only tells you so.', () => note('Perspectives', 'ConsciousHand lists the dimensions of the product OmniHand selects (planned)'), { name: 'Perspectives (planned)' }),
           b('spaces', '▫', 'Spaces', '—', 'Opens ⟐Spaces: click an empty slot to save the camera position, a saved slot (⌖) to fly back to it.', nav('⟐Spaces')),
           b('times', '◷', 'Times', '—', 'Opens the ⟐Times indexed panel.', nav('⟐Times')),
+          b('course-mbta', '▣', 'MBTA course', '—', 'Builds the first course, Boston\'s MBTA subway (old trains, the problems they caused, why newer trains were bought), kept in one Stored reality box in front of you. Select the box and press Expand to walk it.', () => ev('omni:stored-reality-example', { name: 'mbta' }), { name: 'MBTA course' }),
           b('products', '▣', 'Products', '—', 'Opens the ⟐Products indexed panel.', nav('⟐Products')),
         ] },
         { caption: 'Axes', btns: [
@@ -349,6 +351,9 @@ function buildTabs () {
         { caption: 'Fire & tunnels', btns: [
           b('fire-lh', '✦', 'LH fire', '—', "Opens ⟐OmniHands on the ⟐LogicalHand: element kind, chain, Fire distance, max alive for the pad's centre Fire button.", nav('⟐LogicalHand'), { name: 'LH Fire distance', hand: 'lh' }),
           b('fire-rh', '✦', 'RH fire', '—', "Opens ⟐OmniHands on the ⟐CreativeHand: payloads, Fire distance, max alive for the pad's centre Fire button.", nav('⟐CreativeHand'), { name: 'RH Fire distance', hand: 'rh' }),
+          b('tunnel-lh', 'Λ', 'LH tunnel', '—', "Shows or hides the LogicalHand's tunnel (the Λ line, 7 to 1 o'clock). It is view only: its pad moves the camera. The same as the ◎ button on the LH pad.", () => ev('omni:hand-tunnel-toggle', { hand: 'lh' }), { name: 'LH tunnel', hand: 'lh', pressed: (s) => !!s.tunnels?.lh }),
+          b('tunnel-rh', 'Ψ', 'RH tunnel', '—', "Shows or hides the CreativeHand's tunnel (the Ψ line, 4 to 10 o'clock). It is view only: its pad moves the camera. The same as the ◎ button on the RH pad.", () => ev('omni:hand-tunnel-toggle', { hand: 'rh' }), { name: 'RH tunnel', hand: 'rh', pressed: (s) => !!s.tunnels?.rh }),
+          b('orbit-tunnel', '◯', 'OrbitTunnel', '—', 'Opens the OrbitTunnel panel: the horizontal and vertical torus tunnels round the whole reality, at the far end of the regular tunnels. Style (wireframe / image / video), size, particles and speed, Enter / Exit, and the orbitTraversal ride round the inside of the tube.', () => ev('omni:orbit-tunnel-panel-toggle')),
           b('hand-tunnels', '◌', 'Tunnels', '—', 'Tunnels follow the pads (shared by all four hands).', (s) => ev('omni:dimension-axes-visible-set', { visible: !s.follow }), { name: 'Tunnels follow pads', pressed: (s) => s.follow }),
           b('hand-axinator', '⇋', 'Axinator', '—', 'Opens the OmniAxinator panel: pin tunnels, list their nodes.', nav('⟐OmniAxinator'), { name: 'OmniAxinator' }),
         ] },
@@ -493,6 +498,7 @@ export default class OmniRibbon {
     this.state = {
       minimap: false, tray: false, banner: HandBanner.isVisible(), bannerBottom: HandBanner.isBottomVisible(), bannerMixed: HandBanner.getPairState('top').mixed, bannerBottomMixed: HandBanner.getPairState('bottom').mixed, handShown: HandBanner.getHandStates(), follow: true,
       pads: { lh: false, rh: false, omnihand: false, conscious: false },
+      tunnels: { lh: false, rh: false, omnihand: false, conscious: false },   // V282: lit state of each hand's tunnel
       meter: false, pointing: false,
       terminal: TerminalShells.isOn(),
       timeline: { playing: PrimaryTime.isPlaying() },
@@ -642,6 +648,8 @@ export default class OmniRibbon {
     on('omni:hands-bottom-state', d => { st.bannerBottom = !!d.visible; st.bannerBottomMixed = !!d.mixed })
     on('omni:hand-visible-state', d => { if (d.hand) st.handShown = { ...st.handShown, [d.hand]: !!d.visible } })
     on('omni:dimension-axes-visible', d => { st.follow = !!d.visible })
+    on('omni:axinator-tunnel-visible', d => { if (d.id in st.tunnels) st.tunnels = { ...st.tunnels, [d.id]: !!d.visible } })   // V282
+    on('omni:axinator-list', d => { for (const t of d.tunnels ?? []) if (t.id in st.tunnels) st.tunnels = { ...st.tunnels, [t.id]: !!t.visible } })
     on('omni:pad-state', d => { if (d.hand in st.pads) st.pads[d.hand] = !!d.visible })
     on(TerminalShells.STATE_EVENT, d => { st.terminal = !!d.on })   // V192
     on('omni:meter-state', d => { st.meter = !!d.open })

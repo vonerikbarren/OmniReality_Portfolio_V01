@@ -150,6 +150,29 @@ export function registerOmniBuiltins () {
       if (call.props.value === undefined) throw new Error('value(...) is needed')
       const v = Hands.setHandSetting(h, k, call.props.value); return `${h.toUpperCase()} ${k} = ${v}` } })
 
+  // ── Hand tunnels (V282) ──
+  registerOmni('Tunnel', 'toggle', { keywordSummary: 'show or hide a hand\'s tunnel (LH Λ, RH Ψ, OmniHand, ConsciousHand)', summary: 'Show / hide a hand\'s tunnel: Omni Tunnel toggle hand(lh|rh|omnihand|conscious)   (the same as the ◎ button on the pad)', props: { hand: 'lh | rh | omnihand | conscious' },
+    run (call) {
+      const raw = String(call.props.hand ?? call.arg ?? call.words?.[0] ?? '').toLowerCase().replace(/[^a-z]/g, ''); const h = { lh: 'lh', left: 'lh', logical: 'lh', rh: 'rh', right: 'rh', creative: 'rh', conscious: 'conscious', omnihand: 'omnihand', omni: 'omnihand' }[raw]
+      if (!h) throw new Error('hand(...) is one of: lh, rh, omnihand, conscious')
+      window.dispatchEvent(new CustomEvent('omni:hand-tunnel-toggle', { detail: { hand: h } }))
+      return `${h.toUpperCase()} tunnel toggled`
+    } })
+  // ── OrbitTunnel (V283) ──
+  const orbit = () => { if (!SERVICES.orbitTunnels) throw new Error('the OrbitTunnels are not running'); return SERVICES.orbitTunnels }
+  const orbitId = (call) => { const r = String(call.props.tunnel ?? call.arg ?? call.words?.[0] ?? 'horizontal').toLowerCase(); return r.startsWith('v') ? 'vertical' : 'horizontal' }
+  registerOmni('OrbitTunnel', 'enter', { keywordSummary: 'ride round the inside of an OrbitTunnel', summary: 'Enter an OrbitTunnel: Omni OrbitTunnel enter [tunnel(horizontal|vertical)]', props: { tunnel: 'horizontal | vertical (default horizontal)' }, run (call) { const r = orbit().enter(orbitId(call)); if (!r.ok) throw new Error(r.error); return `Riding the ${r.id} OrbitTunnel` } })
+  registerOmni('OrbitTunnel', 'exit', { keywordSummary: 'leave the OrbitTunnel ride', summary: 'Leave the ride: Omni OrbitTunnel exit', props: {}, run () { return orbit().exit() ? 'Leaving the OrbitTunnel' : 'You are not in an OrbitTunnel' } })
+  registerOmni('OrbitTunnel', 'open', { keywordSummary: 'open the OrbitTunnel panel', summary: 'Open the OrbitTunnel panel: Omni OrbitTunnel open', props: {}, run () { window.dispatchEvent(new CustomEvent('omni:orbit-tunnel-panel-toggle')); return 'OrbitTunnel panel toggled' } })
+  registerOmni('OrbitTunnel', 'set', { keywordSummary: 'change an OrbitTunnel setting', summary: 'Change a setting: Omni OrbitTunnel set tunnel(horizontal|vertical) key(radius|tube|opacity|speed|roll|particleSpeed|mode|visible|loops) value(...)', props: { tunnel: 'horizontal | vertical', key: 'radius | tube | opacity | speed | roll | particleSpeed | mode | visible | loops', value: 'the new value' },
+    run (call) {
+      const id = orbitId(call); const k = String(call.props.key ?? ''); const raw = call.props.value; if (raw === undefined) throw new Error('value(...) is needed')
+      const n = Number(raw); const flag = /^(true|on|yes|1)$/i.test(String(raw))
+      const map = { radius: { radius: n }, tube: { tube: n }, opacity: { opacity: n }, speed: { traversal: { speed: n } }, roll: { traversal: { roll: n } }, particlespeed: { particles: { speed: n } }, mode: { mode: String(raw) === 'solid' ? 'solid' : 'wire' }, visible: { visible: flag } }
+      if (k.toLowerCase() === 'loops') { orbit().setPrefs({ loops: n }); return `loops = ${orbit().prefs().loops}` }
+      const patch = map[k.toLowerCase()]; if (!patch) throw new Error('key(...) is one of: radius, tube, opacity, speed, roll, particleSpeed, mode, visible, loops')
+      orbit().set(id, patch); return `${id} ${k} = ${raw}`
+    } })
   // ── Orb (V221, V234: every hand has an orb; summon puts one in the scene) ──
   const ORB_HANDS = { lh: 'lh', left: 'lh', rh: 'rh', right: 'rh', conscious: 'conscious', omnihand: 'omnihand', omni: 'omnihand' }
   const orbHand = (call) => { const raw = String(call.props.hand ?? 'lh').toLowerCase().replace(/[^a-z]/g, ''); const h = ORB_HANDS[raw]; if (!h) throw new Error('hand(...) is one of: lh, rh, conscious, omnihand'); return h }
@@ -454,6 +477,20 @@ export function registerOmniBuiltins () {
   registerOmni('EdgeNode', 'ride', { summary: 'Fly the camera along it: Omni EdgeNode ride id(node) [back(true)]   (Omni EdgeNode stop ends it)', props: { id: 'the edge node', back: 'true = from the second node to the first' },
     async run (call, ctx) { const id = nid(call, ctx, 'edge'); const r = await en().ride(id, { reverse: call.props.back === true || call.props.back === 'true' }); if (!r.ok) throw new Error(r.error); return r.arrived ? 'Arrived' : 'Stopped' } })
   registerOmni('EdgeNode', 'stop', { summary: 'Stop a ride: Omni EdgeNode stop', props: {}, run () { en().stop(); return 'Stopped' } })
+  // ── SourceNode (V281) ──
+  const sn = () => { if (!SERVICES.sources) throw new Error('the source module is not running'); return SERVICES.sources }
+  registerOmni('Source', 'create', { keywordSummary: 'where a claim came from, kept once so many claims can cite it (a SourceNode)', summary: 'Make a source node: Omni Source create title(...) [url(https://...)] [kind(report|news|filing|dataset|interview|archive|social|other)] [publisher(...)] [published(2022-12-19)] [trust(0.8)] [proximity(primary|secondary|tertiary)] [id(name)]   (no title = lift the selected claim\'s own source label)', props: { title: 'what it is', url: 'https address', kind: 'report | news | filing | ...', publisher: 'who published it', author: 'who wrote it', published: 'YYYY-MM-DD', trust: '0..1', proximity: 'primary | secondary | tertiary', id: 'a name' },
+    run (call) { const p = call.props; const hasAny = ['title', 'url', 'kind', 'publisher', 'author', 'published', 'trust', 'proximity'].some(k => p[k] !== undefined) || call.words?.length
+      const r = bad(sn().request({ ...(hasAny ? { title: p.title ?? (call.words ?? []).join(' '), url: p.url, kind: p.kind, publisher: p.publisher, author: p.author, published: p.published, trust: p.trust !== undefined ? Number(p.trust) : undefined, proximity: p.proximity, accessed: new Date().toISOString().slice(0, 10) } : { fromSelected: true }), id: p.id, select: true })); return (r.merged ? 'Linked to ' : 'Made ') + (r.nodeId || r.sourceId) } })
+  registerOmni('Source', 'cite', { summary: 'Make a claim cite a source: Omni Source cite claim(id) source(id) [page(12)] [quote(...)]   (no ids = the selected claim, lifted into a source)', props: { claim: 'an epistemics node', source: 'a source node', page: 'where in it', quote: 'the words' },
+    run (call, ctx) { const p = call.props; const claim = p.claim ?? nodes(ctx).getSelectedId?.(); if (!claim) throw new Error('give claim(id) or select a claim'); const cite = (p.page !== undefined || p.quote !== undefined) ? { page: p.page, quote: p.quote } : undefined
+      if (!p.source) { const r = bad(sn().liftFrom(String(claim), { cite })); return 'Cited ' + r.sourceId } bad(sn().link(String(claim), String(p.source), cite)); return 'Cited ' + p.source } })
+  registerOmni('Source', 'status', { summary: 'Mark a source: Omni Source status id(node) way(live|moved|dead|retracted|paywalled)   (Omni Source recheck id(node) sets Checked to today)', props: { id: 'the source node', way: 'the status' },
+    run (call, ctx) { const id = nid(call, ctx, 'source'); bad(sn().markStatus(id, String(call.props.way ?? call.props.status ?? call.words?.[1] ?? ''))); return id + ' is ' + sn().get(id).status } })
+  registerOmni('Source', 'recheck', { summary: 'Set a source\'s Checked day to today: Omni Source recheck id(node)', props: { id: 'the source node' }, run (call, ctx) { const id = nid(call, ctx, 'source'); bad(sn().recheck(id)); return id + ' checked ' + sn().get(id).accessed } })
+  registerOmni('Source', 'report', { summary: 'What needs a look: dead, retracted or old sources and the claims resting on them; Omni Source report', props: {},
+    run () { const r = sn().report(); const bits = [r.sources.length + ' source(s)']; if (r.problems.length) bits.push(r.problems.map(x => x.title + ' (' + x.flags.join(', ') + '; ' + x.claims.length + ' claim(s))').join('; ')); if (r.uncited.length) bits.push(r.uncited.length + ' event/documentary node(s) cite no source node'); return bits.join('. ') } })
+  registerOmni('Source', 'merge', { summary: 'Fold duplicate sources into one: Omni Source merge', props: {}, run () { return sn().mergeDuplicates() + ' duplicate(s) merged' } })
   registerOmni('StoredVideo', 'create', { keywordSummary: 'a library video on a flat plane with a chroma key (green screen)', summary: 'Make a stored video node: Omni StoredVideo create [video(libraryId)] [id(name)] [width(6)]', props: { video: 'a video id from the library', id: 'a name', width: 'width in units' },
     run (call) { const p = call.props; const r = bad(sv().create({ videoId: p.video, id: p.id, width: p.width !== undefined ? Number(p.width) : undefined, select: true })); return 'Made ' + r.nodeId } })
   registerOmni('StoredVideo', 'key', { summary: 'Set the key: Omni StoredVideo key id(node) [color(green|blue|magenta|#rrggbb)] [similarity(0.4)] [smoothness(0.08)] [spill(0.1)] [off(true)]', props: { id: 'the node', color: 'key colour', similarity: '0..1', smoothness: '0..1', spill: '0..1', off: 'true turns the key off' },
@@ -468,6 +505,8 @@ export function registerOmniBuiltins () {
     run (call, ctx) { const r = bad(sr().expand(nid(call, ctx, 'stored reality'))); return 'Expanded ' + r.expanded + ' node(s)' } })
   registerOmni('StoredReality', 'room', { summary: 'Put the box in a voxel room: Omni StoredReality room id(box) cell(x,y,z)', props: { id: 'the box', cell: 'x,y,z' },
     run (call, ctx) { const r = bad(sr().placeInRoom(nid(call, ctx, 'stored reality'), String(call.props.cell ?? ''))); return 'In room ' + r.room } })
+  registerOmni('StoredReality', 'example', { summary: 'Build a ready-made course stored in one box: Omni StoredReality example mbta   (the MBTA: old trains, problems, why new trains; then Omni StoredReality expand id(mbta_course))', props: {},
+    run (call) { const r = bad(sr().buildExample(call.words?.[0] ?? call.arg ?? 'mbta', {})); return r.already ? 'The course is already here: ' + r.nodeId : `Built ${r.nodeId}, ${r.stored} nodes stored. Select it and press Expand.` } })
   registerOmni('StoredReality', 'info', { summary: 'What is inside: Omni StoredReality info id(box)', props: { id: 'the box' },
     run (call, ctx) { const i = sr().info(nid(call, ctx, 'stored reality')); if (!i) throw new Error('that is not a stored reality node'); return `${i.name}: ${i.state}, ${i.count} node(s), ${i.edges} line(s)${i.room ? ', room ' + i.room : ''}` } })
   registerOmni('Epistemics', 'create', { keywordSummary: 'how a thing is passed down: event, observation, memory, rumour, gossip, narrative, record, absence, what-if (never says what is true)', summary: 'Make a node: Omni Epistemics create layer(event|observation|memory|rumor|gossip|narrative|meta|documentary|absence|counterfactual) text(...) [id(name)] [claim(claimId)]', props: { layer: 'a layer', text: 'what it says', id: 'a name', claim: 'a claim node id' },

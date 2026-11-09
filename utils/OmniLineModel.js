@@ -3,7 +3,7 @@
  * A line (edge) keeps the style fields it always had (kind cylinder|line|double, color, thickness, dashed, highlight, highlightColor) and gains:
  *   dotted    short round dots instead of long dashes          startEnd / endEnd   'none' | 'arrow' | 'dot'  (the end at the FROM node / at the TO node)
  *   meaning   the id of a preset below (what the line SAYS)    label               a short tooltip / caption (<= 80 chars)
- * MEANINGS are presets (link, flow, step, optional, depends, strong, weak, contains, both, note, conflict, drives, derives, distorts, propagates, highlight). Picking one sets the look; the look can still be tweaked after (the meaning id stays, so it still reads as "a Step line with a custom colour").
+ * MEANINGS are presets (link, flow, step, optional, depends, strong, weak, contains, both, note, conflict, drives, derives, distorts, propagates, cites, highlight). Picking one sets the look; the look can still be tweaked after (the meaning id stays, so it still reads as "a Step line with a custom colour").
  *   link · flow · step · optional · depends · strong · weak · contains · both · note · conflict · highlight
  *   sanitizeLineStyle(style)    never throws, idempotent, only known keys, hex colours only
  *   applyMeaning(style, id)     the style with that preset's look applied (unknown id -> unchanged)
@@ -32,6 +32,7 @@ export const MEANINGS = Object.freeze({
   derives:   { label: 'Derives',   summary: 'The second is a copy made from the first (an observation of an event, a record of a story).', stroke: 'solid',  weight: 'thin',   startEnd: 'none',  endEnd: 'arrow', color: '#7fd6ff' },
   distorts:  { label: 'Distorts',  summary: 'The second is a changed copy of the first: something was lost or added on the way.', stroke: 'dashed', weight: 'normal', startEnd: 'none',  endEnd: 'arrow', color: '#d9a0ff' },
   propagates:{ label: 'Spreads to', summary: 'The first was passed on and became the second (a rumour told, gossip retold).', stroke: 'dotted', weight: 'bold',   startEnd: 'none',  endEnd: 'arrow', color: '#ff8a5c' },
+  cites:     { label: 'Cites',     summary: 'The first (a claim) rests on the second (a source): the arrow points at where it came from.', stroke: 'dotted', weight: 'thin',   startEnd: 'none',  endEnd: 'arrow', color: '#e6c07b' },
   highlight: { label: 'Highlight', summary: 'Draws the eye to this line (glow).',                     stroke: 'solid',  weight: 'bold',   startEnd: 'none',  endEnd: 'none',  color: '#66ccff', highlight: true }
 })
 export const MEANING_IDS = Object.freeze(Object.keys(MEANINGS))

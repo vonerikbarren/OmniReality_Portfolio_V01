@@ -42,6 +42,8 @@ import { sanitizeRhythm, defaultRhythm } from './OmniRhythmModel.js'            
 import { sanitizeEpistemics, visualOf as epiVisualOf } from './OmniEpistemicsModel.js'                  // V271: data.epistemics (layer + attributes, saved with the node)
 import { sanitizeEdgeNode } from './OmniEdgeNodeModel.js'                                                   // V278: data.edgeNode
 import { buildEdgeNodeMesh, releaseEdgeNodeMesh } from './OmniEdgeNodeMesh.js'
+import { sanitizeSource } from './OmniSourceModel.js'   // V281: data.source
+import { buildSourceNodeMesh, applySourceLook, releaseSourceMesh } from './OmniSourceNodeMesh.js'
 import { sanitizeStoredVideo } from './OmniStoredVideoModel.js'                                           // V277: data.storedVideo
 import { buildStoredVideoNodeMesh, applyStoredVideoLook, releaseStoredVideoMesh } from './OmniStoredVideoNodeMesh.js'
 import { sanitizeStoredReality } from './OmniStoredRealityModel.js'                                        // V277: data.storedReality
@@ -71,6 +73,8 @@ export const KIND_FLASH = 'flashNode'   // V269: Flashcards node — data = { no
 export const KIND_EPISTEMICS = 'epistemicsNode'   // V271: OmniEpistemicsNode — data = { nodeKind:'epistemicsNode', epistemics } (one node kind, a LAYER field: event, observation, memory, rumor, gossip, narrative, meta, documentary, absence, counterfactual)
 export const KIND_EDGE = 'edgeNode'   // V278: EdgeNode — data = { nodeKind:'edgeNode', edgeNode } (how you travel between two nodes: line, tunnel, torus, orbit; utils/OmniEdgeNodeModel.js)
 export const GEO_EDGE = 'EdgeNode'
+export const KIND_SOURCE = 'sourceNode'   // V281: SourceNode — data = { nodeKind:'sourceNode', source } (one place a claim came from, kept once so many claims can cite it; utils/OmniSourceModel.js)
+export const GEO_SOURCE = 'SourceNode'
 export const KIND_STORED_VIDEO = 'storedVideoNode'   // V277: StoredVideoNode — data = { nodeKind:'storedVideoNode', storedVideo } (a library video on a flat plane with chroma-key settings; utils/OmniStoredVideoModel.js)
 export const GEO_STORED_VIDEO = 'StoredVideoNode'
 export const KIND_STORED_REALITY = 'storedRealityNode'   // V277: StoredRealityNode — data = { nodeKind:'storedRealityNode', storedReality } (a whole course kept small in one voxel; expand to lay it out; utils/OmniStoredRealityModel.js)
@@ -81,7 +85,7 @@ export const GEO_DIMENSIONAL = 'DimensionalNode'
 export const KIND_CLAIM = 'claimNode'   // V260: ClaimNode (DimensionalScripting) — data = { nodeKind:'claimNode', claim } (public) or { nodeKind, claimSealed } (private: utils/OmniClaimVault.js)
 export const GEO_CLAIM = 'ClaimNode'
 export const isClaimNodeData = (d) => !!d && d.nodeKind === KIND_CLAIM
-export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_FLASH, KIND_RHYTHM, KIND_EPISTEMICS, KIND_STORED_VIDEO, KIND_STORED_REALITY, KIND_EDGE, KIND_DIMENSIONAL, KIND_CLAIM]
+export const EXTRA_KINDS = [KIND_PATH, KIND_FLOOR_PANEL, KIND_TERMINAL_SHELL, KIND_SOUND, KIND_MUSIC, KIND_SONG, KIND_MIX, KIND_DOC, KIND_POLY, KIND_VOXEL, KIND_NOTE, KIND_FLASH, KIND_RHYTHM, KIND_EPISTEMICS, KIND_STORED_VIDEO, KIND_STORED_REALITY, KIND_EDGE, KIND_SOURCE, KIND_DIMENSIONAL, KIND_CLAIM]
 export const GEO_NOTE = 'NoteNode'
 export const GEO_FLASH = 'FlashcardsNode'
 export const GEO_RHYTHM = 'RhythmNode'
@@ -101,9 +105,9 @@ export const PANEL_GAP = 0.04   // fraction of a cell left between neighbouring 
 export const MAX_PANELS_HARD = 1000
 
 /** The two runtimes register themselves here in init() so the Inspector block and the panels can reach them without importing systems/ (set to null in destroy()). */
-export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, timenodes: null, timepad: null, timepadboard: null, claimview: null, tooltips: null, selectmode: null, sticky: null, transform: null, lines: null, flash: null, flashui: null, rhythm: null, rhythmui: null, epistemics: null, storedvideo: null, storedreality: null, profiler: null, edgenodes: null, claims: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
+export const SERVICES = { paths: null, panels: null, shells: null, sound: null, music: null, sequencer: null, song: null, mix: null, doc: null, poly: null, voxel: null, scan: null, note: null, vibration: null, avatar: null, axioms: null, dimensional: null, timenodes: null, timepad: null, timepadboard: null, claimview: null, tooltips: null, selectmode: null, sticky: null, transform: null, lines: null, flash: null, flashui: null, rhythm: null, rhythmui: null, epistemics: null, storedvideo: null, storedreality: null, profiler: null, edgenodes: null, sources: null, claims: null, spaces: null, fs: null, scenefile: null, demo: null, lineup: null, docwindow: null }
 
-export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_FLASH || d.nodeKind === KIND_RHYTHM || d.nodeKind === KIND_EPISTEMICS || d.nodeKind === KIND_STORED_VIDEO || d.nodeKind === KIND_STORED_REALITY || d.nodeKind === KIND_EDGE || d.nodeKind === KIND_DIMENSIONAL || d.nodeKind === KIND_CLAIM)
+export const isExtraKind = (d) => !!d && (d.nodeKind === KIND_PATH || d.nodeKind === KIND_FLOOR_PANEL || d.nodeKind === KIND_TERMINAL_SHELL || d.nodeKind === KIND_SOUND || d.nodeKind === KIND_MUSIC || d.nodeKind === KIND_SONG || d.nodeKind === KIND_MIX || d.nodeKind === KIND_DOC || d.nodeKind === KIND_POLY || d.nodeKind === KIND_VOXEL || d.nodeKind === KIND_NOTE || d.nodeKind === KIND_FLASH || d.nodeKind === KIND_RHYTHM || d.nodeKind === KIND_EPISTEMICS || d.nodeKind === KIND_STORED_VIDEO || d.nodeKind === KIND_STORED_REALITY || d.nodeKind === KIND_EDGE || d.nodeKind === KIND_SOURCE || d.nodeKind === KIND_DIMENSIONAL || d.nodeKind === KIND_CLAIM)
 export const isEpistemicsNodeData = (d) => !!d && d.nodeKind === KIND_EPISTEMICS
 export const isRhythmNodeData = (d) => !!d && d.nodeKind === KIND_RHYTHM
 export const isFlashNodeData = (d) => !!d && d.nodeKind === KIND_FLASH
@@ -207,6 +211,10 @@ export function extraCreateFields (spec) {
   }
   if (spec.nodeKind === KIND_EDGE) {
     return { geometry: GEO_EDGE, label: clip(spec.label || 'Edge node', 40), data: { nodeKind: KIND_EDGE, edgeNode: sanitizeEdgeNode(spec.edgeNode) } }
+  }
+  if (spec.nodeKind === KIND_SOURCE) {
+    const sc = sanitizeSource(spec.source)
+    return { geometry: GEO_SOURCE, label: clip(spec.label || sc.title || 'Source', 40), data: { nodeKind: KIND_SOURCE, source: sc } }
   }
   if (spec.nodeKind === KIND_STORED_VIDEO) {
     return { geometry: GEO_STORED_VIDEO, label: clip(spec.label || 'Stored video', 40), data: { nodeKind: KIND_STORED_VIDEO, storedVideo: sanitizeStoredVideo(spec.storedVideo) } }
@@ -352,6 +360,15 @@ export function buildExtraMesh (data, color) {
     LIVE.add(mesh)
     return mesh
   }
+  if (data.nodeKind === KIND_SOURCE) {
+    data.source = sanitizeSource(data.source)
+    const mesh = buildSourceNodeMesh()
+    applySourceLook(mesh, data.source)
+    mesh.userData.extraKind = { kind: KIND_SOURCE, data }
+    mesh.userData.omniRelease = releaseExtraMesh
+    LIVE.add(mesh)
+    return mesh
+  }
   if (data.nodeKind === KIND_STORED_VIDEO) {
     data.storedVideo = sanitizeStoredVideo(data.storedVideo)
     const mesh = buildStoredVideoNodeMesh(data.storedVideo.width)
@@ -481,6 +498,7 @@ export function releaseExtraMesh (mesh) {
   if (ek.kind === KIND_RHYTHM) releaseRhythmMesh(mesh)
   if (ek.kind === KIND_EPISTEMICS) releaseEpistemicsMesh(mesh)
   if (ek.kind === KIND_EDGE) releaseEdgeNodeMesh(mesh)
+  if (ek.kind === KIND_SOURCE) releaseSourceMesh(mesh)
   if (ek.kind === KIND_STORED_VIDEO) releaseStoredVideoMesh(mesh)
   if (ek.kind === KIND_STORED_REALITY) releaseStoredRealityMesh(mesh)
   if (ek.kind === KIND_SONG) releaseSongMesh(mesh)

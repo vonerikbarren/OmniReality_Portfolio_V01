@@ -240,9 +240,12 @@ const DIR_GLYPHS = { up: '▲', down: '▼', left: '◄', right: '►' }
 // the circle clear of the 103 px hand wrapper in the screen corner (a straight-down 180° slot
 // would touch it), and everything stays under the 52 px dock / over the 145 px ribbon stack.
 const _SAT_ROLES = ['release', 'speed', 'activate', 'settings']
+// V282: the two lower hands also get a TUNNEL button (their Activate fires ammo, so their view-only tunnel had no button of its own).
+// The omnihand / conscious pads keep their four (their Activate IS the tunnel button).
+const _rolesOf = (hand) => (hand === 'lh' || hand === 'rh' ? [..._SAT_ROLES, 'tunnel'] : _SAT_ROLES)
 const _SAT_ANGLES = {
-  lh:        { release: 90,  speed: 114, activate: 138, settings: 162 },
-  rh:        { release: 270, speed: 246, activate: 222, settings: 198 },
+  lh:        { release: 90,  speed: 114, activate: 138, settings: 162, tunnel: 66 },    // V282: tunnel = one step (24 deg) before Release, up and toward the middle
+  rh:        { release: 270, speed: 246, activate: 222, settings: 198, tunnel: 294 },
   omnihand:  { release: 90,  speed: 66,  activate: 42,  settings: 18  },
   conscious: { release: 270, speed: 294, activate: 318, settings: 342 },
 }
@@ -253,8 +256,8 @@ const _SAT_ANGLES = {
 // screen keeps both clusters on screen and apart), Release innermost as before.
 // Mirror rules are unchanged: RH = 360 - LH, top hands = 180 - bottom hands.
 const _SAT_ANGLES_MOBILE = {
-  lh:        { release: 30,  speed: 7.5,   activate: 345, settings: 322.5 },
-  rh:        { release: 330, speed: 352.5, activate: 15,  settings: 37.5  },
+  lh:        { release: 30,  speed: 7.5,   activate: 345, settings: 322.5, tunnel: 52.5 },   // V282: hidden on a phone (CSS); the ribbon's LH / RH tunnel buttons do the same
+  rh:        { release: 330, speed: 352.5, activate: 15,  settings: 37.5,  tunnel: 307.5 },
   omnihand:  { release: 150, speed: 172.5, activate: 195, settings: 217.5 },
   conscious: { release: 210, speed: 187.5, activate: 165, settings: 142.5 },
 }
@@ -302,7 +305,7 @@ function _buildSatGeom (padHalf, satHalf, chipHalf, gap, chipGap, angles = _SAT_
       const v = anchor === 'bottom' ? (bottomBase - dy - halfH) : (topBase + dy - halfH)
       return { d: Math.round(d), v: Math.round(v), side, anchor }
     }
-    _SAT_ROLES.forEach(role => {
+    _rolesOf(hand).forEach(role => {
       const clockDeg = angles[hand][role]
       const { dx, dy } = _clockOffset(clockDeg, R)
       out[hand][role] = { ...place(dx, dy, satHalf, satHalf), dx, dy }
@@ -318,7 +321,7 @@ const _SAT_GEOM_MOBILE = _buildSatGeom(90, SAT_SIZE.mobile / 2, CHIP_SIZE.mobile
 
 /** Test / tooling hook: the computed geometry, and the sizes it was built for. */
 export const SAT_LAYOUT = {
-  roles: _SAT_ROLES, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H }, chipAnchor: CHIP_ANCHOR,
+  roles: _SAT_ROLES, rolesOf: _rolesOf, angles: _SAT_ANGLES, chip: { w: CHIP_W, h: CHIP_H }, chipAnchor: CHIP_ANCHOR,
   desktop: { geom: _SAT_GEOM, padHalf: 110, satHalf: SAT_SIZE.desktop / 2, chip: { w: CHIP_SIZE.desktop, h: CHIP_SIZE.desktop }, gap: SAT_GAP.desktop, chipGap: CHIP_GAP.desktop },
   mobile:  { geom: _SAT_GEOM_MOBILE, padHalf: 90, satHalf: SAT_SIZE.mobile / 2, chip: { w: CHIP_SIZE.mobile, h: CHIP_SIZE.mobile }, gap: SAT_GAP.mobile, chipGap: CHIP_GAP.mobile, angles: _SAT_ANGLES_MOBILE },
   barH: BAR_H, dockH: DOCK_H, handWH: HAND_WH, padOffset: PAD_OFFSET,
@@ -332,7 +335,7 @@ const _vCss = (g) => g.anchor === 'top'
   : `${g.v}px`
 
 const _satRules = (geom) => Object.keys(_SAT_ANGLES).map(hand => {
-  const rules = _SAT_ROLES.map(role => {
+  const rules = _rolesOf(hand).map(role => {
     const g = geom[hand][role]
     return `.omni-pad-sat--${hand}-${role} { ${g.side}: ${g.d}px; ${g.anchor}: ${_vCss(g)}; }`
   })
@@ -569,6 +572,7 @@ ${_satRules(_SAT_GEOM)}
 @media (max-width: 460px) {
   .omni-pad-sat { width: ${SAT_SIZE.mobile}px; height: ${SAT_SIZE.mobile}px; font-size: 13px; }
   .omni-pad-sat .sat-sub { font-size: 7px; margin-top: 1px; }
+  .omni-pad-sat--lh-tunnel, .omni-pad-sat--rh-tunnel { display: none !important; }   /* V282: no room on a phone; the ribbon has the buttons */
   .omni-pad-chip { width: ${CHIP_SIZE.mobile}px; height: ${CHIP_SIZE.mobile}px; }
   ${_satRules(_SAT_GEOM_MOBILE).replace(/\n/g, '\n  ')}
 }
@@ -901,7 +905,7 @@ export default class MovementPad {
     this._chipEls        = { lh: null, rh: null, omnihand: null, conscious: null }   // V191: a data chip on every pad (ammo name on lh / rh, current node on the two axis hands)
     this._speedPanel     = new HandSpeedPanel()
     this._toolsPanel     = new HandToolsPanel({ getAxes: () => this._axes })   // V191: tool options of omnihand / conscious (chip -> menu)
-    this._tunnelOn       = { conscious: false, omnihand: false }   // Activation lit state (mirrors the tunnel)
+    this._tunnelOn       = { conscious: false, omnihand: false, lh: false, rh: false }   // lit state of the tunnel (V282: lh / rh too; their lit button is the TUNNEL satellite)
     this._ammoActive     = { lh: 0, rh: 0 }                        // hand-fired behaviours currently held
     this._handsPanel     = { open: false, hand: null }             // ⟐OmniHands state (settings button lit state)
     this._ammoHand       = 'lh'                                    // which lower hand [ ] cycle
@@ -957,10 +961,10 @@ export default class MovementPad {
     this._onHandSetting = (e) => this._handleHandSetting(e)
     this._onTunnelVisible = (e) => {
       const d = e.detail ?? {}
-      if (d.id in this._tunnelOn) { this._tunnelOn[d.id] = !!d.visible; this._refreshActivate(d.id) }
+      if (d.id in this._tunnelOn) { this._tunnelOn[d.id] = !!d.visible; this._refreshTunnel(d.id) }
     }
     this._onAxinatorList = (e) => (e.detail?.tunnels ?? []).forEach(t => {
-      if (t.id in this._tunnelOn) { this._tunnelOn[t.id] = !!t.visible; this._refreshActivate(t.id) }
+      if (t.id in this._tunnelOn) { this._tunnelOn[t.id] = !!t.visible; this._refreshTunnel(t.id) }
     })
     this._onAmmoState = (e) => {
       const d = e.detail ?? {}
@@ -1162,6 +1166,7 @@ export default class MovementPad {
         ? { glyph: '◎', sub: 'TUNL', title: `${name} tunnel — show / hide`, label: `Toggle the ${name} tunnel`, pressed: true }
         : { glyph: '✦', sub: 'FIRE', title: `${name} — fire the loaded behaviour at the target`, label: `Fire ${name} ammo`, pressed: true },
       settings: { glyph: '⚙', sub: 'SET', title: `${name} settings`, label: `${name} settings`, pressed: true },
+      ...(tunnelHand ? {} : { tunnel: { glyph: '◎', sub: 'TUNL', title: `${name} tunnel — show / hide (view only)`, label: `Toggle the ${name} tunnel`, pressed: true } }),   // V282
     }
   }
 
@@ -1187,6 +1192,7 @@ export default class MovementPad {
       if (role === 'release')  el.addEventListener('click', () => this._toggleDetach(handId))
       if (role === 'speed')    el.addEventListener('click', () => this._speedPanel.toggle(handId, el))
       if (role === 'activate') el.addEventListener('click', () => this._activate(handId))
+      if (role === 'tunnel')   el.addEventListener('click', () => window.dispatchEvent(new CustomEvent('omni:hand-tunnel-toggle', { detail: { hand: handId } })))   // V282
       if (role === 'settings') el.addEventListener('click', () => this._toggleHandSettings(handId))
       if (role === 'speed') el.setAttribute('aria-expanded', 'false')
       el.addEventListener('pointerenter', () => { if (CHIP_HANDS.includes(handId)) this._ammoHand = handId })
@@ -1292,6 +1298,16 @@ export default class MovementPad {
     const el = this._satEls[handId]?.activate
     if (!el) return
     const on = PAD_CONFIGS[handId].dimensional ? !!this._tunnelOn[handId] : this._ammoActive[handId] > 0
+    el.classList.toggle('is-active', on)
+    el.setAttribute('aria-pressed', String(on))
+  }
+
+  /** V282: lit state of a tunnel. The dimensional pads light their Activate; the lower pads light the new TUNNEL satellite. */
+  _refreshTunnel (handId) {
+    if (PAD_CONFIGS[handId]?.dimensional) { this._refreshActivate(handId); return }
+    const el = this._satEls[handId]?.tunnel
+    if (!el) return
+    const on = !!this._tunnelOn[handId]
     el.classList.toggle('is-active', on)
     el.setAttribute('aria-pressed', String(on))
   }

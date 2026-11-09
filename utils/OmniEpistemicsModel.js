@@ -1,7 +1,7 @@
 /**
  * utils/OmniEpistemicsModel.js (V271) — the pure model of OmniEpistemics (engine: OmniDynamix). No DOM, no three.js, no clock: every function is a plain function of its arguments.
  *
- *   data.epistemics = { v:1, layer, text(<=300), attrs{}, claimId, source, derivedFrom[<=8], note }       (layers and attributes: data/OmniEpistemicsOntology.js)
+ *   data.epistemics = { v:1, layer, text(<=300), attrs{}, claimId, source, sourceId, cite{page,quote}, derivedFrom[<=8], note }       (layers and attributes: data/OmniEpistemicsOntology.js)
  *   sanitizeEpistemics(raw)      never throws, idempotent, unknown keys dropped, no prototype pollution, every number clamped.
  *   Equations                    squash, rumorStrength, belief, realityResistance, narrativeStability (all land in 0..1; zero/NaN/negative inputs cannot break them).
  *   Forces                       herd, emotionalGravity, incentive, authority, identity, realityResistance (each 0..1) + forceReport().
@@ -48,8 +48,10 @@ export function sanitizeAttrs (layer, raw) {
 export function sanitizeEpistemics (raw) {
   const r = isObj(raw) ? raw : {}; const layer = isLayer(own(r, 'layer')) ? r.layer : 'event'
   const from = []; for (const d of (Array.isArray(r.derivedFrom) ? r.derivedFrom : []).slice(0, LIMITS.derivedFrom * 2)) { const c = cleanId(d); if (c && !from.includes(c) && from.length < LIMITS.derivedFrom) from.push(c) }
-  return { v: 1, layer, text: clean(own(r, 'text'), LIMITS.text), attrs: sanitizeAttrs(layer, own(r, 'attrs')), claimId: cleanId(own(r, 'claimId')), source: clean(own(r, 'source'), LIMITS.source), derivedFrom: from, note: clean(own(r, 'note'), LIMITS.note) }
+  return { v: 1, layer, text: clean(own(r, 'text'), LIMITS.text), attrs: sanitizeAttrs(layer, own(r, 'attrs')), claimId: cleanId(own(r, 'claimId')), source: clean(own(r, 'source'), LIMITS.source), sourceId: cleanId(own(r, 'sourceId')), cite: sanitizeCite(own(r, 'cite')), derivedFrom: from, note: clean(own(r, 'note'), LIMITS.note) }
 }
+/** where inside the source (V281): page / section and a quote, both short */
+export function sanitizeCite (raw) { const r = isObj(raw) ? raw : {}; return { page: clean(own(r, 'page'), 40), quote: clean(own(r, 'quote'), 300) } }
 export const newEpistemics = (o = {}) => sanitizeEpistemics(o)
 
 // ── equations (all 0..1) ──

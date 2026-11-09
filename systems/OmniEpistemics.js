@@ -79,7 +79,7 @@ export default class OmniEpistemics {
   create (opts = {}) {
     try {
       const o = opts && typeof opts === 'object' ? opts : {}
-      const ep = M.sanitizeEpistemics({ layer: o.layer, text: o.text, attrs: o.attrs, claimId: o.claimId, source: o.source, derivedFrom: o.derivedFrom, note: o.note })
+      const ep = M.sanitizeEpistemics({ layer: o.layer, text: o.text, attrs: o.attrs, claimId: o.claimId, source: o.source, sourceId: o.sourceId, cite: o.cite, derivedFrom: o.derivedFrom, note: o.note })
       const nodeId = typeof o.id === 'string' && /^[\w-]{1,64}$/.test(o.id) ? o.id : newId()
       if (this._data(nodeId)) return { ok: false, error: 'There is already a node called ' + nodeId }
       send('omni:node-create-request', { nodeKind: KIND_EPISTEMICS, epistemics: ep, id: nodeId, label: (ep.text || M.LAYER_INFO[ep.layer].label).slice(0, 40), geometry: GEO_EPISTEMICS, primitive: 'objective', color: M.layerColor(ep.layer), position: this._positionFor(o), rotation: [0, 0, 0], scale: [1, 1, 1], noParent: true, noSelect: o.select !== true })

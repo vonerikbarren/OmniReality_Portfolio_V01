@@ -91,6 +91,7 @@ export default class OmniDrawModePicker {
         <button class="odmp-btn" data-mode="dimtext" title="a DimensionalTextNode: words floating in the space in front of you" aria-pressed="false"><span class="odmp-glyph">Aa</span><span class="odmp-label">Dimensional text</span></button>
         <button class="odmp-btn" data-mode="note" title="an OmniNote: a rich-text note (headings, lists, tables, pictures) shown on a sheet in the space" aria-pressed="false"><span class="odmp-glyph">✎</span><span class="odmp-label">Note</span></button>
         <button class="odmp-btn" data-mode="edgenode" title="how you travel a line between two nodes: ride it, go through it as a tunnel, loop a torus or circle an orbit" aria-pressed="false"><span class="odmp-glyph">⟷</span><span class="odmp-label">Edge node</span></button>
+        <button class="odmp-btn" data-mode="source" title="where a claim came from, kept once so many claims can cite it (select a claim first to lift its source)" aria-pressed="false"><span class="odmp-glyph">❡</span><span class="odmp-label">Source node</span></button>
         <button class="odmp-btn" data-mode="storedvideo" title="a library video on a flat plane, with a chroma key to remove a green backdrop" aria-pressed="false"><span class="odmp-glyph">▭</span><span class="odmp-label">Stored video</span></button>
         <button class="odmp-btn" data-mode="storedreality" title="a whole course kept in one box: store nodes in it, expand it back out" aria-pressed="false"><span class="odmp-glyph">▣</span><span class="odmp-label">Stored reality</span></button>
         <button class="odmp-btn" data-mode="claim" title="a ClaimNode (DimensionalScripting): a claim that is true, false and undefined at the same time, with testimonies from people, bots, AI and sensors; public, or private behind a key" aria-pressed="false"><span class="odmp-glyph">⟐</span><span class="odmp-label">Claim</span></button>
@@ -115,7 +116,7 @@ export default class OmniDrawModePicker {
     this._el.querySelector('[data-mode="mix"]').addEventListener('click', () => this._choose('mix'))        // V201
     this._el.querySelector('[data-mode="doc"]').addEventListener('click', () => this._choose('doc'))        // V203
     this._el.querySelector('[data-mode="poly"]').addEventListener('click', () => this._choose('poly'))      // V204
-    for (const m of ['time', 'claim', 'sticky', 'flash', 'rhythm', 'epistemics', 'storedvideo', 'storedreality', 'edgenode', 'note', 'voxel', 'dimtext']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
+    for (const m of ['time', 'claim', 'sticky', 'flash', 'rhythm', 'epistemics', 'storedvideo', 'storedreality', 'edgenode', 'source', 'note', 'voxel', 'dimtext']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V260
     for (const m of ['path', 'terminal', 'floor']) this._el.querySelector(`[data-mode="${m}"]`).addEventListener('click', () => this._choose(m))   // V197
 
     this._onNavSelect = (e) => {
@@ -230,6 +231,11 @@ export default class OmniDrawModePicker {
     if (mode === 'note') {   // V278: it was in the Ribbon but not in this list
       window.dispatchEvent(new CustomEvent('omni:note-node-create', { detail: { select: true } }))
       window.dispatchEvent(new CustomEvent('omni:nav-select', { detail: { item: '⟐OmniNote' } }))
+      this.close()
+      return
+    }
+    if (mode === 'source') {   // V281
+      window.dispatchEvent(new CustomEvent('omni:source-node-create', { detail: { fromSelected: true, select: true } }))
       this.close()
       return
     }
