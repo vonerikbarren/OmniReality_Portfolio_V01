@@ -31,7 +31,7 @@ export const BRIGHT_MIN = 40
 export const BRIGHT_MAX = 200
 export const SHADOW_MAX = 100
 
-export const DEFAULTS = Object.freeze({ show: true, opacity: 15, color: 'theme', brightness: 100, shadow: 0 })
+export const DEFAULTS = Object.freeze({ show: true, opacity: 15, color: '#000000', brightness: 100, shadow: 25 })   // V283: black lines with a thin white shadow (was the theme accent, no shadow)
 export const KEYS = Object.keys(DEFAULTS)
 
 export function prefersReducedMotion () {
@@ -63,11 +63,18 @@ export function cleanValue (key, v) {
   }
 }
 
+/** V283: the shadow contrasts the line: a dark line (#rrggbb, brightness under about 50 percent) gets a WHITE shadow; the theme colour and light lines keep the dark one. Pure. */
+export function shadowRgb (color) {
+  if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) return '0, 0, 0'
+  const n = parseInt(color.slice(1), 16); const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255
+  return lum < 0.5 ? '255, 255, 255' : '0, 0, 0'
+}
+
 /** settings -> the CSS filter for the whole drawing ('none' when brightness is 100 and there is no shadow). Pure. */
 export function filterFor (s) {
   const b = Number(s?.brightness); const sh = Number(s?.shadow); const parts = []
   if (Number.isFinite(b) && b !== 100) parts.push(`brightness(${Math.round(b) / 100})`)
-  if (Number.isFinite(sh) && sh > 0) parts.push(`drop-shadow(0 0 ${(1 + sh * 0.07).toFixed(2)}px rgba(0, 0, 0, ${(0.35 + 0.65 * sh / 100).toFixed(2)}))`)
+  if (Number.isFinite(sh) && sh > 0) parts.push(`drop-shadow(0 0 ${(1 + sh * 0.07).toFixed(2)}px rgba(${shadowRgb(s?.color)}, ${(0.35 + 0.65 * sh / 100).toFixed(2)}))`)
   return parts.length ? parts.join(' ') : 'none'
 }
 

@@ -581,7 +581,9 @@ export default class OmniHandsPanel {
     const crow = el('label', 'omh-row'); crow.appendChild(el('span', 'omh-row-label', 'Panel colour'))
     const col = el('input', 'omh-num'); col.type = 'color'; col.dataset.key = 'orbColor'; col.style.width = '56px'
     col.value = getHandSetting(hand, 'orbColor'); col.addEventListener('input', () => setHandSetting(hand, 'orbColor', col.value))
-    crow.appendChild(col); g.appendChild(crow)
+    crow.appendChild(col)
+    for (const [txt, val] of [['White', '#ffffff'], ['Black', '#000000']]) { const pb = el('button', 'omh-btn', txt); pb.type = 'button'; pb.dataset.role = 'orb-color-' + txt.toLowerCase(); pb.style.marginLeft = '6px'; pb.addEventListener('click', (e) => { e.preventDefault(); setHandSetting(hand, 'orbColor', val); col.value = val }); crow.appendChild(pb) }
+    g.appendChild(crow)
     this._sync.push(() => { const v = getHandSetting(hand, 'orbColor'); if (document.activeElement !== col && col.value !== v) col.value = v })
     this._numRow(g, 'Panel opacity (0.15 faint .. 1 solid)', 'orbOpacity', this._storeNum(hand, 'orbOpacity', 0.05, ''))
     const mrow = el('label', 'omh-row'); mrow.appendChild(el('span', 'omh-row-label', 'Picture or video'))

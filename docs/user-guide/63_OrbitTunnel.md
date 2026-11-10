@@ -22,3 +22,9 @@ Open the panel with the **◯ OrbitTunnel** button in the ribbon (Fire & tunnels
 `Omni OrbitTunnel enter tunnel(vertical)` · `Omni OrbitTunnel exit` · `Omni OrbitTunnel open` · `Omni OrbitTunnel set tunnel(horizontal) key(radius|tube|opacity|speed|roll|particleSpeed|mode|visible|loops) value(...)`
 
 Coming next (V284): the **OrbitTunnelNode**, a tunnel you place in the scene with the same settings saved in the scene file.
+
+## Take Me There delay (V283)
+⟐CameraTravelSettings has a new **Start delay** (default 0.15 s, 0 to 2 s). The camera waits that long before it moves. 0 = no pause.
+
+## Hand orbs (V283)
+The orbs of all four hands are white by default. In ⟐OmniHands → the hand → ◉ Orb, **Panel colour** has White and Black buttons and a colour picker for any colour; words, rings and the core switch to dark ink on a light panel. While you hold the core to charge, the whole system inside the orb turns faster (up to about 6x at full charge, easing back after release) and energy particles spiral into the core, more of them the longer you hold.

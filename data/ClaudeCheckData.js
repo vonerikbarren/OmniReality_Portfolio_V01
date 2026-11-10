@@ -5,10 +5,270 @@
  */
 export default {
  "schema": "omni-claude-check/1",
- "version": "V209",
- "date": "2026-10-26",
- "summary": "V203: DocNode, a flat sheet in the space that shows a PDF, markdown, text, image or guide page (a 2D canvas texture: no CSS3D, no extra GPU context, drawn only as sharp as the distance needs); V199-V202 questions still open",
+ "version": "V284",
+ "date": "2026-11-09",
+ "summary": "V280-V284: MBTA course, SourceNode, LH/RH tunnel buttons, OrbitTunnels (horizontal + vertical, panel, ride), black reticle, Take Me There start delay, white hand orbs with charge spin and energy; older questions still open",
  "checks": [
+  {
+   "id": "v283-orbittunnels-horizontal-a.both-orbittunnels-exist",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Both OrbitTunnels exist",
+   "howToReach": "Fly out from the middle along the ground (Home hand tunnel or WASD) until you reach the far end of the OmniHand tunnel",
+   "whatToCheck": "A very large black wireframe ring lies flat round the reality (horizontal) and another stands up (vertical); both are about as far out as the OmniHand tunnel ends. Black particles drift round inside each.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.orbittunnel-panel",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "OrbitTunnel panel",
+   "howToReach": "Ribbon > Hands > Fire & tunnels > OrbitTunnel (◯), or terminal: Omni OrbitTunnel open",
+   "whatToCheck": "Panel opens with Horizontal / Vertical tabs, Enter / Exit / Pause, loops, direction, and the look, scale, image/video, particles and traversal settings. Closing and reopening keeps what you set.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.scale-controls",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Scale controls",
+   "howToReach": "OrbitTunnel panel > Ring radius, Tube width, Turn (vertical tab)",
+   "whatToCheck": "The ring/tube change at once on screen; Turn rotates the vertical ring about the up axis; 'Reach of the regular tunnels' puts the size back.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.wireframe-solid-colour-opacity",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Wireframe, solid, colour, opacity",
+   "howToReach": "OrbitTunnel panel > Style / Colour / Opacity",
+   "whatToCheck": "Solid fills the inside of the tube (you look at it from inside); colour and opacity update live.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.image-or-video-on-the-wall",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Image or video on the wall",
+   "howToReach": "OrbitTunnel panel > Style Solid, Media image/video, paste an https link or pick a file",
+   "whatToCheck": "The picture or video wraps the inside of the tube and repeats along and round as set. A picked file lasts for this session only; a link is saved. Say which of image and video worked and whether a video plays smoothly (GPU/phone).",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.enter-and-ride-orbittraversal",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Enter and ride (orbitTraversal)",
+   "howToReach": "OrbitTunnel panel > Enter horizontal",
+   "whatToCheck": "Camera flies to the inside wall and corkscrews along the ring while circling the wall; your speed and roll speed settings change it; speed 0 only circles the wall. Camera never leaves the inside of the tube. Check motion comfort.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.loops-and-hand-over",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Loops and hand-over",
+   "howToReach": "Loops = 2, both tunnels ticked, Enter horizontal",
+   "whatToCheck": "Rides the horizontal ring twice, flies to the vertical ring, rides it twice, then flies you back to where you were. With the vertical un-ticked only the horizontal is ridden. Entering vertical first reverses the order.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.exit-and-esc",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Exit and Esc",
+   "howToReach": "While riding: Exit button, then again with Esc, and Pause / go",
+   "whatToCheck": "Exit flies back to your starting place and the normal camera works again (no jump). Esc leaves at any time. Pause freezes the camera.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.auto-enter",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Auto enter",
+   "howToReach": "Fly to the far end of the OmniHand tunnel along the ground",
+   "whatToCheck": "Reaching the tube starts the ride by itself (Auto enter on). With Auto enter off nothing happens. After exiting you are not pulled straight back in.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.particle-speed-and-count",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Particle speed and count",
+   "howToReach": "OrbitTunnel panel > Particles",
+   "whatToCheck": "Speed x and count change the stream; 0 stops it. Check frame rate on a phone / GPU with the default 360 particles per ring.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.settings-are-kept",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Settings are kept",
+   "howToReach": "Change several settings, reload",
+   "whatToCheck": "Both tunnels come back as you left them (this browser). 'Reset this tunnel to defaults' restores black wireframe, radius 8440.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-orbittunnels-horizontal-a.terminal-commands",
+   "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+   "version": "V283",
+   "feature": "Terminal commands",
+   "howToReach": "Omni OrbitTunnel enter tunnel(vertical) / exit / set tunnel(horizontal) key(radius) value(12000)",
+   "whatToCheck": "Each does what it says; a bad key is refused with a message.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-black-reticle-and-take-me.centre-circle-is-black-with-a-thin-white-shadow",
+   "category": "V283 Black reticle and Take Me There delay",
+   "version": "V283",
+   "feature": "Centre circle is black with a thin white shadow",
+   "howToReach": "Look at the middle of the screen on the white wallpaper",
+   "whatToCheck": "Black rings with a faint white edge, still low opacity (15 percent). Admin > UI Settings > Reticle can change colour, opacity and shadow; reset returns to black with the white shadow. If you saved a colour before, your saved one stays.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-black-reticle-and-take-me.take-me-there-start-delay",
+   "category": "V283 Black reticle and Take Me There delay",
+   "version": "V283",
+   "feature": "Take Me There start delay",
+   "howToReach": "Node menu > Take Me There; Admin > ⟐CameraTravelSettings > Start delay",
+   "whatToCheck": "A very slight pause (0.15 s) then the camera moves; 0 removes it; up to 2 s. Clicking another node during the pause replaces the first. Is 0.15 s the right amount?",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-hand-orbs-white-charge-sp.white-orbs",
+   "category": "V283 Hand orbs white, charge spin and energy",
+   "version": "V283",
+   "feature": "White orbs",
+   "howToReach": "Open each hand's orb (LH, RH, ConsciousHand, OmniHand: Orb-it cell or key)",
+   "whatToCheck": "The panel is white, words / rings / core are dark and readable, buttons readable. If you had an old dark colour saved it is now white.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-hand-orbs-white-charge-sp.panel-colour-presets",
+   "category": "V283 Hand orbs white, charge spin and energy",
+   "version": "V283",
+   "feature": "Panel colour presets",
+   "howToReach": "⟐OmniHands > the hand > ◉ Orb > Panel colour",
+   "whatToCheck": "White and Black buttons and the picker work and apply at once; black gives the original glowing look.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-hand-orbs-white-charge-sp.charge-speeds-the-system-up",
+   "category": "V283 Hand orbs white, charge spin and energy",
+   "version": "V283",
+   "feature": "Charge speeds the system up",
+   "howToReach": "LH or RH orb: hold the core",
+   "whatToCheck": "Words and tool dots orbit faster the longer you hold (about 6x at full), then ease back after release.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v283-hand-orbs-white-charge-sp.energy-gathers",
+   "category": "V283 Hand orbs white, charge spin and energy",
+   "version": "V283",
+   "feature": "Energy gathers",
+   "howToReach": "Same: hold the core",
+   "whatToCheck": "Small particles spiral into the core, more and faster as the charge fills; none at rest. Does it look like energy gathering? Check frame rate on a phone.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v282-lh-and-rh-tunnel-buttons.tunl-button-on-the-lh-and-rh-pads",
+   "category": "V282 LH and RH tunnel buttons",
+   "version": "V282",
+   "feature": "TUNL button on the LH and RH pads",
+   "howToReach": "Open the LH / RH pad (Hands)",
+   "whatToCheck": "A round ◎ TUNL button one step before Release; lit while that hand's tunnel shows; the five buttons do not touch or leave the screen. On a phone it is hidden.",
+   "priority": "normal",
+   "device": "phone"
+  },
+  {
+   "id": "v282-lh-and-rh-tunnel-buttons.ribbon-and-command",
+   "category": "V282 LH and RH tunnel buttons",
+   "version": "V282",
+   "feature": "Ribbon and command",
+   "howToReach": "Ribbon > Hands > Fire & tunnels > LH tunnel (Λ) / RH tunnel (Ψ); Omni Tunnel toggle hand(rh)",
+   "whatToCheck": "Each shows / hides its hand's tunnel and the button lights to match.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v281-sourcenode.make-a-source-node-from-a-claim",
+   "category": "V281 SourceNode",
+   "version": "V281",
+   "feature": "Make a source node from a claim",
+   "howToReach": "Select an Epistemics node with a source label > Nodes > Source node, or Inspector > Make source node",
+   "whatToCheck": "A book-shaped source node appears linked with a Cites line; making it twice reuses it. Unlink source removes the link.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v281-sourcenode.source-details-and-trust",
+   "category": "V281 SourceNode",
+   "version": "V281",
+   "feature": "Source details and trust",
+   "howToReach": "Select a source node > Inspector",
+   "whatToCheck": "Title, kind, publisher, address (https only), trust 0-1 and why can be edited; a dead / retracted source goes grey wireframe and counts for less.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v281-sourcenode.source-upkeep-commands",
+   "category": "V281 SourceNode",
+   "version": "V281",
+   "feature": "Source upkeep commands",
+   "howToReach": "Omni Source report / recheck / merge",
+   "whatToCheck": "Report lists dead or old sources and claims that cite none; merge folds duplicates.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v281-sourcenode.mbta-course-sources",
+   "category": "V281 SourceNode",
+   "version": "V281",
+   "feature": "MBTA course sources",
+   "howToReach": "Ribbon > Realities > MBTA course, Expand",
+   "whatToCheck": "Claims cite 21 shared source nodes; the lines look right and nothing overlaps badly.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v280-mbta-course-in-a-storedre.build-and-expand-the-course",
+   "category": "V280 MBTA course in a StoredRealityNode",
+   "version": "V280",
+   "feature": "Build and expand the course",
+   "howToReach": "Ribbon > Realities > MBTA course (or Omni StoredReality example mbta), select the box, Expand",
+   "whatToCheck": "One box; Expand lays out four lanes (Overview, Red, Orange, Green, Mattapan), problem > cause > response left to right; building twice adds nothing.",
+   "priority": "normal",
+   "device": "any"
+  },
+  {
+   "id": "v280-mbta-course-in-a-storedre.cautions-are-separate-nodes",
+   "category": "V280 MBTA course in a StoredRealityNode",
+   "version": "V280",
+   "feature": "Cautions are separate nodes",
+   "howToReach": "Read the cautions in the course",
+   "whatToCheck": "The Red Line 2019 note, missing Green Line figure and Mattapan note are separate nodes; do the facts read as honest and sourced?",
+   "priority": "normal",
+   "device": "any"
+  },
   {
    "id": "v209-hand-speed-0-01x-to-50x.slider-range",
    "category": "V209 Hand speed 0.01x to 50x",
@@ -3582,6 +3842,114 @@ export default {
  ],
  "asks": [
   {
+   "id": "v283-orbit-feel",
+   "question": "Ride an OrbitTunnel (OrbitTunnel panel > Enter horizontal). How does the corkscrew feel: the speed, the roll round the wall, the distance from the wall?",
+   "why": "I only checked the maths and that the camera stays inside the tube; I have not felt it. Comfort (motion) matters most in the headset later.",
+   "kind": "choice",
+   "device": "any",
+   "version": "V283",
+   "choices": [
+    "Good as it is",
+    "Too fast",
+    "Too slow",
+    "The roll makes me dizzy",
+    "The wall is too close or too far"
+   ]
+  },
+  {
+   "id": "v283-orbit-size",
+   "question": "Are the OrbitTunnels the right distance out and the right width at the defaults (radius 8440, tube 520)?",
+   "why": "The radius is the end of the longest regular tunnel; the tube width was my guess.",
+   "kind": "choice",
+   "device": "desktop",
+   "version": "V283",
+   "choices": [
+    "Right",
+    "Rings are too far out",
+    "Tube is too narrow",
+    "Tube is too wide"
+   ]
+  },
+  {
+   "id": "v283-orbit-media",
+   "question": "Put an image and then a video on the inside wall (Solid style, link or file). Which worked, and how did the video run?",
+   "why": "I could not test real pictures or video playback or frame rate in my environment.",
+   "kind": "text",
+   "device": "gpu",
+   "version": "V283"
+  },
+  {
+   "id": "v283-orbit-frame",
+   "question": "With both OrbitTunnels on and the particles at 360 each, what is the frame rate on your phone and on your desktop (roughly)?",
+   "why": "Each ring is one mesh and one point cloud, but I have not measured on a real GPU or phone.",
+   "kind": "text",
+   "device": "gpu",
+   "version": "V283"
+  },
+  {
+   "id": "v283-autoenter",
+   "question": "Fly out to the end of the longest tunnel. Did the ride start by itself, and was that welcome?",
+   "why": "Auto enter is on by default. Only tunnels that run flat reach the horizontal ring; the vertical one is reached only by Enter.",
+   "kind": "choice",
+   "device": "desktop",
+   "version": "V283",
+   "choices": [
+    "Started by itself and I liked it",
+    "Started and I did not like it",
+    "Nothing happened",
+    "Other"
+   ]
+  },
+  {
+   "id": "v283-delay",
+   "question": "Is the Take Me There start delay (0.15 s) right?",
+   "why": "Very slight, as you asked. Admin > ⟐CameraTravelSettings > Start delay changes it.",
+   "kind": "choice",
+   "device": "any",
+   "version": "V283",
+   "choices": [
+    "Good",
+    "Make it longer",
+    "Make it shorter",
+    "Remove it"
+   ]
+  },
+  {
+   "id": "v283-reticle",
+   "question": "Does the centre circle look right now (black with a thin white shadow at 15 percent opacity)?",
+   "why": "I could not see it on screen.",
+   "kind": "choice",
+   "device": "any",
+   "version": "V283",
+   "choices": [
+    "Good",
+    "Too faint",
+    "Too strong",
+    "The white edge is too thick or too thin"
+   ]
+  },
+  {
+   "id": "v283-orb",
+   "question": "Open the LH orb and hold the core. Does the white orb read well, and does the speed-up and the gathering energy look right?",
+   "why": "Colours were computed, not seen. The speed-up reaches about 6x and the particles reach 64.",
+   "kind": "text",
+   "device": "any",
+   "version": "V283"
+  },
+  {
+   "id": "v282-tunl",
+   "question": "On the LH and RH pads, is the TUNL button where you want it, and does it work with the pad open?",
+   "why": "Placed one step before Release by angle; checked in software only.",
+   "kind": "choice",
+   "device": "desktop",
+   "version": "V282",
+   "choices": [
+    "Good",
+    "Move it",
+    "It overlaps something"
+   ]
+  },
+  {
    "id": "v200-hand-menus",
    "question": "Open the OmniHand tool menu (key 3 or its ⬢ button) and the ConsciousHand tool menu (key 4). Are they now far enough out of the corner, and do they get in the way of anything (the pad, the ribbon, the LH / RH tool menus if you open them together)?",
    "why": "They now sit like the LH / RH menus (200 px inward and 250 px down). Opened together with LH / RH they will overlap each other; I only checked positions with numbers, not with my eyes.",
@@ -4571,6 +4939,12 @@ export default {
   }
  ],
  "knownIssues": [
+  "V283: the OrbitTunnels, orbs and reticle were checked by unit tests and a software-GL Chromium run only. Nothing was judged on a real GPU, phone, touch device or headset.",
+  "V283: Take Me There's start delay applies to the shared camera move only; the tunnel node menu's own flight and the pad tunnel flights have no delay.",
+  "V283: auto-enter only fires when the camera lands inside a visible, ticked tube; the vertical ring is normally reached with Enter.",
+  "V283: a media file picked for an OrbitTunnel lasts for this session only; only https links are saved.",
+  "V283: the summoned 3D orbs in the scene do not follow the new white panel colour.",
+  "V284 (docs only): the repo's BuildLog and TestingChecklist had no entries for V210-V279; only V280-V284 were added.",
   "V192 was built as four parts merged; checked only in jsdom and software-GL Chromium. Nothing was judged on a real GPU, phone or touch device.",
   "The full 360-degree vertical orbit loop was verified by unit tests only (1 fps in the browser).",
   "RH words stopping on delete is proven in jsdom; Chromium only confirmed the anchor record is removed.",
@@ -4594,12 +4968,6 @@ export default {
   "V202: key lock needs about half a second after the pitch fader stops, plus the stretch time (a few seconds for a 3-minute clip), before it swaps in; until then the clip plays pitch-shifted at the right tempo. Clips over 10 minutes are not stretched.",
   "V202: decks work on audio-library clips only; song and sound strips have no cue or loop. One loop, one cue and 4 hot cues per strip.",
   "V203: doc nodes show one page at a time and cannot yet be clicked, scrolled or selected on the sheet itself (use ⟐OmniDoc or the Inspector). PDF forms, annotations and links are not interactive. .docx / .pptx are not supported (export to PDF first). A PDF needs the internet the first time to load the PDF reader (pdf.js from a CDN); markdown, text, images and guide pages do not.",
-  "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none.",
-  "V204: PolyNode has not been seen on a real phone GPU and no sound on a face has been heard; the cell size cap (1024 px total texture on phones) and the 8 M pixel budget are estimates. A tap on a poly face also opens the menu while a drawing tool is active.",
-  "V205: panels built with fixed colours (not the --omni-theme-* variables) do not follow a theme; wallpaper slots are per browser, so a saved theme that uses a slot shows the plain colour if the slot is empty there.",
-  "V206: direct grab (press a node to grab) is off by default; re-enable with event omni:grab-drag-set {enabled:true}. Zoom out below 100% is not offered. Two-page mode turns pages two at a time.",
-  "V207: L / R only shift the picture; nothing opens in the free space by itself. The ribbon icon still says ⟐Z whatever the mode. Not yet seen in a real browser.",
-  "V208: currency rates are fixed starter values (not live) and edited by hand; no per-store display currency yet; a new currency starts with a 0 balance (get some by converting or via the dev grant).",
-  "V209: Conscious / Omni step animations are capped at 10 s and hold-repeat at 5 s at very low speeds (so 0.01x is a slow step, not a minute). Older hand-speed tests that expected 1..25 are out of date."
+  "V203: the Inspector's 3D preview (older code) opens extra WebGL contexts when a node is selected; the doc node itself adds none."
  ]
 }

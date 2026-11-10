@@ -1,3 +1,21 @@
+## 2026-11-09 — V284: Claude Check updated (V280-V283), version label
+- ClaudeCheckAsk.json (version V284, new asks), TestingChecklist.json (categories V280 to V283), data/ClaudeCheckData.js regenerated. No app code changed besides the version label.
+- Note: the log and checklist had no entries for V210-V279.
+
+## 2026-11-09 — V283: OrbitTunnels, black reticle, travel delay, white orbs
+- OrbitTunnels: `utils/OmniOrbitTunnelModel.js` (pure), `utils/OmniOrbitTunnelMesh.js`, `systems/OmniOrbitTunnels.js`, `ui/OmniOrbitTunnelPanel.js`; two default rings at radius 8440 (black wireframe), panel + ribbon button, orbitTraversal corkscrew ride, loops and hand-over, particles, image/video, commands `Omni OrbitTunnel ...`, prefs in 'omni:orbittunnels:v1'. Tests 41, smoke block.
+- Reticle default black with white shadow (`shadowRgb`); Take Me There start delay (`CameraTravelSettings.delay`, test 42); hand orbs white by default, White/Black presets, dark ink on light panels, charge spin and energy motes (`utils/OmniOrbModel.js`, test 43).
+- Camera fix: leaving a ride keeps the orbit target 4 units ahead (no jump).
+
+## 2026-11-07 — V282: LH and RH tunnel buttons
+- TUNL satellite on the LH/RH pads, ribbon Λ / Ψ, `Omni Tunnel toggle`; test 40.
+
+## 2026-11-06 — V281: SourceNode
+- `utils/OmniSourceModel.js`, `systems/OmniSources.js`, source nodes with Cites lines; 21 shared MBTA sources; test 39.
+
+## 2026-11-05 — V280: MBTA course in a StoredRealityNode
+- `data/OmniMbtaCourse.js`, `OmniStoredReality.buildExample`; test 38.
+
 ## 2026-10-26 — V209: hand speed 0.01x to 50x
 - Range was 1..25 (V166). Now 0.01..50: `OmniHandsSettings.LIMITS.speed`, `OmniHandSpeed` (MIN/MAX, log slider mapping, relative snap, repeat ceiling 5 s), `HandSpeedPanel` (log slider, exact number box, presets 0.05/0.25/1/5/50), `OmniHandsPanel` (same mapping), Axinator step ceiling 10 s.
 - Walking, altitude, ascend/descend and all orbit (yaw/pitch) already multiply by the eased hand speed, so they all get the range.

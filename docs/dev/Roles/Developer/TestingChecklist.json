@@ -2,6 +2,192 @@
   "_readme": "Real, comprehensive testing checklist covering everything built this session, grounded directly in BuildLog.md rather than memory. 'tested' starts false everywhere — fill it in as you go. 'howToReach' tells you the actual real path to the feature; 'whatToCheck' is the specific, real behavior that should happen, not just 'does it open'.",
   "categories": [
     {
+      "category": "V283 OrbitTunnels (horizontal and vertical torus tunnels, ride, panel)",
+      "items": [
+        {
+          "feature": "Both OrbitTunnels exist",
+          "howToReach": "Fly out from the middle along the ground (Home hand tunnel or WASD) until you reach the far end of the OmniHand tunnel",
+          "whatToCheck": "A very large black wireframe ring lies flat round the reality (horizontal) and another stands up (vertical); both are about as far out as the OmniHand tunnel ends. Black particles drift round inside each.",
+          "tested": false
+        },
+        {
+          "feature": "OrbitTunnel panel",
+          "howToReach": "Ribbon > Hands > Fire & tunnels > OrbitTunnel (◯), or terminal: Omni OrbitTunnel open",
+          "whatToCheck": "Panel opens with Horizontal / Vertical tabs, Enter / Exit / Pause, loops, direction, and the look, scale, image/video, particles and traversal settings. Closing and reopening keeps what you set.",
+          "tested": false
+        },
+        {
+          "feature": "Scale controls",
+          "howToReach": "OrbitTunnel panel > Ring radius, Tube width, Turn (vertical tab)",
+          "whatToCheck": "The ring/tube change at once on screen; Turn rotates the vertical ring about the up axis; 'Reach of the regular tunnels' puts the size back.",
+          "tested": false
+        },
+        {
+          "feature": "Wireframe, solid, colour, opacity",
+          "howToReach": "OrbitTunnel panel > Style / Colour / Opacity",
+          "whatToCheck": "Solid fills the inside of the tube (you look at it from inside); colour and opacity update live.",
+          "tested": false
+        },
+        {
+          "feature": "Image or video on the wall",
+          "howToReach": "OrbitTunnel panel > Style Solid, Media image/video, paste an https link or pick a file",
+          "whatToCheck": "The picture or video wraps the inside of the tube and repeats along and round as set. A picked file lasts for this session only; a link is saved. Say which of image and video worked and whether a video plays smoothly (GPU/phone).",
+          "tested": false
+        },
+        {
+          "feature": "Enter and ride (orbitTraversal)",
+          "howToReach": "OrbitTunnel panel > Enter horizontal",
+          "whatToCheck": "Camera flies to the inside wall and corkscrews along the ring while circling the wall; your speed and roll speed settings change it; speed 0 only circles the wall. Camera never leaves the inside of the tube. Check motion comfort.",
+          "tested": false
+        },
+        {
+          "feature": "Loops and hand-over",
+          "howToReach": "Loops = 2, both tunnels ticked, Enter horizontal",
+          "whatToCheck": "Rides the horizontal ring twice, flies to the vertical ring, rides it twice, then flies you back to where you were. With the vertical un-ticked only the horizontal is ridden. Entering vertical first reverses the order.",
+          "tested": false
+        },
+        {
+          "feature": "Exit and Esc",
+          "howToReach": "While riding: Exit button, then again with Esc, and Pause / go",
+          "whatToCheck": "Exit flies back to your starting place and the normal camera works again (no jump). Esc leaves at any time. Pause freezes the camera.",
+          "tested": false
+        },
+        {
+          "feature": "Auto enter",
+          "howToReach": "Fly to the far end of the OmniHand tunnel along the ground",
+          "whatToCheck": "Reaching the tube starts the ride by itself (Auto enter on). With Auto enter off nothing happens. After exiting you are not pulled straight back in.",
+          "tested": false
+        },
+        {
+          "feature": "Particle speed and count",
+          "howToReach": "OrbitTunnel panel > Particles",
+          "whatToCheck": "Speed x and count change the stream; 0 stops it. Check frame rate on a phone / GPU with the default 360 particles per ring.",
+          "tested": false
+        },
+        {
+          "feature": "Settings are kept",
+          "howToReach": "Change several settings, reload",
+          "whatToCheck": "Both tunnels come back as you left them (this browser). 'Reset this tunnel to defaults' restores black wireframe, radius 8440.",
+          "tested": false
+        },
+        {
+          "feature": "Terminal commands",
+          "howToReach": "Omni OrbitTunnel enter tunnel(vertical) / exit / set tunnel(horizontal) key(radius) value(12000)",
+          "whatToCheck": "Each does what it says; a bad key is refused with a message.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V283 Black reticle and Take Me There delay",
+      "items": [
+        {
+          "feature": "Centre circle is black with a thin white shadow",
+          "howToReach": "Look at the middle of the screen on the white wallpaper",
+          "whatToCheck": "Black rings with a faint white edge, still low opacity (15 percent). Admin > UI Settings > Reticle can change colour, opacity and shadow; reset returns to black with the white shadow. If you saved a colour before, your saved one stays.",
+          "tested": false
+        },
+        {
+          "feature": "Take Me There start delay",
+          "howToReach": "Node menu > Take Me There; Admin > ⟐CameraTravelSettings > Start delay",
+          "whatToCheck": "A very slight pause (0.15 s) then the camera moves; 0 removes it; up to 2 s. Clicking another node during the pause replaces the first. Is 0.15 s the right amount?",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V283 Hand orbs white, charge spin and energy",
+      "items": [
+        {
+          "feature": "White orbs",
+          "howToReach": "Open each hand's orb (LH, RH, ConsciousHand, OmniHand: Orb-it cell or key)",
+          "whatToCheck": "The panel is white, words / rings / core are dark and readable, buttons readable. If you had an old dark colour saved it is now white.",
+          "tested": false
+        },
+        {
+          "feature": "Panel colour presets",
+          "howToReach": "⟐OmniHands > the hand > ◉ Orb > Panel colour",
+          "whatToCheck": "White and Black buttons and the picker work and apply at once; black gives the original glowing look.",
+          "tested": false
+        },
+        {
+          "feature": "Charge speeds the system up",
+          "howToReach": "LH or RH orb: hold the core",
+          "whatToCheck": "Words and tool dots orbit faster the longer you hold (about 6x at full), then ease back after release.",
+          "tested": false
+        },
+        {
+          "feature": "Energy gathers",
+          "howToReach": "Same: hold the core",
+          "whatToCheck": "Small particles spiral into the core, more and faster as the charge fills; none at rest. Does it look like energy gathering? Check frame rate on a phone.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V282 LH and RH tunnel buttons",
+      "items": [
+        {
+          "feature": "TUNL button on the LH and RH pads",
+          "howToReach": "Open the LH / RH pad (Hands)",
+          "whatToCheck": "A round ◎ TUNL button one step before Release; lit while that hand's tunnel shows; the five buttons do not touch or leave the screen. On a phone it is hidden.",
+          "tested": false
+        },
+        {
+          "feature": "Ribbon and command",
+          "howToReach": "Ribbon > Hands > Fire & tunnels > LH tunnel (Λ) / RH tunnel (Ψ); Omni Tunnel toggle hand(rh)",
+          "whatToCheck": "Each shows / hides its hand's tunnel and the button lights to match.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V281 SourceNode",
+      "items": [
+        {
+          "feature": "Make a source node from a claim",
+          "howToReach": "Select an Epistemics node with a source label > Nodes > Source node, or Inspector > Make source node",
+          "whatToCheck": "A book-shaped source node appears linked with a Cites line; making it twice reuses it. Unlink source removes the link.",
+          "tested": false
+        },
+        {
+          "feature": "Source details and trust",
+          "howToReach": "Select a source node > Inspector",
+          "whatToCheck": "Title, kind, publisher, address (https only), trust 0-1 and why can be edited; a dead / retracted source goes grey wireframe and counts for less.",
+          "tested": false
+        },
+        {
+          "feature": "Source upkeep commands",
+          "howToReach": "Omni Source report / recheck / merge",
+          "whatToCheck": "Report lists dead or old sources and claims that cite none; merge folds duplicates.",
+          "tested": false
+        },
+        {
+          "feature": "MBTA course sources",
+          "howToReach": "Ribbon > Realities > MBTA course, Expand",
+          "whatToCheck": "Claims cite 21 shared source nodes; the lines look right and nothing overlaps badly.",
+          "tested": false
+        }
+      ]
+    },
+    {
+      "category": "V280 MBTA course in a StoredRealityNode",
+      "items": [
+        {
+          "feature": "Build and expand the course",
+          "howToReach": "Ribbon > Realities > MBTA course (or Omni StoredReality example mbta), select the box, Expand",
+          "whatToCheck": "One box; Expand lays out four lanes (Overview, Red, Orange, Green, Mattapan), problem > cause > response left to right; building twice adds nothing.",
+          "tested": false
+        },
+        {
+          "feature": "Cautions are separate nodes",
+          "howToReach": "Read the cautions in the course",
+          "whatToCheck": "The Red Line 2019 note, missing Green Line figure and Mattapan note are separate nodes; do the facts read as honest and sourced?",
+          "tested": false
+        }
+      ]
+    },
+    {
       "category": "V209 Hand speed 0.01x to 50x",
       "items": [
         {

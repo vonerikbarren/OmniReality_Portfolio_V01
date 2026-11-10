@@ -5,7 +5,7 @@ export default async function smoke (pg, errs) {
   const pre = []; const pcheck = (name, ok, detail = '') => pre.push({ name, ok: !!ok, detail: String(detail).slice(0, 220) })
   const look = await pg.evaluate(() => { const cs = getComputedStyle(document.getElementById('omni-boot')); return { bg: cs.getPropertyValue('--boot-bg').trim(), ink: cs.getPropertyValue('--boot-ink').trim(), overall: cs.getPropertyValue('--boot-overall').trim(), ver: document.getElementById('boot-version')?.textContent, gear: !!document.getElementById('omni-gear'), cap: document.getElementById('boot-caption')?.textContent || '' } })
   pcheck('opening screen: light by default (white, black ink, 68 percent)', look.bg === '#ffffff' && look.ink === '#000000' && look.overall === '0.68', JSON.stringify(look))
-  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V283' && look.gear, JSON.stringify(look))
+  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V284' && look.gear, JSON.stringify(look))
   pcheck('opening screen: a space is named', /space/i.test(look.cap), look.cap)
   await pg.click('#omni-gear'); await pg.selectOption('#og-bar', 'rainbow'); await pg.waitForTimeout(300)
   pcheck('gear: rainbow bar applies at once and is saved', await pg.evaluate(() => document.getElementById('boot-progress-bar').classList.contains('is-rainbow') && JSON.parse(localStorage.getItem('omni:gate-v1')).bar === 'rainbow'))
@@ -170,7 +170,7 @@ export default async function smoke (pg, errs) {
       check('reticle takes colour, brightness and shadow', rt.style.getPropertyValue('--oret-color') === '#ff8800' && rt.style.getPropertyValue('--oret-filter').includes('brightness(1.5)') && rt.style.getPropertyValue('--oret-filter').includes('drop-shadow'), rt.getAttribute('style'))
       check('the line colour really changes', getComputedStyle(rt.querySelector('.oret-line')).stroke === 'rgb(255, 136, 0)', getComputedStyle(rt.querySelector('.oret-line')).stroke)
       window.dispatchEvent(new CustomEvent('omni:reticle-set', { detail: { patch: { color: 'banana', shadow: 'x' } } })); await wait(50); check('bad values are ignored', rt.style.getPropertyValue('--oret-color') === '#ff8800')
-      window.dispatchEvent(new CustomEvent('omni:reticle-set', { detail: { reset: true } })); await wait(100); check('reset goes back to the theme colour and no filter', !rt.style.getPropertyValue('--oret-color') && !rt.style.getPropertyValue('--oret-filter')) }
+      window.dispatchEvent(new CustomEvent('omni:reticle-set', { detail: { reset: true } })); await wait(100); check('reset goes back to black lines with a thin white shadow', /#000000|rgb\(0, 0, 0\)/.test(rt.style.getPropertyValue('--oret-color')) && /255, 255, 255/.test(rt.style.getPropertyValue('--oret-filter')), rt.style.getPropertyValue('--oret-color') + ' | ' + rt.style.getPropertyValue('--oret-filter')) }
     // V271: epistemics node
     { const EP = SERVICES.epistemics; check('epistemics service', !!EP)
       await ok('create event', 'Omni Epistemics create layer(event) text(The bridge was closed for repairs on Monday morning) id(ep_e)'); check('an event node exists', EP.isNode('ep_e') && EP.get('ep_e').layer === 'event')
@@ -299,6 +299,14 @@ export default async function smoke (pg, errs) {
       OT.setPrefs({ enabled: { vertical: false } }); OT.enter('horizontal'); check('an unticked tunnel is skipped', OT.state().queue.join() === 'horizontal', OT.state().queue.join()); OT.exit(); t = 0; while (OT.state().riding && t++ < 80) await wait(100)
       check('exit puts the camera back', !OT.state().riding && cam.position.distanceTo(home) < 5)
       OT.setPrefs({ enabled: { vertical: true }, loops: 1 }); OT.reset('horizontal'); OT.reset('vertical'); window.dispatchEvent(new CustomEvent('omni:orbit-tunnel-panel-toggle')) }
+    // V283: the hand orbs are white by default, readable, and the colour can be black or any colour
+    { const HS = await import('/utils/OmniHandsSettings.js')
+      for (const hand of ['lh', 'rh', 'conscious', 'omnihand']) {
+        HS.setHandSetting(hand, 'orbColor', '#ffffff'); window.dispatchEvent(new CustomEvent('omni:orb-open', { detail: { hand } })); await wait(300)
+        const o = document.getElementById('omni-orb-' + hand); check(hand + ' orb: white panel, light styling', !!o && o.classList.contains('is-open') && o.classList.contains('is-light') && /255, 255, 255/.test(o.style.background), o?.style.background)
+        HS.setHandSetting(hand, 'orbColor', '#000000'); await wait(200); check(hand + ' orb: black on request', !o.classList.contains('is-light') && /0, 0, 0/.test(o.style.background))
+        HS.setHandSetting(hand, 'orbColor', '#ffffff'); window.dispatchEvent(new CustomEvent('omni:orb-close', { detail: { hand } })) }
+      check('default is white for all four hands', ['lh', 'rh', 'conscious', 'omnihand'].every(h => HS.getDefault(h, 'orbColor') === '#ffffff')) }
     // V281: SourceNode on its own: create, lift from a claim, reuse, edit, commands, inspector
     { const SO = SERVICES.sources, EP = SERVICES.epistemics; check('source service', !!SO)   // (test nodes sit near the origin: selecting a node flies the camera to it, and the line captions test later needs it near)
       EP.create({ id: 'sx_c1', layer: 'event', text: 'A thing happened.', source: 'Daily Example 2026-01-02', note: 'https://www.example.com/story?utm_source=x', position: [0, 0, -30] })

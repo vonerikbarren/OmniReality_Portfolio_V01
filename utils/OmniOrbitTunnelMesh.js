@@ -53,7 +53,7 @@ export function buildOrbitTunnel (specIn, { localMedia = null } = {}) {
     P = { th: new Float32Array(n), ph: new Float32Array(n), fr: new Float32Array(n), dr: new Float32Array(n), pos: new Float32Array(n * 3) }
     for (let i = 0; i < n; i++) { P.th[i] = r() * TAU; P.ph[i] = r() * TAU; P.fr[i] = 0.12 + Math.sqrt(r()) * 0.78; P.dr[i] = 0.6 + r() * 0.8 }
     const geo = new THREE.BufferGeometry(); pAttr = new THREE.BufferAttribute(P.pos, 3); geo.setAttribute('position', pAttr)
-    pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: spec.color, size: Math.max(3, spec.tube / 90), sizeAttenuation: true, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }))
+    pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: spec.color, size: Math.max(3, spec.tube / 90), sizeAttenuation: true, transparent: true, opacity: 0.7, depthWrite: false }))   // normal blending: additive vanishes on the white wallpaper and cannot draw black
     pts.frustumCulled = false; pts.name = 'OmniOrbitParticles'; group.add(pts); write()
   }
   function write () {

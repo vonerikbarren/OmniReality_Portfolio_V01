@@ -17,8 +17,17 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import { getSettings } from './CameraTravelSettings.js'
 
+let pending = null   // V283: a start delay that has not fired yet; a newer Take Me There replaces it
+
 export function goToObject (ctx, mesh) {
   if (!mesh) return
+  pending?.kill(); pending = null
+  const wait = Math.min(2, Math.max(0, Number(getSettings().delay) || 0))
+  if (wait > 0) { pending = gsap.delayedCall(wait, () => { pending = null; travel(ctx, mesh) }); return }
+  travel(ctx, mesh)
+}
+
+function travel (ctx, mesh) {
   const objectPos = mesh.getWorldPosition(new THREE.Vector3())
   const camera = ctx.camera
 

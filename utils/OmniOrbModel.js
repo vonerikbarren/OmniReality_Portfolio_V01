@@ -62,3 +62,39 @@ export function streamPositions (names, t, speed = 1) {
 export const chargeAt = (ms, fullMs) => Math.max(0, Math.min(1, ms / Math.max(100, fullMs)))
 /** Grey level 0..255 for depth z (-1 back .. 1 front). */
 export const greyAt = (z, charge = 0) => Math.round(Math.min(255, 110 + 105 * (z + 1) / 2 + 40 * charge))
+
+// ── V283: light / dark orb panels and the gathering-energy motes ──
+const hx = (h) => { const n = parseInt(String(h).slice(1), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+const toHex = (a) => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
+/** 0..1 brightness of a #rrggbb colour (anything else counts as dark) */
+export function lightness (hex) { if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return 0; const [r, g, b] = hx(hex); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 }
+export const isLightPanel = (hex) => lightness(hex) > 0.5
+/** The hand's palette for a given panel colour. A dark panel keeps the glowing palette; a light one swaps in dark ink so words, rings and the core still show. Pure. */
+export function inkFor (pal, bg) {
+  const base = pal && typeof pal === 'object' ? pal : {}
+  if (!isLightPanel(bg)) return { ...base, light: false }
+  const dk = (h, k) => toHex(hx(h || '#808080').map(v => v * k))
+  return base.grey
+    ? { ...base, core: '#1a1a1a', ring: '#4a4a4a', text: '#16161c', light: true }
+    : { ...base, core: dk(base.ring, 0.5), ring: dk(base.ring, 0.72), text: '#16161c', light: true }
+}
+/** grey level for words on a LIGHT panel: front words dark, back words pale (the mirror of greyAt) */
+export const greyAtLight = (z, charge = 0) => Math.round(Math.max(0, 175 - 150 * (z + 1) / 2 - 40 * charge))
+/** The charge makes the whole system turn faster: 1x idle .. 1+SPIN_GAIN x at full charge. */
+export const SPIN_GAIN = 5
+export const spinFactor = (spin) => 1 + SPIN_GAIN * Math.max(0, Math.min(1, Number(spin) || 0)) ** 1.5
+/** How many energy motes fly in at a given spin 0..1: none at rest, up to MOTE_MAX at full charge. */
+export const MOTE_MAX = 64
+export const moteCount = (spin) => { const s = Math.max(0, Math.min(1, Number(spin) || 0)); return s < 0.02 ? 0 : Math.round(8 + (MOTE_MAX - 8) * s) }
+/** Motes spiral in from the rim to the core. t is the mote clock; returns [{ x, y, a, s }] with x, y in -1..1 of the orb radius. */
+export function motePositions (n, t, spin = 1) {
+  const count = Math.max(0, Math.min(MOTE_MAX, Math.floor(Number(n) || 0))); const out = []
+  for (let i = 0; i < count; i++) {
+    const seed = (i * 0.61803398875) % 1
+    const p = ((t * (0.35 + 0.25 * seed) + seed * 7.31) % 1 + 1) % 1           // 0 at the rim .. 1 absorbed
+    const r = 1.05 * (1 - p) ** 1.6 + 0.06
+    const ang = i * 2.399 + p * (3 + 4 * Math.max(0, Math.min(1, spin))) + seed * 6.28
+    out.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r * 0.9, a: Math.min(1, p * 4) * (1 - Math.max(0, p - 0.8) / 0.2), s: 0.7 + 0.9 * p })
+  }
+  return out
+}

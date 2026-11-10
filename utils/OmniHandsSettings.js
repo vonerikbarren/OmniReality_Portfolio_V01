@@ -76,8 +76,11 @@ export const DEFAULT_MAGAZINE = {
 }
 
 /** V234: the orb settings every hand has (the words are that hand's OmniPotentials; colour / opacity / picture-or-video are the orb panel's look). */
+/** V283: the orb panels are white by default; a colour saved from the old dark defaults counts as "not chosen" and becomes white too */
+export const ORB_DEFAULT_COLOR = '#ffffff'
+const OLD_ORB_DISCS = ['#0e0e12', '#140c14', '#08121a', '#14110a']
 function orbDefaults (hand) {
-  return { orbWords: defaultPool(hand), orbSpeed: 1, orbOpacity: 1, orbColor: ORB_HANDS[hand].palette.disc, orbShown: 12, orbMediaKind: 'none', orbMediaName: '', orbMediaOpacity: 0.55, notifyMode: 'orb' }
+  return { orbWords: defaultPool(hand), orbSpeed: 1, orbOpacity: 1, orbColor: ORB_DEFAULT_COLOR, orbShown: 12, orbMediaKind: 'none', orbMediaName: '', orbMediaOpacity: 0.55, notifyMode: 'orb' }
 }
 
 /** Pre-V163 values of the constants the systems used to hard-code (+ V165 speed / ammo). */
@@ -142,7 +145,7 @@ function sanitize (hand, key, value) {
   if (Array.isArray(def)) return sanitizeMagazine(value, def)
   if (typeof def === 'string') {
     if (typeof value !== 'string') return def
-    if (key === 'orbColor') return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : def
+    if (key === 'orbColor') { const v = /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : def; return OLD_ORB_DISCS.includes(v) ? def : v }
     return ENUMS[key] && !ENUMS[key].includes(value) ? def : value.slice(0, 48)
   }
   const n = Number(value)

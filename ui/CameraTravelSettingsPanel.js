@@ -171,6 +171,14 @@ export default class CameraTravelSettingsPanel {
           </div>
         </div>
         <div>
+          <div class="cts-field-label">Start delay (seconds)</div>
+          <div class="cts-row">
+            <input type="number" class="cts-number" id="cts-delay" value="${s.delay}" min="0" max="2" step="0.05" />
+            <input type="range" class="cts-slider" id="cts-delay-slider" value="${s.delay}" min="0" max="2" step="0.05" />
+          </div>
+          <div class="cts-note">A very slight pause before the camera starts to move. 0 = none.</div>
+        </div>
+        <div>
           <div class="cts-field-label">Ease</div>
           <select class="cts-select" id="cts-ease">${easeOptions}</select>
         </div>
@@ -191,6 +199,9 @@ export default class CameraTravelSettingsPanel {
     const durationSlider = el.querySelector('#cts-duration-slider')
     durationInput.addEventListener('input', (e) => { setSettings({ duration: Number(e.target.value) }); durationSlider.value = e.target.value })
     durationSlider.addEventListener('input', (e) => { setSettings({ duration: Number(e.target.value) }); durationInput.value = e.target.value })
+    const delayInput = el.querySelector('#cts-delay'), delaySlider = el.querySelector('#cts-delay-slider')
+    const putDelay = (v) => { const n = Math.min(2, Math.max(0, Number(v) || 0)); setSettings({ delay: n }); delayInput.value = n; delaySlider.value = n }
+    delayInput.addEventListener('input', (e) => putDelay(e.target.value)); delaySlider.addEventListener('input', (e) => putDelay(e.target.value))
     el.querySelector('#cts-ease').addEventListener('change', (e) => setSettings({ ease: e.target.value }))
     el.querySelector('#cts-stagger').addEventListener('input', (e) => setSettings({ stagger: Number(e.target.value) }))
 

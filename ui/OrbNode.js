@@ -16,7 +16,7 @@
  */
 import { getHandSetting, setHandSetting } from '../utils/OmniHandsSettings.js'
 import { STRONG_AT, FULL_AT } from '../utils/OmniChargeTier.js'
-import { cleanWords, wordPositions, streamPositions, chargeAt, greyAt, wordTip as lhTip } from '../utils/OmniOrbModel.js'
+import { cleanWords, wordPositions, streamPositions, chargeAt, greyAt, wordTip as lhTip, inkFor, isLightPanel, greyAtLight, spinFactor, moteCount, motePositions } from '../utils/OmniOrbModel.js'
 import { HANDS, defaultPool, wordInfo, createLoop, stepLoop, syncLoop, fadeIn } from '../utils/OmniOrbPotentials.js'
 import { loadMedia } from '../utils/OmniOrbMedia.js'
 import { resolveSites } from '../utils/OmniStarLightSites.js'
@@ -40,6 +40,11 @@ const CSS = `
 .oorb-summon:hover { background: rgba(255,255,255,.25); }
 .oorb-tip { display: none; position: absolute; left: 18%; right: 18%; bottom: 19%; text-align: center; font-size: 10px; line-height: 1.3; color: #ccc; pointer-events: none; text-shadow: 0 0 6px #000; }
 .oorb-tip b { color: #fff; }
+.omni-orb.is-light { border-color: rgba(0,0,0,.28); box-shadow: 0 0 22px rgba(0,0,0,.10), 0 10px 30px rgba(0,0,0,.35); color: #16161c; }
+.omni-orb.is-light .oorb-close { border-color: rgba(0,0,0,.35); background: rgba(255,255,255,.7); color: #333; }
+.omni-orb.is-light .oorb-close:hover, .omni-orb.is-light .oorb-summon:hover { background: rgba(0,0,0,.12); }
+.omni-orb.is-light .oorb-summon { border-color: rgba(0,0,0,.4); background: rgba(255,255,255,.75); color: #16161c; }
+.omni-orb.is-light .oorb-tip { color: #333; text-shadow: 0 0 6px #fff; } .omni-orb.is-light .oorb-tip b { color: #000; }
 `
 const FLASH = { lh: 'LH', rh: 'RH', conscious: 'ConsciousHand', omnihand: 'OmniHand' }
 const CONSCIOUS_TOOLS = ['TakeMeThere', 'Root', 'Back', 'Forth', 'Up', 'Down', 'Reset marker', 'Tunnel', 'Follow pads']
@@ -53,7 +58,7 @@ export default class OrbNode {
     this.hand = hand; this.pal = HANDS[hand].palette
     this._el = null; this._cv = null; this._g = null; this._tipEl = null; this._media = null; this._mediaUrl = null; this._bound = []; this._inited = false
     this._open = false; this._t = 0; this._last = 0; this._raf = 0; this._hold = null; this._charge = 0; this._burst = 0; this._hits = []; this._hover = null; this._msg = ''
-    this._pos = null; this._drag = null; this._loop = null; this._sel = new Set(); this._products = []; this._now = 0
+    this._spin = 0; this._mt = 0; this._ink = null; this._pos = null; this._drag = null; this._loop = null; this._sel = new Set(); this._products = []; this._now = 0
   }
   isOpen () { return this._open }
   get charge () { return this._charge }
@@ -101,7 +106,8 @@ export default class OrbNode {
     const el = this._el; if (!el) return
     el.style.opacity = String(Math.min(1, Math.max(0.15, Number(this._set('orbOpacity')) || 1)))
     const c = /^#[0-9a-f]{6}$/i.test(this._set('orbColor')) ? this._set('orbColor') : this.pal.disc
-    el.style.background = `radial-gradient(circle at 50% 50%, ${c} 0%, ${shade(c, 0.35)} 78%)`
+    const light = isLightPanel(c); this._ink = inkFor(this.pal, c); el.classList.toggle('is-light', light)
+    el.style.background = `radial-gradient(circle at 50% 50%, ${c} 0%, ${shade(c, light ? 0.9 : 0.35)} 78%)`
     if (this._media) this._media.style.opacity = String(Math.min(1, Math.max(0.1, Number(this._set('orbMediaOpacity')) || 0.55)))
     this._applyMedia()
   }
@@ -275,7 +281,10 @@ export default class OrbNode {
   }
   frame (now = performance.now()) {
     const dt = this._last ? Math.min(0.1, (now - this._last) / 1000) : 0; this._last = now; this._now = now
-    this._t += dt * (Number(this._set('orbSpeed')) || 1)
+    if (this._hold) this._charge = chargeAt(now - this._hold.at, Number(this._set('orbChargeMs')) || 1200)
+    this._spin += (this._charge - this._spin) * Math.min(1, dt * (this._charge > this._spin ? 3 : 1.6))   // eased: speeds up while charging, winds down after release
+    this._t += dt * (Number(this._set('orbSpeed')) || 1) * spinFactor(this._spin)
+    this._mt += dt * (0.5 + 1.5 * this._spin)
     if (this._hold) this._charge = chargeAt(now - this._hold.at, Number(this._set('orbChargeMs')) || 1200)
     this._burst = Math.max(0, this._burst - dt * 2.2)
     if (this._msgT > 0) { this._msgT -= dt; if (this._msgT <= 0) { this._msg = ''; this._showTip() } }
@@ -283,7 +292,7 @@ export default class OrbNode {
   }
   _draw () {
     const g = this._g; if (!g) return
-    const S = SIZE, R = S * ORB_R, c = this._charge, t = this._t, burst = this._burst, pal = this.pal, now = this._now
+    const S = SIZE, R = S * ORB_R, c = this._charge, t = this._t, burst = this._burst, pal = this._ink ?? this.pal, now = this._now
     const [rr, rg, rb] = hexRgb(pal.ring), [cr0, cg0, cb0] = hexRgb(pal.core), [tr, tg, tb] = hexRgb(pal.text)
     g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, S, S); g.save(); g.translate(S / 2, S / 2)
     g.lineWidth = 0.6
@@ -298,7 +307,7 @@ export default class OrbNode {
       const slot = this._loop.shown.indexOf(w.word), f = slot >= 0 ? fadeIn(this._loop.born[slot], now) : 1, sel = this._sel.has(w.word)
       const depth = 0.35 + 0.65 * (w.z + 1) / 2, a = depth * f * (off ? 0.45 : 1)
       g.font = `${Math.round(10 + 3 * w.s)}px 'Courier New', 'Noto Sans', 'Noto Sans CJK SC', sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'
-      if (pal.grey) { const gr = greyAt(w.z, c); g.fillStyle = `rgba(${gr},${gr},${gr},${a})` } else g.fillStyle = `rgba(${tr},${tg},${tb},${a})`
+      if (pal.grey) { const gr = pal.light ? greyAtLight(w.z, c) : greyAt(w.z, c); g.fillStyle = `rgba(${gr},${gr},${gr},${a})` } else g.fillStyle = `rgba(${tr},${tg},${tb},${a})`
       if (sel) { g.shadowColor = pal.ring; g.shadowBlur = 8 }
       g.fillText(w.word, px, py); g.shadowBlur = 0
       if (sel) { const tw = g.measureText(w.word).width; g.strokeStyle = pal.ring; g.lineWidth = 1; g.beginPath(); g.moveTo(px - tw / 2, py + 8); g.lineTo(px + tw / 2, py + 8); g.stroke() }
@@ -311,6 +320,8 @@ export default class OrbNode {
       if (loaded) { g.strokeStyle = `rgba(${cr0},${cg0},${cb0},${0.7 * s.a})`; g.lineWidth = 0.8; g.beginPath(); g.arc(px, py, 6, 0, Math.PI * 2); g.stroke() }
       if (s.a > 0.25) this._hits.push({ kind: 'tool', name: s.name, x: px, y: py, r: 11 })
     }
+    const nm = moteCount(this._spin)   // V283: energy gathers: motes spiral into the core, more and faster the longer it charges
+    if (nm) { const mp = motePositions(nm, this._mt, this._spin); for (const m of mp) { g.fillStyle = `rgba(${cr0},${cg0},${cb0},${(0.25 + 0.6 * this._spin) * m.a})`; g.beginPath(); g.arc(m.x * R, m.y * R, 0.9 + m.s * (0.8 + 1.2 * this._spin), 0, Math.PI * 2); g.fill() } }
     const cr = R * CORE_HIT * (0.8 + 0.5 * c + 0.4 * burst) * (1 + 0.04 * Math.sin(t * 5))
     const grad = g.createRadialGradient(0, 0, 0, 0, 0, cr * 2.6)
     grad.addColorStop(0, `rgba(${cr0},${cg0},${cb0},1)`); grad.addColorStop(0.35, `rgba(${rr},${rg},${rb},${0.8 + 0.2 * c})`); grad.addColorStop(0.7, `rgba(${rr >> 1},${rg >> 1},${rb >> 1},0.35)`); grad.addColorStop(1, 'rgba(0,0,0,0)')

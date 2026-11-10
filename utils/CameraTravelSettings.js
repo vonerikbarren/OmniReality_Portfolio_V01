@@ -27,7 +27,7 @@ const REAL_GSAP_EASES = [
   'none',
 ]
 
-const DEFAULTS = { duration: 0.6, ease: 'power2.inOut', stagger: 0 }
+const DEFAULTS = { duration: 0.6, ease: 'power2.inOut', stagger: 0, delay: 0.15 }   // V283: delay = a very slight pause before the camera starts to move (0 = none)
 
 let settings = loadSettings()
 

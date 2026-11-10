@@ -36,7 +36,7 @@ export function safeMediaUrl (v) {
 export function defaultTunnel (id = 'horizontal') {
   const v = id === 'vertical'
   return {
-    id: v ? 'vertical' : 'horizontal', visible: true, mode: 'wire', color: v ? 0xff9d5c : 0x66ccff, opacity: 0.22,
+    id: v ? 'vertical' : 'horizontal', visible: true, mode: 'wire', color: 0x000000, opacity: 0.35,   // V283: black (the reality's wallpaper is white)
     radius: TUNNEL_REACH, tube: 520, yaw: 0,
     media: { kind: 'none', url: '', repeatU: 40, repeatV: 4 },
     particles: { on: true, speed: 1, count: 360 },
