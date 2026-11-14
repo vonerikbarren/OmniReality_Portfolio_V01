@@ -31,6 +31,7 @@ import { epistemicsKindBlockHTML, wireEpistemicsKindBlock } from './OmniEpistemi
 import { edgeNodeKindBlockHTML, wireEdgeNodeKindBlock } from './OmniEdgeNodeInspector.js'   // V278
 import { sourceKindBlockHTML, wireSourceKindBlock } from './OmniSourceInspector.js'   // V281
 import { storedVideoKindBlockHTML, wireStoredVideoKindBlock } from './OmniStoredVideoInspector.js'   // V277
+import { multiVideoKindBlockHTML, wireMultiVideoKindBlock } from './OmniMultiVideoInspector.js'   // V286
 import { storedRealityKindBlockHTML, wireStoredRealityKindBlock } from './OmniStoredRealityInspector.js'   // V277
 import { rhythmKindBlockHTML, wireRhythmKindBlock } from './OmniRhythmInspector.js'   // V270: Rhythm node
 import { flashKindBlockHTML, wireFlashKindBlock } from './OmniFlashInspector.js'   // V269: Flashcards node
@@ -166,6 +167,7 @@ export function extraOptionsHTML (data) {
   if (data.nodeKind === Extra.KIND_EDGE) return edgeNodeKindBlockHTML(data)   // V278
   if (data.nodeKind === Extra.KIND_SOURCE) return sourceKindBlockHTML(data)   // V281
   if (data.nodeKind === Extra.KIND_STORED_VIDEO) return storedVideoKindBlockHTML(data)   // V277
+  if (data.nodeKind === Extra.KIND_MULTI_VIDEO) return multiVideoKindBlockHTML(data)   // V286
   if (data.nodeKind === Extra.KIND_STORED_REALITY) return storedRealityKindBlockHTML(data)   // V277
   if (data.nodeKind === Extra.KIND_RHYTHM) return rhythmKindBlockHTML(data)   // V270
   if (data.nodeKind === Extra.KIND_DIMENSIONAL) return dimKindBlockHTML(data)   // V217
@@ -261,6 +263,7 @@ export function wireExtraOptions (root, data) {
   if (data.nodeKind === Extra.KIND_EDGE) { wireEdgeNodeKindBlock(root, data); return }   // V278
   if (data.nodeKind === Extra.KIND_SOURCE) { wireSourceKindBlock(root, data); return }   // V281
   if (data.nodeKind === Extra.KIND_STORED_VIDEO) { wireStoredVideoKindBlock(root, data); return }   // V277
+  if (data.nodeKind === Extra.KIND_MULTI_VIDEO) { wireMultiVideoKindBlock(root, data); return }   // V286
   if (data.nodeKind === Extra.KIND_STORED_REALITY) { wireStoredRealityKindBlock(root, data); return }   // V277
   if (data.nodeKind === Extra.KIND_RHYTHM) { wireRhythmKindBlock(root, data); return }   // V270
   if (data.nodeKind === Extra.KIND_DIMENSIONAL) { wireDimKindBlock(root, data); return }   // V217

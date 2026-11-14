@@ -34,6 +34,7 @@ import * as Hands from '../utils/OmniHandsSettings.js'
 import * as Decor from '../utils/OmniSceneDecor.js'
 import * as M_DEMO from '../utils/OmniMeaningDemoModel.js'
 import * as DPL from '../utils/OmniDocPageLayouts.js'
+import * as M_MV from '../utils/OmniMultiVideoModel.js'   // V286
 import * as LineModel from '../utils/OmniLineModel.js'
 import * as RhythmModel from '../utils/OmniRhythmModel.js'
 import * as EpiModel from '../utils/OmniEpistemicsModel.js'
@@ -158,6 +159,13 @@ export function registerOmniBuiltins () {
       window.dispatchEvent(new CustomEvent('omni:hand-tunnel-toggle', { detail: { hand: h } }))
       return `${h.toUpperCase()} tunnel toggled`
     } })
+  // ── OmniTeleprompt (V285) ──
+  const tele = () => { if (!SERVICES.teleprompt) throw new Error('the OmniTeleprompt is not running'); return SERVICES.teleprompt }
+  registerOmni('Teleprompt', 'show', { keywordSummary: 'a panel from the edge of the screen that gives the user information', summary: 'Show text on the OmniTeleprompt: Omni Teleprompt show text(...) [title(...)] [edge(bottom|left|top)] [seconds(8)]', props: { text: 'what to show', title: 'a heading', edge: 'bottom | left | top', seconds: 'hide after this many seconds (0 = stays)' },
+    run (call) { const r = tele().show({ text: call.props.text ?? call.arg ?? '', title: call.props.title, edge: call.props.edge, seconds: call.props.seconds }); if (!r.ok) throw new Error(r.error); return `OmniTeleprompt on the ${r.edge}` } })
+  registerOmni('Teleprompt', 'hide', { summary: 'Close the OmniTeleprompt: Omni Teleprompt hide', props: {}, run () { return tele().hide() ? 'OmniTeleprompt closed' : 'It was not open' } })
+  registerOmni('Teleprompt', 'set', { summary: 'Change a setting: Omni Teleprompt set [edge(bottom|left|top)] [size(150)] [fontSize(15)] [opacity(0.94)] [scroll(0)] [seconds(0)] [dark(true)]', props: { edge: 'bottom | left | top', size: 'px', fontSize: 'px', opacity: '0.3..1', scroll: 'px per second', seconds: 'auto hide', dark: 'true | false' },
+    run (call) { const p = {}; for (const k of ['edge', 'size', 'fontSize', 'opacity', 'scroll', 'seconds']) if (call.props[k] !== undefined) p[k] = call.props[k]; if (call.props.dark !== undefined) p.dark = /^(true|on|yes|1)$/i.test(String(call.props.dark)); if (!Object.keys(p).length) throw new Error('give at least one setting'); const g = tele().set(p); return `edge ${g.edge}, size ${g.size}` } })
   // ── OrbitTunnel (V283) ──
   const orbit = () => { if (!SERVICES.orbitTunnels) throw new Error('the OrbitTunnels are not running'); return SERVICES.orbitTunnels }
   const orbitId = (call) => { const r = String(call.props.tunnel ?? call.arg ?? call.words?.[0] ?? 'horizontal').toLowerCase(); return r.startsWith('v') ? 'vertical' : 'horizontal' }
@@ -497,6 +505,22 @@ export function registerOmniBuiltins () {
     run (call, ctx) { const p = call.props, id = nid(call, ctx, 'stored video'); const k = {}; if (p.color !== undefined) k.color = String(p.color); for (const n of ['similarity', 'smoothness', 'spill']) if (p[n] !== undefined) k[n] = Number(p[n]); if (p.off !== undefined) k.enabled = !(p.off === true || p.off === 'true'); bad(sv().setKey(id, k)); return 'Key set on ' + id } })
   registerOmni('StoredVideo', 'play', { summary: 'Play (or pause) the video: Omni StoredVideo play id(node) [pause(true)]', props: { id: 'the node', pause: 'true to pause' },
     async run (call, ctx) { const id = nid(call, ctx, 'stored video'); if (call.props.pause === true || call.props.pause === 'true') { sv().pause(id); return 'Paused ' + id } bad(await sv().play(id)); return 'Playing ' + id } })
+  // ── MultiVideo (V286) ──
+  const mvs = () => { if (!SERVICES.multivideo) throw new Error('the MultiVideo module is not running'); return SERVICES.multivideo }
+  const mvn = (call, ctx) => nid(call, ctx, 'MultiVideo')
+  registerOmni('MultiVideo', 'create', { keywordSummary: 'clips cut together on a timeline, with key coordinates (the node and camera move with the video) and a text layer', summary: 'Make a MultiVideo node: Omni MultiVideo create [id(name)] [width(6)]', props: { id: 'a name', width: 'width in units' },
+    run (call) { const p = call.props; const r = bad(mvs().create({ id: p.id, width: p.width !== undefined ? Number(p.width) : undefined, select: true })); return 'Made ' + r.nodeId } })
+  registerOmni('MultiVideo', 'clip', { summary: 'Add a clip: Omni MultiVideo clip id(node) [video(libraryId)] [name(...)] [length(5)] [transition(cut|fade|dip|wipe|slide)] [over(0.6)]   (no video = a placeholder clip)', props: { id: 'the node', video: 'a library video id', name: 'a label', length: 'seconds (placeholder clips)', transition: 'how it comes in', over: 'transition seconds' },
+    async run (call, ctx) { const p = call.props, id = mvn(call, ctx); const r = bad(await mvs().addClip(id, { sourceId: p.video, name: p.name, dur: p.length !== undefined ? Number(p.length) : undefined, transition: p.transition ? { kind: String(p.transition), dur: p.over !== undefined ? Number(p.over) : undefined } : undefined })); return id + ' has ' + r.clips + ' clip(s)' } })
+  registerOmni('MultiVideo', 'key', { summary: 'Add a key coordinate: Omni MultiVideo key id(node) at(2) x(0) y(5) z(10) [target(node|camera|both)] [ease(power2.inOut)] [lookx(0) looky(0) lookz(0)]   (no x/y/z = the camera where it is now)', props: { id: 'the node', at: 'seconds', x: 'x', y: 'y', z: 'z', target: 'node | camera | both', ease: 'a GSAP ease', lookx: 'camera looks at x', looky: 'y', lookz: 'z' },
+    run (call, ctx) { const p = call.props, id = mvn(call, ctx); const cam = mvs().ctx?.camera; const has = ['x', 'y', 'z'].some(k => p[k] !== undefined); const pos = has ? [Number(p.x ?? 0), Number(p.y ?? 0), Number(p.z ?? 0)] : (cam ? cam.position.toArray() : [0, 0, 0])
+      const look = ['lookx', 'looky', 'lookz'].some(k => p[k] !== undefined) ? [Number(p.lookx ?? 0), Number(p.looky ?? 0), Number(p.lookz ?? 0)] : null
+      const r = bad(mvs().change(id, mv => M_MV.addKeyCoord(mv, { t: Number(p.at ?? 0), target: p.target, pos, look, ease: p.ease }), 'key')); return id + ' has ' + r.multiVideo.keys.length + ' key(s)' } })
+  registerOmni('MultiVideo', 'text', { summary: 'Add a caption: Omni MultiVideo text id(node) text(...) [at(0)] [until(0)] [size(0.5)]   (until 0 = the end)', props: { id: 'the node', text: 'the words', at: 'from seconds', until: 'to seconds', size: 'size' },
+    run (call, ctx) { const p = call.props, id = mvn(call, ctx); bad(mvs().change(id, mv => M_MV.addTextItem(mv, { text: String(p.text ?? (call.words ?? []).join(' ')), t0: Number(p.at ?? 0), t1: Number(p.until ?? 0), size: p.size !== undefined ? Number(p.size) : undefined }), 'text')); return 'Caption added to ' + id } })
+  registerOmni('MultiVideo', 'play', { summary: 'Play it: Omni MultiVideo play id(node) [pause(true)] [stop(true)] [seek(3.5)]', props: { id: 'the node', pause: 'true to pause', stop: 'true to stop', seek: 'jump to seconds' },
+    async run (call, ctx) { const p = call.props, id = mvn(call, ctx); if (p.seek !== undefined) { mvs().seek(id, Number(p.seek)); return 'At ' + mvs().time(id).toFixed(1) + ' s' } if (p.stop === true || p.stop === 'true') { mvs().stop(id); return 'Stopped ' + id } if (p.pause === true || p.pause === 'true') { mvs().pause(id); return 'Paused ' + id } bad(await mvs().play(id)); return 'Playing ' + id } })
+  registerOmni('MultiVideo', 'edit', { summary: 'Open the editor: Omni MultiVideo edit id(node)', props: { id: 'the node' }, run (call, ctx) { const id = mvn(call, ctx); if (!SERVICES.multivideoui) throw new Error('the editor is not running'); bad(SERVICES.multivideoui.open(id)); return 'Editing ' + id } })
   registerOmni('StoredReality', 'create', { keywordSummary: 'a whole course kept inside one small box (store it, expand it)', summary: 'Make a stored reality node: Omni StoredReality create [name(...)] [id(name)] [ids(a,b,c)]  (ids = nodes to store in it)', props: { name: 'what the course is called', id: 'a name', ids: 'comma-separated node ids to store' },
     run (call) { const p = call.props; const r = bad(sr().create({ name: p.name, id: p.id, ids: typeof p.ids === 'string' ? p.ids.split(/[,;\s]+/).filter(Boolean) : undefined, select: true })); return 'Made ' + r.nodeId + (r.warning ? ' (' + r.warning + ')' : '') } })
   registerOmni('StoredReality', 'store', { summary: 'Keep nodes inside the box: Omni StoredReality store id(box) [ids(a,b,c)]  (no ids = the nodes inside the box, else the selection)', props: { id: 'the box', ids: 'node ids' },

@@ -3685,3 +3685,14 @@ Verified: node + jsdom suite (188+ checks, scratchpad) and real Chromium via Pla
 - Resize handle now sets `max-height` (not a fixed `height`), so the panel still collapses to the thin bar. Maximize keeps its old 90vh ceiling. Drag, close/minimize/attach/save/maximize, drawer/grid integration unchanged. `omni:layout-changed` not needed: only the ribbon and notify box listen to it and neither depends on the Inspector's footprint.
 
 Verified: node --check on every .js, jsdom suite `v170_test` (single instances, listener counts, strip, exclusivity, persistence, ribbon/strip same function), V165-V169 and earlier suites re-run (only the known pre-existing failures), real Chromium at 390x844 and 1280x720 (screenshots). See DeveloperQueue item 55 for what was not verified.
+
+## V285 — OmniTeleprompt, OmniVon + multi-video models (foundation)
+- NEW OmniTeleprompt: a panel that comes out of the bottom (or left, or top) of the screen with information. Ribbon button, Esc closes, gear sets edge/size/text/opacity/scroll/auto-hide/dark. Events omni:teleprompt-show|hide|toggle|set; commands `Omni Teleprompt show|hide|set`. Settings in this browser ('omni:teleprompt-v1'). Later a timeline key in the OmniMetaNode will send omni:teleprompt-show.
+- NEW (not wired yet): utils/OmniVonModel.js, utils/OmniMultiVideoModel.js, design claude/OMNIVON_DESIGN.md. Tests 44, 45, 46.
+
+## V286 — MultiVideoNode (the first OmniMetaNode)
+- NEW MultiVideoNode: clips on a timeline (cut, fade, dip, wipe, slide), per-clip trim, speed, volume, opacity, fade in/out and chroma key; key coordinates (time, position, optional look-at, GSAP ease into it; move the node, the camera or both); a thin text layer in front of the node (cardinal or spherical motion). Non-destructive: it plays live, nothing is exported.
+- Editor: own floating panel (Clips, Key coordinates, Text, Node tabs; click the strip to scrub), opened from the Inspector or `Omni MultiVideo edit`. Ribbon button; commands `Omni MultiVideo create|clip|key|text|play|edit`.
+- One node plays at a time; only clips on screen have a <video>; Stop puts the node back; orbit controls pause while camera keys run.
+- Smoke: the R-key climb test now waits for the eased pad speed to settle (it measured too early and was flaky); the playing-time check polls.
+- Not yet: teleprompt key on the timeline, other nodes as layers, the nesting / liveTime wiring, the time tunnel view.
