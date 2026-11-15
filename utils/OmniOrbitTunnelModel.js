@@ -40,7 +40,7 @@ export function defaultTunnel (id = 'horizontal') {
     radius: TUNNEL_REACH, tube: 520, yaw: 0,
     media: { kind: 'none', url: '', repeatU: 40, repeatV: 4 },
     particles: { on: true, speed: 1, count: 360 },
-    traversal: { speed: 1500, roll: 45, inset: 0.78 },
+    traversal: { speed: 1500, roll: 45, inset: 0.78, spin: true },
   }
 }
 
@@ -63,12 +63,24 @@ export function sanitizeOrbitTunnel (raw) {
     yaw: id === 'vertical' ? num(own(o, 'yaw'), 0, LIMITS.yaw[0], LIMITS.yaw[1]) : 0,
     media: { kind: url ? mk : 'none', url: mk === 'none' ? '' : url, repeatU: num(own(m, 'repeatU'), d.media.repeatU, LIMITS.repeat[0], LIMITS.repeat[1]), repeatV: num(own(m, 'repeatV'), d.media.repeatV, LIMITS.repeat[0], LIMITS.repeat[1]) },
     particles: { on: bool(own(p, 'on'), true), speed: num(own(p, 'speed'), 1, LIMITS.particleSpeed[0], LIMITS.particleSpeed[1]), count: Math.round(num(own(p, 'count'), d.particles.count, LIMITS.count[0], LIMITS.count[1])) },
-    traversal: { speed: num(own(t, 'speed'), d.traversal.speed, LIMITS.speed[0], LIMITS.speed[1]), roll: num(own(t, 'roll'), d.traversal.roll, LIMITS.roll[0], LIMITS.roll[1]), inset: num(own(t, 'inset'), d.traversal.inset, LIMITS.inset[0], LIMITS.inset[1]) },
+    traversal: { speed: num(own(t, 'speed'), d.traversal.speed, LIMITS.speed[0], LIMITS.speed[1]), roll: num(own(t, 'roll'), d.traversal.roll, LIMITS.roll[0], LIMITS.roll[1]), inset: num(own(t, 'inset'), d.traversal.inset, LIMITS.inset[0], LIMITS.inset[1]), spin: bool(own(t, 'spin'), true) },
   }
 }
 
+/**
+ * Where the camera looks while it rides (the TargetAreas). 'ring' = along the ring (how it always was).
+ *   front   TargetArea01  right in front of the user: the heading the camera had when the ride started, held
+ *   core    TargetArea02  the reality's core, 0, 0, 0
+ *   object  TargetArea03  a node in the scene (target = its id; it can move, the view follows)
+ *   tunnel  TargetArea04  a connection tunnel (an EdgeNode; target = its id), looking forward along it
+ */
+export const LOOK_MODES = ['ring', 'front', 'core', 'object', 'tunnel']
+export function sanitizeLook (raw) {
+  const o = raw && typeof raw === 'object' ? raw : {}; const m = own(o, 'mode'); const t = own(o, 'target')
+  return { mode: LOOK_MODES.includes(m) ? m : 'ring', target: typeof t === 'string' ? t.replace(/[^\w-]/g, '').slice(0, 64) : '' }
+}
 export function defaultPrefs () {
-  return { tunnels: { horizontal: defaultTunnel('horizontal'), vertical: defaultTunnel('vertical') }, enabled: { horizontal: true, vertical: true }, loops: 1, direction: 1, autoEnter: true, returnWhenDone: true, selected: 'horizontal' }
+  return { tunnels: { horizontal: defaultTunnel('horizontal'), vertical: defaultTunnel('vertical') }, enabled: { horizontal: true, vertical: true }, loops: 1, direction: 1, autoEnter: true, returnWhenDone: true, selected: 'horizontal', look: { mode: 'ring', target: '' } }
 }
 /** the whole saved preference object (never throws) */
 export function sanitizePrefs (raw) {
@@ -79,7 +91,7 @@ export function sanitizePrefs (raw) {
     tunnels: { horizontal: sanitizeOrbitTunnel({ ...(own(ts, 'horizontal') && typeof ts.horizontal === 'object' ? ts.horizontal : {}), id: 'horizontal' }), vertical: sanitizeOrbitTunnel({ ...(own(ts, 'vertical') && typeof ts.vertical === 'object' ? ts.vertical : {}), id: 'vertical' }) },
     enabled: { horizontal: bool(own(en, 'horizontal'), true), vertical: bool(own(en, 'vertical'), true) },
     loops: Math.round(num(own(o, 'loops'), 1, LIMITS.loops[0], LIMITS.loops[1])), direction: own(o, 'direction') === -1 ? -1 : 1,
-    autoEnter: bool(own(o, 'autoEnter'), true), returnWhenDone: bool(own(o, 'returnWhenDone'), true), selected: own(o, 'selected') === 'vertical' ? 'vertical' : 'horizontal',
+    autoEnter: bool(own(o, 'autoEnter'), true), returnWhenDone: bool(own(o, 'returnWhenDone'), true), selected: own(o, 'selected') === 'vertical' ? 'vertical' : 'horizontal', look: sanitizeLook(own(o, 'look')),
   }
 }
 
@@ -133,11 +145,30 @@ export function stepRide (state, dt, spec, prefs) {
   const d = Math.min(0.25, Math.max(0, Number(dt) || 0)); const dir = p.direction
   const dTheta = (s.traversal.speed * d) / s.radius
   const theta = ((Number(st.theta) || 0) + dTheta * dir) % TAU
-  const phi = ((Number(st.phi) || 0) + (s.traversal.roll * Math.PI / 180) * d) % TAU
+  const phi = ((Number(st.phi) || 0) + (s.traversal.spin === false ? 0 : (s.traversal.roll * Math.PI / 180) * d)) % TAU
   const travelled = (Number(st.travelled) || 0) + dTheta, lap = Math.floor(travelled / TAU)
   return { theta: theta < 0 ? theta + TAU : theta, phi: phi < 0 ? phi + TAU : phi, travelled, lap, done: lap >= p.loops }
 }
 export function describeRide (queue, i, lap, loops) {
   const q = Array.isArray(queue) ? queue : []; const id = q[i]; if (!id) return 'Not riding'
   return `Riding the ${id} OrbitTunnel — lap ${Math.min(lap + 1, loops)} of ${loops}${q[i + 1] ? ', then the ' + q[i + 1] + ' one' : ''}`
+}
+
+/**
+ * Where the camera looks and which way is up for one frame of the ride. Pure.
+ *   pose = camPose(...) ({ pos, look, up });  look = prefs.look;  spin = traversal.spin;
+ *   ctx  = { entryDir:[x,y,z] (the heading when the ride began), object:[x,y,z]|null, tunnelDir:[x,y,z]|null }
+ * With spin off the horizon stays level (up = world up). A target that cannot be found falls back to looking along the ring.
+ */
+export function aimFor (pose, lookRaw, spin = true, ctx = {}) {
+  const lk = sanitizeLook(lookRaw); const c = ctx && typeof ctx === 'object' ? ctx : {}; const pos = pose.pos
+  const dirOf = (v) => { const a = Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(Number.isFinite) ? v : null; if (!a) return null; const L = Math.hypot(a[0], a[1], a[2]); return L > 1e-9 ? [a[0] / L, a[1] / L, a[2] / L] : null }
+  let look = pose.look
+  if (lk.mode === 'front') { const d = dirOf(c.entryDir); if (d) look = [pos[0] + d[0] * 1000, pos[1] + d[1] * 1000, pos[2] + d[2] * 1000] }
+  else if (lk.mode === 'core') { if (Math.hypot(pos[0], pos[1], pos[2]) > 1e-6) look = [0, 0, 0] }
+  else if (lk.mode === 'object') { const o = Array.isArray(c.object) && c.object.length >= 3 && c.object.slice(0, 3).every(Number.isFinite) ? c.object : null; if (o && Math.hypot(o[0] - pos[0], o[1] - pos[1], o[2] - pos[2]) > 1e-6) look = [o[0], o[1], o[2]] }
+  else if (lk.mode === 'tunnel') { const d = dirOf(c.tunnelDir); if (d) look = [pos[0] + d[0] * 1000, pos[1] + d[1] * 1000, pos[2] + d[2] * 1000] }
+  let up = spin === false ? [0, 1, 0] : pose.up
+  const f = dirOf([look[0] - pos[0], look[1] - pos[1], look[2] - pos[2]]); if (f && Math.abs(f[0] * up[0] + f[1] * up[1] + f[2] * up[2]) > 0.9995) up = Math.abs(f[1]) > 0.9 ? [0, 0, 1] : up   // looking straight along the up vector: pick another
+  return { look, up }
 }

@@ -13,3 +13,7 @@ test('MultiVideo kind is wired in every place an extra kind needs', () => {
   for (const a of ['create', 'clip', 'key', 'text', 'play', 'edit']) assert.ok(src('systems/OmniLangCommands.js').includes(`registerOmni('MultiVideo', '${a}'`), a)
 })
 test('the editor text is free of emoji (escapes only)', () => { for (const f of ['ui/OmniMultiVideoEditor.js', 'ui/OmniMultiVideoInspector.js']) assert.ok(!/[\u{1F300}-\u{1FAFF}☀-➿]/u.test(src(f)), f) })
+test('the N-key picker offers the MultiVideo node and creates it', () => {
+  const p = readFileSync(new URL('../ui/OmniDrawModePicker.js', import.meta.url), 'utf8')
+  assert.ok(p.includes('data-mode="multivideo"')); assert.ok(p.includes("'multivideo'")); assert.ok(p.includes('omni:multivideo-node-create'))
+})

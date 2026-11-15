@@ -62,6 +62,8 @@ export default class OmniOrbitTunnels {
   setPrefs (patch) {
     try { const keep = this._prefs.tunnels; const next = M.sanitizePrefs({ ...merge(this._prefs, { ...patch, tunnels: undefined }), tunnels: keep }); this._prefs = next; this._changed(); return this.prefs() } catch (_) { return null }
   }
+  /** the selected node becomes the look target (a connection tunnel = TargetArea04, anything else = TargetArea03) */
+  useSelectedTarget () { const id = this.omniNode?.getSelectedId?.(); if (!id) return null; const d = this.omniNode?.getNodeData?.(id); this.setPrefs({ look: { mode: d?.nodeKind === 'edgeNode' ? 'tunnel' : 'object', target: id } }); const l = this.prefs().look; this._rerender?.(); return l }
   reset (id) { const k = id === 'vertical' ? 'vertical' : 'horizontal'; this._prefs.tunnels[k] = M.defaultTunnel(k); this._bodies[k]?.apply(this._prefs.tunnels[k]); this._changed(); return this.get(k) }
   /** back to "as far as the regular tunnels go" */
   resetSize (id) { return this.set(id, { radius: M.TUNNEL_REACH, tube: M.defaultTunnel(id).tube }) }
@@ -92,7 +94,7 @@ export default class OmniOrbitTunnels {
       if (this._ride) this._release(false)
       const queue = M.planQueue(first, this._prefs.enabled)
       for (const q of queue) if (!this._prefs.tunnels[q].visible) this.set(q, { visible: true })
-      this._prev = { pos: cam.position.clone(), quat: cam.quaternion.clone() }
+      this._prev = { pos: cam.position.clone(), quat: cam.quaternion.clone() }; const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd); this._entryDir = fwd.toArray()
       this._ride = { queue, i: 0, s: { theta: M.nearestTheta(this._prefs.tunnels[first], cam.position.toArray()), phi: -Math.PI / 2, travelled: 0, lap: 0, done: false }, phase: 'fly', paused: false }
       send('omni:orbit-disable', {}); send('omni:orbit-tunnel-ride', { state: 'enter', id: first })
       this._flyIn(0.0); this._announce(); return { ok: true, id: first }
@@ -103,8 +105,8 @@ export default class OmniOrbitTunnels {
     const r = this._ride; const cam = this.ctx.camera; const spec = this._prefs.tunnels[r.queue[r.i]]
     r.phase = 'fly'
     const from = cam.position.clone(); const fromQ = cam.quaternion.clone(); const pose = M.camPose(spec, r.s.theta, r.s.phi, this._prefs.direction)
-    const toPos = new THREE.Vector3(...pose.pos); const m = new THREE.Matrix4(); cam.up.set(...pose.up)
-    const tmp = new THREE.Object3D(); tmp.position.copy(toPos); tmp.up.set(...pose.up); tmp.lookAt(new THREE.Vector3(...pose.look)); const toQ = tmp.quaternion.clone(); void m
+    const toPos = new THREE.Vector3(...pose.pos); const m = new THREE.Matrix4(); const aim = this._aim(spec, pose); cam.up.set(...aim.up)
+    const tmp = new THREE.Object3D(); tmp.position.copy(toPos); tmp.up.set(...aim.up); tmp.lookAt(new THREE.Vector3(...aim.look)); const toQ = tmp.quaternion.clone(); void m
     const proxy = { t: 0 }; this._tw?.kill()
     this._tw = gsap.to(proxy, { t: 1, duration: Math.min(5, Math.max(1.2, from.distanceTo(toPos) / 6000)), ease: 'power2.inOut',
       onUpdate: () => { cam.position.lerpVectors(from, toPos, proxy.t); cam.quaternion.slerpQuaternions(fromQ, toQ, proxy.t) },
@@ -154,6 +156,13 @@ export default class OmniOrbitTunnels {
   }
   _hold (r) {
     const cam = this.ctx.camera; const spec = this._prefs.tunnels[r.queue[r.i]]; const pose = M.camPose(spec, r.s.theta, r.s.phi, this._prefs.direction)
-    cam.position.set(...pose.pos); cam.up.set(...pose.up); cam.lookAt(pose.look[0], pose.look[1], pose.look[2])
+    const aim = this._aim(spec, pose); cam.position.set(...pose.pos); cam.up.set(...aim.up); cam.lookAt(aim.look[0], aim.look[1], aim.look[2])
+  }
+  /** where to look and which way is up this frame: the TargetAreas (utils/OmniOrbitTunnelModel.js aimFor) */
+  _aim (spec, pose) {
+    const lk = this._prefs.look; let object = null, tunnelDir = null
+    if (lk.mode === 'object' && lk.target) { const m = this.omniNode?.getMeshById?.(lk.target); if (m) { const p = m.getWorldPosition ? m.getWorldPosition(new THREE.Vector3()) : m.position; object = [p.x, p.y, p.z] } }
+    if (lk.mode === 'tunnel' && lk.target) { const e = SERVICES.edgenodes?.get?.(lk.target); const pa = e ? this.omniNode?.getMeshById?.(e.from)?.position : null, pb = e ? this.omniNode?.getMeshById?.(e.to)?.position : null; if (pa && pb) tunnelDir = [pb.x - pa.x, pb.y - pa.y, pb.z - pa.z] }
+    return M.aimFor(pose, lk, spec.traversal.spin, { entryDir: this._entryDir, object, tunnelDir })
   }
 }

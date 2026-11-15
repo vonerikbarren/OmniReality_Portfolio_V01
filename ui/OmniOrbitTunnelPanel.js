@@ -32,9 +32,10 @@ const FIELDS = [
   ['h', 'Particles'],
   ['check', 'Particles flow', 'particles.on'], ['num', 'Particle speed ×', 'particles.speed', 0, 50, 0.1], ['num', 'Particle count', 'particles.count', 0, 1200, 20],
   ['h', 'orbitTraversal (your ride)'],
-  ['num', 'Your speed', 'traversal.speed', 0, 40000, 100], ['num', 'Roll round wall °/s', 'traversal.roll', -720, 720, 5], ['num', 'Wall distance', 'traversal.inset', 0.1, 0.95, 0.05],
+  ['num', 'Your speed', 'traversal.speed', 0, 40000, 100], ['num', 'Roll round wall °/s', 'traversal.roll', -720, 720, 5], ['num', 'Wall distance', 'traversal.inset', 0.1, 0.95, 0.05], ['check', 'Spin the camera round the wall (off keeps the horizon level)', 'traversal.spin'],
 ]
-const GLOBALS = [['num', 'Loops (laps each)', 'loops', 1, 99, 1], ['sel', 'Direction', 'direction', [[1, 'Forward'], [-1, 'Backward']]], ['check', 'Auto enter when I reach a tube', 'autoEnter'], ['check', 'Fly back when finished', 'returnWhenDone']]
+const LOOKS = [['ring', 'Off: look along the ring'], ['front', '01 Right in front of me'], ['core', '02 The reality\'s core (0, 0, 0)'], ['object', '03 An object in the scene'], ['tunnel', '04 A connection tunnel, looking forward']]
+const GLOBALS = [['sel', 'Target area', 'look.mode', LOOKS], ['text', 'Target (node id)', 'look.target', 'a node or tunnel id'], ['btn', 'Use the selected node as the target', 'useSelectedTarget'], ['num', 'Loops (laps each)', 'loops', 1, 99, 1], ['sel', 'Direction', 'direction', [[1, 'Forward'], [-1, 'Backward']]], ['check', 'Auto enter when I reach a tube', 'autoEnter'], ['check', 'Fly back when finished', 'returnWhenDone']]
 const dig = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o)
 const nest = (path, v) => path.split('.').reduceRight((acc, k) => ({ [k]: acc }), v)
 
@@ -75,8 +76,8 @@ export default class OmniOrbitTunnelPanel {
     if (kind === 'check') { inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!v; inp.onchange = () => set(key, inp.checked) }
     else if (kind === 'sel') { inp = document.createElement('select'); for (const [val, txt] of a) { const o = document.createElement('option'); o.value = String(val); o.textContent = txt; inp.appendChild(o) } inp.value = String(v); inp.onchange = () => set(key, typeof a[0][0] === 'number' ? Number(inp.value) : inp.value) }
     else if (kind === 'color') { inp = document.createElement('input'); inp.type = 'color'; inp.value = colorHex(v); inp.oninput = () => set(key, inp.value) }
-    else if (kind === 'text') { inp = document.createElement('input'); inp.type = 'text'; inp.value = v ?? ''; inp.placeholder = 'https://…'; inp.onchange = () => set(key, inp.value.trim()) }
-    else if (kind === 'btn') { inp = document.createElement('button'); inp.textContent = label; inp.onclick = () => this.svc?.[key]?.(id); row.appendChild(inp); return row }
+    else if (kind === 'text') { inp = document.createElement('input'); inp.type = 'text'; inp.value = v ?? ''; inp.placeholder = a || 'https://…'; inp.onchange = () => set(key, inp.value.trim()) }
+    else if (kind === 'btn') { inp = document.createElement('button'); inp.textContent = label; inp.onclick = () => { this.svc?.[key]?.(id); this._render() }; row.appendChild(inp); return row }
     else if (kind === 'file') {
       inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,video/*'; inp.style.display = 'none'
       const bt = document.createElement('button'); bt.textContent = label + '…'; bt.onclick = () => inp.click(); const cl = document.createElement('button'); cl.textContent = 'Clear file'; cl.onclick = () => this.svc?.clearLocalMedia(id)
@@ -103,7 +104,7 @@ export default class OmniOrbitTunnelPanel {
     add(btns)
     const en = this._control(['check', 'Takes part in the ride', 'enabled'], prefs.enabled[id], (_k, v) => svc.setPrefs({ enabled: { [id]: v } }), id); add(en)
     add(Object.assign(document.createElement('div'), { className: 'oot-note', textContent: 'The tunnel you enter first is ridden first, for the number of loops below. Then the other one, if it has its tick. Then you fly back. Esc leaves at any time.' }))
-    for (const f of GLOBALS) add(this._control(f, prefs[f[2]], (k, v) => svc.setPrefs({ [k]: v }), id))
+    for (const f of GLOBALS) { if (f[0] === 'btn') { add(this._control(f, null, () => {}, id)); continue } add(this._control(f, dig(prefs, f[2]), (k, v) => svc.setPrefs(nest(k, v)), id)) }
     for (const f of FIELDS) {
       if (f[0] === 'h') { const h = document.createElement('h4'); h.textContent = f[1]; add(h); continue }
       if (f[6] && f[6] !== id) continue

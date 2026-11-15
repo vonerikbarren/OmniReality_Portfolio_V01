@@ -94,7 +94,8 @@ export default class OmniMultiVideo {
     if (this._active === id) this._active = null; this._frame(id, true); this._emit(id, true); return { ok: true }
   }
   seek (id, t) { const r = this._r(id); const total = this.duration(id); r.t = Math.max(0, Math.min(total, Number.isFinite(+t) ? +t : 0)); const m = this._mesh(id); if (m && !r.base) r.base = m.position.toArray(); this._frame(id, true); this._emit(id, true); return { ok: true, t: r.t } }
-  _release (r) { if (r.orbitOff) { r.orbitOff = false; try { window.dispatchEvent(new Event('omni:orbit-enable')) } catch (_) { /* no window */ } } }
+  _oc () { return SERVICES.orbit?.controls ?? this.ctx?.controls ?? null }
+  _release (r) { if (r.orbitOff) { r.orbitOff = false; const oc = this._oc(); if (oc && r.target0) oc.target.copy(r.target0); if (oc && r.ocWas) { oc.enabled = true; oc.update?.() } try { window.dispatchEvent(new Event('omni:orbit-enable')) } catch (_) { /* no window */ } } }
   _emit (id, force = false) { const now = Date.now(); if (!force && now < this._sendAt) return; this._sendAt = now + 100; const r = this._run.get(id); send('omni:multivideo-state', { nodeId: id, playing: !!r?.playing, t: r?.t ?? 0 }) }
   _forget (id) { const r = this._run.get(id); if (r) { this._dropEls(r); this._release(r); this._run.delete(id) } if (this._active === id) this._active = null }
   _dropEls (r) { for (const e of r.els.values()) { try { e.video.pause(); e.video.removeAttribute('src'); e.video.load() } catch (_) { /* gone */ } } r.els.clear() }
@@ -137,9 +138,8 @@ export default class OmniMultiVideo {
   }
   _cam (r, mesh, c) {
     const cam = this.ctx?.camera; if (!cam) return
-    if (!r.orbitOff) { r.orbitOff = true; try { window.dispatchEvent(new Event('omni:orbit-disable')) } catch (_) { /* no window */ } }
+    if (!r.orbitOff) { r.orbitOff = true; const oc0 = this._oc(); r.ocWas = oc0 ? oc0.enabled : false; r.target0 = oc0 ? oc0.target.clone() : null; if (oc0) oc0.enabled = false; try { window.dispatchEvent(new Event('omni:orbit-disable')) } catch (_) { /* no window */ } }
     cam.position.set(...c.pos); const look = c.look ?? mesh.position.toArray(); cam.lookAt(look[0], look[1], look[2])
-    const oc = this.ctx?.controls ?? this.ctx?.orbit; if (oc?.target) { oc.target.set(look[0], look[1], look[2]) }
   }
   update (delta) {
     const id = this._active; if (!id) return; const r = this._run.get(id); if (!r?.playing) return

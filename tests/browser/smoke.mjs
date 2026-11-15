@@ -5,7 +5,7 @@ export default async function smoke (pg, errs) {
   const pre = []; const pcheck = (name, ok, detail = '') => pre.push({ name, ok: !!ok, detail: String(detail).slice(0, 220) })
   const look = await pg.evaluate(() => { const cs = getComputedStyle(document.getElementById('omni-boot')); return { bg: cs.getPropertyValue('--boot-bg').trim(), ink: cs.getPropertyValue('--boot-ink').trim(), overall: cs.getPropertyValue('--boot-overall').trim(), ver: document.getElementById('boot-version')?.textContent, gear: !!document.getElementById('omni-gear'), cap: document.getElementById('boot-caption')?.textContent || '' } })
   pcheck('opening screen: light by default (white, black ink, 68 percent)', look.bg === '#ffffff' && look.ink === '#000000' && look.overall === '0.68', JSON.stringify(look))
-  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V286' && look.gear, JSON.stringify(look))
+  pcheck('opening screen: version label and gear', look.ver === 'OmniOS_sandbox_A00_V290' && look.gear, JSON.stringify(look))
   pcheck('opening screen: a space is named', /space/i.test(look.cap), look.cap)
   await pg.click('#omni-gear'); await pg.selectOption('#og-bar', 'rainbow'); await pg.waitForTimeout(300)
   pcheck('gear: rainbow bar applies at once and is saved', await pg.evaluate(() => document.getElementById('boot-progress-bar').classList.contains('is-rainbow') && JSON.parse(localStorage.getItem('omni:gate-v1')).bar === 'rainbow'))
@@ -30,6 +30,12 @@ export default async function smoke (pg, errs) {
     const { SERVICES } = await import('/utils/OmniExtraKinds.js'); const { runOmniScript, listKeywords } = await import('/utils/OmniLangRegistry.js')
     const on = SERVICES.lineup?.omniNode; const cam = SERVICES.lineup?.context?.camera
     check('services running', ['lineup', 'doc', 'poly', 'vibration', 'demo', 'scenefile'].every(k => SERVICES[k]), Object.keys(SERVICES).filter(k => !SERVICES[k]).join())
+    { const LE0 = SERVICES.logicalexpression; const sl = (ms) => new Promise(r => setTimeout(r, ms))   // the fall must land first (a slow headless run takes long), then the opening expression plays and ends
+      for (let i = 0; i < 480 && !(window.__omniGate && window.__omniGate.fallSpeed === 0); i++) await sl(250)
+      check('the fall landed', window.__omniGate?.fallSpeed === 0)
+      for (let i = 0; i < 120 && !LE0.get().last; i++) await sl(250)
+      check('the opening LogicalExpression plays after the fall', LE0.get().last?.kind === 'opening', JSON.stringify(LE0.get()))
+      for (let i = 0; i < 160 && LE0.isPlaying(); i++) await sl(250); check('and it finishes', !LE0.isPlaying()); await sl(1500) }
     const run = async (t) => { const r = (await runOmniScript(t, { omniNode: on, camera: cam })).results[0]; return r }
     const ok = async (name, t, expect = null) => { let r; try { r = await run(t) } catch (e) { return check(name, false, 'threw ' + e.message) } check(name, r.ok && (!expect || String(r.output).includes(expect)), r.output || r.error) }
     const bad = async (name, t) => { let r; try { r = await run(t) } catch (e) { return check(name, false, 'threw ' + e.message) } check(name, r.ok === false, r.output || r.error) }
@@ -327,6 +333,51 @@ export default async function smoke (pg, errs) {
       const sel1 = ed.querySelector('.omve-body [data-k="ease"]'); sel1.value = 'bounce.out'; sel1.dispatchEvent(new Event('change', { bubbles: true })); await wait(50); check('changing the ease in the editor edits the node', MV.get('mv1').keys.some(k => k.ease === 'bounce.out'))
       const ins = await import('/ui/OmniMultiVideoInspector.js'); check('inspector block offers the editor', ins.multiVideoKindBlockHTML({ id: 'mv1' }).includes('Open editor')); SERVICES.multivideoui.close(); check('editor closes', !SERVICES.multivideoui.isOpen())
       window.dispatchEvent(new CustomEvent('omni:node-delete-request', { detail: { id: 'mv1' } })); await wait(300); check('deleted node leaves nothing running', !MV.list().includes('mv1') && !MV.isPlaying('mv1')) }
+    // V290: OmniSense: voxel rooms become tiles on a plane, the top view looks straight down, the orbit controls stay on, the equation round-trips
+    { const OS = SERVICES.omnisense; check('omnisense service exists', !!OS)
+      const V = SERVICES.voxel; if (V && OS) { try { V.addRoom(0, 0, 0, 'Smoke A'); V.addRoom(1, 0, 0, 'Smoke B') } catch (_) { /* rooms may exist */ }
+        await wait(200); OS.open(); await wait(300); check('omnisense lists rooms', OS.rooms().length >= 2, String(OS.rooms().length))
+        const key = OS.rooms()[0].key; const r = OS.setText(key, '\u29d6:"Real time"'); check('equation saves', r.ok && OS.vonText(key).includes('Real time'), OS.vonText(key))
+        OS.clearUser(key); check('equation resets', !OS.vonText(key).includes('Real time'))
+        const sv = OS.setView('top', { animate: false }); check('top view set', sv.ok); const cam2 = SERVICES.lineup?.context?.camera; const d = new (await import('three')).Vector3(); cam2.getWorldDirection(d)
+        check('top view looks straight down', d.y < -0.95, d.toArray().join()); check('orbit controls on after the view', SERVICES.orbit?.controls?.enabled === true)
+        OS.close() } }
+    // V287: the LogicalExpression: plays, fires cues, ends exactly where it should, shows the results card; Space + two clicks skips
+    { const LE = SERVICES.logicalexpression; check('logical expression service exists', !!LE); const T3 = await import('three'); const realCtx = LE.ctx; const cam = new T3.PerspectiveCamera(); LE.ctx = { camera: cam, controls: null }   // a stand-in camera: the real one may still be falling in a slow headless run
+      const cues = []; const onCue = (e) => cues.push(e.detail.name); window.addEventListener('omni:logical-expression-cue', onCue)
+      cam.position.set(3, 12, 30); cam.lookAt(0, 12, 0); const start = cam.position.toArray(); const q0 = cam.quaternion.clone(); const to = [6, 12, 22]
+      const r = LE.play({ kind: 'success', title: 'Smoke done', to, signature: { teleport: 1, seed: 12 }, stats: { nodes: 3, edges: 2 } }); check('the expression starts', r.ok && LE.isPlaying(), JSON.stringify(r))
+      for (let i = 0; i < 40 && Math.hypot(cam.position.x - start[0], cam.position.y - start[1], cam.position.z - start[2]) <= 0.2; i++) await wait(100); check('the camera moves during it', Math.hypot(cam.position.x - start[0], cam.position.y - start[1], cam.position.z - start[2]) > 0.2)
+      for (let i = 0; i < 60 && LE.isPlaying(); i++) await wait(250)
+      check('it finishes by itself', !LE.isPlaying()); check('it ends exactly on the target', Math.abs(cam.position.x - 6) < 1e-6 && Math.abs(cam.position.z - 22) < 1e-6, cam.position.toArray().join())
+      check('the camera faces the way it did before', cam.quaternion.angleTo(q0) < 1e-6)
+      check('the laser cues fired and the arrival', cues.includes('laser') && cues.includes('arrive'), cues.join())
+      const card = document.querySelector('.ole-card'); check('the results card shows its lines', !!card && card.textContent.includes('Smoke done') && card.textContent.includes('Nodes'))
+      card.querySelector('[data-a=ok]').click(); check('Continue closes the card', !document.querySelector('.ole-card'))
+      const home = cam.position.toArray(); await ok('command play', 'Omni LogicalExpression play kind(opening)'); await wait(200); check('the opening plays by command', LE.isPlaying())
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true })); await wait(50)
+      const sb = document.querySelector('.ole-skip'); check('Space brings out the skip button', sb.classList.contains('is-on'))
+      sb.click(); check('one click does not skip yet', LE.isPlaying() && /again/i.test(sb.textContent)); sb.click(); await wait(100); check('the second click skips', !LE.isPlaying())
+      check('skipping still puts you back where you were', Math.hypot(cam.position.x - home[0], cam.position.y - home[1], cam.position.z - home[2]) < 1e-6, cam.position.toArray().join() + ' vs ' + home.join())
+      window.removeEventListener('omni:logical-expression-cue', onCue)
+      window.dispatchEvent(new CustomEvent('omni:user-landed', { detail: { at: Date.now() } })); await wait(900); check('landing starts the opening expression', LE.get().last?.kind === 'opening' && LE.isPlaying(), JSON.stringify(LE.get().last)); LE.skip(); await wait(50)
+      LE.ctx = realCtx
+      await ok('set signature', 'Omni LogicalExpression set tempo(1.5) hops(5)'); check('the signature is saved', LE.get().signature.tempo === 1.5 && LE.get().signature.hops === 5); LE.reset()
+      window.dispatchEvent(new CustomEvent('omni:logical-expression-panel')); await wait(100); const pn = document.getElementById('omni-logical-expression-panel'); check('the panel opens with the sliders', !!pn && pn.classList.contains('is-open') && pn.querySelectorAll('input[type=range]').length === 7); window.dispatchEvent(new CustomEvent('omni:logical-expression-panel')) }
+    // V289: OrbitTunnel TargetAreas (where the camera looks during the ride) and the spin switch
+    { const OT = SERVICES.orbitTunnels; const T3 = await import('three'); const cam2 = SERVICES.lineup?.context?.camera; const fwd = () => { const d = new T3.Vector3(); cam2.getWorldDirection(d); return d }
+      const faces = (p) => { const d = fwd(); const t = new T3.Vector3(...p).sub(cam2.position).normalize(); return d.dot(t) }
+      const riding = async () => { for (let i = 0; i < 400 && OT.state().phase !== 'ride'; i++) await wait(250); return OT.state().phase === 'ride' }
+      const heading0 = fwd().toArray(); OT.set('horizontal', { traversal: { spin: false } }); OT.setPrefs({ look: { mode: 'front', target: '' }, loops: 1 })
+      await ok('look command', 'Omni OrbitTunnel look mode(core)'); check('look mode saved', OT.prefs().look.mode === 'core')
+      const e = OT.enter('horizontal'); check('the ride starts', e.ok); check('the ride reaches the tube', await riding())
+      check('TargetArea02: the camera faces the core (0, 0, 0)', faces([0, 0, 0]) > 0.99, String(faces([0, 0, 0])))
+      check('spin off: the horizon stays level', Math.abs(cam2.up.y - 1) < 1e-6 && Math.abs(fwd().y) < 0.999, cam2.up.toArray().join())
+      const nid = on.getAllNodes().find(d => d.id)?.id; const np = on.getMeshById(nid).position.toArray(); OT.setPrefs({ look: { mode: 'object', target: nid } }); await wait(800)
+      check('TargetArea03: the camera faces the chosen object', faces(np) > 0.99, nid + ' ' + faces(np))
+      OT.setPrefs({ look: { mode: 'front', target: '' } }); await wait(800); check('TargetArea01: the camera holds its heading (no spin)', fwd().dot(new T3.Vector3(...OT._entryDir)) > 0.99, String(fwd().dot(new T3.Vector3(...OT._entryDir))))
+      OT.exit(); for (let i = 0; i < 200 && OT.state().riding; i++) await wait(250); check('the ride ends', !OT.state().riding)
+      OT.reset('horizontal'); OT.setPrefs({ look: { mode: 'ring', target: '' } }); void heading0 }
     // V283: the hand orbs are white by default, readable, and the colour can be black or any colour
     { const HS = await import('/utils/OmniHandsSettings.js')
       for (const hand of ['lh', 'rh', 'conscious', 'omnihand']) {
@@ -391,6 +442,7 @@ export default async function smoke (pg, errs) {
       const v0 = on.getAllNodes().filter(d => d.nodeKind === 'voxelNode').length; document.querySelector('.omni-draw-mode-picker [data-mode="voxel"]')?.click(); await wait(500); check('picker: voxel makes a room node', on.getAllNodes().filter(d => d.nodeKind === 'voxelNode').length > v0)
       const t0 = on.getAllNodes().length; const op = window.prompt; window.prompt = () => 'Hello space'; document.querySelector('.omni-draw-mode-picker [data-mode="dimtext"]')?.click(); window.prompt = op; await wait(400)
       check('picker: dimensional text makes a text node', on.getAllNodes().length === t0 + 1 && on.getAllNodes().some(d => d.geometry === 'DimensionalText' && d.text === 'Hello space')) }
+    { const m0 = on.getAllNodes().filter(d => d.nodeKind === 'multiVideoNode').length; check('N picker lists MultiVideo', !!document.querySelector('.omni-draw-mode-picker [data-mode="multivideo"]')); document.querySelector('.omni-draw-mode-picker [data-mode="multivideo"]')?.click(); await wait(500); check('picker: MultiVideo makes a node', on.getAllNodes().filter(d => d.nodeKind === 'multiVideoNode').length === m0 + 1) }
     // V269: flashcards node
     { const FL = SERVICES.flash; check('flash service', !!FL && !!SERVICES.flashui)
       await ok('create', 'Omni Flash create title(Spanish) id(fl_1) cards(hola|hello;adios|goodbye;gracias|thanks)'); await wait(400)

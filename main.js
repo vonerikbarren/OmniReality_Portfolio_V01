@@ -5,6 +5,7 @@
  * wires the UI shell, sound system, and camera controls.
  */
 
+import { SERVICES } from './utils/OmniExtraKinds.js'   // V287
 import './utils/OmniTypingShield.js'   // V238: first import on purpose, so it is the first key listener on the window (typing areas keep every key)
 import gsap              from 'gsap'
 import * as THREE        from 'three'
@@ -205,6 +206,7 @@ import DevOmniStarIntroSettingsPanel from './ui/DevOmniStarIntroSettingsPanel.js
 
   // ── Phase 2 modules ─────────────────────────────────────
   const orbitMod = base.addModule(new OrbitModule(base.context))
+  SERVICES.orbit = orbitMod   // V287: systems that move the camera themselves (LogicalExpression, MultiVideo keys) pause and restore the orbit controls through this
                    base.addModule(new RootSpace(base.context))
                    base.addModule(new ParticleField(base.context))
                    if (decorOn('portalSpheres')) base.addModule(new PortalSpheres(base.context))

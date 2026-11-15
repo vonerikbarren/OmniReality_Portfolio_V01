@@ -3696,3 +3696,28 @@ Verified: node --check on every .js, jsdom suite `v170_test` (single instances, 
 - One node plays at a time; only clips on screen have a <video>; Stop puts the node back; orbit controls pause while camera keys run.
 - Smoke: the R-key climb test now waits for the eased pad speed to settle (it measured too early and was flaky); the playing-time check polls.
 - Not yet: teleprompt key on the timeline, other nodes as layers, the nesting / liveTime wiring, the time tunnel view.
+
+## V287 — LogicalExpression and animation classes
+- NEW animation classes (utils/OmniAnimationModel.js): a named, reusable bundle of keys for one segment A to B (progress, lateral, lift, fov, shake, flash). Built in: hyperlapse, teleport steps, laser streak, settle.
+- NEW user LogicalExpression (utils/OmniLogicalExpressionModel.js): a personal movement signature (tempo, intensity, teleport share, hops, reach, vibration, colour, sound), planned ahead and deterministic, always ending with the user placed in the scene, facing the way they were. Can be chosen or derived from what they built (Omni LogicalExpression derive).
+- Player (systems/OmniLogicalExpression.js): plays after the fall (omni:user-landed; not with ?gate=off) and as a success reward from any tool (event omni:logical-expression-play, Omni LogicalExpression play, OmniIDE). Cues go out as omni:logical-expression-cue for the sound system. Space then two clicks on Skip skips it. Calm version for reduced motion (system setting or the panel switch). Results card at the end.
+- Panel: ribbon button; sliders, sound, calm, play-after-fall, Preview opening / success, Derive from my work, Reset.
+- Not yet: the OmniVibration sub-class as its own layer (shake is built into the classes for now), the sound files, achievements that trigger it automatically, using animation classes from MultiVideo keys.
+- Smoke: the fall must land before the other checks (a slow headless run still has the fall moving the camera, which made the R-key and tooltip checks flaky); the opening expression is checked in the real flow.
+- FIX (V287 rebuild): the LogicalExpression and MultiVideo camera keys never reached the orbit controls (they were read from a place that does not hold them), so the controls kept pulling the camera and the pivot was left 10 units in front of the camera. Both now pause the real controls through SERVICES.orbit and put the pivot back exactly where it was.
+
+## V288 — MultiVideo in the N-key picker
+- The N picker (OmniDrawModePicker) now lists MultiVideo (next to Stored video) and creates the node; V286 only had the ribbon button and the Omni command.
+- Includes the V287 orbit-controls fix.
+
+## V289 — OrbitTunnel target areas and the spin switch
+- Target area (panel, both tunnels): Off / 01 right in front of me (heading held) / 02 the core 0,0,0 / 03 an object (follows it) / 04 a connection tunnel (EdgeNode), looking forward. A target that cannot be found falls back to looking along the ring.
+- Spin the camera round the wall (per tunnel): off = level horizon and no roll.
+- `Omni OrbitTunnel look mode(...) target(...)`, `Omni OrbitTunnel set key(spin) value(off)`; "Use the selected node as the target" button.
+- Pure `aimFor` in utils/OmniOrbitTunnelModel.js; tests/50; smoke block.
+
+## V290 — OmniSense, basic layout
+- The voxel rooms are the containers on a 3D plane: one tile per room, each carrying an OmniVon (a room always has the Room term and its name; the user adds more terms).
+- Three views: top down (straight above, plane fits the screen), isometric, wide orbit. The orbit controls stay on after the camera arrives, so the user can look around.
+- Click a tile to select the room; its equation comes up on the OmniTeleprompt. The panel edits the equation; the place always stays the room's.
+- Pure `utils/OmniSenseModel.js` (tests/51), `systems/OmniSense.js` (SERVICES.omnisense), `ui/OmniSensePanel.js`, ribbon button, `Omni Sense open|close|view|von`; tests/52; smoke block. Saved in 'omni:omnisense:v1'.

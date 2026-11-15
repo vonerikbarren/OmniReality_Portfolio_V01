@@ -18,6 +18,18 @@ Open the panel with the **◯ OrbitTunnel** button in the ribbon (Fire & tunnels
 - **Auto enter**: reaching a tube (for example at the end of a regular tunnel) starts the ride by itself.
 - Pause / go holds the camera; **Esc** or **Exit** leaves at any time.
 
+## Target area and the spin (V289)
+In the panel, **Target area** chooses where the camera looks while it rides. It applies to both tunnels:
+- **Off**: along the ring (how it was).
+- **01 Right in front of me**: the heading you had when the ride began, held.
+- **02 The core (0, 0, 0)**.
+- **03 An object**: a node id (or **Use the selected node as the target**). The view follows it if it moves.
+- **04 A connection tunnel**: an EdgeNode id; the camera looks forward along it.
+
+**Spin the camera round the wall** (per tunnel, under orbitTraversal): turn it off to keep the horizon level and stop the roll. The ride still moves along the ring, and the reality stays clickable; your own movement is held by the ride until you leave it.
+
+`Omni OrbitTunnel look mode(front|core|object|tunnel|ring) target(nodeId)` · `Omni OrbitTunnel set key(spin) value(off)`
+
 ## Commands
 `Omni OrbitTunnel enter tunnel(vertical)` · `Omni OrbitTunnel exit` · `Omni OrbitTunnel open` · `Omni OrbitTunnel set tunnel(horizontal) key(radius|tube|opacity|speed|roll|particleSpeed|mode|visible|loops) value(...)`
 
